@@ -49,15 +49,22 @@ oamorqueefica/
 │   ├── components/index.js         # Componentes reutilizáveis
 │   ├── navigation/AppNavigator.js  # Navegação (tabs + stack)
 │   └── screens/
-│       ├── auth/CadastroScreen.js      # Cadastro em 3 passos
-│       ├── home/HomeScreen.js          # Tela inicial
-│       ├── checkin/CheckInScreen.js    # Check-in emocional
-│       ├── audios/AudiosScreen.js      # Biblioteca de áudios
-│       ├── jornadas/JornadasScreen.js  # Jornadas estruturadas
-│       ├── memorial/MemorialScreen.js  # Caixa de memórias
-│       ├── relatorios/RelatoriosScreen.js  # Relatórios emocionais
-│       ├── sessao/SessaoScreen.js      # Agendamento de sessão
-│       └── planos/PlanosScreen.js      # Planos e assinatura
+│       ├── auth/CadastroScreen.js              # Cadastro em 4 passos (dados, perda, tipo de luto, conclusão)
+│       ├── home/HomeScreen.js                  # Tela inicial
+│       ├── checkin/CheckInScreen.js            # Check-in emocional (emoções positivas/negativas)
+│       ├── audios/AudiosScreen.js              # Biblioteca de áudios
+│       ├── audios/AudioPlayerScreen.js         # Player do áudio (com regra de liberação diária)
+│       ├── jornadas/JornadasScreen.js          # Jornadas estruturadas
+│       ├── jornadas/JornadaDetalheScreen.js    # Detalhe da jornada (liberação gradual de atividades)
+│       ├── jornadas/PequenasVitoriasScreen.js  # Pequenas vitórias (Plano 3)
+│       ├── memorial/MemorialScreen.js          # Caixa de memórias
+│       ├── cartas/CartasScreen.js              # Cartas (ler / escrever — Plano 1+)
+│       ├── relatorios/RelatoriosScreen.js      # Relatórios emocionais
+│       ├── notificacoes/NotificacoesScreen.js  # Central de notificações
+│       ├── perfil/DatasSensiveisScreen.js      # Datas sensíveis (Plano 2+)
+│       ├── perfil/RedeApoioScreen.js           # Rede de apoio (Plano 3)
+│       ├── sessao/SessaoScreen.js              # Agendamento de sessão
+│       └── planos/PlanosScreen.js              # Planos e assinatura
 ```
 
 ---
@@ -66,15 +73,20 @@ oamorqueefica/
 
 | Tela | Plano | Status |
 |------|-------|--------|
-| Cadastro (3 passos) | Gratuito | ✅ |
-| Home (frase + check-in + reflexão) | Gratuito | ✅ |
-| Check-in emocional completo | Gratuito | ✅ |
-| Biblioteca de áudios | Plano 1+ | ✅ |
-| Jornadas | Plano 2+ | ✅ |
+| Cadastro (4 passos, incl. perfil de tipo de luto) | Gratuito | ✅ |
+| Home (frase + check-in + reflexão + atalhos) | Gratuito | ✅ |
+| Check-in emocional (emoções positivas/negativas + mensagens) | Gratuito | ✅ |
+| Biblioteca de áudios + player (1 novo/dia) | Plano 1+ | ✅ |
+| Jornadas com liberação gradual de atividades | Plano 2+ | ✅ |
+| Pequenas vitórias | Plano 3 | ✅ |
 | Memorial / Caixa de memórias | Plano 1+ | ✅ |
+| Cartas (ler comunidade / escrever) | Plano 1+ (escrita) | ✅ |
+| Datas sensíveis (até 3, com notificação antecipada) | Plano 2+ | ✅ |
+| Rede de apoio (até 3 contatos) | Plano 3 | ✅ |
+| Central de notificações (automáticas + editoriais) | Gratuito | ✅ |
 | Relatórios emocionais | Gratuito+ | ✅ |
 | Agendamento de sessão | Todos | ✅ |
-| Planos e assinatura | Todos | ✅ |
+| Planos e assinatura (com subtítulos Perceber/Acolher/Compreender/Evoluir) | Todos | ✅ |
 
 ---
 
@@ -93,14 +105,14 @@ oamorqueefica/
 
 ## Próximos passos (Fase 2+)
 
-- [ ] Player de áudio real (expo-av)
-- [ ] Push notifications (expo-notifications)
-- [ ] Banco de dados local (AsyncStorage)
+- [ ] Player de áudio real com arquivos reais (expo-av) — atualmente simulado
+- [ ] Push notifications reais (expo-notifications) — atualmente apenas central in-app
+- [ ] Persistência local (AsyncStorage) — estado hoje é em memória (Context API)
 - [ ] Integração com pagamento (Stripe / RevenueCat)
-- [ ] Cartas da comunidade
-- [ ] Pequenas vitórias com certificados
-- [ ] Datas sensíveis com alertas antecipados
-- [ ] Área administrativa
+- [ ] Moderação real de cartas da comunidade
+- [ ] Pequenas vitórias com certificados / badges visuais
+- [ ] Área administrativa (gestão de notificações editoriais, conteúdo, planos)
+- [ ] Texto oficial e licenciado do instrumento de tipos de luto (atualmente placeholder estrutural)
 - [ ] IA acolhedora (Fase 3)
 
 ---

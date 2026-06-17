@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, alignItems: 'center' },
   statLabel: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginBottom: 4 },
   statNumber: { fontFamily: fonts.bodyBold, fontSize: 28, color: colors.lav5 },
-  statSub: { fontFamily: fonts.body, fontSize: 10, color: colors.sage2 },
+  statSub: { fontFamily: fonts.body, fontSize: 10, color: colors.sageFg },
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
   emoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 },
