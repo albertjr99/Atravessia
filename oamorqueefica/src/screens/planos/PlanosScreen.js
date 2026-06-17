@@ -1,17 +1,50 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
+  StyleSheet, SafeAreaView, StatusBar, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { httpsCallable } from 'firebase/functions';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { planos } from '../../data';
 import { ScriptTitle, Button } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { functions } from '../../services/firebase';
 
 export default function PlanosScreen({ navigation }) {
-  const { usuario, setUsuario } = useApp();
+  const { usuario } = useApp();
   const [sel, setSel] = useState(usuario.plano);
+  const [carregando, setCarregando] = useState(false);
+
+  const assinarPlano = async (planoId) => {
+    setCarregando(true);
+    try {
+      const criarSessaoCheckout = httpsCallable(functions, 'criarSessaoCheckout');
+      const { data } = await criarSessaoCheckout({ planoId });
+      await WebBrowser.openBrowserAsync(data.url);
+      // O plano é atualizado automaticamente quando o pagamento é confirmado
+      // (webhook do Stripe grava em usuarios/{uid}.plano e o app escuta em tempo real).
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('Não foi possível abrir o checkout', e.message || 'Tente novamente em alguns instantes.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const cancelarAssinatura = async () => {
+    setCarregando(true);
+    try {
+      const cancelarFn = httpsCallable(functions, 'cancelarAssinatura');
+      await cancelarFn();
+      navigation.goBack();
+    } catch (e) {
+      Alert.alert('Não foi possível cancelar', e.message || 'Tente novamente em alguns instantes.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   const precosCores = ['#A8B8A0', colors.lav4, colors.lav5, colors.peach2];
 
@@ -67,17 +100,20 @@ export default function PlanosScreen({ navigation }) {
 
         <View style={styles.btns}>
           {sel === 0 ? (
-            <Button title="Continuar no plano gratuito" onPress={() => navigation.goBack()} variant="ghost" />
+            <Button
+              title={usuario.plano > 0 ? 'Cancelar assinatura e voltar ao gratuito' : 'Continuar no plano gratuito'}
+              onPress={usuario.plano > 0 ? cancelarAssinatura : () => navigation.goBack()}
+              variant="ghost"
+              disabled={carregando}
+            />
           ) : (
             <Button
-              title={`Assinar ${planos[sel].nome} — R$ ${planos[sel].preco.toFixed(2).replace('.', ',')}/mês`}
-              onPress={() => {
-                setUsuario(prev => ({ ...prev, plano: sel }));
-                navigation.goBack();
-              }}
+              title={carregando ? 'Abrindo checkout...' : `Assinar ${planos[sel].nome} — R$ ${planos[sel].preco.toFixed(2).replace('.', ',')}/mês`}
+              onPress={() => assinarPlano(sel)}
+              disabled={carregando || sel === usuario.plano}
             />
           )}
-          <Text style={styles.cancelInfo}>Cancele quando quiser. Sem multa.</Text>
+          <Text style={styles.cancelInfo}>Pagamento processado de forma segura pelo Stripe. Cancele quando quiser.</Text>
         </View>
 
         <View style={{ height: spacing.xxl }} />

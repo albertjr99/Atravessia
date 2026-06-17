@@ -6,7 +6,7 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { ADMIN_EMAIL } from '../services/firebaseConfig';
 
@@ -18,18 +18,23 @@ export function AuthProvider({ children }) {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubPerfil = null;
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
+      if (unsubPerfil) { unsubPerfil(); unsubPerfil = null; }
       if (user) {
-        const ref = doc(db, 'usuarios', user.uid);
-        const snap = await getDoc(ref);
-        setPerfil(snap.exists() ? snap.data() : null);
+        // onSnapshot (em vez de getDoc único) garante que o plano seja atualizado
+        // em tempo real assim que a Cloud Function confirmar o pagamento no Stripe.
+        unsubPerfil = onSnapshot(doc(db, 'usuarios', user.uid), (snap) => {
+          setPerfil(snap.exists() ? snap.data() : null);
+          setCarregando(false);
+        }, () => setCarregando(false));
       } else {
         setPerfil(null);
+        setCarregando(false);
       }
-      setCarregando(false);
     });
-    return unsub;
+    return () => { unsubAuth(); if (unsubPerfil) unsubPerfil(); };
   }, []);
 
   const cadastrar = async ({ email, senha, nome, estado, perda, tempo, tipoLuto }) => {

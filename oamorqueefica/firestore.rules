@@ -15,8 +15,15 @@ service cloud.firestore {
     match /usuarios/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      // a própria usuária pode atualizar seu perfil; admin pode alterar plano/role
-      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // a própria usuária pode atualizar seu perfil, mas não plano/role/dados do Stripe
+      // (isso só é definido pelas Cloud Functions, via Admin SDK, após confirmação de pagamento)
+      // admin pode alterar qualquer campo, incluindo plano/role
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['plano', 'role', 'stripeCustomerId', 'stripeSubscriptionId'])
+        ) || isAdmin()
+      );
       allow delete: if isAdmin();
 
       match /{subcollection}/{docId} {
