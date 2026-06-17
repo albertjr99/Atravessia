@@ -1,13 +1,15 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { jornadas } from '../../data';
 import { ScriptTitle, ProgressBar, PlanBadge, LockedOverlay } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+
+const ilustracao = require('../../../assets/images/jornadas_caminho.png');
 
 export default function JornadasScreen({ navigation }) {
   const { temAcesso } = useApp();
@@ -30,11 +32,20 @@ export default function JornadasScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.td} />
+        </TouchableOpacity>
+        <View style={{ width: 32 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <ScriptTitle size={24}>Jornadas</ScriptTitle>
-          <Text style={styles.sub}>Percursos estruturados de transformação</Text>
+          <View style={{ flex: 1 }}>
+            <ScriptTitle size={24}>Jornadas</ScriptTitle>
+            <Text style={styles.sub}>Percursos estruturados de transformação</Text>
+          </View>
+          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
         <View style={styles.lista}>
@@ -98,8 +109,11 @@ export default function JornadasScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
+  headerIlustracao: { width: 64, height: 64 },
   lista: { paddingHorizontal: spacing.lg, gap: 12 },
   jornadaCard: {
     backgroundColor: colors.card, borderRadius: radius.xl,

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, TextInput, Modal,
+  SafeAreaView, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { tiposDataSensivel } from '../../data';
 import { ScriptTitle, Button, Card } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+
+const ilustracao = require('../../../assets/images/datas_calendario.png');
 
 export default function DatasSensiveisScreen({ navigation }) {
   const { datasSensiveis, adicionarDataSensivel, removerDataSensivel, temAcesso } = useApp();
@@ -54,7 +56,7 @@ export default function DatasSensiveisScreen({ navigation }) {
 
         {datasSensiveis.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={36} color={colors.lav3} />
+            <Image source={ilustracao} style={styles.emptyIlustracao} resizeMode="contain" />
             <Text style={styles.emptyText}>Nenhuma data cadastrada ainda.</Text>
           </View>
         ) : (
@@ -124,6 +126,7 @@ const styles = StyleSheet.create({
   itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   itemData: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: 8 },
+  emptyIlustracao: { width: 72, height: 72 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(74,63,85,0.35)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xl },

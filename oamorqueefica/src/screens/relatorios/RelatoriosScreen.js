@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, SafeAreaView, StatusBar,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -8,7 +8,7 @@ import { emocoes } from '../../data';
 import { ScriptTitle, Card, ProgressBar } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-export default function RelatoriosScreen() {
+export default function RelatoriosScreen({ navigation }) {
   const { checkins } = useApp();
 
   const contagem = {};
@@ -33,6 +33,12 @@ export default function RelatoriosScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.td} />
+        </TouchableOpacity>
+        <View style={{ width: 32 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
@@ -131,7 +137,9 @@ export default function RelatoriosScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
   statsRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 12, marginBottom: spacing.md },
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, alignItems: 'center' },

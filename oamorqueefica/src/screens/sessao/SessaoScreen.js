@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { ScriptTitle, Card, Button, QuoteText } from '../../components';
+
+const travessiaLogo = require('../../../assets/images/travessia_logo.png');
 
 const formatos = [
   { id: 'online', titulo: 'Individual — online ao vivo', sub: 'Sessão 1:1 por videochamada', popular: true },
@@ -41,9 +43,14 @@ export default function SessaoScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: spacing.sm }}>
             <Ionicons name="arrow-back" size={22} color={colors.td} />
           </TouchableOpacity>
-          <Text style={styles.headerTag}>Terapia Travessia</Text>
-          <ScriptTitle size={24}>Agende sua sessão</ScriptTitle>
-          <Text style={styles.headerSub}>Um próximo passo, no seu tempo</Text>
+          <View style={styles.headerTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTag}>Terapia Travessia</Text>
+              <ScriptTitle size={24}>Agende sua sessão</ScriptTitle>
+              <Text style={styles.headerSub}>Um próximo passo, no seu tempo</Text>
+            </View>
+            <Image source={travessiaLogo} style={styles.travessiaLogo} resizeMode="contain" />
+          </View>
         </View>
 
         {/* Citação */}
@@ -110,6 +117,8 @@ export default function SessaoScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  headerTop: { flexDirection: 'row', alignItems: 'center' },
+  travessiaLogo: { width: 52, height: 52, borderRadius: 14 },
   headerTag: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
   headerSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 3 },
   quoteCard: { marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: '#FDF5F5', borderColor: '#EDD0D0' },

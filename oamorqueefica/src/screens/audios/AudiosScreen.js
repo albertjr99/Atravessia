@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { audios } from '../../data';
 import { ScriptTitle, PlanBadge } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+
+const ilustracao = require('../../../assets/images/audios_mulher.png');
 
 const categorias = [
   { id: 'todos', label: 'Todos' },
@@ -48,11 +50,20 @@ export default function AudiosScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.td} />
+        </TouchableOpacity>
+        <View style={{ width: 32 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <ScriptTitle size={24}>Conteúdos</ScriptTitle>
-          <Text style={styles.sub}>Para cada momento do seu luto</Text>
+          <View style={{ flex: 1 }}>
+            <ScriptTitle size={24}>Conteúdos</ScriptTitle>
+            <Text style={styles.sub}>Para cada momento do seu luto</Text>
+          </View>
+          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
         {/* Filtros */}
@@ -106,8 +117,11 @@ export default function AudiosScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
+  headerIlustracao: { width: 64, height: 64 },
   chipsScroll: { marginBottom: spacing.sm },
   chipsContent: { paddingHorizontal: spacing.lg, gap: 8, paddingVertical: 4 },
   chip: {

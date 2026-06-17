@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, TextInput, Modal,
+  StyleSheet, SafeAreaView, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, QuoteText, Button, Card } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+
+const ilustracao = require('../../../assets/images/memorial_coracao.png');
 
 export default function MemorialScreen({ navigation }) {
   const { memorias, adicionarMemoria } = useApp();
@@ -28,11 +30,20 @@ export default function MemorialScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color={colors.td} />
+        </TouchableOpacity>
+        <View style={{ width: 32 }} />
+      </View>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>
-          <ScriptTitle size={24}>Caixa de Memórias</ScriptTitle>
-          <Text style={styles.sub}>Um espaço sagrado só seu</Text>
+          <View style={{ flex: 1 }}>
+            <ScriptTitle size={24}>Caixa de Memórias</ScriptTitle>
+            <Text style={styles.sub}>Um espaço sagrado só seu</Text>
+          </View>
+          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
         {/* Intro */}
@@ -127,8 +138,11 @@ export default function MemorialScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
+  headerIlustracao: { width: 64, height: 64 },
   introCard: { marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.rosa || '#D8B4B6', borderRadius: radius.full, paddingVertical: 10, marginTop: spacing.md },
   addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },

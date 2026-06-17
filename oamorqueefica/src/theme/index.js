@@ -1,52 +1,53 @@
 // Design System — "O Amor Que Fica"
-// Cores extraídas do protótipo Lovable
+// Paleta oficial da identidade visual "Travessia" (cores institucionais
+// obrigatórias do Instagram + cores exclusivas de apoio do aplicativo)
 
 export const colors = {
-  bg: '#F8F4EE',           // Creme — fundo principal
+  bg: '#FAF7F3',           // Creme — fundo principal
   card: '#FFFDF9',         // Cartão — bege claro
-  primary: '#9b86bd',      // Lavanda — primária
+  primary: '#B87AC0',      // Lilás Travessia — primária
   primaryFg: '#ffffff',
-  secondary: '#ECE3D6',    // Bege claro
-  secondaryFg: '#5a5364',
-  muted: '#EFE9E0',
-  mutedFg: '#8c8597',
-  accent: '#EBE3F3',       // Lavanda clara
-  accentFg: '#6b5b88',
+  secondary: '#EADCCB',    // Bege Areia
+  secondaryFg: '#4A4B4A',
+  muted: '#EADCCB',        // Bege Areia
+  mutedFg: '#4A4B4A',
+  accent: '#D8D0E6',       // Lilás Neblina
+  accentFg: '#4A4B4A',
   border: '#E6DDD2',
-  ring: '#C8B8DB',
+  ring: '#A89AC9',         // Lilás Suave
 
-  td: '#4a4453',           // Texto escuro
-  tm: '#8c8597',           // Texto médio
-  tl: '#a89eb8',           // Texto leve
+  td: '#4A4B4A',           // Texto escuro — Cinza Grafite
+  tm: '#76737A',           // Texto médio
+  tl: '#A39FA3',           // Texto leve
 
   // Cores secundárias
-  rose: '#D8B4B6',
-  roseFg: '#6b4a4c',
-  sage: '#A8B8A0',
-  sageFg: '#475042',
+  rose: '#D4A89A',         // Rosa Empoderado
+  roseFg: '#6b4a42',
+  sage: '#7A9E7E',         // Verde Sálvia
+  sageFg: '#3F5440',
   gold: '#D4B483',
   goldFg: '#5e4d2c',
 
   // Emoções
   emotion: {
-    triste: '#8FA3BF',
-    saudoso: '#B8A6C9',
-    ansioso: '#9FB2C7',
+    triste: '#B9C8DF',
+    saudoso: '#D8D0E6',
+    ansioso: '#CFE3E5',
     grato: '#D4B483',
-    esperancoso: '#A8B8A0',
+    esperancoso: '#7A9E7E',
     empaz: '#A8B8A0',
-    alegria: '#F4D6A0',
+    alegria: '#F2C9B8',
   },
 
-  // Aliases antigos (compatibilidade)
-  lav1: '#EBE3F3',
-  lav2: '#DDD0EE',
-  lav3: '#C8B8DB',
-  lav4: '#B8A6C9',
-  lav5: '#9b86bd',
-  lav6: '#6b5b88',
-  peach: '#EFD5C0',
-  peach2: '#D4B483',
+  // Aliases antigos (compatibilidade) — escala lilás Travessia
+  lav1: '#D8D0E6',          // Lilás Neblina
+  lav2: '#C9BBDD',
+  lav3: '#A89AC9',          // Lilás Suave
+  lav4: '#B98FC4',
+  lav5: '#B87AC0',          // Lilás Travessia
+  lav6: '#7C4F87',
+  peach: '#F2C9B8',         // Pêssego Claro
+  peach2: '#CD89A6',        // Taupe Suave
   white: '#FFFFFF',
 };
 
