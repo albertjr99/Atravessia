@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, TextInput, Modal,
+  SafeAreaView, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { cartasInspiradoras } from '../../data';
 import { ScriptTitle, Card, Button } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+
+const ilustracao = require('../../../assets/images/cartas_envelope.png');
 
 export default function CartasScreen({ navigation }) {
   const { cartasEscritas, adicionarCarta, temAcesso } = useApp();
@@ -56,7 +58,7 @@ export default function CartasScreen({ navigation }) {
         ) : podeEscrever ? (
           cartasEscritas.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="mail-outline" size={36} color={colors.lav3} />
+              <Image source={ilustracao} style={styles.emptyIlustracao} resizeMode="contain" />
               <Text style={styles.emptyText}>Suas cartas aparecerão aqui.</Text>
             </View>
           ) : (
@@ -134,6 +136,7 @@ const styles = StyleSheet.create({
   cartaConteudo: { fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic', color: colors.tm, lineHeight: 20 },
   cartaAutor: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 8, textAlign: 'right' },
   empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: 8 },
+  emptyIlustracao: { width: 72, height: 72 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center' },
   lockBtn: { marginTop: spacing.sm, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 10 },
   lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
