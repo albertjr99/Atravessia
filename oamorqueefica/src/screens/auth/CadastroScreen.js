@@ -1,29 +1,65 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, TextInput,
+  StyleSheet, SafeAreaView, StatusBar, TextInput, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { tiposPerda, temposPerda, perguntasTipoLuto, escalaTipoLuto } from '../../data';
 import { ScriptTitle, Button, Disclaimer } from '../../components';
-import { useApp } from '../../hooks/AppContext';
+import { useAuth } from '../../hooks/AuthContext';
 
 const STEPS = ['dados', 'perda', 'luto', 'conclusao'];
 
+function mensagemErro(code) {
+  switch (code) {
+    case 'auth/email-already-in-use': return 'Este e-mail já está cadastrado. Tente entrar.';
+    case 'auth/invalid-email': return 'E-mail inválido.';
+    case 'auth/weak-password': return 'A senha precisa ter pelo menos 6 caracteres.';
+    default: return 'Não foi possível concluir o cadastro. Tente novamente.';
+  }
+}
+
 export default function CadastroScreen({ navigation }) {
-  const { setUsuario, setTipoLuto } = useApp();
+  const { cadastrar } = useAuth();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ nome: '', email: '', senha: '', estado: '', perda: null, tempo: null });
   const [showSenha, setShowSenha] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [aceitouPriv, setAceitouPriv] = useState(false);
   const [respostasLuto, setRespostasLuto] = useState({});
+  const [enviando, setEnviando] = useState(false);
 
-  const handleConcluir = () => {
-    setUsuario(prev => ({ ...prev, nome: form.nome.split(' ')[0] || 'Você', cadastrado: true }));
-    setTipoLuto(respostasLuto);
-    navigation.replace('MainTabs');
+  const handleAvancarDados = () => {
+    if (!form.nome.trim() || !form.email.trim() || form.senha.length < 6) {
+      Alert.alert('Atenção', 'Preencha nome, e-mail e uma senha com pelo menos 6 caracteres.');
+      return;
+    }
+    if (!aceitouTermos || !aceitouPriv) {
+      Alert.alert('Atenção', 'É necessário aceitar os termos de uso e a política de privacidade.');
+      return;
+    }
+    setStep(1);
+  };
+
+  const handleConcluir = async () => {
+    setEnviando(true);
+    try {
+      await cadastrar({
+        email: form.email.trim(),
+        senha: form.senha,
+        nome: form.nome.trim(),
+        estado: form.estado.trim(),
+        perda: form.perda,
+        tempo: form.tempo,
+        tipoLuto: respostasLuto,
+      });
+      navigation.replace('MainTabs');
+    } catch (e) {
+      Alert.alert('Erro ao cadastrar', mensagemErro(e.code));
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const StepIndicator = () => (
@@ -77,8 +113,12 @@ export default function CadastroScreen({ navigation }) {
             <Text style={styles.checkText}>Aceito a <Text style={styles.checkLink}>política de privacidade</Text></Text>
           </TouchableOpacity>
 
-          <Button title="Continuar" onPress={() => setStep(1)} style={{ marginTop: spacing.lg }} />
+          <Button title="Continuar" onPress={handleAvancarDados} style={{ marginTop: spacing.lg }} />
           <View style={{ marginTop: spacing.md }}><Disclaimer /></View>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={{ marginTop: spacing.md, alignItems: 'center' }}>
+            <Text style={styles.checkText}>Já tem conta? <Text style={styles.checkLink}>Entrar</Text></Text>
+          </TouchableOpacity>
         </View>
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -167,7 +207,7 @@ export default function CadastroScreen({ navigation }) {
         <Ionicons name="heart" size={56} color={colors.lav3} />
         <Text style={styles.conclusaoTitulo}>Bem-vinda, {form.nome.split(' ')[0] || 'você'}!</Text>
         <Text style={styles.conclusaoSub}>Este é um espaço seguro para continuar amando quem partiu e continuar vivendo.</Text>
-        <Button title="Começar minha jornada" onPress={handleConcluir} style={{ marginTop: spacing.xl, width: '100%' }} />
+        <Button title={enviando ? 'Criando conta...' : 'Começar minha jornada'} onPress={handleConcluir} style={{ marginTop: spacing.xl, width: '100%' }} />
         <View style={{ marginTop: spacing.lg }}><Disclaimer /></View>
       </View>
     </SafeAreaView>

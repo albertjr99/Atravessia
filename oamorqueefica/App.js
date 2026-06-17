@@ -7,6 +7,7 @@ import { CormorantGaramond_400Regular_Italic } from '@expo-google-fonts/cormoran
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AppProvider } from './src/hooks/AppContext';
+import { AuthProvider } from './src/hooks/AuthContext';
 import { colors } from './src/theme';
 
 export default function App() {
@@ -29,8 +30,10 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
-      <AppNavigator />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppNavigator />
+      </AppProvider>
+    </AuthProvider>
   );
 }

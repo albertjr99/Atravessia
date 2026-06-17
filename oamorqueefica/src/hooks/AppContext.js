@@ -1,4 +1,9 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import {
+  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc,
+} from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext();
 
@@ -15,67 +20,126 @@ function proximaOcorrencia(dataStr) {
   return candidata;
 }
 
+// Sincroniza uma subcoleção usuarios/{uid}/{nome} com um state local.
+function useSubcolecao(uid, nome, setState) {
+  useEffect(() => {
+    if (!uid) { setState([]); return; }
+    const ref = query(collection(db, 'usuarios', uid, nome), orderBy('criadoEm', 'asc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setState(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, [uid, nome]);
+}
+
 export function AppProvider({ children }) {
-  const [usuario, setUsuario] = useState({
-    nome: 'Ana',
-    plano: 1,
-    cadastrado: false,
-  });
+  const { firebaseUser, perfil, atualizarPerfil } = useAuth() || {};
+  const uid = firebaseUser?.uid || null;
 
-  const [checkins, setCheckins] = useState([
-    { data: '2025-05-12', emocao: 'triste', intensidade: 3 },
-    { data: '2025-05-13', emocao: 'ansioso', intensidade: 2 },
-    { data: '2025-05-14', emocao: 'saudade', intensidade: 4 },
-    { data: '2025-05-15', emocao: 'esperancoso', intensidade: 2 },
-    { data: '2025-05-16', emocao: 'triste', intensidade: 3 },
-    { data: '2025-05-17', emocao: 'esperancoso', intensidade: 3 },
-  ]);
+  const [usuario, setUsuarioLocal] = useState({ nome: 'Você', plano: 1, cadastrado: false });
 
-  const [memorias, setMemorias] = useState([
-    { id: 1, titulo: 'Nossa última primavera', tipo: 'texto', conteudo: 'Uma lembrança especial...', data: '2025-05-20' },
-    { id: 2, titulo: 'O jardim que você amava', tipo: 'texto', conteudo: 'Cada flor me lembra de você...', data: '2025-05-22' },
-  ]);
+  useEffect(() => {
+    if (perfil) {
+      setUsuarioLocal({ nome: (perfil.nome || '').split(' ')[0] || 'Você', plano: perfil.plano || 1, cadastrado: true });
+    }
+  }, [perfil]);
 
+  const setUsuario = (updater) => {
+    setUsuarioLocal(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (uid && next.plano !== prev.plano) atualizarPerfil?.({ plano: next.plano });
+      return next;
+    });
+  };
+
+  const [checkins, setCheckins] = useState([]);
+  const [memorias, setMemorias] = useState([]);
   const [vitorias, setVitorias] = useState([]);
   const [cartasEscritas, setCartasEscritas] = useState([]);
   const [datasSensiveis, setDatasSensiveis] = useState([]);
   const [redeApoio, setRedeApoio] = useState([]);
-  const [tipoLuto, setTipoLuto] = useState(null);
+  const [tipoLuto, setTipoLutoLocal] = useState(null);
+
+  useSubcolecao(uid, 'checkins', setCheckins);
+  useSubcolecao(uid, 'memorias', setMemorias);
+  useSubcolecao(uid, 'vitorias', setVitorias);
+  useSubcolecao(uid, 'cartas', setCartasEscritas);
+  useSubcolecao(uid, 'datasSensiveis', setDatasSensiveis);
+  useSubcolecao(uid, 'redeApoio', setRedeApoio);
+
+  useEffect(() => {
+    if (perfil?.tipoLuto) setTipoLutoLocal(perfil.tipoLuto);
+  }, [perfil]);
+
+  const setTipoLuto = (valor) => {
+    setTipoLutoLocal(valor);
+    if (uid) atualizarPerfil?.({ tipoLuto: valor });
+  };
 
   // Conteúdos "novos" liberados por dia, por grupo (acolhimento | complementar)
   const [conteudosLiberados, setConteudosLiberados] = useState([]);
+  useSubcolecao(uid, 'conteudosLiberados', setConteudosLiberados);
+
   const [lidas, setLidas] = useState({});
 
-  const [notificacoesEditoriais] = useState([
-    { id: 'ed1', tipo: 'incentivo', texto: 'Você está se cuidando. Isso importa muito.' },
-    { id: 'ed2', tipo: 'live', texto: 'Nova live gratuita amanhã às 19h. Confirme presença!' },
-  ]);
+  // Notificações editoriais publicadas pela administração (Firestore: notificacoesEditoriais)
+  const [notificacoesEditoriais, setNotificacoesEditoriais] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('criadoEm', 'desc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setNotificacoesEditoriais(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(n => n.ativa !== false));
+    }, () => {});
+    return unsub;
+  }, []);
+
+  // Biblioteca de conteúdos (áudios, documentos, links) publicada pela administração
+  const [conteudos, setConteudos] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'conteudos'), orderBy('criadoEm', 'desc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setConteudos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, []);
 
   const adicionarCheckin = (emocao, intensidade) => {
-    setCheckins(prev => [...prev, { data: hojeStr(), emocao, intensidade }]);
+    const item = { data: hojeStr(), emocao, intensidade };
+    setCheckins(prev => [...prev, item]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'checkins'), { ...item, criadoEm: serverTimestamp() });
   };
 
   const adicionarMemoria = (memoria) => {
     setMemorias(prev => [...prev, { ...memoria, id: Date.now() }]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'memorias'), { ...memoria, data: hojeStr(), criadoEm: serverTimestamp() });
   };
 
   const adicionarVitoria = (vitoria) => {
     setVitorias(prev => [...prev, { ...vitoria, id: Date.now(), data: new Date().toISOString() }]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'vitorias'), { ...vitoria, criadoEm: serverTimestamp() });
   };
 
   const adicionarCarta = (carta) => {
     setCartasEscritas(prev => [...prev, { ...carta, id: Date.now(), data: hojeStr() }]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'cartas'), { ...carta, data: hojeStr(), criadoEm: serverTimestamp() });
   };
 
   const adicionarDataSensivel = (item) => {
     setDatasSensiveis(prev => (prev.length >= 3 ? prev : [...prev, { ...item, id: Date.now() }]));
+    if (uid && datasSensiveis.length < 3) addDoc(collection(db, 'usuarios', uid, 'datasSensiveis'), { ...item, criadoEm: serverTimestamp() });
   };
-  const removerDataSensivel = (id) => setDatasSensiveis(prev => prev.filter(d => d.id !== id));
+  const removerDataSensivel = (id) => {
+    setDatasSensiveis(prev => prev.filter(d => d.id !== id));
+    if (uid) deleteDoc(doc(db, 'usuarios', uid, 'datasSensiveis', String(id))).catch(() => {});
+  };
 
   const adicionarContatoRede = (item) => {
     setRedeApoio(prev => (prev.length >= 3 ? prev : [...prev, { ...item, id: Date.now() }]));
+    if (uid && redeApoio.length < 3) addDoc(collection(db, 'usuarios', uid, 'redeApoio'), { ...item, criadoEm: serverTimestamp() });
   };
-  const removerContatoRede = (id) => setRedeApoio(prev => prev.filter(c => c.id !== id));
+  const removerContatoRede = (id) => {
+    setRedeApoio(prev => prev.filter(c => c.id !== id));
+    if (uid) deleteDoc(doc(db, 'usuarios', uid, 'redeApoio', String(id))).catch(() => {});
+  };
 
   const temAcesso = (planoNecessario) => usuario.plano >= planoNecessario;
 
@@ -93,7 +157,9 @@ export function AppProvider({ children }) {
   const liberarConteudo = (id, grupo) => {
     if (jaLiberado(id)) return true;
     if (!podeLiberarNovo(grupo)) return false;
-    setConteudosLiberados(prev => [...prev, { id, grupo, data: hojeStr() }]);
+    const item = { id, grupo, data: hojeStr() };
+    setConteudosLiberados(prev => [...prev, item]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'conteudosLiberados'), { ...item, criadoEm: serverTimestamp() });
     return true;
   };
 
@@ -160,6 +226,7 @@ export function AppProvider({ children }) {
       redeApoio, adicionarContatoRede, removerContatoRede,
       tipoLuto, setTipoLuto,
       notificacoes, marcarLida,
+      conteudos,
       temAcesso,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje,
     }}>
