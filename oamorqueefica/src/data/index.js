@@ -21,15 +21,97 @@ export const reflexoes = [
   { id: 7, texto: 'A saudade que você sente é prova de um amor verdadeiro. Deixe-a existir sem tentar apagá-la.' },
 ];
 
+// Emoções oficiais do check-in (documento "Dinâmica das mensagens do sistema" / "Tipos de Planos")
+// Cada emoção negativa tem mensagens automáticas (variações) + botão de áudio de acolhimento.
+// Emoções positivas geram apenas uma celebração discreta, sem recomendação de conteúdo.
 export const emocoes = [
-  { id: 'triste', label: 'Triste', icon: 'sad', bg: '#EDE5F5', color: '#9880B8' },
-  { id: 'saudoso', label: 'Saudoso', icon: 'leaf', bg: '#E8F0E5', color: '#7a9870' },
-  { id: 'ansioso', label: 'Ansioso', icon: 'cloud', bg: '#F5EDE5', color: '#B89870' },
-  { id: 'grato', label: 'Grato', icon: 'heart', bg: '#F0EDE5', color: '#C08878' },
-  { id: 'esperancoso', label: 'Esperançoso', icon: 'sunny', bg: '#E5EDF0', color: '#7088A0' },
-  { id: 'irritado', label: 'Irritado', icon: 'flash', bg: '#F5F0E8', color: '#B0A060' },
-  { id: 'cansado', label: 'Cansado', icon: 'moon', bg: '#EAF0F5', color: '#7088A0' },
-  { id: 'empaz', label: 'Em paz', icon: 'flower', bg: '#EDF5F0', color: '#70A890' },
+  {
+    id: 'triste', label: 'Triste', icon: 'sad', positiva: false,
+    bg: '#EDE5F5', color: '#8FA3BF',
+    mensagens: [
+      'Percebemos que a tristeza esteve presente hoje. Que tal reservar alguns minutos para cuidar de você?',
+      'Percebemos que hoje você está triste. Gostaria de ouvir um áudio de acolhimento?',
+    ],
+  },
+  {
+    id: 'saudade', label: 'Com saudade', icon: 'leaf', positiva: false,
+    bg: '#E8E0F0', color: '#B8A6C9',
+    mensagens: [
+      'A saudade apareceu hoje. Você gostaria de acolher esse sentimento por alguns minutos?',
+      'A saudade apareceu por aí hoje. Que tal reservar alguns minutos para ela?',
+    ],
+  },
+  {
+    id: 'sozinho', label: 'Sozinho', icon: 'person', positiva: false,
+    bg: '#E8F0E5', color: '#7a9870',
+    mensagens: [
+      'Sentir-se sozinho pode ser muito difícil. Que tal fazer uma pequena pausa para si agora?',
+      'Sentir-se sozinho pode ser pesado. Gostaria de ouvir um áudio de acolhimento?',
+    ],
+  },
+  {
+    id: 'medo', label: 'Com medo', icon: 'cloud', positiva: false,
+    bg: '#EAF0F5', color: '#7088A0',
+    mensagens: [
+      'Percebemos que o medo está presente hoje. Talvez seja um bom momento para respirar com calma.',
+      'Percebemos que hoje o medo está presente. Vamos atravessar este momento juntos?',
+    ],
+  },
+  {
+    id: 'culpado', label: 'Culpado', icon: 'alert-circle', positiva: false,
+    bg: '#F5EDE5', color: '#B0876A',
+    mensagens: [
+      'A culpa apareceu hoje. Você merece olhar para esse sentimento com gentileza.',
+      'A culpa costuma trazer muitos questionamentos. Que tal ouvir um áudio de acolhimento?',
+    ],
+  },
+  {
+    id: 'ansioso', label: 'Ansioso', icon: 'pulse', positiva: false,
+    bg: '#F5EDE5', color: '#B89870',
+    mensagens: [
+      'Hoje a ansiedade esteve presente. Que tal desacelerar por alguns minutos?',
+      'Sua mente parece estar carregada hoje. Gostaria de fazer uma pausa?',
+    ],
+  },
+  {
+    id: 'raiva', label: 'Com raiva', icon: 'flash', positiva: false,
+    bg: '#F5F0E8', color: '#B0A060',
+    mensagens: [
+      'A raiva também faz parte da experiência humana. Você gostaria de acolher esse momento?',
+      'Percebemos que hoje existe algo que está incomodando você. Vamos acolher isso?',
+    ],
+  },
+  {
+    id: 'desanimado', label: 'Desanimado', icon: 'cloudy', positiva: false,
+    bg: '#EFEFEF', color: '#9088A0',
+    mensagens: [
+      'Hoje parece estar mais difícil. Talvez alguns minutos de cuidado possam ajudar.',
+      'Nem todos os dias precisam ser produtivos. Que tal alguns minutos para você?',
+    ],
+  },
+  {
+    id: 'confuso', label: 'Confuso', icon: 'help-circle', positiva: false,
+    bg: '#EAF0F5', color: '#8595B0',
+    mensagens: [
+      'Nem sempre conseguimos entender tudo o que sentimos. Você gostaria de fazer uma pequena pausa agora?',
+      'Quando tudo parece confuso, pequenos passos podem ajudar. Gostaria de ouvir um áudio?',
+    ],
+  },
+  {
+    id: 'esperancoso', label: 'Esperançoso', icon: 'sunny', positiva: true,
+    bg: '#E5EDF0', color: '#A8B8A0',
+    mensagens: ['Que bom perceber esperança em você hoje. Continue caminhando nesse ritmo.'],
+  },
+  {
+    id: 'grato', label: 'Grato', icon: 'heart', positiva: true,
+    bg: '#F0EDE5', color: '#D4B483',
+    mensagens: ['A gratidão é um sinal bonito de presença. Guarde esse sentimento com carinho.'],
+  },
+  {
+    id: 'tranquilo', label: 'Tranquilo', icon: 'flower', positiva: true,
+    bg: '#EDF5F0', color: '#70A890',
+    mensagens: ['Que bom saber que hoje você está em paz. Permita-se sentir isso plenamente.'],
+  },
 ];
 
 export const audios = [
@@ -37,17 +119,17 @@ export const audios = [
     id: 1, titulo: 'Quando a saudade aperta', categoria: 'acolhimento',
     duracao: '8 min', plano: 1,
     descricao: 'Um áudio de acolhimento para os momentos em que a saudade parece insuportável.',
-    emocoes: ['saudoso', 'triste'],
+    emocoes: ['saudade', 'triste'],
   },
   {
     id: 2, titulo: 'Respiração 4-7-8', categoria: 'respiracao',
-    duracao: '5 min', plano: 1,
+    duracao: '5 min', plano: 2,
     descricao: 'Técnica de respiração para acalmar a ansiedade e o sistema nervoso.',
     emocoes: ['ansioso'],
   },
   {
     id: 3, titulo: 'Respirar com o luto', categoria: 'respiracao',
-    duracao: '7 min', plano: 1,
+    duracao: '7 min', plano: 2,
     descricao: 'Uma pausa guiada para respirar fundo e se reconectar com o presente.',
     emocoes: ['ansioso', 'triste'],
   },
@@ -55,7 +137,7 @@ export const audios = [
     id: 4, titulo: 'Você não está sozinho', categoria: 'acolhimento',
     duracao: '10 min', plano: 1,
     descricao: 'Acolhimento para os dias em que o isolamento pesa mais que o normal.',
-    emocoes: ['triste', 'saudoso'],
+    emocoes: ['triste', 'sozinho'],
   },
   {
     id: 5, titulo: 'Para as noites difíceis', categoria: 'noturno',
@@ -73,14 +155,36 @@ export const audios = [
     id: 7, titulo: 'Sobre a culpa no luto', categoria: 'informativo',
     duracao: '18 min', plano: 3,
     descricao: 'Reflexão sobre o sentimento de culpa — um dos mais comuns no luto.',
-    emocoes: ['irritado', 'triste'],
+    emocoes: ['culpado', 'raiva'],
   },
   {
     id: 8, titulo: 'O que é o luto complicado', categoria: 'informativo',
     duracao: '20 min', plano: 3,
     descricao: 'Baseado nas pesquisas de Robert Neimeyer sobre tipos de luto.',
-    emocoes: ['triste', 'ansioso'],
+    emocoes: ['triste', 'confuso'],
   },
+  {
+    id: 9, titulo: 'Acolhendo o medo', categoria: 'acolhimento',
+    duracao: '9 min', plano: 1,
+    descricao: 'Um espaço seguro para reconhecer o medo sem julgamento.',
+    emocoes: ['medo'],
+  },
+  {
+    id: 10, titulo: 'Quando o desânimo chega', categoria: 'acolhimento',
+    duracao: '8 min', plano: 1,
+    descricao: 'Acolhimento para os dias em que tudo parece mais pesado.',
+    emocoes: ['desanimado', 'confuso'],
+  },
+];
+
+// Categorias de conteúdo complementar (Plano 2+) — 1 novo por dia, à escolha
+export const conteudosComplementares = [
+  { id: 'c1', titulo: 'Pausa guiada — Respirar e voltar ao presente', categoria: 'meditacao', duracao: '6 min' },
+  { id: 'c2', titulo: 'Técnica 4-7-8 para momentos de tensão', categoria: 'respiracao', duracao: '5 min' },
+  { id: 'c3', titulo: 'O que a neurociência diz sobre a saudade', categoria: 'informativo', duracao: '12 min' },
+  { id: 'c4', titulo: 'Comentário: "Sobre o Luto e o Luto" — William Worden', categoria: 'livro', duracao: '10 min' },
+  { id: 'c5', titulo: 'Exercício reflexivo — O que essa perda me ensinou', categoria: 'reflexivo', duracao: '7 min' },
+  { id: 'c6', titulo: 'Carta inspiradora — "Para quem fica"', categoria: 'carta', duracao: '3 min' },
 ];
 
 export const jornadas = [
@@ -110,7 +214,9 @@ export const jornadas = [
     atividadesConcluidas: 0,
     plano: 3,
     cor: '#E8F0E5',
-    atividades: [],
+    atividades: Array.from({ length: 21 }, (_, i) => ({
+      id: i + 1, titulo: `Dia ${i + 1}`, tipo: i % 3 === 0 ? 'audio' : i % 3 === 1 ? 'reflexao' : 'escrita', concluida: false,
+    })),
   },
   {
     id: 3,
@@ -120,73 +226,80 @@ export const jornadas = [
     atividadesConcluidas: 0,
     plano: 3,
     cor: '#F5EDE5',
-    atividades: [],
+    atividades: Array.from({ length: 21 }, (_, i) => ({
+      id: i + 1, titulo: `Dia ${i + 1}`, tipo: i % 3 === 0 ? 'audio' : i % 3 === 1 ? 'reflexao' : 'atividade', concluida: false,
+    })),
   },
 ];
 
+// Planos conforme documento "Tipos de Planos — Estrutura dos Planos e Feedbacks Emocionais"
 export const planos = [
   {
     id: 0,
     nome: 'Gratuito',
+    subtitulo: 'Perceber',
     preco: 0,
     precoLabel: 'Grátis',
-    descricao: 'Comece sua jornada',
+    descricao: 'Comece a perceber suas emoções',
     recursos: [
+      'Cadastro básico',
       'Frase do dia',
       'Reflexão do dia',
       'Check-in emocional',
-      'Histórico emocional básico',
-      'Relatório mensal básico',
-      'Convites para lives gratuitas',
-      'Agendamento de sessão',
-      'Notificações básicas',
+      'Histórico emocional simples',
+      'Relatório emocional mensal simples',
     ],
   },
   {
     id: 1,
     nome: 'Plano 1',
+    subtitulo: 'Acolher',
     preco: 29.90,
     precoLabel: 'R$ 29,90/mês',
-    descricao: 'Primeiro aprofundamento',
+    descricao: 'Acolhimento diário para sua dor',
     recursos: [
       'Tudo do Gratuito',
-      'Biblioteca de áudios de acolhimento',
-      'Cartas da comunidade',
-      'Relatórios mais completos',
-      'Recomendações emocionais',
+      'Perfil da perda e questionário inicial',
+      '1 áudio de acolhimento novo por dia',
+      'Cartas — escrever e ler',
+      'Feedback emocional diário',
+      'Áudios noturnos',
     ],
     destaque: false,
   },
   {
     id: 2,
     nome: 'Plano 2',
+    subtitulo: 'Compreender',
     preco: 49.90,
     precoLabel: 'R$ 49,90/mês',
-    descricao: 'Transformação estruturada',
+    descricao: 'Compreenda seus padrões emocionais',
     recursos: [
       'Tudo do Plano 1',
-      'Jornada das Datas Sensíveis',
-      'Áudios de respiração',
-      'Áudios noturnos',
-      'Relatórios das jornadas',
+      'Datas sensíveis (até 3 datas)',
+      'Jornadas terapêuticas',
+      'Técnicas de respiração e pausas guiadas',
+      'Áudios informativos',
+      '1 conteúdo complementar novo por dia',
+      'Relatório emocional semanal',
     ],
     destaque: true,
   },
   {
     id: 3,
     nome: 'Plano 3',
+    subtitulo: 'Evoluir',
     preco: 89.90,
     precoLabel: 'R$ 89,90/mês',
-    descricao: 'Experiência completa',
+    descricao: 'Evolua com acompanhamento completo',
     recursos: [
       'Tudo do Plano 2',
-      'Jornadas da Saudade e Reconexão',
+      'Rede de apoio (até 3 pessoas)',
+      'Memorial — fotos, textos e homenagens',
       'Pequenas vitórias',
-      'Certificados de conclusão',
-      'Lives exclusivas no Zoom',
-      'Áudios informativos',
-      'Vídeos',
-      'Benefícios de parceiros',
+      'Lives exclusivas',
+      'Vídeos informativos',
+      'Relatório emocional mensal e anual',
     ],
     destaque: false,
   },
@@ -204,3 +317,37 @@ export const pequenasVitorias = [
   { id: 9, label: 'Me hidratei bem' },
   { id: 10, label: 'Pratiquei respiração' },
 ];
+
+export const cartasInspiradoras = [
+  { id: 1, titulo: 'Para quem fica', autor: 'Comunidade', conteudo: 'Eu também pensei que não fosse conseguir. Mas dia após dia, percebi que carregar essa saudade não me impede de continuar amando a vida.' },
+  { id: 2, titulo: 'Um ano depois', autor: 'Comunidade', conteudo: 'Hoje, um ano depois, ainda sinto sua falta todos os dias. Mas aprendi que o amor que ficou também pode me ajudar a seguir.' },
+  { id: 3, titulo: 'Continuar vivendo', autor: 'Comunidade', conteudo: 'Não foi fácil voltar a sorrir. Mas percebi que sorrir não é esquecer — é honrar o que vivemos juntos.' },
+];
+
+// Tipos de perda para o perfil emocional (cadastro)
+export const tiposPerda = ['Mãe', 'Pai', 'Filho(a)', 'Companheiro(a)', 'Amigo(a)', 'Pet', 'Outro'];
+export const temposPerda = ['Menos de 1 mês', '1 a 6 meses', '6 meses a 1 ano', '1 a 3 anos', 'Mais de 3 anos'];
+
+// Vínculos para a rede de apoio
+export const vinculosRedeApoio = ['Familiar', 'Amigo(a)', 'Companheiro(a)', 'Profissional', 'Outro'];
+
+// Tipos de datas sensíveis
+export const tiposDataSensivel = ['Aniversário da pessoa', 'Data da perda', 'Aniversário (seu)', 'Outra data importante'];
+
+// Questionário estrutural inspirado nas dinâmicas de Robert Neimeyer sobre tipos de luto.
+// Conteúdo placeholder: a versão final deve usar o texto oficial e validado do instrumento
+// (ver página 82 do livro de referência citado no projeto) antes de publicar.
+export const perguntasTipoLuto = [
+  'Sinto que ainda preciso entender o que essa perda significa para mim.',
+  'Tenho dificuldade em aceitar que a perda realmente aconteceu.',
+  'Sinto raiva ou revolta quando penso na perda.',
+  'Sinto culpa em relação a algo que fiz ou deixei de fazer.',
+  'Evito lembranças ou lugares que me façam pensar na perda.',
+  'Consigo falar sobre a pessoa/situação perdida sem me desorganizar emocionalmente.',
+  'Sinto que minha rotina diária foi profundamente afetada pela perda.',
+  'Tenho conseguido encontrar novos significados para minha vida após a perda.',
+  'Sinto que tenho apoio de outras pessoas para lidar com essa perda.',
+  'Tenho pensamentos frequentes e intrusivos sobre a perda.',
+  'Sinto que, com o tempo, tenho conseguido conviver com a saudade sem que ela me impeça de viver.',
+];
+export const escalaTipoLuto = ['Nunca', 'Raramente', 'Às vezes', 'Frequentemente', 'Sempre'];

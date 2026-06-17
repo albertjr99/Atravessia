@@ -5,24 +5,24 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
+import { tiposPerda, temposPerda, perguntasTipoLuto, escalaTipoLuto } from '../../data';
 import { ScriptTitle, Button, Disclaimer } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-const STEPS = ['dados', 'perda', 'conclusao'];
+const STEPS = ['dados', 'perda', 'luto', 'conclusao'];
 
 export default function CadastroScreen({ navigation }) {
-  const { setUsuario } = useApp();
+  const { setUsuario, setTipoLuto } = useApp();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ nome: '', email: '', senha: '', estado: '', perda: null, tempo: null });
   const [showSenha, setShowSenha] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [aceitouPriv, setAceitouPriv] = useState(false);
-
-  const perdas = ['Mãe', 'Pai', 'Filho(a)', 'Companheiro(a)', 'Amigo(a)', 'Pet', 'Outro'];
-  const tempos = ['Menos de 1 mês', '1 a 6 meses', '6 meses a 1 ano', '1 a 3 anos', 'Mais de 3 anos'];
+  const [respostasLuto, setRespostasLuto] = useState({});
 
   const handleConcluir = () => {
     setUsuario(prev => ({ ...prev, nome: form.nome.split(' ')[0] || 'Você', cadastrado: true }));
+    setTipoLuto(respostasLuto);
     navigation.replace('MainTabs');
   };
 
@@ -98,7 +98,7 @@ export default function CadastroScreen({ navigation }) {
           <Text style={styles.pergunta}>"Sobre quem você sente mais saudade hoje?"</Text>
           <Text style={styles.perguntaSub}>Marque até 2 opções</Text>
           <View style={styles.grid2}>
-            {perdas.map(p => (
+            {tiposPerda.map(p => (
               <TouchableOpacity
                 key={p}
                 style={[styles.optCard, form.perda === p && styles.optCardSel]}
@@ -110,7 +110,7 @@ export default function CadastroScreen({ navigation }) {
           </View>
 
           <Text style={[styles.pergunta, { marginTop: spacing.lg }]}>Há quanto tempo ocorreu a perda?</Text>
-          {tempos.map(t => (
+          {temposPerda.map(t => (
             <TouchableOpacity
               key={t}
               style={[styles.radioRow, form.tempo === t && styles.radioRowSel]}
@@ -122,6 +122,39 @@ export default function CadastroScreen({ navigation }) {
           ))}
 
           <Button title="Continuar" onPress={() => setStep(2)} style={{ marginTop: spacing.lg }} />
+        </View>
+        <View style={{ height: spacing.xxl }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  if (step === 2) return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <ScriptTitle size={24}>Seu tipo de luto</ScriptTitle>
+          <Text style={styles.headerSub}>Responda com sinceridade — não existe resposta certa</Text>
+        </View>
+        <View style={styles.section}>
+          <StepIndicator />
+          {perguntasTipoLuto.map((pergunta, i) => (
+            <View key={i} style={styles.lutoQ}>
+              <Text style={styles.lutoQTexto}>{i + 1}. {pergunta}</Text>
+              <View style={styles.escalaRow}>
+                {escalaTipoLuto.map((opt, idx) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[styles.escalaOpt, respostasLuto[i] === idx && styles.escalaOptSel]}
+                    onPress={() => setRespostasLuto(prev => ({ ...prev, [i]: idx }))}
+                  >
+                    <Text style={[styles.escalaOptText, respostasLuto[i] === idx && { color: colors.lav6, fontFamily: fonts.bodyBold }]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+          <Button title="Continuar" onPress={() => setStep(3)} style={{ marginTop: spacing.lg }} />
         </View>
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -172,6 +205,12 @@ const styles = StyleSheet.create({
   radio: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: colors.tl },
   radioOn: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
   radioText: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  lutoQ: { marginBottom: spacing.lg },
+  lutoQTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, marginBottom: 8, lineHeight: 18 },
+  escalaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  escalaOpt: { backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, paddingHorizontal: 10 },
+  escalaOptSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
+  escalaOptText: { fontFamily: fonts.body, fontSize: 11, color: colors.td },
   conclusao: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   conclusaoTitulo: { fontFamily: fonts.script, fontSize: 26, color: colors.lav6, marginTop: spacing.md, marginBottom: spacing.sm },
   conclusaoSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, textAlign: 'center', lineHeight: 22 },

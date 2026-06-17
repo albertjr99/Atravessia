@@ -38,7 +38,10 @@ export default function PlanosScreen({ navigation }) {
             )}
             <View style={styles.planHeader}>
               <View>
-                <Text style={styles.planNome}>{p.nome}</Text>
+                <View style={styles.planNomeRow}>
+                  <Text style={styles.planNome}>{p.nome}</Text>
+                  {p.subtitulo && <Text style={styles.planSubtitulo}>· {p.subtitulo}</Text>}
+                </View>
                 <Text style={styles.planDesc}>{p.descricao}</Text>
               </View>
               <View style={styles.planPrecoBox}>
@@ -102,7 +105,9 @@ const styles = StyleSheet.create({
   },
   destaqueText: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav6 },
   planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
+  planNomeRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   planNome: { fontFamily: fonts.script, fontSize: 18, color: colors.lav6 },
+  planSubtitulo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5 },
   planDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   planPrecoBox: { alignItems: 'flex-end' },
   planPreco: { fontFamily: fonts.bodyBold, fontSize: 18 },

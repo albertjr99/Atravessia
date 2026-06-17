@@ -12,15 +12,21 @@ import { useApp } from '../../hooks/AppContext';
 const lavSmall = require('../../../assets/images/lavanda_small.png');
 
 export default function CheckInScreen({ navigation }) {
-  const { adicionarCheckin, checkins } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [intensidade, setIntensidade] = useState(3);
   const [salvo, setSalvo] = useState(false);
+  const [audioLiberado, setAudioLiberado] = useState(false);
 
   const intensLabels = ['', 'Leve', 'Leve', 'Moderado', 'Intenso', 'Intenso'];
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
-  const audioRec = emocaoSel ? audios.find(a => a.emocoes.includes(emocaoSel)) : null;
+  const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
+    ? audios.find(a => a.emocoes.includes(emocaoSel))
+    : null;
+  const mensagemAcolhimento = emocaoObj
+    ? emocaoObj.mensagens[Math.floor(Math.random() * emocaoObj.mensagens.length)]
+    : null;
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
@@ -28,15 +34,38 @@ export default function CheckInScreen({ navigation }) {
     setSalvo(true);
   };
 
+  const handleOuvirAudio = () => {
+    if (!audioRec) return;
+    if (jaLiberado(audioRec.id) || podeLiberarNovo('acolhimento')) {
+      liberarConteudo(audioRec.id, 'acolhimento');
+      setAudioLiberado(true);
+      navigation.navigate('AudioPlayer', { audio: audioRec });
+    } else {
+      Alert.alert('', 'Você já ouviu seu áudio de acolhimento de hoje. Volte amanhã para um novo.');
+    }
+  };
+
   if (salvo) {
+    if (emocaoObj?.positiva) {
+      return (
+        <SafeAreaView style={s.safe}>
+          <View style={s.savedWrap}>
+            <Ionicons name="sparkles" size={64} color={colors.gold} />
+            <Text style={s.savedTit}>Que bom! 💜</Text>
+            <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
+            <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
+          </View>
+        </SafeAreaView>
+      );
+    }
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.savedWrap}>
           <Ionicons name="checkmark-circle" size={64} color={colors.lav4} />
           <Text style={s.savedTit}>Check-in registrado!</Text>
-          <Text style={s.savedSub}>Obrigada por se cuidar hoje.</Text>
+          <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
           {audioRec && (
-            <View style={s.recCard}>
+            <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
               <Text style={s.recTag}>Recomendado para você</Text>
               <View style={s.recRow}>
                 <Image source={lavSmall} style={{ width: 42, height: 52 }} resizeMode="contain" />
@@ -48,7 +77,7 @@ export default function CheckInScreen({ navigation }) {
                   <Ionicons name="play" size={14} color="white" />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
         </View>
@@ -106,6 +135,15 @@ export default function CheckInScreen({ navigation }) {
             <Text style={s.intensLbl}>Intenso</Text>
           </View>
         </View>
+
+        {/* Mensagem de acolhimento */}
+        {mensagemAcolhimento && (
+          <View style={s.sect}>
+            <View style={s.suggCard}>
+              <Text style={s.suggMsg}>{mensagemAcolhimento}</Text>
+            </View>
+          </View>
+        )}
 
         {/* Conteúdo sugerido */}
         {audioRec && (
@@ -206,6 +244,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#E8E0F0',
     boxShadow: '0px 2px 10px rgba(184,166,201,0.12)',
   },
+  suggMsg: { fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic', color: colors.tm, lineHeight: 20 },
   suggHeader: { marginBottom: 10 },
   suggTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td },
   suggRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -237,7 +276,7 @@ const s = StyleSheet.create({
   playBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
   savedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   savedTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginTop: 12, marginBottom: 4 },
-  savedSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, marginBottom: 24 },
+  savedSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, marginBottom: 24, textAlign: 'center', lineHeight: 20 },
   recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2 },
   recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav5, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   recRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

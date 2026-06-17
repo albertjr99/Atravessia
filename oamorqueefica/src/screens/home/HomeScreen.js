@@ -35,7 +35,7 @@ export default function HomeScreen({ navigation }) {
           {/* Gradiente fade para o fundo */}
           <View style={s.headerFade} />
           {/* Sino notificação */}
-          <TouchableOpacity style={s.bellBtn}>
+          <TouchableOpacity style={s.bellBtn} onPress={() => navigation.navigate('Notificacoes')}>
             <Ionicons name="notifications-outline" size={18} color="#9b86bd" />
             {naoLidas > 0 && <View style={s.bellBadge} />}
           </TouchableOpacity>
@@ -94,6 +94,29 @@ export default function HomeScreen({ navigation }) {
             </View>
             <View style={s.reflexaoCard}>
               <Text style={s.reflexaoTxt}>{reflexoes[0].texto}</Text>
+            </View>
+          </View>
+
+          {/* ===== PERFIL E CUIDADOS ===== */}
+          <View style={s.sect}>
+            <Text style={s.sectTitle}>Perfil e cuidados</Text>
+            <View style={s.perfilGrid}>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('DatasSensiveis')} activeOpacity={0.85}>
+                <Ionicons name="calendar-outline" size={20} color="#9b86bd" />
+                <Text style={s.perfilLbl}>Datas Sensíveis</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('RedeApoio')} activeOpacity={0.85}>
+                <Ionicons name="people-outline" size={20} color="#9b86bd" />
+                <Text style={s.perfilLbl}>Rede de Apoio</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Cartas')} activeOpacity={0.85}>
+                <Ionicons name="mail-outline" size={20} color="#9b86bd" />
+                <Text style={s.perfilLbl}>Cartas</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('PequenasVitorias')} activeOpacity={0.85}>
+                <Ionicons name="star-outline" size={20} color="#9b86bd" />
+                <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -228,6 +251,16 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   emoLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#4a4453', textAlign: 'center' },
+
+  // Perfil e cuidados
+  perfilGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  perfilCard: {
+    flexBasis: '47%', flexGrow: 1, alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFDF9', borderRadius: 16,
+    paddingVertical: 16, paddingHorizontal: 8,
+    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+  },
+  perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 12, color: '#4a4453', textAlign: 'center' },
 
   // Check-in btn
   checkinBtn: {
