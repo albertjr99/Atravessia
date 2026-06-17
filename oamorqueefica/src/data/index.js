@@ -1,0 +1,206 @@
+export const frases = [
+  { id: 1, texto: '"O amor não se despede, ele se transforma em saudade."', autor: 'Shelby Forsythia' },
+  { id: 2, texto: '"A saudade não é ausência. É a forma que o amor encontrou para continuar."', autor: '' },
+  { id: 3, texto: '"Carregar o luto não significa parar de viver. Significa aprender a continuar com o coração mais cheio."', autor: '' },
+  { id: 4, texto: '"Você não precisa superar a perda. Você precisa aprender a carregar o amor que ficou."', autor: '' },
+  { id: 5, texto: '"A dor da perda é o preço do amor. E vale cada centavo."', autor: 'Colin Murray Parkes' },
+  { id: 6, texto: '"Luto é amor sem lugar para ir. Mas ele encontra um caminho."', autor: '' },
+  { id: 7, texto: '"Não existe prazo para sentir saudade. Existe apenas o tempo que você precisa."', autor: '' },
+  { id: 8, texto: '"Quem parte deixa raízes. Quem fica, floresce com elas."', autor: '' },
+  { id: 9, texto: '"A memória de quem amamos é o presente mais precioso que carregamos."', autor: '' },
+  { id: 10, texto: '"Sentir falta é uma forma de continuar amando."', autor: '' },
+];
+
+export const reflexoes = [
+  { id: 1, texto: 'Às vezes, tudo o que precisamos é de um respiro e a certeza de que não estamos sozinhos. Hoje, permita-se apenas existir — sem cobranças, sem pressa.' },
+  { id: 2, texto: 'O luto não tem forma certa. Cada pessoa sente à sua maneira, no seu tempo. Não compare sua dor com a de ninguém.' },
+  { id: 3, texto: 'Cuidar de si mesmo durante o luto não é egoísmo. É respeito pela vida que continua dentro de você.' },
+  { id: 4, texto: 'Hoje pode ser um dia difícil. E está tudo bem. Dificuldade não é fraqueza — é humanidade.' },
+  { id: 5, texto: 'Lembrar com amor não é viver no passado. É honrar o que foi real e continua sendo parte de quem você é.' },
+  { id: 6, texto: 'Você não precisa estar bem o tempo todo. Existem dias para chorar, dias para respirar e dias para simplesmente seguir.' },
+  { id: 7, texto: 'A saudade que você sente é prova de um amor verdadeiro. Deixe-a existir sem tentar apagá-la.' },
+];
+
+export const emocoes = [
+  { id: 'triste', label: 'Triste', icon: 'sad', bg: '#EDE5F5', color: '#9880B8' },
+  { id: 'saudoso', label: 'Saudoso', icon: 'leaf', bg: '#E8F0E5', color: '#7a9870' },
+  { id: 'ansioso', label: 'Ansioso', icon: 'cloud', bg: '#F5EDE5', color: '#B89870' },
+  { id: 'grato', label: 'Grato', icon: 'heart', bg: '#F0EDE5', color: '#C08878' },
+  { id: 'esperancoso', label: 'Esperançoso', icon: 'sunny', bg: '#E5EDF0', color: '#7088A0' },
+  { id: 'irritado', label: 'Irritado', icon: 'flash', bg: '#F5F0E8', color: '#B0A060' },
+  { id: 'cansado', label: 'Cansado', icon: 'moon', bg: '#EAF0F5', color: '#7088A0' },
+  { id: 'empaz', label: 'Em paz', icon: 'flower', bg: '#EDF5F0', color: '#70A890' },
+];
+
+export const audios = [
+  {
+    id: 1, titulo: 'Quando a saudade aperta', categoria: 'acolhimento',
+    duracao: '8 min', plano: 1,
+    descricao: 'Um áudio de acolhimento para os momentos em que a saudade parece insuportável.',
+    emocoes: ['saudoso', 'triste'],
+  },
+  {
+    id: 2, titulo: 'Respiração 4-7-8', categoria: 'respiracao',
+    duracao: '5 min', plano: 1,
+    descricao: 'Técnica de respiração para acalmar a ansiedade e o sistema nervoso.',
+    emocoes: ['ansioso'],
+  },
+  {
+    id: 3, titulo: 'Respirar com o luto', categoria: 'respiracao',
+    duracao: '7 min', plano: 1,
+    descricao: 'Uma pausa guiada para respirar fundo e se reconectar com o presente.',
+    emocoes: ['ansioso', 'triste'],
+  },
+  {
+    id: 4, titulo: 'Você não está sozinho', categoria: 'acolhimento',
+    duracao: '10 min', plano: 1,
+    descricao: 'Acolhimento para os dias em que o isolamento pesa mais que o normal.',
+    emocoes: ['triste', 'saudoso'],
+  },
+  {
+    id: 5, titulo: 'Para as noites difíceis', categoria: 'noturno',
+    duracao: '12 min', plano: 2,
+    descricao: 'Áudio especial para noites de insônia causadas pelo luto.',
+    emocoes: ['ansioso', 'triste'],
+  },
+  {
+    id: 6, titulo: 'Sono tranquilo', categoria: 'noturno',
+    duracao: '15 min', plano: 2,
+    descricao: 'Relaxamento profundo para um sono mais restaurador.',
+    emocoes: ['ansioso'],
+  },
+  {
+    id: 7, titulo: 'Sobre a culpa no luto', categoria: 'informativo',
+    duracao: '18 min', plano: 3,
+    descricao: 'Reflexão sobre o sentimento de culpa — um dos mais comuns no luto.',
+    emocoes: ['irritado', 'triste'],
+  },
+  {
+    id: 8, titulo: 'O que é o luto complicado', categoria: 'informativo',
+    duracao: '20 min', plano: 3,
+    descricao: 'Baseado nas pesquisas de Robert Neimeyer sobre tipos de luto.',
+    emocoes: ['triste', 'ansioso'],
+  },
+];
+
+export const jornadas = [
+  {
+    id: 1,
+    titulo: 'Jornada das Datas Sensíveis',
+    descricao: 'Prepare-se emocionalmente para as datas que evocam memórias importantes.',
+    totalAtividades: 7,
+    atividadesConcluidas: 3,
+    plano: 2,
+    cor: '#DDD0EE',
+    atividades: [
+      { id: 1, titulo: 'Reconhecendo a data', tipo: 'reflexao', concluida: true },
+      { id: 2, titulo: 'O que essa data representa', tipo: 'escrita', concluida: true },
+      { id: 3, titulo: 'Respiração de preparação', tipo: 'audio', concluida: true },
+      { id: 4, titulo: 'Criando um ritual de lembrança', tipo: 'atividade', concluida: false },
+      { id: 5, titulo: 'Rede de apoio para esse dia', tipo: 'reflexao', concluida: false },
+      { id: 6, titulo: 'O que você precisa nesse dia', tipo: 'escrita', concluida: false },
+      { id: 7, titulo: 'Carta para si mesma', tipo: 'escrita', concluida: false },
+    ],
+  },
+  {
+    id: 2,
+    titulo: 'Jornada da Saudade',
+    descricao: 'Um percurso de 21 dias para aprender a conviver com a saudade.',
+    totalAtividades: 21,
+    atividadesConcluidas: 0,
+    plano: 3,
+    cor: '#E8F0E5',
+    atividades: [],
+  },
+  {
+    id: 3,
+    titulo: 'Reconexão com a Vida',
+    descricao: 'Vinte e um passos para reencontrar sentido e alegria na vida.',
+    totalAtividades: 21,
+    atividadesConcluidas: 0,
+    plano: 3,
+    cor: '#F5EDE5',
+    atividades: [],
+  },
+];
+
+export const planos = [
+  {
+    id: 0,
+    nome: 'Gratuito',
+    preco: 0,
+    precoLabel: 'Grátis',
+    descricao: 'Comece sua jornada',
+    recursos: [
+      'Frase do dia',
+      'Reflexão do dia',
+      'Check-in emocional',
+      'Histórico emocional básico',
+      'Relatório mensal básico',
+      'Convites para lives gratuitas',
+      'Agendamento de sessão',
+      'Notificações básicas',
+    ],
+  },
+  {
+    id: 1,
+    nome: 'Plano 1',
+    preco: 29.90,
+    precoLabel: 'R$ 29,90/mês',
+    descricao: 'Primeiro aprofundamento',
+    recursos: [
+      'Tudo do Gratuito',
+      'Biblioteca de áudios de acolhimento',
+      'Cartas da comunidade',
+      'Relatórios mais completos',
+      'Recomendações emocionais',
+    ],
+    destaque: false,
+  },
+  {
+    id: 2,
+    nome: 'Plano 2',
+    preco: 49.90,
+    precoLabel: 'R$ 49,90/mês',
+    descricao: 'Transformação estruturada',
+    recursos: [
+      'Tudo do Plano 1',
+      'Jornada das Datas Sensíveis',
+      'Áudios de respiração',
+      'Áudios noturnos',
+      'Relatórios das jornadas',
+    ],
+    destaque: true,
+  },
+  {
+    id: 3,
+    nome: 'Plano 3',
+    preco: 89.90,
+    precoLabel: 'R$ 89,90/mês',
+    descricao: 'Experiência completa',
+    recursos: [
+      'Tudo do Plano 2',
+      'Jornadas da Saudade e Reconexão',
+      'Pequenas vitórias',
+      'Certificados de conclusão',
+      'Lives exclusivas no Zoom',
+      'Áudios informativos',
+      'Vídeos',
+      'Benefícios de parceiros',
+    ],
+    destaque: false,
+  },
+];
+
+export const pequenasVitorias = [
+  { id: 1, label: 'Saí de casa' },
+  { id: 2, label: 'Consegui dormir' },
+  { id: 3, label: 'Encontrei amigos' },
+  { id: 4, label: 'Fiz algo prazeroso' },
+  { id: 5, label: 'Me alimentei bem' },
+  { id: 6, label: 'Busquei minha rede de apoio' },
+  { id: 7, label: 'Concluí uma jornada' },
+  { id: 8, label: 'Ouvi música' },
+  { id: 9, label: 'Me hidratei bem' },
+  { id: 10, label: 'Pratiquei respiração' },
+];

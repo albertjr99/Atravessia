@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "O Amor Que Fica",
+    "slug": "o-amor-que-fica",
+    "version": "1.0.0",
+    "sdkVersion": "52.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF7F4"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.oamorqueefica.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF7F4"
+      },
+      "package": "com.oamorqueefica.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
