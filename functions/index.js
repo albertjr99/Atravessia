@@ -44,6 +44,8 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
+    locale: 'pt-BR',
+    submit_type: 'subscribe',
     line_items: [{
       price_data: {
         currency: 'brl',
@@ -57,6 +59,9 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
     cancel_url: request.data?.cancelUrl || 'https://oamorquefica.app/checkout-cancelado',
     metadata: { uid, planoId: String(planoId) },
     subscription_data: { metadata: { uid, planoId: String(planoId) } },
+    custom_text: {
+      submit: { message: 'Você poderá cancelar quando quiser, direto no app.' },
+    },
   });
 
   return { url: session.url };
