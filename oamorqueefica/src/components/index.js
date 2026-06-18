@@ -11,16 +11,18 @@ export function Card({ children, style, onPress }) {
   );
 }
 
-export function Button({ title, onPress, variant = 'primary', style, textStyle }) {
+export function Button({ title, onPress, variant = 'primary', style, textStyle, disabled }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      disabled={disabled}
       style={[
         styles.btn,
         variant === 'primary' && styles.btnPrimary,
         variant === 'secondary' && styles.btnSecondary,
         variant === 'ghost' && styles.btnGhost,
         variant === 'peach' && styles.btnPeach,
+        disabled && { opacity: 0.5 },
         style,
       ]}
       activeOpacity={0.8}
