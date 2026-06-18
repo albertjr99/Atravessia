@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc,
+  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { registrarPushToken } from '../utils/pushNotifications';
+import { jornadas as jornadasBase } from '../data';
 
 const AppContext = createContext();
 
@@ -87,6 +88,42 @@ export function AppProvider({ children }) {
   // Conteúdos "novos" liberados por dia, por grupo (acolhimento | complementar)
   const [conteudosLiberados, setConteudosLiberados] = useState([]);
   useSubcolecao(uid, 'conteudosLiberados', setConteudosLiberados);
+
+  // Progresso real das jornadas (atividades concluídas por jornada), persistido por usuária
+  const [jornadaProgresso, setJornadaProgresso] = useState([]);
+  useEffect(() => {
+    if (!uid) { setJornadaProgresso([]); return; }
+    const ref = collection(db, 'usuarios', uid, 'jornadaProgresso');
+    const unsub = onSnapshot(ref, (snap) => {
+      setJornadaProgresso(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, [uid]);
+
+  const jornadasComProgresso = useMemo(() => jornadasBase.map(j => {
+    const prog = jornadaProgresso.find(p => p.id === String(j.id));
+    const concluidasIds = prog?.concluidas || [];
+    const atividades = j.atividades.map(a => ({ ...a, concluida: concluidasIds.includes(a.id) }));
+    return { ...j, atividades, atividadesConcluidas: concluidasIds.length };
+  }), [jornadaProgresso]);
+
+  const concluirAtividadeJornada = (jornadaId, atividadeId) => {
+    const prog = jornadaProgresso.find(p => p.id === String(jornadaId));
+    const concluidasIds = prog?.concluidas || [];
+    if (concluidasIds.includes(atividadeId)) return;
+    const novasConcluidas = [...concluidasIds, atividadeId];
+    setJornadaProgresso(prev => {
+      const existe = prev.some(p => p.id === String(jornadaId));
+      return existe
+        ? prev.map(p => (p.id === String(jornadaId) ? { ...p, concluidas: novasConcluidas } : p))
+        : [...prev, { id: String(jornadaId), concluidas: novasConcluidas }];
+    });
+    if (uid) {
+      setDoc(doc(db, 'usuarios', uid, 'jornadaProgresso', String(jornadaId)), {
+        concluidas: novasConcluidas, atualizadoEm: serverTimestamp(),
+      }, { merge: true });
+    }
+  };
 
   const [lidas, setLidas] = useState({});
 
@@ -235,6 +272,7 @@ export function AppProvider({ children }) {
       tipoLuto, setTipoLuto,
       notificacoes, marcarLida,
       conteudos,
+      jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje,
     }}>

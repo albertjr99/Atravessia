@@ -255,10 +255,102 @@ exports.notificarFeedbackSemanal = onSchedule({ schedule: '0 18 * * 0', timeZone
   await enviarPush(mensagensPush);
 });
 
+// Emoções não-positivas, espelhando src/data/index.js -> emocoes (positiva: false)
+const EMOCOES_NEGATIVAS = new Set(['triste', 'saudade', 'sozinho', 'medo', 'culpado', 'ansioso', 'raiva', 'desanimado', 'confuso']);
+
+// Roda no dia 1 de cada mês às 19h30 — sugere a rede de apoio (Plano 3) quando a
+// análise mensal mostra um período predominantemente difícil (>=60% de check-ins negativos).
+exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const usuariosSnap = await db.collection('usuarios').where('plano', '>=', 3).get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    const checkinsSnap = await userDoc.ref.collection('checkins')
+      .where('criadoEm', '>=', admin.firestore.Timestamp.fromMillis(agora - 30 * 86400000))
+      .get();
+    if (checkinsSnap.empty) continue;
+
+    const negativas = checkinsSnap.docs.filter(d => EMOCOES_NEGATIVAS.has(d.data().emocao)).length;
+    if (negativas / checkinsSnap.size < 0.6) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Você não precisa atravessar tudo sozinho. Considere se aproximar de alguém da sua rede de apoio.' });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
 // Ao registrar um novo check-in, libera a próxima escalada de aviso de inatividade
 // (sem isso, quem voltou a usar o app uma vez nunca mais receberia o aviso de 7/14 dias).
 exports.resetarInatividadeAoCheckin = onDocumentCreated('usuarios/{uid}/checkins/{checkinId}', async (event) => {
   await db.collection('usuarios').doc(event.params.uid).update({ ultimoNivelInatividadeNotificado: null });
+});
+
+// Total de atividades por jornada, espelhando src/data/index.js -> jornadas
+const TOTAL_ATIVIDADES_JORNADA = { 1: 7, 2: 21, 3: 21 };
+
+// Roda 1x por dia às 18h e avisa quem começou uma jornada mas parou de avançar
+// (sem concluir nenhuma etapa nova) há 3 ou mais dias.
+exports.notificarJornadaParada = onSchedule({ schedule: '0 18 * * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const usuariosSnap = await db.collection('usuarios').get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    const progressoSnap = await userDoc.ref.collection('jornadaProgresso').get();
+    let parada = false;
+    for (const p of progressoSnap.docs) {
+      const total = TOTAL_ATIVIDADES_JORNADA[p.id];
+      const concluidas = p.data().concluidas || [];
+      if (!total || concluidas.length >= total) continue;
+      const atualizadoMs = p.data().atualizadoEm?.toMillis?.() || 0;
+      if (diasEntre(atualizadoMs, agora) >= 3) { parada = true; break; }
+    }
+    if (!parada) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Sua jornada está esperando por você. Quando se sentir pronta, continue de onde parou.' });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
+// Roda 1x por dia às 18h e avisa quem tem memórias registradas no Memorial
+// mas não adiciona nada de novo há 30 dias ou mais.
+exports.notificarMemorialSemAtualizacao = onSchedule({ schedule: '0 18 * * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const usuariosSnap = await db.collection('usuarios').get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    if (dados.memorialAvisoEnviado) continue; // já avisamos; só reavisa após nova memória (ver resetarMemorialAvisoAoCriar)
+    const memoriasSnap = await userDoc.ref.collection('memorias').orderBy('criadoEm', 'desc').limit(1).get();
+    if (memoriasSnap.empty) continue;
+    const ultimaMs = memoriasSnap.docs[0].data().criadoEm?.toMillis?.() || 0;
+    if (diasEntre(ultimaMs, agora) < 30) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    await userDoc.ref.update({ memorialAvisoEnviado: true });
+    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?' });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
+// Ao registrar uma nova memória, libera novamente o aviso de "Memorial sem atualização"
+// para o próximo período de 30 dias de inatividade no Memorial.
+exports.resetarMemorialAvisoAoCriar = onDocumentCreated('usuarios/{uid}/memorias/{memoriaId}', async (event) => {
+  await db.collection('usuarios').doc(event.params.uid).update({ memorialAvisoEnviado: false });
 });
 
 // Roda no dia 1 de cada mês às 19h — relatório mensal (Plano 3).

@@ -5,14 +5,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { jornadas } from '../../data';
 import { ScriptTitle, ProgressBar, PlanBadge, LockedOverlay } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/jornadas_caminho.png');
 
 export default function JornadasScreen({ navigation }) {
-  const { temAcesso } = useApp();
+  const { temAcesso, jornadasComProgresso } = useApp();
 
   const handleJornada = (j) => {
     if (!temAcesso(j.plano)) {
@@ -26,7 +25,7 @@ export default function JornadasScreen({ navigation }) {
       );
       return;
     }
-    navigation.navigate('JornadaDetalhe', { jornada: j });
+    navigation.navigate('JornadaDetalhe', { jornadaId: j.id });
   };
 
   return (
@@ -49,7 +48,7 @@ export default function JornadasScreen({ navigation }) {
         </View>
 
         <View style={styles.lista}>
-          {jornadas.map(j => {
+          {jornadasComProgresso.map(j => {
             const bloqueado = !temAcesso(j.plano);
             const progresso = j.totalAtividades > 0 ? j.atividadesConcluidas / j.totalAtividades : 0;
             return (

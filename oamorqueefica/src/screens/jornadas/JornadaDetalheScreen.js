@@ -5,6 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, ProgressBar } from '../../components';
+import { useApp } from '../../hooks/AppContext';
 
 const tipoIcone = {
   audio: 'headset-outline',
@@ -14,7 +15,8 @@ const tipoIcone = {
 };
 
 export default function JornadaDetalheScreen({ route, navigation }) {
-  const { jornada } = route.params;
+  const { jornadasComProgresso, concluirAtividadeJornada } = useApp();
+  const jornada = jornadasComProgresso.find(j => j.id === route.params.jornadaId);
   const progresso = jornada.totalAtividades > 0 ? jornada.atividadesConcluidas / jornada.totalAtividades : 0;
 
   // Regra: conteúdo liberado gradualmente — apenas a próxima atividade não concluída fica disponível.
@@ -29,7 +31,10 @@ export default function JornadaDetalheScreen({ route, navigation }) {
       Alert.alert('Um passo por vez', 'Esta etapa ainda não foi liberada. As jornadas são vividas gradualmente, um dia de cada vez.');
       return;
     }
-    Alert.alert(atividade.titulo, 'Esta etapa será liberada na sua jornada diária.');
+    Alert.alert(atividade.titulo, 'Deseja marcar esta etapa como concluída?', [
+      { text: 'Agora não', style: 'cancel' },
+      { text: 'Concluir', onPress: () => concluirAtividadeJornada(jornada.id, atividade.id) },
+    ]);
   };
 
   return (
