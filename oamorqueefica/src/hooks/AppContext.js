@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
+import { registrarPushToken } from '../utils/pushNotifications';
 
 const AppContext = createContext();
 
@@ -70,6 +71,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (perfil?.tipoLuto) setTipoLutoLocal(perfil.tipoLuto);
   }, [perfil]);
+
+  // Registra o token de push assim que sabemos quem é o usuário, para que as
+  // notificações agendadas (inatividade, datas sensíveis, relatórios) o alcancem
+  // mesmo com o app fechado.
+  useEffect(() => {
+    if (uid) registrarPushToken(uid);
+  }, [uid]);
 
   const setTipoLuto = (valor) => {
     setTipoLutoLocal(valor);
