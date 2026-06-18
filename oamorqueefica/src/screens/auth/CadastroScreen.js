@@ -62,6 +62,14 @@ export default function CadastroScreen({ navigation }) {
     }
   };
 
+  const handleAvancarLuto = () => {
+    if (Object.keys(respostasLuto).length < perguntasTipoLuto.length) {
+      Alert.alert('Atenção', 'Responda todas as perguntas para continuar.');
+      return;
+    }
+    setStep(3);
+  };
+
   const StepIndicator = () => (
     <View style={styles.stepRow}>
       {STEPS.map((_, i) => (
@@ -194,7 +202,7 @@ export default function CadastroScreen({ navigation }) {
               </View>
             </View>
           ))}
-          <Button title="Continuar" onPress={() => setStep(3)} style={{ marginTop: spacing.lg }} />
+          <Button title="Continuar" onPress={handleAvancarLuto} style={{ marginTop: spacing.lg }} />
         </View>
         <View style={{ height: spacing.xxl }} />
       </ScrollView>

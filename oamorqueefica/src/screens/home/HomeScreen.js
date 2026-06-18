@@ -1,21 +1,30 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Platform, Image, Dimensions,
+  StyleSheet, SafeAreaView, StatusBar, Platform, Image, Dimensions, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { frases, reflexoes, emocoes } from '../../data';
 import { ScriptTitle } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { useAuth } from '../../hooks/AuthContext';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const { usuario, notificacoes, checkins } = useApp();
+  const { sair } = useAuth();
   const [fraseIdx] = useState(0);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
+
+  const handleSair = () => {
+    Alert.alert('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: sair },
+    ]);
+  };
   const saudacao = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Bom dia';
@@ -38,6 +47,10 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity style={s.bellBtn} onPress={() => navigation.navigate('Notificacoes')}>
             <Ionicons name="notifications-outline" size={18} color="#9b86bd" />
             {naoLidas > 0 && <View style={s.bellBadge} />}
+          </TouchableOpacity>
+          {/* Sair / trocar conta */}
+          <TouchableOpacity style={s.logoutBtn} onPress={handleSair}>
+            <Ionicons name="log-out-outline" size={18} color="#9b86bd" />
           </TouchableOpacity>
           {/* Nome do app + coração */}
           <View style={s.headerBottom}>
@@ -176,6 +189,12 @@ const s = StyleSheet.create({
     position: 'absolute', right: 10, top: 10,
     width: 8, height: 8, borderRadius: 4,
     backgroundColor: '#D8B4B6',
+  },
+  logoutBtn: {
+    position: 'absolute', right: 64, top: 16,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,253,249,0.8)',
+    alignItems: 'center', justifyContent: 'center',
   },
   headerBottom: {
     position: 'absolute', bottom: 12, left: 0, right: 0,
