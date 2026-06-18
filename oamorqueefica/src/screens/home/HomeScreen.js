@@ -9,6 +9,7 @@ import { frases, reflexoes, emocoes } from '../../data';
 import { ScriptTitle } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
+import { confirmar } from '../../utils/confirm';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -20,10 +21,7 @@ export default function HomeScreen({ navigation }) {
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const handleSair = () => {
-    Alert.alert('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: sair },
-    ]);
+    confirmar('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', sair, 'Sair');
   };
   const saudacao = () => {
     const h = new Date().getHours();

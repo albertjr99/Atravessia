@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, TextInput, Alert,
+  StyleSheet, SafeAreaView, StatusBar, TextInput, Alert, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { tiposPerda, temposPerda, perguntasTipoLuto, escalaTipoLuto } from '../../data';
 import { ScriptTitle, Button, Disclaimer } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
+
+const decoracaoFlores = require('../../../assets/images/decoracao_flores.png');
 
 const STEPS = ['dados', 'perda', 'luto', 'conclusao'];
 
@@ -212,7 +214,7 @@ export default function CadastroScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.conclusao}>
-        <Ionicons name="heart" size={56} color={colors.lav3} />
+        <Image source={decoracaoFlores} style={styles.conclusaoImg} resizeMode="contain" />
         <Text style={styles.conclusaoTitulo}>Bem-vinda, {form.nome.split(' ')[0] || 'você'}!</Text>
         <Text style={styles.conclusaoSub}>Este é um espaço seguro para continuar amando quem partiu e continuar vivendo.</Text>
         <Button title={enviando ? 'Criando conta...' : 'Começar minha jornada'} onPress={handleConcluir} style={{ marginTop: spacing.xl, width: '100%' }} />
@@ -260,6 +262,7 @@ const styles = StyleSheet.create({
   escalaOptSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
   escalaOptText: { fontFamily: fonts.body, fontSize: 11, color: colors.td },
   conclusao: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  conclusaoImg: { width: 180, height: 180 },
   conclusaoTitulo: { fontFamily: fonts.script, fontSize: 26, color: colors.lav6, marginTop: spacing.md, marginBottom: spacing.sm },
   conclusaoSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, textAlign: 'center', lineHeight: 22 },
 });
