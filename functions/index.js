@@ -293,6 +293,37 @@ exports.notificarJornadaParada = onSchedule({ schedule: '0 18 * * *', timeZone: 
   await enviarPush(mensagensPush);
 });
 
+// Roda 1x por dia às 18h e avisa quem tem memórias registradas no Memorial
+// mas não adiciona nada de novo há 30 dias ou mais.
+exports.notificarMemorialSemAtualizacao = onSchedule({ schedule: '0 18 * * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const usuariosSnap = await db.collection('usuarios').get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    if (dados.memorialAvisoEnviado) continue; // já avisamos; só reavisa após nova memória (ver resetarMemorialAvisoAoCriar)
+    const memoriasSnap = await userDoc.ref.collection('memorias').orderBy('criadoEm', 'desc').limit(1).get();
+    if (memoriasSnap.empty) continue;
+    const ultimaMs = memoriasSnap.docs[0].data().criadoEm?.toMillis?.() || 0;
+    if (diasEntre(ultimaMs, agora) < 30) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    await userDoc.ref.update({ memorialAvisoEnviado: true });
+    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?' });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
+// Ao registrar uma nova memória, libera novamente o aviso de "Memorial sem atualização"
+// para o próximo período de 30 dias de inatividade no Memorial.
+exports.resetarMemorialAvisoAoCriar = onDocumentCreated('usuarios/{uid}/memorias/{memoriaId}', async (event) => {
+  await db.collection('usuarios').doc(event.params.uid).update({ memorialAvisoEnviado: false });
+});
+
 // Roda no dia 1 de cada mês às 19h — relatório mensal (Plano 3).
 exports.notificarRelatorioMensal = onSchedule({ schedule: '0 19 1 * *', timeZone: TIMEZONE }, async () => {
   const agora = Date.now();
