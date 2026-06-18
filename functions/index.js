@@ -255,6 +255,35 @@ exports.notificarFeedbackSemanal = onSchedule({ schedule: '0 18 * * 0', timeZone
   await enviarPush(mensagensPush);
 });
 
+// Emoções não-positivas, espelhando src/data/index.js -> emocoes (positiva: false)
+const EMOCOES_NEGATIVAS = new Set(['triste', 'saudade', 'sozinho', 'medo', 'culpado', 'ansioso', 'raiva', 'desanimado', 'confuso']);
+
+// Roda no dia 1 de cada mês às 19h30 — sugere a rede de apoio (Plano 3) quando a
+// análise mensal mostra um período predominantemente difícil (>=60% de check-ins negativos).
+exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const usuariosSnap = await db.collection('usuarios').where('plano', '>=', 3).get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    const checkinsSnap = await userDoc.ref.collection('checkins')
+      .where('criadoEm', '>=', admin.firestore.Timestamp.fromMillis(agora - 30 * 86400000))
+      .get();
+    if (checkinsSnap.empty) continue;
+
+    const negativas = checkinsSnap.docs.filter(d => EMOCOES_NEGATIVAS.has(d.data().emocao)).length;
+    if (negativas / checkinsSnap.size < 0.6) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Você não precisa atravessar tudo sozinho. Considere se aproximar de alguém da sua rede de apoio.' });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
 // Ao registrar um novo check-in, libera a próxima escalada de aviso de inatividade
 // (sem isso, quem voltou a usar o app uma vez nunca mais receberia o aviso de 7/14 dias).
 exports.resetarInatividadeAoCheckin = onDocumentCreated('usuarios/{uid}/checkins/{checkinId}', async (event) => {
