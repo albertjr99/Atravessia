@@ -11,6 +11,7 @@ import { confirmar } from '../../utils/confirm';
 
 const TIPOS = [
   { id: 'audio', label: 'Áudio', icon: 'headset-outline' },
+  { id: 'video', label: 'Vídeo', icon: 'videocam-outline' },
   { id: 'documento', label: 'Documento', icon: 'document-text-outline' },
   { id: 'link', label: 'Link', icon: 'link-outline' },
 ];
