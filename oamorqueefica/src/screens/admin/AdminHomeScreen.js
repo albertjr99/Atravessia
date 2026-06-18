@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, Card } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
+import { confirmar } from '../../utils/confirm';
 
 const hojeStr = () => new Date().toISOString().split('T')[0];
 
@@ -41,10 +42,7 @@ export default function AdminHomeScreen({ navigation }) {
   }, []);
 
   const handleSair = () => {
-    Alert.alert('Sair', 'Deseja encerrar a sessão administrativa?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: sair },
-    ]);
+    confirmar('Sair', 'Deseja encerrar a sessão administrativa?', sair, 'Sair');
   };
 
   const menu = [

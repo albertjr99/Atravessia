@@ -7,6 +7,7 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverT
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card, Button } from '../../components';
+import { confirmar } from '../../utils/confirm';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo' },
@@ -47,10 +48,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
   const handleToggle = (item) => updateDoc(doc(db, 'notificacoesEditoriais', item.id), { ativa: !item.ativa });
 
   const handleRemover = (id) => {
-    Alert.alert('Remover notificação', 'Tem certeza que deseja remover?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => deleteDoc(doc(db, 'notificacoesEditoriais', id)) },
-    ]);
+    confirmar('Remover notificação', 'Tem certeza que deseja remover?', () => deleteDoc(doc(db, 'notificacoesEditoriais', id)), 'Remover');
   };
 
   return (

@@ -7,6 +7,7 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverT
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, Card, Button } from '../../components';
+import { confirmar } from '../../utils/confirm';
 
 const TIPOS = [
   { id: 'audio', label: 'Áudio', icon: 'headset-outline' },
@@ -52,10 +53,7 @@ export default function AdminConteudosScreen({ navigation }) {
   };
 
   const handleRemover = (id) => {
-    Alert.alert('Remover conteúdo', 'Tem certeza que deseja remover este conteúdo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => deleteDoc(doc(db, 'conteudos', id)) },
-    ]);
+    confirmar('Remover conteúdo', 'Tem certeza que deseja remover este conteúdo?', () => deleteDoc(doc(db, 'conteudos', id)), 'Remover');
   };
 
   return (
