@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Image, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
@@ -17,6 +17,8 @@ const categorias = [
   { id: 'respiracao', label: 'Respiração' },
   { id: 'noturno', label: 'Noturnos' },
   { id: 'informativo', label: 'Informativos' },
+  { id: 'complementar', label: 'Complementar' },
+  { id: 'sessao', label: 'Sessão' },
 ];
 
 const catIcones = {
@@ -24,19 +26,44 @@ const catIcones = {
   respiracao: { icon: 'leaf-outline', bg: '#E8F0E5', color: '#7a9870' },
   noturno: { icon: 'moon-outline', bg: '#F5EDE5', color: colors.peach2 },
   informativo: { icon: 'book-outline', bg: '#EAF0F5', color: '#7088A0' },
+  complementar: { icon: 'sparkles-outline', bg: colors.lav1, color: colors.lav5 },
+  sessao: { icon: 'people-outline', bg: '#EAF0F5', color: '#7088A0' },
 };
 
+const tipoIcone = {
+  audio: 'headset-outline',
+  video: 'videocam-outline',
+  documento: 'document-text-outline',
+  link: 'link-outline',
+};
+
+// Conteúdos publicados pelo painel admin não têm plano explícito —
+// o grupo de acesso define o plano mínimo necessário (mesma regra do liberarConteudo).
+const PLANO_POR_GRUPO = { acolhimento: 1, complementar: 2, sessao: 3 };
+
 export default function AudiosScreen({ navigation }) {
-  const { temAcesso } = useApp();
+  const { temAcesso, conteudos } = useApp();
   const [catSel, setCatSel] = useState('todos');
 
-  const filtrados = catSel === 'todos' ? audios : audios.filter(a => a.categoria === catSel);
+  const itensAdmin = conteudos.map(c => ({
+    id: `admin-${c.id}`,
+    titulo: c.titulo,
+    categoria: c.grupo,
+    duracao: '',
+    descricao: '',
+    plano: PLANO_POR_GRUPO[c.grupo] || 1,
+    tipo: c.tipo,
+    url: c.url,
+  }));
 
-  const handleAudio = (audio) => {
-    if (!temAcesso(audio.plano)) {
+  const todosItens = [...audios.map(a => ({ ...a, tipo: 'audio' })), ...itensAdmin];
+  const filtrados = catSel === 'todos' ? todosItens : todosItens.filter(a => a.categoria === catSel);
+
+  const handleItem = (item) => {
+    if (!temAcesso(item.plano)) {
       Alert.alert(
         'Conteúdo Premium',
-        `Este áudio está disponível no Plano ${audio.plano}. Deseja conhecer os planos?`,
+        `Este conteúdo está disponível no Plano ${item.plano}. Deseja conhecer os planos?`,
         [
           { text: 'Agora não', style: 'cancel' },
           { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
@@ -44,7 +71,11 @@ export default function AudiosScreen({ navigation }) {
       );
       return;
     }
-    navigation.navigate('AudioPlayer', { audio });
+    if (item.tipo === 'documento' || item.tipo === 'link') {
+      Linking.openURL(item.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
+      return;
+    }
+    navigation.navigate('AudioPlayer', { audio: item });
   };
 
   return (
@@ -81,27 +112,28 @@ export default function AudiosScreen({ navigation }) {
 
         {/* Lista */}
         <View style={styles.lista}>
-          {filtrados.map(audio => {
-            const bloqueado = !temAcesso(audio.plano);
-            const icone = catIcones[audio.categoria] || catIcones.acolhimento;
+          {filtrados.map(item => {
+            const bloqueado = !temAcesso(item.plano);
+            const icone = catIcones[item.categoria] || catIcones.acolhimento;
+            const acaoIcone = item.tipo === 'documento' || item.tipo === 'link' ? 'open-outline' : 'play';
             return (
               <TouchableOpacity
-                key={audio.id}
+                key={item.id}
                 style={[styles.audioItem, bloqueado && styles.audioItemBloqueado]}
-                onPress={() => handleAudio(audio)}
+                onPress={() => handleItem(item)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.audioThumb, { backgroundColor: icone.bg }]}>
-                  <Ionicons name={bloqueado ? 'lock-closed-outline' : icone.icon} size={20} color={bloqueado ? colors.peach2 : icone.color} />
+                  <Ionicons name={bloqueado ? 'lock-closed-outline' : (tipoIcone[item.tipo] || icone.icon)} size={20} color={bloqueado ? colors.peach2 : icone.color} />
                 </View>
                 <View style={styles.audioInfo}>
-                  <Text style={styles.audioTitulo}>{audio.titulo}</Text>
-                  <Text style={styles.audioSub}>{audio.duracao} · {audio.categoria}</Text>
+                  <Text style={styles.audioTitulo}>{item.titulo}</Text>
+                  <Text style={styles.audioSub}>{[item.duracao, item.categoria].filter(Boolean).join(' · ')}</Text>
                 </View>
                 <View style={styles.audioRight}>
-                  {audio.plano > 1 && <PlanBadge plano={audio.plano} />}
+                  {item.plano > 1 && <PlanBadge plano={item.plano} />}
                   <View style={[styles.playBtn, { backgroundColor: bloqueado ? colors.peach : colors.lav4 }]}>
-                    <Ionicons name={bloqueado ? 'lock-closed' : 'play'} size={12} color="white" style={!bloqueado && { marginLeft: 2 }} />
+                    <Ionicons name={bloqueado ? 'lock-closed' : acaoIcone} size={12} color="white" style={!bloqueado && acaoIcone === 'play' && { marginLeft: 2 }} />
                   </View>
                 </View>
               </TouchableOpacity>

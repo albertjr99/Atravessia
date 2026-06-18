@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Disclaimer } from '../../components';
 import { useApp } from '../../hooks/AppContext';
@@ -12,11 +13,53 @@ export default function AudioPlayerScreen({ route, navigation }) {
   const { liberarConteudo, jaLiberado } = useApp();
   const grupo = audio.categoria === 'acolhimento' ? 'acolhimento' : 'complementar';
   const [tocando, setTocando] = useState(false);
+  const [som, setSom] = useState(null);
+  const [videoRef, setVideoRef] = useState(null);
 
-  const handlePlay = () => {
+  // Conteúdo publicado pelo painel admin tem `url` real; os áudios fixos de demonstração não.
+  const temArquivoReal = !!audio.url;
+
+  useEffect(() => () => { som?.unloadAsync(); }, [som]);
+
+  // Vídeo usa controles nativos (sem botão próprio), então a liberação diária
+  // do conteúdo precisa ser registrada já ao abrir a tela.
+  useEffect(() => {
+    if (audio.tipo === 'video' && temArquivoReal && !jaLiberado(audio.id)) {
+      liberarConteudo(audio.id, grupo);
+    }
+  }, []);
+
+  const handlePlay = async () => {
     const liberado = jaLiberado(audio.id) || liberarConteudo(audio.id, grupo);
     if (!liberado) return;
-    setTocando(p => !p);
+
+    if (!temArquivoReal) {
+      setTocando(p => !p);
+      return;
+    }
+
+    if (audio.tipo === 'video') {
+      if (tocando) { await videoRef?.pauseAsync(); } else { await videoRef?.playAsync(); }
+      setTocando(p => !p);
+      return;
+    }
+
+    if (tocando) {
+      await som?.pauseAsync();
+      setTocando(false);
+      return;
+    }
+    if (som) {
+      await som.playAsync();
+      setTocando(true);
+      return;
+    }
+    const { sound } = await Audio.Sound.createAsync({ uri: audio.url }, { shouldPlay: true });
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.didJustFinish) setTocando(false);
+    });
+    setSom(sound);
+    setTocando(true);
   };
 
   return (
@@ -26,22 +69,37 @@ export default function AudioPlayerScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Áudio</Text>
+        <Text style={styles.topTitle}>{audio.tipo === 'video' ? 'Vídeo' : 'Áudio'}</Text>
         <View style={{ width: 32 }} />
       </View>
 
       <View style={styles.content}>
-        <View style={styles.artCircle}>
-          <Ionicons name="headset-outline" size={48} color={colors.lav5} />
-        </View>
+        {audio.tipo === 'video' && temArquivoReal ? (
+          <Video
+            ref={setVideoRef}
+            source={{ uri: audio.url }}
+            style={styles.video}
+            useNativeControls
+            resizeMode={ResizeMode.CONTAIN}
+            onPlaybackStatusUpdate={(status) => setTocando(!!status.isPlaying)}
+          />
+        ) : (
+          <View style={styles.artCircle}>
+            <Ionicons name="headset-outline" size={48} color={colors.lav5} />
+          </View>
+        )}
         <Text style={styles.titulo}>{audio.titulo}</Text>
-        <Text style={styles.sub}>{audio.categoria} · {audio.duracao}</Text>
-        <Text style={styles.desc}>{audio.descricao}</Text>
+        <Text style={styles.sub}>{[audio.categoria, audio.duracao].filter(Boolean).join(' · ')}</Text>
+        {!!audio.descricao && <Text style={styles.desc}>{audio.descricao}</Text>}
 
-        <TouchableOpacity style={styles.playBtn} onPress={handlePlay} activeOpacity={0.85}>
-          <Ionicons name={tocando ? 'pause' : 'play'} size={28} color="white" style={!tocando && { marginLeft: 3 }} />
-        </TouchableOpacity>
-        <Text style={styles.playLabel}>{tocando ? 'Reproduzindo...' : 'Tocar áudio'}</Text>
+        {!(audio.tipo === 'video' && temArquivoReal) && (
+          <>
+            <TouchableOpacity style={styles.playBtn} onPress={handlePlay} activeOpacity={0.85}>
+              <Ionicons name={tocando ? 'pause' : 'play'} size={28} color="white" style={!tocando && { marginLeft: 3 }} />
+            </TouchableOpacity>
+            <Text style={styles.playLabel}>{tocando ? 'Reproduzindo...' : 'Tocar áudio'}</Text>
+          </>
+        )}
 
         <View style={{ marginTop: spacing.xl }}>
           <Disclaimer />
@@ -59,6 +117,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  video: { width: '100%', height: 220, borderRadius: radius.lg, marginBottom: spacing.lg, backgroundColor: '#000' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl },
   artCircle: {
     width: 140, height: 140, borderRadius: 70, backgroundColor: colors.lav1,
