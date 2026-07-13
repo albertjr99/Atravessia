@@ -25,7 +25,6 @@ export default function AdminParceriasScreen({ navigation }) {
   const [categoriaSel, setCategoriaSel] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
 
   useEffect(() => {
     const ref = query(collection(db, 'parcerias'), orderBy('criadoEm', 'desc'));
@@ -47,26 +46,18 @@ export default function AdminParceriasScreen({ navigation }) {
       const file = e.target.files?.[0];
       if (!file) return;
       setUploadando(true);
-      setUploadPct(0);
       try {
-        const { ref: sRef, uploadBytesResumable, getDownloadURL } = require('firebase/storage');
+        const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
         const { storage } = require('../../services/firebase');
         const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
         const fileRef = sRef(storage, `parcerias/${nomeArq}`);
-        const task = uploadBytesResumable(fileRef, file);
-        task.on(
-          'state_changed',
-          (snap) => setUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-          () => { Alert.alert('Erro', 'Falha no upload. Tente novamente.'); setUploadando(false); },
-          async () => {
-            const url = await getDownloadURL(task.snapshot.ref);
-            setImagemUrl(url);
-            setUploadando(false);
-            Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
-          }
-        );
-      } catch {
-        Alert.alert('Erro', 'Não foi possível iniciar o upload.');
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        setImagemUrl(url);
+        Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
+      } catch (err) {
+        Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+      } finally {
         setUploadando(false);
       }
     };
@@ -192,15 +183,10 @@ export default function AdminParceriasScreen({ navigation }) {
           >
             <Ionicons name={uploadando ? 'hourglass-outline' : 'image-outline'} size={24} color={colors.lav4} />
             <Text style={s.uploadLabel}>
-              {uploadando ? `Fazendo upload... ${uploadPct}%` : 'Clique para enviar imagem do banner'}
+              {uploadando ? 'Fazendo upload...' : 'Clique para enviar imagem do banner'}
             </Text>
             <Text style={s.uploadHint}>PNG, JPG — Tamanho sugerido: 800×400 px</Text>
           </TouchableOpacity>
-          {uploadando && (
-            <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${uploadPct}%` }]} />
-            </View>
-          )}
           <Text style={s.orText}>— ou cole um link de imagem —</Text>
           <TextInput
             style={s.input}

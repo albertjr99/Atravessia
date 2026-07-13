@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Image, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
@@ -16,7 +16,6 @@ export default function AdminPerfilScreen({ navigation }) {
   const [photoURL, setPhotoURL] = useState(perfil?.photoURL || '');
   const [salvando, setSalvando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
 
   const handleFotoUpload = () => {
     if (Platform.OS !== 'web') {
@@ -30,30 +29,22 @@ export default function AdminPerfilScreen({ navigation }) {
       const file = e.target.files?.[0];
       if (!file) return;
       setUploadando(true);
-      setUploadPct(0);
       try {
         const nomeArq = `perfil_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
         const fileRef = sRef(storage, `perfis/${nomeArq}`);
-        const task = uploadBytesResumable(fileRef, file);
-        task.on(
-          'state_changed',
-          (snap) => setUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-          () => { Alert.alert('Erro', 'Falha no upload. Tente novamente.'); setUploadando(false); },
-          async () => {
-            const url = await getDownloadURL(task.snapshot.ref);
-            setPhotoURL(url);
-            setUploadando(false);
-            Alert.alert('Foto carregada!', 'Clique em "Salvar" para aplicar a foto.');
-          }
-        );
-      } catch {
-        Alert.alert('Erro', 'Não foi possível iniciar o upload.');
+        await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        setPhotoURL(url);
+        Alert.alert('Foto carregada!', 'Clique em "Salvar" para aplicar a foto.');
+      } catch (err) {
+        Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+      } finally {
         setUploadando(false);
       }
     };
     document.body.appendChild(input);
     input.click();
-    setTimeout(() => document.body.removeChild(input), 5000);
+    setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
   };
 
   const handleSalvar = async () => {
@@ -110,10 +101,7 @@ export default function AdminPerfilScreen({ navigation }) {
 
           {uploadando && (
             <View style={{ width: '100%', marginTop: spacing.sm }}>
-              <View style={s.progressTrack}>
-                <View style={[s.progressFill, { width: `${uploadPct}%` }]} />
-              </View>
-              <Text style={s.uploadLabel}>Fazendo upload... {uploadPct}%</Text>
+              <Text style={s.uploadLabel}>Fazendo upload...</Text>
             </View>
           )}
 
@@ -189,8 +177,6 @@ const s = StyleSheet.create({
     borderWidth: 2, borderColor: 'white',
   },
   avatarHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
-  progressTrack: { height: 5, backgroundColor: colors.lav1, borderRadius: radius.full, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.lav4, borderRadius: radius.full },
   uploadLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', marginTop: 4 },
 
   formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },

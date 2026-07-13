@@ -39,7 +39,6 @@ export default function AdminConteudosScreen({ navigation }) {
   const [enviando, setEnviando] = useState(false);
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
   const [uploadando, setUploadando] = useState(false);
-  const [uploadPct, setUploadPct] = useState(0);
 
   useEffect(() => {
     const ref = query(collection(db, 'conteudos'), orderBy('criadoEm', 'desc'));
@@ -59,30 +58,24 @@ export default function AdminConteudosScreen({ navigation }) {
       const file = e.target.files?.[0];
       if (!file) return;
       setUploadando(true);
-      setUploadPct(0);
       try {
-        const { ref: sRef, uploadBytesResumable, getDownloadURL } = require('firebase/storage');
+        const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
         const { storage } = require('../../services/firebase');
         const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
         const fileRef = sRef(storage, `conteudos/${nomeArq}`);
-        const task = uploadBytesResumable(fileRef, file);
-        task.on(
-          'state_changed',
-          (snap) => setUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-          () => { Alert.alert('Erro', 'Falha no upload. Tente novamente.'); setUploadando(false); },
-          async () => {
-            const downloadURL = await getDownloadURL(task.snapshot.ref);
-            setUrl(downloadURL);
-            setUploadando(false);
-            Alert.alert('Arquivo carregado!', 'O link foi preenchido automaticamente.');
-          }
-        );
-      } catch {
-        Alert.alert('Erro', 'Não foi possível iniciar o upload.');
+        await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(fileRef);
+        setUrl(downloadURL);
+        Alert.alert('Arquivo carregado!', 'O link foi preenchido automaticamente.');
+      } catch (err) {
+        Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+      } finally {
         setUploadando(false);
       }
     };
+    document.body.appendChild(input);
     input.click();
+    setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
   };
 
   const handlePublicar = async () => {
@@ -179,16 +172,11 @@ export default function AdminConteudosScreen({ navigation }) {
           >
             <Ionicons name={uploadando ? 'hourglass-outline' : 'cloud-upload-outline'} size={24} color={colors.lav4} />
             <Text style={s.uploadLabel}>
-              {uploadando ? `Fazendo upload... ${uploadPct}%` : 'Clique para fazer upload de um arquivo'}
+              {uploadando ? 'Fazendo upload...' : 'Clique para fazer upload de um arquivo'}
             </Text>
             <Text style={s.uploadHint}>Áudio, vídeo, PDF, imagem</Text>
           </TouchableOpacity>
 
-          {uploadando && (
-            <View style={s.progressTrack}>
-              <View style={[s.progressFill, { width: `${uploadPct}%` }]} />
-            </View>
-          )}
 
           <Text style={s.orText}>— ou cole um link —</Text>
           <TextInput
