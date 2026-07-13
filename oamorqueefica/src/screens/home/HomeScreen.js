@@ -119,10 +119,6 @@ export default function HomeScreen({ navigation }) {
                 <Ionicons name="star-outline" size={20} color="#8B7AC0" />
                 <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Cartas')} activeOpacity={0.85}>
-                <Ionicons name="mail-outline" size={20} color="#8B7AC0" />
-                <Text style={s.perfilLbl}>Cartas</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Relatorios')} activeOpacity={0.85}>
                 <Ionicons name="bar-chart-outline" size={20} color="#8B7AC0" />
                 <Text style={s.perfilLbl}>Relatórios</Text>

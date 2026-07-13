@@ -266,7 +266,6 @@ export const planos = [
       'Áudios noturnos (1 por dia)',
       'Biblioteca de áudios de acolhimento',
       'Feedback emocional diário personalizado',
-      'Cartas — escreva e leia cartas inspiradoras',
     ],
     destaque: true,
     emBreve: false,
