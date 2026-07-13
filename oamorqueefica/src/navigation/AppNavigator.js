@@ -23,6 +23,8 @@ import AdminNotificacoesScreen from '../screens/admin/AdminNotificacoesScreen';
 import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
 import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
+import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
+import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { colors } from '../theme';
@@ -52,6 +54,7 @@ function MainStack() {
       <Stack.Screen name="Notificacoes" component={NotificacoesScreen} />
       <Stack.Screen name="DatasSensiveis" component={DatasSensiveisScreen} />
       <Stack.Screen name="RedeApoio" component={RedeApoioScreen} />
+      <Stack.Screen name="Parcerias" component={ParceriasScreen} />
     </Stack.Navigator>
   );
 }
@@ -65,6 +68,7 @@ function AdminStack() {
       <Stack.Screen name="AdminUsuarias" component={AdminUsuariasScreen} />
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
+      <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
     </Stack.Navigator>
   );
 }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc,
+  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
@@ -147,6 +147,20 @@ export function AppProvider({ children }) {
     return unsub;
   }, []);
 
+  // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
+  const [parcerias, setParcerias] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'parcerias'), orderBy('criadoEm', 'desc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setParcerias(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.ativo !== false));
+    }, () => {});
+    return unsub;
+  }, []);
+
+  const registrarCliqueParceria = (id) => {
+    updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
+  };
+
   const adicionarCheckin = (emocao, intensidade) => {
     const item = { data: hojeStr(), emocao, intensidade };
     setCheckins(prev => [...prev, item]);
@@ -272,6 +286,7 @@ export function AppProvider({ children }) {
       tipoLuto, setTipoLuto,
       notificacoes, marcarLida,
       conteudos,
+      parcerias, registrarCliqueParceria,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje,
