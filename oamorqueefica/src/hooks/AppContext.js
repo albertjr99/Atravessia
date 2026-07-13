@@ -174,7 +174,7 @@ export function AppProvider({ children }) {
 
   const adicionarVitoria = (vitoria) => {
     setVitorias(prev => [...prev, { ...vitoria, id: Date.now(), data: new Date().toISOString() }]);
-    if (uid) addDoc(collection(db, 'usuarios', uid, 'vitorias'), { ...vitoria, criadoEm: serverTimestamp() });
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'vitorias'), { ...vitoria, data: hojeStr(), criadoEm: serverTimestamp() });
   };
 
   const adicionarCarta = (carta) => {

@@ -1,14 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform, Image, TextInput,
+  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Linking,
 } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
+import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
+
+// Substitua estas URLs pelos links de pagamento do Stripe criados no painel
+const STRIPE_LINKS = {
+  plano1: 'https://buy.stripe.com/CONFIGURAR_PLANO1',
+  plano2: 'https://buy.stripe.com/CONFIGURAR_PLANO2',
+  plano3: 'https://buy.stripe.com/CONFIGURAR_PLANO3',
+};
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -722,6 +730,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
   const { checkins, usuario, temAcesso } = useApp();
+  const { perfil } = useAuth();
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
   const [rangeInicio, setRangeInicio] = useState('');
@@ -1228,41 +1237,61 @@ export default function RelatoriosScreen({ navigation }) {
         {/* ═══════════════════════════════════ RELATÓRIO PERSONALIZADO ═══════ */}
         {tab === 'personalizado' && (
           <>
-            {!temAcesso(1) ? (
+            {!perfil?.periodoUnlocked ? (
               <View style={s.lockedAnnual}>
-                <Ionicons name="options-outline" size={48} color={colors.lav3} />
+                <View style={s.periodoIconWrap}>
+                  <Ionicons name="calendar-outline" size={36} color={colors.lav4} />
+                </View>
                 <Text style={s.lockedAnnualTit}>Relatório por Período</Text>
                 <Text style={s.lockedAnnualDesc}>
-                  Escolha qualquer período e exporte um relatório completo das suas emoções. Disponível nos planos pagos.
+                  Escolha qualquer período da sua jornada e gere um relatório completo das suas emoções. Este é um recurso adicional com pagamento único.
                 </Text>
-                <Text style={s.pricingTitle}>Escolha o plano ideal para você</Text>
-                <View style={s.pricingCards}>
-                  {[
-                    { plano: 'Plano 3', preco: 'R$ 3,90', per: '/mês', desc: 'Relatórios em qualquer período', cor: colors.sage, icon: 'leaf-outline' },
-                    { plano: 'Plano 2', preco: 'R$ 6,90', per: '/mês', desc: 'Relatórios + gráficos de intensidade', cor: colors.lav4, icon: 'bar-chart-outline', destaque: true },
-                    { plano: 'Plano 1', preco: 'R$ 9,90', per: '/mês', desc: 'Acesso completo a todos os recursos', cor: colors.rose, icon: 'star-outline' },
-                  ].map((item, i) => (
-                    <View key={i} style={[s.pricingCard, { borderColor: item.cor + '60' }, item.destaque && s.pricingCardSel]}>
-                      {item.destaque && (
-                        <View style={[s.pricingBadge, { backgroundColor: item.cor }]}>
-                          <Text style={s.pricingBadgeTxt}>Popular</Text>
+
+                {!temAcesso(1) ? (
+                  <>
+                    <Text style={s.pricingTitle}>Para acessar, assine um plano primeiro</Text>
+                    <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
+                      <Text style={s.emptyBtnTxt}>Ver planos</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    {(() => {
+                      const plano = perfil?.plano ?? usuario?.plano ?? 0;
+                      const opcoes = {
+                        1: { preco: 'R$ 9,90', link: STRIPE_LINKS.plano1, cor: colors.rose },
+                        2: { preco: 'R$ 6,90', link: STRIPE_LINKS.plano2, cor: colors.lav4 },
+                        3: { preco: 'R$ 3,90', link: STRIPE_LINKS.plano3, cor: colors.sage },
+                      };
+                      const opcao = opcoes[plano];
+                      return opcao ? (
+                        <View style={s.stripeWrap}>
+                          <View style={s.stripePriceCard}>
+                            <Ionicons name="calendar-outline" size={28} color={opcao.cor} />
+                            <Text style={[s.stripePriceTxt, { color: opcao.cor }]}>{opcao.preco}</Text>
+                            <Text style={s.stripePriceSub}>pagamento único — acesso vitalício</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[s.stripeBtn, { backgroundColor: opcao.cor }]}
+                            onPress={() => {
+                              if (Platform.OS === 'web') {
+                                window.open(opcao.link, '_blank');
+                              } else {
+                                Linking.openURL(opcao.link).catch(() => Alert.alert('', 'Não foi possível abrir o link de pagamento.'));
+                              }
+                            }}
+                          >
+                            <Ionicons name="card-outline" size={16} color="white" />
+                            <Text style={s.stripeBtnTxt}>Desbloquear por {opcao.preco}</Text>
+                          </TouchableOpacity>
+                          <Text style={s.stripeHint}>
+                            Após o pagamento, volte aqui. Seu acesso será liberado automaticamente.
+                          </Text>
                         </View>
-                      )}
-                      <View style={[s.pricingIcon, { backgroundColor: item.cor + '20' }]}>
-                        <Ionicons name={item.icon} size={20} color={item.cor} />
-                      </View>
-                      <Text style={[s.pricingCardNome, { color: item.cor }]}>{item.plano}</Text>
-                      <View style={s.pricingPrecoWrap}>
-                        <Text style={[s.pricingPreco, { color: item.cor }]}>{item.preco}</Text>
-                        <Text style={s.pricingPer}>{item.per}</Text>
-                      </View>
-                      <Text style={s.pricingDesc}>{item.desc}</Text>
-                    </View>
-                  ))}
-                </View>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
-                  <Text style={s.emptyBtnTxt}>Conhecer planos</Text>
-                </TouchableOpacity>
+                      ) : null;
+                    })()}
+                  </>
+                )}
               </View>
             ) : (
               <>
@@ -1509,4 +1538,19 @@ const s = StyleSheet.create({
   lockedAnnualTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginTop: 16 },
   lockedAnnualDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, marginTop: 8 },
   lockedAnnualBadge: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav4, marginTop: 16, backgroundColor: colors.lav1, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full },
+
+  periodoIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  stripeWrap: { alignSelf: 'stretch', marginTop: spacing.lg, gap: 12 },
+  stripePriceCard: {
+    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.lg, alignItems: 'center', gap: 6,
+  },
+  stripePriceTxt: { fontFamily: fonts.bodyBold, fontSize: 32, letterSpacing: 0.5 },
+  stripePriceSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
+  stripeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: radius.full, paddingVertical: 14,
+  },
+  stripeBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
+  stripeHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', lineHeight: 17 },
 });

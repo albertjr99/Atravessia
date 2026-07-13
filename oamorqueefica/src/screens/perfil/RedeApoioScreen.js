@@ -8,7 +8,7 @@ const ilustracao = require('../../../assets/images/il_rede_apoio.png');
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { vinculosRedeApoio } from '../../data';
-import { Button, Card } from '../../components';
+import { Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 export default function RedeApoioScreen({ navigation }) {
@@ -19,6 +19,7 @@ export default function RedeApoioScreen({ navigation }) {
   if (!temAcesso(3)) {
     return (
       <SafeAreaView style={styles.safe}>
+        <LavandaBg />
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
           <Text style={styles.lockTitle}>Disponível no Plano 3</Text>
@@ -41,6 +42,7 @@ export default function RedeApoioScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { ScriptTitle, QuoteText, Button, Card } from '../../components';
+import { ScriptTitle, QuoteText, Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/memorial_coracao.png');
@@ -30,6 +30,7 @@ export default function MemorialScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

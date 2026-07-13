@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { ScriptTitle, Card, Button, QuoteText } from '../../components';
+import { ScriptTitle, Card, Button, QuoteText, LavandaBg } from '../../components';
 
 const travessiaLogo = require('../../../assets/images/travessia_logo.png');
 
@@ -37,6 +37,7 @@ export default function SessaoScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.header}>

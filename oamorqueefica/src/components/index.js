@@ -4,20 +4,32 @@ import { colors, fonts, radius, shadow, spacing } from '../theme';
 
 const lavLeft = require('../../assets/images/lavanda_left.png');
 const lavRight = require('../../assets/images/lavanda_right.png');
+const lavSmall = require('../../assets/images/lavanda_small.png');
+const florPeach = require('../../assets/images/flor_peach.png');
+const decorFlores = require('../../assets/images/decoracao_flores.png');
+const folhaVento = require('../../assets/images/il_folha_vento.png');
 
 export function LavandaBg() {
   return (
     <View style={bgSty.container} pointerEvents="none">
       <Image source={lavRight} style={bgSty.topRight} resizeMode="contain" />
       <Image source={lavLeft} style={bgSty.bottomLeft} resizeMode="contain" />
+      <Image source={folhaVento} style={bgSty.topLeft} resizeMode="contain" />
+      <Image source={florPeach} style={bgSty.bottomRight} resizeMode="contain" />
+      <Image source={decorFlores} style={bgSty.centerLeft} resizeMode="contain" />
+      <Image source={lavSmall} style={bgSty.centerRight} resizeMode="contain" />
     </View>
   );
 }
 
 const bgSty = StyleSheet.create({
   container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
-  topRight: { position: 'absolute', top: -10, right: -10, width: 160, height: 160, opacity: 0.14 },
-  bottomLeft: { position: 'absolute', bottom: 50, left: -10, width: 140, height: 140, opacity: 0.14 },
+  topRight: { position: 'absolute', top: -10, right: -10, width: 170, height: 170, opacity: 0.15 },
+  bottomLeft: { position: 'absolute', bottom: 40, left: -10, width: 150, height: 150, opacity: 0.15 },
+  topLeft: { position: 'absolute', top: 60, left: -15, width: 120, height: 120, opacity: 0.10 },
+  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 120, height: 120, opacity: 0.12 },
+  centerLeft: { position: 'absolute', top: '38%', left: -20, width: 100, height: 100, opacity: 0.08 },
+  centerRight: { position: 'absolute', top: '55%', right: -10, width: 90, height: 90, opacity: 0.10 },
 });
 
 export function Card({ children, style, onPress }) {
