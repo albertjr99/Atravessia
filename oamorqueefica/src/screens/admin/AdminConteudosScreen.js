@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, TextInput, Alert,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
+import AdminLayout from './AdminLayout';
 
 const TIPOS = [
   { id: 'audio', label: 'Áudio', icon: 'headset-outline' },
@@ -24,7 +25,7 @@ const GRUPOS = [
 
 const PLANOS = [
   { id: 0, label: 'Perceber (grátis)' },
-  { id: 1, label: 'Acolher (plano pago)' },
+  { id: 1, label: 'Acolher (pago)' },
 ];
 
 export default function AdminConteudosScreen({ navigation }) {
@@ -37,6 +38,8 @@ export default function AdminConteudosScreen({ navigation }) {
   const [plano, setPlano] = useState(1);
   const [enviando, setEnviando] = useState(false);
   const [filtroGrupo, setFiltroGrupo] = useState('todos');
+  const [uploadando, setUploadando] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
 
   useEffect(() => {
     const ref = query(collection(db, 'conteudos'), orderBy('criadoEm', 'desc'));
@@ -44,22 +47,58 @@ export default function AdminConteudosScreen({ navigation }) {
     return unsub;
   }, []);
 
+  const handleUpload = () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Upload', 'O upload de arquivos está disponível apenas no portal web.\nNo celular, cole o link do arquivo no campo URL.');
+      return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*,video/*,application/pdf,image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setUploadando(true);
+      setUploadPct(0);
+      try {
+        const { ref: sRef, uploadBytesResumable, getDownloadURL } = require('firebase/storage');
+        const { storage } = require('../../services/firebase');
+        const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const fileRef = sRef(storage, `conteudos/${nomeArq}`);
+        const task = uploadBytesResumable(fileRef, file);
+        task.on(
+          'state_changed',
+          (snap) => setUploadPct(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          () => { Alert.alert('Erro', 'Falha no upload. Tente novamente.'); setUploadando(false); },
+          async () => {
+            const downloadURL = await getDownloadURL(task.snapshot.ref);
+            setUrl(downloadURL);
+            setUploadando(false);
+            Alert.alert('Arquivo carregado!', 'O link foi preenchido automaticamente.');
+          }
+        );
+      } catch {
+        Alert.alert('Erro', 'Não foi possível iniciar o upload.');
+        setUploadando(false);
+      }
+    };
+    input.click();
+  };
+
   const handlePublicar = async () => {
     if (!titulo.trim() || !url.trim()) {
-      Alert.alert('Atenção', 'Preencha o título e a URL/link do conteúdo.');
+      Alert.alert('Atenção', 'Preencha o título e a URL do conteúdo.');
       return;
     }
     setEnviando(true);
     try {
       await addDoc(collection(db, 'conteudos'), {
-        titulo: titulo.trim(),
-        descricao: descricao.trim(),
-        url: url.trim(),
-        tipo, grupo, plano,
+        titulo: titulo.trim(), descricao: descricao.trim(),
+        url: url.trim(), tipo, grupo, plano,
         criadoEm: serverTimestamp(),
       });
       setTitulo(''); setDescricao(''); setUrl('');
-    } catch (e) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível publicar o conteúdo.');
     } finally {
       setEnviando(false);
@@ -75,84 +114,101 @@ export default function AdminConteudosScreen({ navigation }) {
     : conteudos.filter(c => c.grupo === filtroGrupo);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Conteúdos</Text>
-        <View style={{ width: 32 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+    <AdminLayout navigation={navigation} currentScreen="AdminConteudos">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={s.scroll}
+      >
+        <Text style={s.pageTitle}>Conteúdos</Text>
+        <Text style={s.pageSub}>Publique áudios, vídeos, documentos e links para as usuárias.</Text>
 
         {/* ── Formulário ── */}
         <Card style={{ marginBottom: spacing.lg }}>
-          <Text style={styles.cardTitle}>Novo conteúdo</Text>
+          <Text style={s.cardTitle}>Novo conteúdo</Text>
 
-          <Text style={styles.formLabel}>Tipo</Text>
-          <View style={styles.chipRow}>
+          <Text style={s.formLabel}>Tipo</Text>
+          <View style={s.chipRow}>
             {TIPOS.map(t => (
-              <TouchableOpacity key={t.id} style={[styles.chip, tipo === t.id && styles.chipSel]} onPress={() => setTipo(t.id)}>
+              <TouchableOpacity key={t.id} style={[s.chip, tipo === t.id && s.chipSel]} onPress={() => setTipo(t.id)}>
                 <Ionicons name={t.icon} size={13} color={tipo === t.id ? colors.lav6 : colors.tm} />
-                <Text style={[styles.chipText, tipo === t.id && styles.chipTextSel]}>{t.label}</Text>
+                <Text style={[s.chipText, tipo === t.id && s.chipTextSel]}>{t.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.formLabel}>Grupo / categoria</Text>
-          <View style={styles.chipRow}>
+          <Text style={s.formLabel}>Grupo / categoria</Text>
+          <View style={s.chipRow}>
             {GRUPOS.map(g => (
-              <TouchableOpacity key={g.id} style={[styles.chip, grupo === g.id && styles.chipSel]} onPress={() => setGrupo(g.id)}>
-                <Text style={[styles.chipText, grupo === g.id && styles.chipTextSel]}>{g.label}</Text>
+              <TouchableOpacity key={g.id} style={[s.chip, grupo === g.id && s.chipSel]} onPress={() => setGrupo(g.id)}>
+                <Text style={[s.chipText, grupo === g.id && s.chipTextSel]}>{g.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.formLabel}>Plano mínimo para acessar</Text>
-          <View style={styles.chipRow}>
+          <Text style={s.formLabel}>Plano mínimo</Text>
+          <View style={s.chipRow}>
             {PLANOS.map(p => (
-              <TouchableOpacity key={p.id} style={[styles.chip, plano === p.id && styles.chipSel]} onPress={() => setPlano(p.id)}>
-                <Text style={[styles.chipText, plano === p.id && styles.chipTextSel]}>{p.label}</Text>
+              <TouchableOpacity key={p.id} style={[s.chip, plano === p.id && s.chipSel]} onPress={() => setPlano(p.id)}>
+                <Text style={[s.chipText, plano === p.id && s.chipTextSel]}>{p.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.formLabel}>Título *</Text>
+          <Text style={s.formLabel}>Título <Text style={s.required}>*</Text></Text>
           <TextInput
-            style={styles.input} placeholder="Ex: Áudio de acolhimento — Dia 1"
+            style={s.input} placeholder="Ex: Áudio de acolhimento — Dia 1"
             placeholderTextColor={colors.tl} value={titulo} onChangeText={setTitulo}
           />
 
-          <Text style={styles.formLabel}>Descrição <Text style={styles.optional}>(opcional)</Text></Text>
+          <Text style={s.formLabel}>Descrição <Text style={s.optional}>(opcional)</Text></Text>
           <TextInput
-            style={[styles.input, { minHeight: 56, textAlignVertical: 'top' }]}
-            placeholder="Uma breve descrição do que o usuário vai encontrar..."
+            style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
+            placeholder="Breve descrição do conteúdo..."
             placeholderTextColor={colors.tl} multiline
             value={descricao} onChangeText={setDescricao}
           />
 
-          <Text style={styles.formLabel}>URL / link *</Text>
+          <Text style={s.formLabel}>Arquivo ou URL <Text style={s.required}>*</Text></Text>
+
+          {/* Upload area */}
+          <TouchableOpacity
+            style={[s.uploadArea, uploadando && { opacity: 0.6 }]}
+            onPress={handleUpload}
+            disabled={uploadando}
+          >
+            <Ionicons name={uploadando ? 'hourglass-outline' : 'cloud-upload-outline'} size={24} color={colors.lav4} />
+            <Text style={s.uploadLabel}>
+              {uploadando ? `Fazendo upload... ${uploadPct}%` : 'Clique para fazer upload de um arquivo'}
+            </Text>
+            <Text style={s.uploadHint}>Áudio, vídeo, PDF, imagem</Text>
+          </TouchableOpacity>
+
+          {uploadando && (
+            <View style={s.progressTrack}>
+              <View style={[s.progressFill, { width: `${uploadPct}%` }]} />
+            </View>
+          )}
+
+          <Text style={s.orText}>— ou cole um link —</Text>
           <TextInput
-            style={styles.input} placeholder="https://..."
+            style={s.input} placeholder="https://..."
             placeholderTextColor={colors.tl} autoCapitalize="none"
             value={url} onChangeText={setUrl}
           />
-          <Text style={styles.hint}>Cole o link de um arquivo hospedado (Firebase Storage, Google Drive, YouTube, etc.).</Text>
+          <Text style={s.hint}>Firebase Storage, Google Drive, YouTube, Spotify, etc.</Text>
 
           <Button title={enviando ? 'Publicando...' : 'Publicar conteúdo'} onPress={handlePublicar} style={{ marginTop: spacing.md }} />
         </Card>
 
         {/* ── Lista ── */}
-        <View style={styles.listHeader}>
-          <Text style={styles.sectionTitle}>Publicados ({conteudos.length})</Text>
+        <View style={s.listHeader}>
+          <Text style={s.sectionTitle}>Publicados ({conteudos.length})</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {[{ id: 'todos', label: 'Todos' }, ...GRUPOS].map(g => (
-                <TouchableOpacity key={g.id} style={[styles.filterChip, filtroGrupo === g.id && styles.filterChipSel]} onPress={() => setFiltroGrupo(g.id)}>
-                  <Text style={[styles.filterText, filtroGrupo === g.id && styles.filterTextSel]}>{g.label}</Text>
+                <TouchableOpacity key={g.id} style={[s.filterChip, filtroGrupo === g.id && s.filterChipSel]} onPress={() => setFiltroGrupo(g.id)}>
+                  <Text style={[s.filterText, filtroGrupo === g.id && s.filterTextSel]}>{g.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -160,26 +216,25 @@ export default function AdminConteudosScreen({ navigation }) {
         </View>
 
         {listaFiltrada.length === 0 && (
-          <Text style={styles.emptyText}>Nenhum conteúdo nesta categoria ainda.</Text>
+          <Text style={s.emptyText}>Nenhum conteúdo nesta categoria ainda.</Text>
         )}
-
         {listaFiltrada.map(c => {
           const tipoObj = TIPOS.find(t => t.id === c.tipo);
           const grupoObj = GRUPOS.find(g => g.id === c.grupo);
           return (
-            <Card key={c.id} style={styles.item}>
-              <View style={styles.itemIcon}>
+            <Card key={c.id} style={s.item}>
+              <View style={s.itemIcon}>
                 <Ionicons name={tipoObj?.icon || 'document-outline'} size={16} color={colors.lav5} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitulo}>{c.titulo}</Text>
+                <Text style={s.itemTitulo}>{c.titulo}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-                  <Text style={styles.itemTag}>{grupoObj?.label || c.grupo}</Text>
-                  <Text style={[styles.itemTag, { backgroundColor: c.plano === 0 ? colors.sage + '33' : colors.lav1, color: c.plano === 0 ? colors.sage : colors.lav6 }]}>
+                  <Text style={s.itemTag}>{grupoObj?.label || c.grupo}</Text>
+                  <Text style={[s.itemTag, { backgroundColor: c.plano === 0 ? colors.sage + '33' : colors.lav1, color: c.plano === 0 ? colors.sage : colors.lav6 }]}>
                     {c.plano === 0 ? 'Grátis' : 'Acolher'}
                   </Text>
                 </View>
-                {c.descricao ? <Text style={styles.itemDesc} numberOfLines={1}>{c.descricao}</Text> : null}
+                {c.descricao ? <Text style={s.itemDesc} numberOfLines={1}>{c.descricao}</Text> : null}
               </View>
               <TouchableOpacity onPress={() => handleRemover(c.id)} style={{ padding: 6 }}>
                 <Ionicons name="trash-outline" size={17} color={colors.peach2} />
@@ -188,17 +243,17 @@ export default function AdminConteudosScreen({ navigation }) {
           );
         })}
       </ScrollView>
-    </SafeAreaView>
+    </AdminLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+const s = StyleSheet.create({
+  scroll: { padding: spacing.lg, paddingBottom: 40 },
+  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
+  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
   cardTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: spacing.sm },
   formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
+  required: { color: colors.rose },
   optional: { color: colors.tl, fontSize: 11 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, paddingHorizontal: 10 },
@@ -206,6 +261,17 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
   chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
   input: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: 12, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  uploadArea: {
+    borderWidth: 1.5, borderColor: colors.lav3, borderStyle: 'dashed',
+    borderRadius: radius.lg, padding: spacing.lg,
+    alignItems: 'center', gap: 6, backgroundColor: colors.lav1,
+    marginVertical: spacing.sm,
+  },
+  uploadLabel: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5, textAlign: 'center' },
+  uploadHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
+  progressTrack: { height: 6, backgroundColor: colors.lav1, borderRadius: radius.full, overflow: 'hidden', marginVertical: 4 },
+  progressFill: { height: '100%', backgroundColor: colors.lav4, borderRadius: radius.full },
+  orText: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', marginVertical: 8 },
   hint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 4 },
   listHeader: { marginBottom: spacing.sm },
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 8 },
@@ -214,7 +280,7 @@ const styles = StyleSheet.create({
   filterText: { fontFamily: fonts.body, fontSize: 11, color: colors.tm },
   filterTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8, ...shadow.soft },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   itemTag: { fontFamily: fonts.body, fontSize: 10, color: colors.tm, backgroundColor: colors.lav1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, TextInput, Alert, Switch,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
+import AdminLayout from './AdminLayout';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo' },
@@ -60,16 +61,11 @@ export default function AdminNotificacoesScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Notificações editoriais</Text>
-        <View style={{ width: 32 }} />
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+    <AdminLayout navigation={navigation} currentScreen="AdminNotificacoes">
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+        <Text style={styles.pageTitle}>Notificações</Text>
+        <Text style={styles.pageSub}>Publique avisos e mensagens para as usuárias do app.</Text>
+
         <Card style={{ marginBottom: spacing.lg }}>
           <Text style={styles.formLabel}>Tipo</Text>
           <View style={styles.row}>
@@ -125,15 +121,14 @@ export default function AdminNotificacoesScreen({ navigation }) {
           </Card>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  scroll: { padding: spacing.lg, paddingBottom: 40 },
+  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
+  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
   formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, paddingHorizontal: 10 },

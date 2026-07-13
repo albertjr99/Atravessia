@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Alert,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { ScriptTitle, Card } from '../../components';
-import { useAuth } from '../../hooks/AuthContext';
-import { confirmar } from '../../utils/confirm';
+import { Card } from '../../components';
+import AdminLayout from './AdminLayout';
 
 const hojeStr = () => new Date().toISOString().split('T')[0];
 
 export default function AdminHomeScreen({ navigation }) {
-  const { perfil, sair } = useAuth();
   const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: { 0: 0, 1: 0 } });
   const [carregando, setCarregando] = useState(true);
 
@@ -24,7 +20,7 @@ export default function AdminHomeScreen({ navigation }) {
         const porPlano = { 0: 0, 1: 0 };
         usuariasSnap.forEach(d => {
           const plano = d.data().plano ?? 0;
-          porPlano[plano] = (porPlano[plano] || 0) + 1;
+          if (d.data().role !== 'admin') porPlano[plano] = (porPlano[plano] || 0) + 1;
         });
 
         const checkinsSnap = await getDocs(collectionGroup(db, 'checkins'));
@@ -32,102 +28,91 @@ export default function AdminHomeScreen({ navigation }) {
         let checkinsHoje = 0;
         checkinsSnap.forEach(d => { if (d.data().data === hoje) checkinsHoje++; });
 
-        setStats({ usuarias: usuariasSnap.size, checkinsHoje, porPlano });
-      } catch (e) {
-        // Coleções ainda não populadas ou regras pendentes — segue com zeros.
+        const totalUsuarias = usuariasSnap.docs.filter(d => d.data().role !== 'admin').length;
+        setStats({ usuarias: totalUsuarias, checkinsHoje, porPlano });
+      } catch {
+        // sem dados
       } finally {
         setCarregando(false);
       }
     })();
   }, []);
 
-  const handleSair = () => {
-    confirmar('Sair', 'Deseja encerrar a sessão administrativa?', sair, 'Sair');
-  };
+  const tiles = [
+    { icon: 'people', color: colors.lav4, value: stats.usuarias, label: 'usuárias cadastradas' },
+    { icon: 'heart', color: colors.peach2, value: stats.checkinsHoje, label: 'check-ins hoje' },
+    { icon: 'leaf', color: colors.sage, value: stats.porPlano[0] || 0, label: 'Perceber (grátis)' },
+    { icon: 'diamond', color: colors.gold, value: stats.porPlano[1] || 0, label: 'Acolher (pago)' },
+  ];
 
-  const menu = [
-    { titulo: 'Conteúdos', sub: 'Áudios, documentos e links', icon: 'headset-outline', screen: 'AdminConteudos' },
-    { titulo: 'Notificações', sub: 'Publicar avisos editoriais', icon: 'megaphone-outline', screen: 'AdminNotificacoes' },
-    { titulo: 'Usuárias', sub: 'Planos e acesso', icon: 'people-outline', screen: 'AdminUsuarias' },
-    { titulo: 'Relatórios', sub: 'Check-ins e engajamento', icon: 'bar-chart-outline', screen: 'AdminRelatorios' },
+  const atalhos = [
+    { icon: 'headset-outline', label: 'Conteúdos', sub: 'Gerencie áudios e materiais', screen: 'AdminConteudos', color: colors.lav1 },
+    { icon: 'megaphone-outline', label: 'Notificações', sub: 'Publique avisos para as usuárias', screen: 'AdminNotificacoes', color: colors.peach + '33' },
+    { icon: 'people-outline', label: 'Usuárias', sub: 'Gerencie planos e acessos', screen: 'AdminUsuarias', color: colors.sage + '22' },
+    { icon: 'bar-chart-outline', label: 'Relatórios', sub: 'Dados de engajamento', screen: 'AdminRelatorios', color: colors.gold + '22' },
   ];
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xxl }}>
-        <View style={styles.header}>
-          <View>
-            <ScriptTitle size={24}>Painel administrativo</ScriptTitle>
-            <Text style={styles.sub}>{perfil?.nome || 'Administradora'}</Text>
-          </View>
-          <TouchableOpacity onPress={handleSair} style={styles.logoutBtn}>
-            <Ionicons name="log-out-outline" size={20} color={colors.lav6} />
-          </TouchableOpacity>
+    <AdminLayout navigation={navigation} currentScreen="AdminHome">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        <View style={s.pageHeader}>
+          <Text style={s.pageTitle}>Dashboard</Text>
+          <Text style={s.pageSub}>Bem-vinda ao painel Atravessia</Text>
         </View>
 
-        <View style={styles.statsRow}>
-          <Card style={styles.statCard}>
-            <Text style={styles.statNumber}>{carregando ? '—' : stats.usuarias}</Text>
-            <Text style={styles.statLabel}>usuárias</Text>
-          </Card>
-          <Card style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: colors.peach2 }]}>{carregando ? '—' : stats.checkinsHoje}</Text>
-            <Text style={styles.statLabel}>check-ins hoje</Text>
-          </Card>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Usuárias por plano</Text>
-          <Card style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-            {[{ id: 0, label: 'Perceber\n(Grátis)' }, { id: 1, label: 'Acolher\n(R$24,90)' }].map(p => (
-              <View key={p.id} style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={styles.planoNumero}>{carregando ? '—' : stats.porPlano[p.id] || 0}</Text>
-                <Text style={styles.planoLabel}>{p.label}</Text>
+        {/* Tiles de estatística */}
+        <View style={s.tilesGrid}>
+          {tiles.map((t, i) => (
+            <Card key={i} style={s.tile}>
+              <View style={[s.tileIcon, { backgroundColor: t.color + '22' }]}>
+                <Ionicons name={t.icon} size={20} color={t.color} />
               </View>
-            ))}
-          </Card>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Gestão</Text>
-          {menu.map(item => (
-            <TouchableOpacity key={item.screen} style={styles.menuItem} onPress={() => navigation.navigate(item.screen)} activeOpacity={0.85}>
-              <View style={styles.menuIcon}>
-                <Ionicons name={item.icon} size={18} color={colors.lav5} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.menuTitulo}>{item.titulo}</Text>
-                <Text style={styles.menuSub}>{item.sub}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.tl} />
-            </TouchableOpacity>
+              <Text style={[s.tileValue, { color: t.color }]}>{carregando ? '—' : t.value}</Text>
+              <Text style={s.tileLabel}>{t.label}</Text>
+            </Card>
           ))}
         </View>
+
+        {/* Atalhos */}
+        <Text style={s.sectionTitle}>Gestão do sistema</Text>
+        {atalhos.map(item => (
+          <Card
+            key={item.screen}
+            style={s.atalhoCard}
+            onPress={() => navigation.navigate(item.screen)}
+          >
+            <View style={[s.atalhoIcon, { backgroundColor: item.color }]}>
+              <Ionicons name={item.icon} size={20} color={colors.lav5} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.atalhoLabel}>{item.label}</Text>
+              <Text style={s.atalhoSub}>{item.sub}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.tl} />
+          </Card>
+        ))}
       </ScrollView>
-    </SafeAreaView>
+    </AdminLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md },
-  sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  logoutBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  statsRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 12, marginBottom: spacing.md },
-  statCard: { flex: 1, alignItems: 'center' },
-  statNumber: { fontFamily: fonts.bodyBold, fontSize: 28, color: colors.lav5 },
-  statLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
-  planoNumero: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.lav6 },
-  planoLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  menuItem: {
+const s = StyleSheet.create({
+  scroll: { padding: spacing.lg, paddingBottom: 40 },
+  pageHeader: { marginBottom: spacing.lg },
+  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td },
+  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 2 },
+  tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.lg },
+  tile: { flexBasis: '47%', flexGrow: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.md, ...shadow.card },
+  tileIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  tileValue: { fontFamily: fonts.bodyBold, fontSize: 26, color: colors.lav5 },
+  tileLabel: { fontFamily: fonts.body, fontSize: 10, color: colors.tm, textAlign: 'center' },
+  sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: spacing.sm },
+  atalhoCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: 8, ...shadow.soft,
+    marginBottom: 8, ...shadow.card,
   },
-  menuIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  menuTitulo: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  menuSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
+  atalhoIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  atalhoLabel: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
+  atalhoSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
 });

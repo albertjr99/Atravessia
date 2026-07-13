@@ -11,12 +11,12 @@ import { useApp } from '../../hooks/AppContext';
 export default function PequenasVitoriasScreen({ navigation }) {
   const { vitorias, adicionarVitoria, temAcesso } = useApp();
 
-  if (!temAcesso(3)) {
+  if (!temAcesso(1)) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
-          <Text style={styles.lockTitle}>Disponível no Plano 3</Text>
+          <Text style={styles.lockTitle}>Disponível no Plano Acolher</Text>
           <Text style={styles.lockSub}>Registre suas conquistas cotidianas e acompanhe sua reconstrução.</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Planos')} style={styles.lockBtn}>
             <Text style={styles.lockBtnText}>Ver planos</Text>
