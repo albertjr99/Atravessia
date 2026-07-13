@@ -51,7 +51,9 @@ export default function AdminPerfilScreen({ navigation }) {
         setUploadando(false);
       }
     };
+    document.body.appendChild(input);
     input.click();
+    setTimeout(() => document.body.removeChild(input), 5000);
   };
 
   const handleSalvar = async () => {

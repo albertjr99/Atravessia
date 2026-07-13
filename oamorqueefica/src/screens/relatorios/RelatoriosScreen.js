@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
+import { LavandaBg } from '../../components';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -891,6 +892,7 @@ export default function RelatoriosScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
@@ -1233,15 +1235,28 @@ export default function RelatoriosScreen({ navigation }) {
                 <Text style={s.lockedAnnualDesc}>
                   Escolha qualquer período e exporte um relatório completo das suas emoções. Disponível nos planos pagos.
                 </Text>
-                <View style={s.pricingTable}>
+                <Text style={s.pricingTitle}>Escolha o plano ideal para você</Text>
+                <View style={s.pricingCards}>
                   {[
-                    { plano: 'Plano 1', preco: 'R$ 9,90/mês' },
-                    { plano: 'Plano 2', preco: 'R$ 6,90/mês' },
-                    { plano: 'Plano 3', preco: 'R$ 3,90/mês' },
+                    { plano: 'Plano 3', preco: 'R$ 3,90', per: '/mês', desc: 'Relatórios em qualquer período', cor: colors.sage, icon: 'leaf-outline' },
+                    { plano: 'Plano 2', preco: 'R$ 6,90', per: '/mês', desc: 'Relatórios + gráficos de intensidade', cor: colors.lav4, icon: 'bar-chart-outline', destaque: true },
+                    { plano: 'Plano 1', preco: 'R$ 9,90', per: '/mês', desc: 'Acesso completo a todos os recursos', cor: colors.rose, icon: 'star-outline' },
                   ].map((item, i) => (
-                    <View key={i} style={s.pricingRow}>
-                      <Ionicons name="checkmark-circle-outline" size={14} color={colors.sage} />
-                      <Text style={s.pricingTxt}>{item.plano} — {item.preco}</Text>
+                    <View key={i} style={[s.pricingCard, { borderColor: item.cor + '60' }, item.destaque && s.pricingCardSel]}>
+                      {item.destaque && (
+                        <View style={[s.pricingBadge, { backgroundColor: item.cor }]}>
+                          <Text style={s.pricingBadgeTxt}>Popular</Text>
+                        </View>
+                      )}
+                      <View style={[s.pricingIcon, { backgroundColor: item.cor + '20' }]}>
+                        <Ionicons name={item.icon} size={20} color={item.cor} />
+                      </View>
+                      <Text style={[s.pricingCardNome, { color: item.cor }]}>{item.plano}</Text>
+                      <View style={s.pricingPrecoWrap}>
+                        <Text style={[s.pricingPreco, { color: item.cor }]}>{item.preco}</Text>
+                        <Text style={s.pricingPer}>{item.per}</Text>
+                      </View>
+                      <Text style={s.pricingDesc}>{item.desc}</Text>
                     </View>
                   ))}
                 </View>
@@ -1460,9 +1475,21 @@ const s = StyleSheet.create({
   trimFill: { height: '100%', borderRadius: 4 },
   trimPct: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, width: 32, textAlign: 'right' },
 
-  pricingTable: { marginTop: spacing.md, marginBottom: spacing.sm, alignSelf: 'stretch', gap: 6 },
-  pricingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pricingTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  pricingTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginTop: spacing.lg, marginBottom: spacing.sm, textAlign: 'center' },
+  pricingCards: { alignSelf: 'stretch', flexDirection: 'row', gap: 8, marginBottom: spacing.sm, marginTop: 4 },
+  pricingCard: {
+    flex: 1, alignItems: 'center', padding: 10, paddingTop: 16, borderRadius: radius.lg,
+    borderWidth: 1.5, backgroundColor: colors.card, position: 'relative',
+  },
+  pricingCardSel: { backgroundColor: colors.lav1 },
+  pricingBadge: { position: 'absolute', top: -10, alignSelf: 'center', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
+  pricingBadgeTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: 'white' },
+  pricingIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  pricingCardNome: { fontFamily: fonts.bodyBold, fontSize: 10, textAlign: 'center', marginBottom: 4 },
+  pricingPrecoWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 1 },
+  pricingPreco: { fontFamily: fonts.bodyBold, fontSize: 15 },
+  pricingPer: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
+  pricingDesc: { fontFamily: fonts.body, fontSize: 9, color: colors.tm, textAlign: 'center', marginTop: 6, lineHeight: 13 },
   dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginVertical: spacing.md },
   dateLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: 4 },
   dateInput: {

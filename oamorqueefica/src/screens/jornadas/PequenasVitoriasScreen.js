@@ -7,7 +7,7 @@ const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { pequenasVitorias } from '../../data';
-import { ScriptTitle, QuoteText, Card } from '../../components';
+import { ScriptTitle, QuoteText, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 export default function PequenasVitoriasScreen({ navigation }) {
@@ -16,6 +16,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
   if (!temAcesso(1)) {
     return (
       <SafeAreaView style={styles.safe}>
+        <LavandaBg />
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
           <Text style={styles.lockTitle}>Disponível no Plano Acolher</Text>
@@ -33,6 +34,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

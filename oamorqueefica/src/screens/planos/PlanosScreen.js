@@ -10,7 +10,7 @@ import { httpsCallable } from 'firebase/functions';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { planos } from '../../data';
-import { ScriptTitle, Button } from '../../components';
+import { ScriptTitle, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { functions } from '../../services/firebase';
 
@@ -55,6 +55,7 @@ export default function PlanosScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

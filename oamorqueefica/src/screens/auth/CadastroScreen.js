@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { Button, Disclaimer } from '../../components';
+import { Button, Disclaimer, LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -76,6 +76,7 @@ export default function CadastroScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         <View style={styles.heroSection}>
