@@ -9,6 +9,7 @@ import { Button, Disclaimer } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
+const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 
 function mensagemErro(code) {
   switch (code) {
@@ -74,6 +75,11 @@ export default function LoginScreen({ navigation }) {
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.appName}>Atravessia</Text>
           <Text style={styles.tagline}>App de perdas e luto</Text>
+        </View>
+
+        {/* ── Ilustração ── */}
+        <View style={styles.ilWrap}>
+          <Image source={ilustracao} style={styles.il} resizeMode="contain" />
         </View>
 
         {/* ── Card de login ── */}
@@ -255,6 +261,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.lav6,
   },
+
+  ilWrap: { alignItems: 'center', marginBottom: 20, marginTop: -8 },
+  il: { width: 220, height: 220 },
 
   footer: {
     marginTop: spacing.xl,

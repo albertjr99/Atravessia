@@ -9,7 +9,7 @@ import { tiposDataSensivel } from '../../data';
 import { ScriptTitle, Button, Card } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-const ilustracao = require('../../../assets/images/datas_calendario.png');
+const ilustracao = require('../../../assets/images/il_datas_sensiveis.png');
 
 export default function DatasSensiveisScreen({ navigation }) {
   const { datasSensiveis, adicionarDataSensivel, removerDataSensivel, temAcesso } = useApp();
