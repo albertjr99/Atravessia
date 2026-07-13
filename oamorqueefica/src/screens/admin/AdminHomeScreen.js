@@ -14,16 +14,16 @@ const hojeStr = () => new Date().toISOString().split('T')[0];
 
 export default function AdminHomeScreen({ navigation }) {
   const { perfil, sair } = useAuth();
-  const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: { 1: 0, 2: 0, 3: 0 } });
+  const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: { 0: 0, 1: 0 } });
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const usuariasSnap = await getDocs(collection(db, 'usuarios'));
-        const porPlano = { 1: 0, 2: 0, 3: 0 };
+        const porPlano = { 0: 0, 1: 0 };
         usuariasSnap.forEach(d => {
-          const plano = d.data().plano || 1;
+          const plano = d.data().plano ?? 0;
           porPlano[plano] = (porPlano[plano] || 0) + 1;
         });
 
@@ -80,10 +80,10 @@ export default function AdminHomeScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Usuárias por plano</Text>
           <Card style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-            {[1, 2, 3].map(p => (
-              <View key={p} style={{ alignItems: 'center' }}>
-                <Text style={styles.planoNumero}>{carregando ? '—' : stats.porPlano[p] || 0}</Text>
-                <Text style={styles.planoLabel}>Plano {p}</Text>
+            {[{ id: 0, label: 'Perceber\n(Grátis)' }, { id: 1, label: 'Acolher\n(R$24,90)' }].map(p => (
+              <View key={p.id} style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={styles.planoNumero}>{carregando ? '—' : stats.porPlano[p.id] || 0}</Text>
+                <Text style={styles.planoLabel}>{p.label}</Text>
               </View>
             ))}
           </Card>
