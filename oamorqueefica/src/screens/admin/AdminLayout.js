@@ -4,9 +4,11 @@ import {
   ScrollView, Dimensions, SafeAreaView, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
 import { colors, fonts, spacing, radius } from '../../theme';
+import { LavandaBg } from '../../components';
 
 const logo = require('../../../assets/images/travessia_logo.png');
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -87,8 +89,9 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
   );
 }
 
-export default function AdminLayout({ children, navigation, currentScreen }) {
+export default function AdminLayout({ children, currentScreen }) {
   const { perfil, sair } = useAuth();
+  const navigation = useNavigation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const navigateTo = (screen) => {
@@ -109,7 +112,7 @@ export default function AdminLayout({ children, navigation, currentScreen }) {
               sair={sair}
             />
           </View>
-          <View style={sty.main}>{children}</View>
+          <View style={sty.main}><LavandaBg />{children}</View>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
@@ -120,7 +123,7 @@ export default function AdminLayout({ children, navigation, currentScreen }) {
             <Image source={logo} style={sty.mobileLogo} resizeMode="contain" />
             <View style={{ width: 38 }} />
           </View>
-          <View style={sty.main}>{children}</View>
+          <View style={sty.main}><LavandaBg />{children}</View>
           {drawerOpen && (
             <View style={sty.drawerContainer}>
               <View style={sty.drawer}>
@@ -156,7 +159,7 @@ const sty = StyleSheet.create({
     borderRightColor: colors.border,
   },
   sidebarInner: { flex: 1, paddingBottom: spacing.lg },
-  main: { flex: 1, backgroundColor: colors.bg },
+  main: { flex: 1, backgroundColor: colors.bg, position: 'relative' },
 
   // Branding
   brand: {

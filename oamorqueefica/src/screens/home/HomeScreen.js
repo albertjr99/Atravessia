@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { frases, reflexoes, emocoes } from '../../data';
-import { ScriptTitle } from '../../components';
+import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
@@ -37,6 +37,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F4EE" />
+      <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
         {/* ===== HEADER COM AQUARELA ===== */}

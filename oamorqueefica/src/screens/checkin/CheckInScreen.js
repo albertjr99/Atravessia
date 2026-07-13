@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes, audios } from '../../data';
-import { Button } from '../../components';
+import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
@@ -52,6 +52,7 @@ export default function CheckInScreen({ navigation }) {
     if (emocaoObj?.positiva) {
       return (
         <SafeAreaView style={s.safe}>
+          <LavandaBg />
           <View style={s.savedWrap}>
             <View style={s.celebCircle}>
               <Ionicons name="sparkles" size={48} color={colors.gold} />
@@ -68,6 +69,7 @@ export default function CheckInScreen({ navigation }) {
     // NEGATIVO: mensagem de acolhimento + botão de áudio (Plan 1+)
     return (
       <SafeAreaView style={s.safe}>
+        <LavandaBg />
         <View style={s.savedWrap}>
           <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
             <Ionicons name="heart" size={40} color={colors.lav4} />
@@ -110,6 +112,7 @@ export default function CheckInScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" />
+      <LavandaBg />
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

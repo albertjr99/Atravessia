@@ -1,6 +1,24 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { colors, fonts, radius, shadow, spacing } from '../theme';
+
+const lavLeft = require('../../assets/images/lavanda_left.png');
+const lavRight = require('../../assets/images/lavanda_right.png');
+
+export function LavandaBg() {
+  return (
+    <View style={bgSty.container} pointerEvents="none">
+      <Image source={lavRight} style={bgSty.topRight} resizeMode="contain" />
+      <Image source={lavLeft} style={bgSty.bottomLeft} resizeMode="contain" />
+    </View>
+  );
+}
+
+const bgSty = StyleSheet.create({
+  container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
+  topRight: { position: 'absolute', top: -10, right: -10, width: 160, height: 160, opacity: 0.14 },
+  bottomLeft: { position: 'absolute', bottom: 50, left: -10, width: 140, height: 140, opacity: 0.14 },
+});
 
 export function Card({ children, style, onPress }) {
   const Wrapper = onPress ? TouchableOpacity : View;

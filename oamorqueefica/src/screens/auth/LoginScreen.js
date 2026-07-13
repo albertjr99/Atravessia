@@ -5,11 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { Button, Disclaimer } from '../../components';
+import { Button, Disclaimer, LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
+const headerImg = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
-const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 
 function mensagemErro(code) {
   switch (code) {
@@ -39,7 +39,6 @@ export default function LoginScreen({ navigation }) {
     setCarregando(true);
     try {
       await entrar(email.trim(), senha);
-      // onAuthStateChanged handles navigation automatically
     } catch (e) {
       const msg = mensagemErro(e.code);
       setErro(msg);
@@ -64,22 +63,22 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <StatusBar barStyle="light-content" backgroundColor="#4a4453" />
+      <LavandaBg />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scroll}
       >
-        {/* ── Header com logo ── */}
-        <View style={styles.heroSection}>
-          <Image source={logo} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.appName}>Atravessia</Text>
-          <Text style={styles.tagline}>App de perdas e luto</Text>
-        </View>
-
-        {/* ── Ilustração ── */}
-        <View style={styles.ilWrap}>
-          <Image source={ilustracao} style={styles.il} resizeMode="contain" />
+        {/* ── Banner com aquarela ── */}
+        <View style={styles.heroWrap}>
+          <Image source={headerImg} style={styles.heroImg} resizeMode="cover" />
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Image source={logo} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.appName}>Atravessia</Text>
+            <Text style={styles.tagline}>Um espaço para você atravessar o luto</Text>
+          </View>
         </View>
 
         {/* ── Card de login ── */}
@@ -152,28 +151,40 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { flexGrow: 1, paddingBottom: 32 },
 
-  heroSection: {
-    alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 32,
+  heroWrap: { position: 'relative', height: 230 },
+  heroImg: { width: '100%', height: 230 },
+  heroOverlay: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 100,
+    backgroundColor: 'rgba(250,247,243,0.55)',
   },
-  logo: { width: 90, height: 90, marginBottom: 12, borderRadius: 18 },
+  heroContent: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', paddingBottom: 8,
+  },
+  logo: { width: 72, height: 72, marginBottom: 8, borderRadius: 18 },
   appName: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 34,
-    color: colors.lav6,
+    fontSize: 36,
+    color: '#FFFDF9',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(74,68,83,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   tagline: {
     fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.tm,
+    fontSize: 12,
+    color: 'rgba(255,253,249,0.9)',
     marginTop: 4,
     letterSpacing: 0.3,
+    textShadowColor: 'rgba(74,68,83,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 
   card: {
     marginHorizontal: spacing.lg,
+    marginTop: -28,
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: spacing.lg,
@@ -181,9 +192,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     shadowColor: '#6b5b7a',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 24,
-    elevation: 4,
+    elevation: 6,
   },
   cardTitle: {
     fontFamily: fonts.bodyBold,
@@ -261,9 +272,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.lav6,
   },
-
-  ilWrap: { alignItems: 'center', marginBottom: 20, marginTop: -8, overflow: 'hidden' },
-  il: { width: 220, height: 220, borderRadius: 24 },
 
   footer: {
     marginTop: spacing.xl,
