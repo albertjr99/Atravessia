@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 32,
   },
-  logo: { width: 90, height: 90, marginBottom: 12 },
+  logo: { width: 90, height: 90, marginBottom: 12, borderRadius: 18 },
   appName: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
     fontSize: 34,
@@ -262,8 +262,8 @@ const styles = StyleSheet.create({
     color: colors.lav6,
   },
 
-  ilWrap: { alignItems: 'center', marginBottom: 20, marginTop: -8 },
-  il: { width: 220, height: 220 },
+  ilWrap: { alignItems: 'center', marginBottom: 20, marginTop: -8, overflow: 'hidden' },
+  il: { width: 220, height: 220, borderRadius: 24 },
 
   footer: {
     marginTop: spacing.xl,
