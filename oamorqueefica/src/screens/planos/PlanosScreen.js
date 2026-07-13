@@ -46,7 +46,9 @@ export default function PlanosScreen({ navigation }) {
     }
   };
 
-  const precosCores = ['#A8B8A0', colors.lav4, colors.lav5, colors.peach2];
+  const planosAtivos = planos.filter(p => !p.emBreve);
+  const planosEmBreve = planos.filter(p => p.emBreve);
+  const coresAtivos = [colors.sage, colors.lav4];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -63,7 +65,7 @@ export default function PlanosScreen({ navigation }) {
           <Text style={styles.sub}>Escolha o que faz mais sentido para você agora</Text>
         </View>
 
-        {planos.map((p, idx) => (
+        {planosAtivos.map((p, idx) => (
           <TouchableOpacity
             key={p.id}
             style={[styles.planCard, sel === p.id && styles.planCardSel, p.destaque && styles.planCardDestaque]}
@@ -72,19 +74,18 @@ export default function PlanosScreen({ navigation }) {
           >
             {p.destaque && (
               <View style={styles.destaqueTag}>
-                <Text style={styles.destaqueText}>Mais popular</Text>
+                <Text style={styles.destaqueText}>Recomendado para começar</Text>
               </View>
             )}
             <View style={styles.planHeader}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <View style={styles.planNomeRow}>
                   <Text style={styles.planNome}>{p.nome}</Text>
-                  {p.subtitulo && <Text style={styles.planSubtitulo}>· {p.subtitulo}</Text>}
                 </View>
                 <Text style={styles.planDesc}>{p.descricao}</Text>
               </View>
               <View style={styles.planPrecoBox}>
-                <Text style={[styles.planPreco, { color: precosCores[idx] }]}>
+                <Text style={[styles.planPreco, { color: coresAtivos[idx] }]}>
                   {p.preco === 0 ? 'Grátis' : `R$ ${p.preco.toFixed(2).replace('.', ',')}`}
                 </Text>
                 {p.preco > 0 && <Text style={styles.planPrecoPer}>/mês</Text>}
@@ -93,16 +94,33 @@ export default function PlanosScreen({ navigation }) {
             <View style={styles.recursosList}>
               {p.recursos.map((r, i) => (
                 <View key={i} style={styles.recursoRow}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color={precosCores[idx]} />
+                  <Ionicons name="checkmark-circle-outline" size={14} color={coresAtivos[idx]} />
                   <Text style={styles.recursoText}>{r}</Text>
                 </View>
               ))}
             </View>
-            <View style={[styles.radioIndicator, sel === p.id && { borderColor: precosCores[idx] }]}>
-              {sel === p.id && <View style={[styles.radioInner, { backgroundColor: precosCores[idx] }]} />}
+            <View style={[styles.radioIndicator, sel === p.id && { borderColor: coresAtivos[idx] }]}>
+              {sel === p.id && <View style={[styles.radioInner, { backgroundColor: coresAtivos[idx] }]} />}
             </View>
           </TouchableOpacity>
         ))}
+
+        {/* Planos em breve */}
+        {planosEmBreve.length > 0 && (
+          <View style={styles.emBreveSection}>
+            <Text style={styles.emBreveTitulo}>Em breve</Text>
+            <Text style={styles.emBreveDesc}>Novos planos com ainda mais recursos chegando em breve.</Text>
+            <View style={styles.emBreveRow}>
+              {planosEmBreve.map(p => (
+                <View key={p.id} style={styles.emBreveCard}>
+                  <Ionicons name="lock-closed-outline" size={18} color={colors.tl} />
+                  <Text style={styles.emBreveNome}>{p.nome}</Text>
+                  <Text style={styles.emBreveSub}>{p.descricao.split('.')[0]}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         <View style={styles.btns}>
           {sel === 0 ? (
@@ -114,12 +132,12 @@ export default function PlanosScreen({ navigation }) {
             />
           ) : (
             <Button
-              title={carregando ? 'Abrindo checkout...' : `Assinar ${planos[sel].nome} — R$ ${planos[sel].preco.toFixed(2).replace('.', ',')}/mês`}
+              title={carregando ? 'Abrindo checkout...' : `Assinar Acolher — R$ 24,90/mês`}
               onPress={() => assinarPlano(sel)}
               disabled={carregando || sel === usuario.plano}
             />
           )}
-          <Text style={styles.cancelInfo}>Pagamento processado de forma segura pelo Stripe. Cancele quando quiser.</Text>
+          <Text style={styles.cancelInfo}>Pagamento seguro pelo Stripe. Cancele quando quiser.</Text>
         </View>
 
         <View style={{ height: spacing.xxl }} />
@@ -163,4 +181,11 @@ const styles = StyleSheet.create({
   radioInner: { width: 10, height: 10, borderRadius: 5 },
   btns: { paddingHorizontal: spacing.lg, gap: 12, marginTop: spacing.sm },
   cancelInfo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center' },
+  emBreveSection: { marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
+  emBreveTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 4 },
+  emBreveDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: spacing.md },
+  emBreveRow: { flexDirection: 'row', gap: 10 },
+  emBreveCard: { flex: 1, alignItems: 'center', gap: 6, padding: spacing.md, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, opacity: 0.7 },
+  emBreveNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tl },
+  emBreveSub: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
 });
