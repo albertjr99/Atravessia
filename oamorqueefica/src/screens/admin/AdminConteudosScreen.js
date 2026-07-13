@@ -7,6 +7,7 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverT
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card, Button } from '../../components';
+import * as DocumentPicker from 'expo-document-picker';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 
@@ -46,24 +47,49 @@ export default function AdminConteudosScreen({ navigation }) {
     return unsub;
   }, []);
 
-  const handleUpload = () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Upload', 'O upload de arquivos está disponível apenas no portal web.\nNo celular, cole o link do arquivo no campo URL.');
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'audio/*,video/*,application/pdf,image/*';
-    input.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const handleUpload = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'audio/*,video/*,application/pdf,image/*';
+      input.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadando(true);
+        try {
+          const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
+          const { storage } = require('../../services/firebase');
+          const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+          const fileRef = sRef(storage, `conteudos/${nomeArq}`);
+          await uploadBytes(fileRef, file);
+          const downloadURL = await getDownloadURL(fileRef);
+          setUrl(downloadURL);
+          Alert.alert('Arquivo carregado!', 'O link foi preenchido automaticamente.');
+        } catch (err) {
+          Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+        } finally {
+          setUploadando(false);
+        }
+      };
+      document.body.appendChild(input);
+      input.click();
+      setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    } else {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*', 'video/*', 'application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
       setUploadando(true);
       try {
         const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
         const { storage } = require('../../services/firebase');
-        const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        const nomeArq = `${Date.now()}_${(asset.name || 'arquivo').replace(/\s+/g, '_')}`;
         const fileRef = sRef(storage, `conteudos/${nomeArq}`);
-        await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, blob);
         const downloadURL = await getDownloadURL(fileRef);
         setUrl(downloadURL);
         Alert.alert('Arquivo carregado!', 'O link foi preenchido automaticamente.');
@@ -72,10 +98,7 @@ export default function AdminConteudosScreen({ navigation }) {
       } finally {
         setUploadando(false);
       }
-    };
-    document.body.appendChild(input);
-    input.click();
-    setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    }
   };
 
   const handlePublicar = async () => {
