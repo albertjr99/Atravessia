@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform, Image,
+  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform, Image, TextInput,
 } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -158,6 +158,18 @@ function checkinsByDate(checkins) {
     if (key) map[key] = getEmoObj(c.emocao);
   });
   return map;
+}
+
+function calcRange(checkins, inicio, fim) {
+  const [diI, meI, anoI] = inicio.split('/').map(Number);
+  const [diF, meF, anoF] = fim.split('/').map(Number);
+  const dStart = new Date(anoI, meI - 1, diI);
+  const dEnd = new Date(anoF, meF - 1, diF, 23, 59, 59);
+  if (isNaN(dStart) || isNaN(dEnd) || dStart > dEnd) return [];
+  return checkins.filter(c => {
+    const d = new Date(c.data);
+    return d >= dStart && d <= dEnd;
+  });
 }
 
 function diasComRegistro(checkins, year, month) {
@@ -589,11 +601,131 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 </html>`;
 }
 
+function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
+  if (!rangeData) return '';
+  const donutSVG = rangeData.total > 0 ? gerarDonutSVG(rangeData.donut, 130, 24) : '';
+  const legendaEmocoes = rangeData.sorted.map(([id, v], i) => {
+    const emo = getEmoObj(id);
+    const pct = Math.round((v / rangeData.total) * 100);
+    const cor = rangeData.donut[i]?.color || '#aaa';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div>
+      <span style="font-size:11px;color:#4a4453;flex:1">${emo?.label || id}</span>
+      <span style="font-size:11px;font-weight:700;color:#4a4453">${pct}%</span>
+    </div>`;
+  }).join('');
+  const emoObj = getEmoObj(rangeData.dominante);
+  const emoNome = emoObj?.label || '—';
+  const emoCor = emoObj?.color || '#8B7AC0';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
+  .page { width: 794px; padding: 40px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
+  .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; letter-spacing: 0.5px; }
+  .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
+  .report-title { text-align: right; }
+  .report-title h1 { font-size: 22px; font-weight: 900; color: #5C4F8A; letter-spacing: 1px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #EDE9F5; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #5C4F8A; margin-top: 6px; }
+  .stat-row { display: flex; gap: 12px; margin-bottom: 20px; }
+  .stat-box { flex: 1; background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 12px; padding: 14px; text-align: center; }
+  .stat-box .n { font-size: 26px; font-weight: 900; color: #8B7AC0; }
+  .stat-box .l { font-size: 11px; color: #8c8597; margin-top: 3px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 16px; padding: 18px; }
+  .card-num { display: inline-block; width: 22px; height: 22px; background: #8B7AC0; color: #fff; border-radius: 50%; text-align: center; font-size: 11px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
+  .card-title { font-size: 13px; font-weight: 700; color: #4a4453; margin-bottom: 12px; }
+  .donut-row { display: flex; align-items: center; gap: 16px; }
+  .msg-card { background: linear-gradient(135deg, #EDE9F5 0%, #FAF7F3 100%); border-radius: 16px; padding: 20px; border: 1px solid #D8D1E6; margin-top: 16px; }
+  .msg-text { font-size: 13px; color: #5C4F8A; line-height: 1.6; font-style: italic; }
+  .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .footer .left { font-size: 10px; color: #aaa; }
+  .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="app-name">Atravessia</div>
+      <div class="app-sub">App de perdas e luto</div>
+    </div>
+    <div class="report-title">
+      <h1>RELATÓRIO PERSONALIZADO</h1>
+      <div><span class="badge">📅 ${rangeInicio} → ${rangeFim}</span></div>
+      <p style="font-size:12px;color:#8c8597;margin-top:4px">Resumo emocional do período</p>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="n">${rangeData.total}</div>
+      <div class="l">check-ins no período</div>
+    </div>
+    <div class="stat-box">
+      <div class="n">${rangeData.uniqueDays}</div>
+      <div class="l">dias com registro</div>
+    </div>
+    <div class="stat-box">
+      <div class="n" style="color:#7A9E7E">${rangeData.avgInt}</div>
+      <div class="l">intensidade média</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <span class="card-num">1</span>
+      <p class="card-title">Emoções no período</p>
+      <div class="donut-row">
+        <div style="position:relative">
+          ${donutSVG}
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <div style="font-size:18px;font-weight:900;color:#8B7AC0">${rangeData.total}</div>
+            <div style="font-size:8px;color:#aaa">registros</div>
+          </div>
+        </div>
+        <div style="flex:1">${legendaEmocoes}</div>
+      </div>
+    </div>
+    <div class="card">
+      <span class="card-num">2</span>
+      <p class="card-title">Emoção predominante</p>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${emoCor}15;border-radius:12px;margin-top:8px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${emoCor}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💜</div>
+        <div>
+          <p style="font-size:14px;font-weight:700;color:${emoCor}">${emoNome}</p>
+          <p style="font-size:11px;color:#666;margin-top:3px">foi a emoção mais presente</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="msg-card">
+    <p class="msg-text">Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando. 💜</p>
+  </div>
+
+  <div class="footer">
+    <div class="left">Seu espaço seguro de acolhimento e autoconhecimento. • Atravessia</div>
+    <div class="right">Perceber é o início.</div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
   const { checkins, usuario, temAcesso } = useApp();
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
+  const [rangeInicio, setRangeInicio] = useState('');
+  const [rangeFim, setRangeFim] = useState('');
+  const [rangeData, setRangeData] = useState(null);
 
   const now = new Date();
   const year = now.getFullYear();
@@ -668,13 +800,48 @@ export default function RelatoriosScreen({ navigation }) {
     return { lista, sorted, total, donut, porMes, uniqueDays: uniqueDays.size, consistencia, avgInt, maisIntens, maisLeves, trimPct };
   }, [checkins, year]);
 
+  const formatarData = (text) => {
+    const nums = text.replace(/\D/g, '');
+    if (nums.length <= 2) return nums;
+    if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
+    return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4, 8)}`;
+  };
+
+  const handleGerarRange = () => {
+    const reDate = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!reDate.test(rangeInicio) || !reDate.test(rangeFim)) {
+      Alert.alert('Atenção', 'Informe as datas no formato DD/MM/AAAA.');
+      return;
+    }
+    const lista = calcRange(checkins, rangeInicio, rangeFim);
+    if (!lista.length) {
+      Alert.alert('Sem dados', 'Não há check-ins registrados no período selecionado.');
+      return;
+    }
+    const sorted = contagemEmo(lista);
+    const total = lista.length;
+    const donut = sorted.map(([id, v], i) => ({
+      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
+    }));
+    const dominante = sorted[0]?.[0];
+    const avgInt = avgIntensidade(lista).toFixed(1);
+    const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10))).size;
+    setRangeData({ lista, sorted, total, donut, dominante, avgInt, uniqueDays });
+  };
+
   const handleExportar = async () => {
+    if (tab === 'personalizado' && !rangeData) {
+      Alert.alert('Atenção', 'Gere o relatório do período antes de exportar.');
+      return;
+    }
     if (Platform.OS === 'web') {
       setExportando(true);
       try {
         const html = tab === 'mensal'
           ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
-          : gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT });
+          : tab === 'anual'
+            ? gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT })
+            : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
         const w = typeof window !== 'undefined' && window.open ? window.open('', '_blank') : null;
         if (w) {
           w.document.write(html);
@@ -697,7 +864,9 @@ export default function RelatoriosScreen({ navigation }) {
       const Sharing = require('expo-sharing');
       const html = tab === 'mensal'
         ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
-        : gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT });
+        : tab === 'anual'
+          ? gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT })
+          : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -744,6 +913,11 @@ export default function RelatoriosScreen({ navigation }) {
         <TouchableOpacity style={[s.tab, tab === 'anual' && s.tabSel]} onPress={() => setTab('anual')}>
           <Ionicons name={tab === 'anual' ? 'calendar' : 'calendar-outline'} size={13} color={tab === 'anual' ? colors.lav4 : colors.tl} style={{ marginRight: 4 }} />
           <Text style={[s.tabTxt, tab === 'anual' && s.tabTxtSel]}>Anual</Text>
+          {!temAcesso(1) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.tab, tab === 'personalizado' && s.tabSel]} onPress={() => setTab('personalizado')}>
+          <Ionicons name={tab === 'personalizado' ? 'options' : 'options-outline'} size={13} color={tab === 'personalizado' ? colors.lav4 : colors.tl} style={{ marginRight: 4 }} />
+          <Text style={[s.tabTxt, tab === 'personalizado' && s.tabTxtSel]}>Período</Text>
           {!temAcesso(1) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
         </TouchableOpacity>
       </View>
@@ -1049,6 +1223,152 @@ export default function RelatoriosScreen({ navigation }) {
           </>
         )}
 
+        {/* ═══════════════════════════════════ RELATÓRIO PERSONALIZADO ═══════ */}
+        {tab === 'personalizado' && (
+          <>
+            {!temAcesso(1) ? (
+              <View style={s.lockedAnnual}>
+                <Ionicons name="options-outline" size={48} color={colors.lav3} />
+                <Text style={s.lockedAnnualTit}>Relatório por Período</Text>
+                <Text style={s.lockedAnnualDesc}>
+                  Escolha qualquer período e exporte um relatório completo das suas emoções. Disponível nos planos pagos.
+                </Text>
+                <View style={s.pricingTable}>
+                  {[
+                    { plano: 'Plano 1', preco: 'R$ 9,90/mês' },
+                    { plano: 'Plano 2', preco: 'R$ 6,90/mês' },
+                    { plano: 'Plano 3', preco: 'R$ 3,90/mês' },
+                  ].map((item, i) => (
+                    <View key={i} style={s.pricingRow}>
+                      <Ionicons name="checkmark-circle-outline" size={14} color={colors.sage} />
+                      <Text style={s.pricingTxt}>{item.plano} — {item.preco}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
+                  <Text style={s.emptyBtnTxt}>Conhecer planos</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={s.card}>
+                  <Text style={s.cardTit}>Defina o período</Text>
+                  <Text style={s.cardSub}>Selecione o intervalo de datas para gerar o relatório</Text>
+                  <View style={s.dateRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.dateLabel}>Início</Text>
+                      <TextInput
+                        style={s.dateInput}
+                        placeholder="DD/MM/AAAA"
+                        placeholderTextColor={colors.tl}
+                        value={rangeInicio}
+                        onChangeText={t => setRangeInicio(formatarData(t))}
+                        keyboardType="numeric"
+                        maxLength={10}
+                      />
+                    </View>
+                    <Ionicons name="arrow-forward" size={16} color={colors.tl} style={{ marginTop: 20 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.dateLabel}>Fim</Text>
+                      <TextInput
+                        style={s.dateInput}
+                        placeholder="DD/MM/AAAA"
+                        placeholderTextColor={colors.tl}
+                        value={rangeFim}
+                        onChangeText={t => setRangeFim(formatarData(t))}
+                        keyboardType="numeric"
+                        maxLength={10}
+                      />
+                    </View>
+                  </View>
+                  <TouchableOpacity style={s.gerarBtn} onPress={handleGerarRange}>
+                    <Ionicons name="bar-chart-outline" size={15} color="white" />
+                    <Text style={s.gerarBtnTxt}>Gerar relatório</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {rangeData && (
+                  <>
+                    <View style={s.reportHeader}>
+                      <Image source={logo} style={s.reportLogo} resizeMode="contain" />
+                      <Text style={s.reportTitle}>RELATÓRIO PERSONALIZADO</Text>
+                      <View style={s.reportMes}>
+                        <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
+                        <Text style={s.reportMesTxt}>{rangeInicio} → {rangeFim}</Text>
+                      </View>
+                    </View>
+
+                    <View style={s.tilesRow}>
+                      {[
+                        { icon: 'calendar-outline', v: rangeData.total, lbl: 'check-ins no período', color: colors.lav4 },
+                        { icon: 'today-outline', v: rangeData.uniqueDays, lbl: 'dias com registro', color: colors.rose },
+                        { icon: 'pulse-outline', v: rangeData.avgInt, lbl: 'intensidade média', color: colors.sage },
+                      ].map((t, i) => (
+                        <View key={i} style={[s.tile, { minWidth: '30%' }]}>
+                          <Ionicons name={t.icon} size={18} color={t.color} />
+                          <Text style={[s.tileNum, { color: t.color }]}>{t.v}</Text>
+                          <Text style={s.tileLbl}>{t.lbl}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    <View style={s.card}>
+                      <Text style={s.cardNum}>1</Text>
+                      <Text style={s.cardTit}>Emoções no período</Text>
+                      <View style={s.donutRow}>
+                        <DonutChart data={rangeData.donut} size={140} thickness={26} total={rangeData.total} label="registros" />
+                        <View style={s.donutLegend}>
+                          {rangeData.sorted.slice(0, 7).map(([id, v], i) => {
+                            const emo = getEmoObj(id);
+                            const pct = Math.round((v / rangeData.total) * 100);
+                            return (
+                              <View key={id} style={s.legendRow}>
+                                <View style={[s.legendDot, { backgroundColor: emo?.color || EMO_CHART_COLORS[i] }]} />
+                                <Text style={s.legendTxt} numberOfLines={1}>{emo?.label || id}</Text>
+                                <Text style={[s.legendPct, { color: emo?.color || EMO_CHART_COLORS[i] }]}>{pct}%</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    </View>
+
+                    {rangeData.dominante && (
+                      <View style={s.card}>
+                        <Text style={s.cardNum}>2</Text>
+                        <Text style={s.cardTit}>Emoção predominante</Text>
+                        {(() => {
+                          const emo = getEmoObj(rangeData.dominante);
+                          return (
+                            <View style={s.predominRow}>
+                              <View style={[s.predominCircle, { backgroundColor: emo?.bg || colors.lav1 }]}>
+                                <Ionicons name={`${emo?.icon || 'heart'}-outline`} size={28} color={emo?.color || colors.lav4} />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[s.predominNome, { color: emo?.color || colors.lav4 }]}>{emo?.label || rangeData.dominante}</Text>
+                                <Text style={s.predominDesc}>foi a emoção mais presente no período.</Text>
+                              </View>
+                            </View>
+                          );
+                        })()}
+                      </View>
+                    )}
+
+                    <View style={[s.card, s.msgCard]}>
+                      <Text style={s.cardTit}>Mensagem para você</Text>
+                      <Text style={s.msgTxt}>Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando.</Text>
+                      <View style={s.msgRodape}>
+                        <Ionicons name="leaf-outline" size={12} color={colors.lav3} />
+                        <Text style={s.msgRodapeTxt}>Atravessia</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -1067,7 +1387,7 @@ const s = StyleSheet.create({
   tabTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
   tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav4 },
 
-  reportLogo: { width: 48, height: 48, marginBottom: 8 },
+  reportLogo: { width: 48, height: 48, marginBottom: 8, borderRadius: 12 },
   reportHeader: { alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   reportTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.lav6, letterSpacing: 1 },
   reportMes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
@@ -1139,6 +1459,24 @@ const s = StyleSheet.create({
   trimTrack: { flex: 1, height: 8, backgroundColor: colors.lav1, borderRadius: 4, overflow: 'hidden' },
   trimFill: { height: '100%', borderRadius: 4 },
   trimPct: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, width: 32, textAlign: 'right' },
+
+  pricingTable: { marginTop: spacing.md, marginBottom: spacing.sm, alignSelf: 'stretch', gap: 6 },
+  pricingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pricingTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginVertical: spacing.md },
+  dateLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: 4 },
+  dateInput: {
+    backgroundColor: colors.bg, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.sm, paddingVertical: 10,
+    fontFamily: fonts.body, fontSize: 13, color: colors.td,
+  },
+  gerarBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.lav4, borderRadius: radius.full,
+    paddingVertical: 13,
+  },
+  gerarBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
 
   lockedAnnual: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: spacing.xl },
   lockedAnnualTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginTop: 16 },

@@ -3,9 +3,11 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Image, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
+import { storage } from '../../services/firebase';
 import AdminLayout from './AdminLayout';
 
 export default function AdminPerfilScreen({ navigation }) {
@@ -30,9 +32,6 @@ export default function AdminPerfilScreen({ navigation }) {
       setUploadando(true);
       setUploadPct(0);
       try {
-        const { ref: sRef, uploadBytesResumable, getDownloadURL } = require('firebase/storage');
-        const { storage } = require('../../services/firebase');
-        const { firebaseUser } = require('../../hooks/AuthContext');
         const nomeArq = `perfil_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
         const fileRef = sRef(storage, `perfis/${nomeArq}`);
         const task = uploadBytesResumable(fileRef, file);

@@ -198,7 +198,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,253,249,0.8)',
     alignItems: 'center', justifyContent: 'center',
   },
-  headerLogo: { width: 44, height: 44, marginBottom: 2 },
+  headerLogo: { width: 44, height: 44, marginBottom: 2, borderRadius: 10 },
   headerBottom: {
     position: 'absolute', bottom: 10, left: 0, right: 0,
     alignItems: 'center',

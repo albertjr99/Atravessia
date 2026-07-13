@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { audios } from '../../data';
+import {} from '../../data';
 import { ScriptTitle, PlanBadge } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -56,7 +56,7 @@ export default function AudiosScreen({ navigation }) {
     url: c.url,
   }));
 
-  const todosItens = [...audios.map(a => ({ ...a, tipo: 'audio' })), ...itensAdmin];
+  const todosItens = [...itensAdmin];
   const filtrados = catSel === 'todos' ? todosItens : todosItens.filter(a => a.categoria === catSel);
 
   const handleItem = (item) => {

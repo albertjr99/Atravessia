@@ -166,7 +166,7 @@ const sty = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  brandLogo: { width: 52, height: 52, marginBottom: 8 },
+  brandLogo: { width: 52, height: 52, marginBottom: 8, borderRadius: 14 },
   brandName: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
     fontSize: 20, color: colors.lav6, letterSpacing: 0.5,
@@ -236,7 +236,7 @@ const sty = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   hamburger: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  mobileLogo: { width: 36, height: 36 },
+  mobileLogo: { width: 36, height: 36, borderRadius: 10 },
   drawerContainer: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     zIndex: 100, flexDirection: 'row',
