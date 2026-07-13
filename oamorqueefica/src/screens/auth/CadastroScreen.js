@@ -9,7 +9,6 @@ import { Button, Disclaimer } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
-const decoracaoFlores = require('../../../assets/images/decoracao_flores.png');
 
 function mensagemErro(code) {
   switch (code) {
@@ -30,11 +29,12 @@ export default function CadastroScreen({ navigation }) {
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [aceitouPriv, setAceitouPriv] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [concluido, setConcluido] = useState(false);
+  const [erro, setErro] = useState('');
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleCadastrar = async () => {
+    setErro('');
     if (!form.nome.trim()) {
       Alert.alert('Atenção', 'Informe seu nome completo.');
       return;
@@ -62,33 +62,15 @@ export default function CadastroScreen({ navigation }) {
         cidade: form.cidade.trim(),
         linkEmpresa: form.linkEmpresa,
       });
-      setConcluido(true);
+      // onAuthStateChanged handles navigation automatically after account creation
     } catch (e) {
-      Alert.alert('Erro ao cadastrar', mensagemErro(e.code));
+      const msg = mensagemErro(e.code);
+      setErro(msg);
+      Alert.alert('Erro ao cadastrar', msg);
     } finally {
       setEnviando(false);
     }
   };
-
-  if (concluido) return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.conclusao}>
-        <Image source={decoracaoFlores} style={styles.conclusaoImg} resizeMode="contain" />
-        <Text style={styles.conclusaoTitulo}>
-          Bem-vinda, {(form.apelido || form.nome).split(' ')[0] || 'você'}!
-        </Text>
-        <Text style={styles.conclusaoSub}>
-          Este é um espaço seguro para continuar amando quem partiu e continuar vivendo.
-        </Text>
-        <Button
-          title="Começar minha jornada"
-          onPress={() => navigation.replace('MainTabs')}
-          style={{ marginTop: spacing.xl, width: '100%' }}
-        />
-        <View style={{ marginTop: spacing.lg }}><Disclaimer /></View>
-      </View>
-    </SafeAreaView>
-  );
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -102,6 +84,8 @@ export default function CadastroScreen({ navigation }) {
         </View>
 
         <View style={styles.card}>
+
+          {erro ? <Text style={styles.erroInline}>{erro}</Text> : null}
 
           {/* ── Campos obrigatórios ── */}
           <Text style={styles.fieldLabel}>Nome completo <Text style={styles.required}>*</Text></Text>
@@ -233,6 +217,16 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 4,
   },
+  erroInline: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.roseFg,
+    backgroundColor: '#FFF0EE',
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
   fieldLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 4, marginTop: spacing.sm },
   required: { color: colors.rose },
   optional: { color: colors.tl, fontSize: 11 },
@@ -263,8 +257,4 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
   checkText: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
   checkLink: { color: colors.lav5, textDecorationLine: 'underline' },
-  conclusao: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
-  conclusaoImg: { width: 180, height: 180 },
-  conclusaoTitulo: { fontFamily: fonts.script, fontSize: 26, color: colors.lav6, marginTop: spacing.md, marginBottom: spacing.sm },
-  conclusaoSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, textAlign: 'center', lineHeight: 22 },
 });

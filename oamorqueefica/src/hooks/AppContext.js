@@ -38,11 +38,11 @@ export function AppProvider({ children }) {
   const { firebaseUser, perfil, atualizarPerfil } = useAuth() || {};
   const uid = firebaseUser?.uid || null;
 
-  const [usuario, setUsuarioLocal] = useState({ nome: 'Você', plano: 1, cadastrado: false });
+  const [usuario, setUsuarioLocal] = useState({ nome: 'Você', plano: 0, cadastrado: false });
 
   useEffect(() => {
     if (perfil) {
-      setUsuarioLocal({ nome: (perfil.nome || '').split(' ')[0] || 'Você', plano: perfil.plano || 1, cadastrado: true });
+      setUsuarioLocal({ nome: (perfil.nome || '').split(' ')[0] || 'Você', plano: perfil.plano ?? 0, cadastrado: true });
     }
   }, [perfil]);
 
