@@ -9,6 +9,7 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { pequenasVitorias } from '../../data';
 import { ScriptTitle, QuoteText, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { hojeStrBR, formatDataBR } from '../../utils/date';
 
 export default function PequenasVitoriasScreen({ navigation }) {
   const { vitorias, adicionarVitoria, temAcesso } = useApp();
@@ -29,7 +30,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
     );
   }
 
-  const registradosHoje = vitorias.filter(v => v.data?.slice(0, 10) === new Date().toISOString().slice(0, 10)).map(v => v.label);
+  const registradosHoje = vitorias.filter(v => v.data?.slice(0, 10) === hojeStrBR()).map(v => v.label);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -81,7 +82,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
                 <View key={v.id} style={styles.vitoriaRow}>
                   <Ionicons name="star" size={14} color={colors.gold} />
                   <Text style={styles.vitoriaText}>{v.label}</Text>
-                  <Text style={styles.vitoriaData}>{new Date(v.data).toLocaleDateString('pt-BR')}</Text>
+                  <Text style={styles.vitoriaData}>{formatDataBR(v.data)}</Text>
                 </View>
               ))}
             </Card>

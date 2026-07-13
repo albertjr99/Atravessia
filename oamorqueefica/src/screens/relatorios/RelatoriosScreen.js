@@ -199,6 +199,34 @@ const EMO_CHART_COLORS = [
 ];
 
 // ── Gerador de HTML para PDF ─────────────────────────────────────────────────
+const BOTANICA_WATERMARK = `
+<div style="position:absolute;top:-20px;right:-25px;opacity:0.13;pointer-events:none;z-index:0">
+  <svg width="190" height="260" viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg">
+    <line x1="60" y1="220" x2="60" y2="32" stroke="#8B7AC0" stroke-width="2"/>
+    <ellipse cx="60" cy="22" rx="8" ry="14" fill="#9B8AD0"/>
+    <ellipse cx="47" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(-22 47 42)"/>
+    <ellipse cx="73" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(22 73 42)"/>
+    <ellipse cx="43" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(-28 43 65)"/>
+    <ellipse cx="77" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(28 77 65)"/>
+    <ellipse cx="37" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(-38 37 140)"/>
+    <ellipse cx="83" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(38 83 140)"/>
+    <ellipse cx="42" cy="168" rx="15" ry="7" fill="#B8C5A0" transform="rotate(-26 42 168)"/>
+    <ellipse cx="78" cy="168" rx="15" ry="7" fill="#B8C5A0" transform="rotate(26 78 168)"/>
+  </svg>
+</div>
+<div style="position:absolute;bottom:30px;left:-22px;opacity:0.09;pointer-events:none;z-index:0;transform:scaleX(-1) rotate(15deg)">
+  <svg width="140" height="190" viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg">
+    <line x1="60" y1="220" x2="60" y2="32" stroke="#8B7AC0" stroke-width="2"/>
+    <ellipse cx="60" cy="22" rx="8" ry="14" fill="#9B8AD0"/>
+    <ellipse cx="47" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(-22 47 42)"/>
+    <ellipse cx="73" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(22 73 42)"/>
+    <ellipse cx="43" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(-28 43 65)"/>
+    <ellipse cx="77" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(28 77 65)"/>
+    <ellipse cx="37" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(-38 37 140)"/>
+    <ellipse cx="83" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(38 83 140)"/>
+  </svg>
+</div>`;
+
 function gerarDonutSVG(data, size = 120, thickness = 22) {
   const tot = data.reduce((s, d) => s + d.value, 0) || 1;
   const r = (size - thickness) / 2;
@@ -262,6 +290,7 @@ function gerarCalendarioHTML(year, month, checkinsByDateMap) {
 
 function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT }) {
   const dataStr = `${MONTH_NAMES[month].toUpperCase()}/${year}`;
+  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const nome = usuario?.apelido || usuario?.nome || 'você';
   const donutSVG = mesal.total > 0 ? gerarDonutSVG(mesal.donut, 130, 24) : '';
   const legendaEmocoes = mesal.sorted.map(([id, v], i) => {
@@ -296,7 +325,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; }
+  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
   .app-brand { display: flex; align-items: center; gap: 10px; }
   .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; letter-spacing: 0.5px; }
@@ -326,6 +355,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
 </head>
 <body>
 <div class="page">
+  ${BOTANICA_WATERMARK}
   <div class="header">
     <div class="app-brand">
       <div>
@@ -421,7 +451,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
   `}
 
   <div class="footer">
-    <div class="left">Seu espaço seguro de acolhimento e autoconhecimento. • Atravessia</div>
+    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Perceber é o início.</div>
   </div>
 </div>
@@ -431,6 +461,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
 
 function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
   const nome = usuario?.apelido || usuario?.nome || 'você';
+  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const donutSVG = anual.total > 0 ? gerarDonutSVG(anual.donut, 130, 24) : '';
   const legendaEmocoes = anual.sorted.map(([id, v], i) => {
     const emo = getEmoObj(id);
@@ -483,7 +514,7 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; }
+  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
   .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; }
   .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
@@ -508,6 +539,7 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 </head>
 <body>
 <div class="page">
+  ${BOTANICA_WATERMARK}
   <div class="header">
     <div>
       <div class="app-name">Atravessia</div>
@@ -602,7 +634,7 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
   </div>
 
   <div class="footer">
-    <div class="left">Você não está só nessa jornada. • Atravessia</div>
+    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Siga se cuidando. Você vale! 💜</div>
   </div>
 </div>
@@ -612,6 +644,7 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 
 function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   if (!rangeData) return '';
+  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const donutSVG = rangeData.total > 0 ? gerarDonutSVG(rangeData.donut, 130, 24) : '';
   const legendaEmocoes = rangeData.sorted.map(([id, v], i) => {
     const emo = getEmoObj(id);
@@ -634,7 +667,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; }
+  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
   .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; letter-spacing: 0.5px; }
   .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
@@ -659,6 +692,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 </head>
 <body>
 <div class="page">
+  ${BOTANICA_WATERMARK}
   <div class="header">
     <div>
       <div class="app-name">Atravessia</div>
@@ -719,7 +753,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   </div>
 
   <div class="footer">
-    <div class="left">Seu espaço seguro de acolhimento e autoconhecimento. • Atravessia</div>
+    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Perceber é o início.</div>
   </div>
 </div>

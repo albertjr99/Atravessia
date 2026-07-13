@@ -9,6 +9,7 @@ import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, ProgressBar } from '../../components';
 import AdminLayout from './AdminLayout';
+import { formatDataBR } from '../../utils/date';
 
 export default function AdminRelatoriosScreen({ navigation }) {
   const [carregando, setCarregando] = useState(true);
@@ -76,7 +77,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
         <Card style={{ gap: 8 }}>
           {ultimosDias.map(([dataStr, qtd]) => (
             <View key={dataStr} style={styles.diaRow}>
-              <Text style={styles.diaLabel}>{new Date(dataStr).toLocaleDateString('pt-BR')}</Text>
+              <Text style={styles.diaLabel}>{formatDataBR(dataStr)}</Text>
               <Text style={styles.diaQtd}>{qtd}</Text>
             </View>
           ))}
