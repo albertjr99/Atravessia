@@ -27,8 +27,10 @@ export default function LoginScreen({ navigation }) {
   const [senha, setSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState('');
 
   const handleEntrar = async () => {
+    setErro('');
     if (!email || !senha) {
       Alert.alert('Atenção', 'Informe e-mail e senha.');
       return;
@@ -36,8 +38,11 @@ export default function LoginScreen({ navigation }) {
     setCarregando(true);
     try {
       await entrar(email.trim(), senha);
+      // onAuthStateChanged handles navigation automatically
     } catch (e) {
-      Alert.alert('Erro ao entrar', mensagemErro(e.code));
+      const msg = mensagemErro(e.code);
+      setErro(msg);
+      Alert.alert('Erro ao entrar', msg);
     } finally {
       setCarregando(false);
     }
@@ -74,6 +79,8 @@ export default function LoginScreen({ navigation }) {
         {/* ── Card de login ── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Entrar na conta</Text>
+
+          {erro ? <Text style={styles.erroInline}>{erro}</Text> : null}
 
           <Text style={styles.fieldLabel}>E-mail</Text>
           <View style={styles.inputWrap}>
@@ -177,6 +184,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: colors.td,
     marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  erroInline: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.roseFg,
+    backgroundColor: '#FFF0EE',
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
 
