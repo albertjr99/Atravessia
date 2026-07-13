@@ -1,12 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform,
 } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
@@ -670,13 +668,21 @@ export default function RelatoriosScreen({ navigation }) {
   }, [checkins, year]);
 
   const handleExportar = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Exportar PDF', 'O download de PDF está disponível apenas no aplicativo mobile (iOS e Android).');
+      return;
+    }
     setExportando(true);
     try {
+      // Dynamic require keeps expo-print fora do bundle web
+      const Print = require('expo-print');
+      const Sharing = require('expo-sharing');
       const html = tab === 'mensal'
         ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
         : gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT });
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      if (await Sharing.isAvailableAsync()) {
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: '.pdf' });
       } else {
         Alert.alert('PDF gerado', 'Arquivo salvo em: ' + uri);
