@@ -8,6 +8,7 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { tiposDataSensivel } from '../../data';
 import { ScriptTitle, Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { formatDataBR } from '../../utils/date';
 
 const ilustracao = require('../../../assets/images/il_datas_sensiveis.png');
 
@@ -66,7 +67,7 @@ export default function DatasSensiveisScreen({ navigation }) {
             <Card key={d.id} style={styles.item}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitulo}>{d.titulo}</Text>
-                <Text style={styles.itemData}>{new Date(d.data).toLocaleDateString('pt-BR')}</Text>
+                <Text style={styles.itemData}>{formatDataBR(d.data)}</Text>
               </View>
               <TouchableOpacity onPress={() => removerDataSensivel(d.id)}>
                 <Ionicons name="trash-outline" size={18} color={colors.tl} />

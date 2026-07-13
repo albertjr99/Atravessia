@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, QuoteText, Button, Card, LavandaBg } from '../../components';
+import { hojeStrBR, formatDataBR } from '../../utils/date';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/memorial_coracao.png');
@@ -21,7 +22,7 @@ export default function MemorialScreen({ navigation }) {
       titulo: novaMemoria.titulo,
       conteudo: novaMemoria.conteudo,
       tipo: 'texto',
-      data: new Date().toLocaleDateString('pt-BR'),
+      data: hojeStrBR(),
     });
     setNovaMemoria({ titulo: '', conteudo: '' });
     setModalVisible(false);
@@ -80,7 +81,7 @@ export default function MemorialScreen({ navigation }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.memoriaTitulo}>{m.titulo}</Text>
-                    <Text style={styles.memoriaData}>{m.data}</Text>
+                    <Text style={styles.memoriaData}>{formatDataBR(m.data)}</Text>
                   </View>
                 </View>
                 <Text style={styles.memoriaConteudo}>{m.conteudo}</Text>

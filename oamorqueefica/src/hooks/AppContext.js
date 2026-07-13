@@ -9,7 +9,7 @@ import { jornadas as jornadasBase } from '../data';
 
 const AppContext = createContext();
 
-const hojeStr = () => new Date().toISOString().split('T')[0];
+const hojeStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
 // Calcula a próxima ocorrência anual de uma data sensível (ignora o ano cadastrado)
 function proximaOcorrencia(dataStr) {
@@ -173,7 +173,7 @@ export function AppProvider({ children }) {
   };
 
   const adicionarVitoria = (vitoria) => {
-    setVitorias(prev => [...prev, { ...vitoria, id: Date.now(), data: new Date().toISOString() }]);
+    setVitorias(prev => [...prev, { ...vitoria, id: Date.now(), data: hojeStr() }]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'vitorias'), { ...vitoria, data: hojeStr(), criadoEm: serverTimestamp() });
   };
 

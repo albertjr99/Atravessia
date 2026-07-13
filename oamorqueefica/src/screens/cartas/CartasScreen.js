@@ -8,6 +8,7 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { cartasInspiradoras } from '../../data';
 import { ScriptTitle, Card, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { formatDataBR } from '../../utils/date';
 
 const ilustracao = require('../../../assets/images/cartas_envelope.png');
 
@@ -67,7 +68,7 @@ export default function CartasScreen({ navigation }) {
               <Card key={c.id} style={styles.cartaCard}>
                 <Text style={styles.cartaTitulo}>{c.titulo}</Text>
                 <Text style={styles.cartaConteudo}>{c.conteudo}</Text>
-                <Text style={styles.cartaAutor}>{new Date(c.data).toLocaleDateString('pt-BR')}</Text>
+                <Text style={styles.cartaAutor}>{formatDataBR(c.data)}</Text>
               </Card>
             ))
           )
