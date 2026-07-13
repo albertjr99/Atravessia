@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Platform, Image, Dimensions, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Platform, Image, Dimensions, Alert, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -18,13 +18,23 @@ const ilCoracao = require('../../../assets/images/il_coracao_ramos.png');
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
-  const { usuario, notificacoes, checkins } = useApp();
+  const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria } = useApp();
   const { sair } = useAuth();
   const [fraseIdx] = useState(0);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const handleSair = () => {
     confirmar('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', sair, 'Sair');
+  };
+
+  const handleAbrirParceria = (p) => {
+    if (!p.link) return;
+    registrarCliqueParceria(p.id);
+    if (Platform.OS === 'web') {
+      window.open(p.link, '_blank');
+    } else {
+      Linking.openURL(p.link).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
+    }
   };
   const saudacao = () => {
     const h = new Date().getHours();
@@ -136,6 +146,54 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* ===== PARCERIAS ===== */}
+          {parcerias.length > 0 && (
+            <View style={s.sect}>
+              <View style={s.sectHeaderRow}>
+                <View style={s.sectTitleRow}>
+                  <Ionicons name="gift-outline" size={14} color="#9b86bd" />
+                  <Text style={s.sectTitle}>Espaço para Parcerias</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Parcerias')}>
+                  <Text style={s.sectLink}>Ver todas</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 10, paddingRight: spacing.lg }}>
+                  {parcerias.slice(0, 5).map(p => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={s.parceriaCard}
+                      onPress={() => handleAbrirParceria(p)}
+                      activeOpacity={0.85}
+                    >
+                      {p.imagemUrl ? (
+                        <Image source={{ uri: p.imagemUrl }} style={s.parceriaImg} resizeMode="cover" />
+                      ) : (
+                        <View style={[s.parceriaImg, s.parceriaImgPlaceholder]}>
+                          <Ionicons name="gift-outline" size={22} color={colors.lav4} />
+                        </View>
+                      )}
+                      <View style={s.parceriaInfo}>
+                        <Text style={s.parceriaTit} numberOfLines={2}>{p.titulo}</Text>
+                        {(p.categorias || []).length > 0 && (
+                          <Text style={s.parceriaCat}>{p.categorias[0]}</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={s.parceriaVerTodas}
+                    onPress={() => navigation.navigate('Parcerias')}
+                  >
+                    <Ionicons name="arrow-forward-circle-outline" size={28} color={colors.lav4} />
+                    <Text style={s.parceriaVerTodasTxt}>Ver{'\n'}todas</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          )}
 
           {/* Disclaimer */}
           <Text style={s.disclaimer}>
@@ -317,6 +375,25 @@ const s = StyleSheet.create({
     fontFamily: 'Lato_400Regular', fontSize: 12,
     color: '#8c8597', textAlign: 'center',
     lineHeight: 18, marginBottom: 20,
+  },
+
+  // Parcerias
+  parceriaCard: {
+    width: 148, backgroundColor: '#FFFDF9', borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)', overflow: 'hidden',
+  },
+  parceriaImg: { width: 148, height: 88 },
+  parceriaImgPlaceholder: {
+    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
+  },
+  parceriaInfo: { padding: 8 },
+  parceriaTit: {
+    fontFamily: 'Lato_700Bold', fontSize: 11, color: '#4a4453', lineHeight: 16,
+  },
+  parceriaCat: { fontFamily: 'Lato_400Regular', fontSize: 9, color: '#9b86bd', marginTop: 3 },
+  parceriaVerTodas: { width: 60, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  parceriaVerTodasTxt: {
+    fontFamily: 'Lato_400Regular', fontSize: 10, color: '#9b86bd', textAlign: 'center',
   },
 
   // Nav

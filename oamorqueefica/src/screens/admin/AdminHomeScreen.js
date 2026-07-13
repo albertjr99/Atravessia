@@ -50,6 +50,7 @@ export default function AdminHomeScreen({ navigation }) {
     { icon: 'megaphone-outline', label: 'Notificações', sub: 'Publique avisos para as usuárias', screen: 'AdminNotificacoes', color: colors.peach + '33' },
     { icon: 'people-outline', label: 'Usuárias', sub: 'Gerencie planos e acessos', screen: 'AdminUsuarias', color: colors.sage + '22' },
     { icon: 'bar-chart-outline', label: 'Relatórios', sub: 'Dados de engajamento', screen: 'AdminRelatorios', color: colors.gold + '22' },
+    { icon: 'gift-outline', label: 'Parcerias', sub: 'Gerencie banners e benefícios exclusivos', screen: 'AdminParcerias', color: colors.peach + '33' },
   ];
 
   return (
