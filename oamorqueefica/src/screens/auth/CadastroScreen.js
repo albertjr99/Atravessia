@@ -86,7 +86,7 @@ export default function CadastroScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <ScriptTitle size={28}>o amor que fica</ScriptTitle>
+          <ScriptTitle size={28}>Atravessia</ScriptTitle>
           <Text style={styles.headerSub}>Crie sua conta gratuita</Text>
         </View>
         <View style={styles.section}>

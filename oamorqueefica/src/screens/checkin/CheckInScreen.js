@@ -12,7 +12,7 @@ import { useApp } from '../../hooks/AppContext';
 const lavSmall = require('../../../assets/images/lavanda_small.png');
 
 export default function CheckInScreen({ navigation }) {
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [intensidade, setIntensidade] = useState(3);
   const [salvo, setSalvo] = useState(false);
@@ -45,40 +45,62 @@ export default function CheckInScreen({ navigation }) {
     }
   };
 
+  const temPlano1 = (usuario?.plano || 0) >= 1;
+
   if (salvo) {
+    // POSITIVO: celebração discreta, sem recomendação de conteúdo
     if (emocaoObj?.positiva) {
       return (
         <SafeAreaView style={s.safe}>
           <View style={s.savedWrap}>
-            <Ionicons name="sparkles" size={64} color={colors.gold} />
-            <Text style={s.savedTit}>Que bom! 💜</Text>
+            <View style={s.celebCircle}>
+              <Ionicons name="sparkles" size={48} color={colors.gold} />
+            </View>
+            <Text style={s.savedTit}>Que bom saber disso! 💜</Text>
             <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
+            <Text style={s.savedHint}>Continue se cuidando. Voltamos amanhã para o próximo check-in.</Text>
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
           </View>
         </SafeAreaView>
       );
     }
+
+    // NEGATIVO: mensagem de acolhimento + botão de áudio (Plan 1+)
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.savedWrap}>
-          <Ionicons name="checkmark-circle" size={64} color={colors.lav4} />
-          <Text style={s.savedTit}>Check-in registrado!</Text>
+          <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
+            <Ionicons name="heart" size={40} color={colors.lav4} />
+          </View>
+          <Text style={s.savedTit}>Check-in registrado</Text>
           <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
-          {audioRec && (
+
+          {temPlano1 && audioRec && (
             <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
-              <Text style={s.recTag}>Recomendado para você</Text>
+              <Text style={s.recTag}>Áudio de acolhimento para você</Text>
               <View style={s.recRow}>
-                <Image source={lavSmall} style={{ width: 42, height: 52 }} resizeMode="contain" />
+                <View style={s.recThumb}>
+                  <Ionicons name="headset-outline" size={22} color={colors.lav4} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.recTit}>{audioRec.titulo}</Text>
                   <Text style={s.recSub}>Áudio · {audioRec.duracao}</Text>
                 </View>
                 <View style={s.playBtn}>
-                  <Ionicons name="play" size={14} color="white" />
+                  <Ionicons name="play" size={14} color="white" style={{ marginLeft: 2 }} />
                 </View>
               </View>
             </TouchableOpacity>
           )}
+
+          {!temPlano1 && (
+            <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
+              <Ionicons name="headset-outline" size={20} color={colors.lav4} />
+              <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.lav4} />
+            </TouchableOpacity>
+          )}
+
           <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
         </View>
       </SafeAreaView>
@@ -274,12 +296,17 @@ const s = StyleSheet.create({
   histDotHoje: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.lav4, borderWidth: 2, borderColor: colors.lav5 },
   histLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
   playBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
-  savedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  savedTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginTop: 12, marginBottom: 4 },
-  savedSub: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.tm, marginBottom: 24, textAlign: 'center', lineHeight: 20 },
-  recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2 },
-  recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav5, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  savedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  celebCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  savedTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginBottom: 8, textAlign: 'center' },
+  savedSub: { fontFamily: fonts.quote, fontSize: 16, fontStyle: 'italic', color: colors.tm, marginBottom: 8, textAlign: 'center', lineHeight: 24 },
+  savedHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', lineHeight: 18, marginBottom: 8 },
+  recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
+  recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
   recRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  recThumb: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
   recTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
   recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
+  upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
+  upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
 });

@@ -50,10 +50,9 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity style={s.logoutBtn} onPress={handleSair}>
             <Ionicons name="log-out-outline" size={18} color="#9b86bd" />
           </TouchableOpacity>
-          {/* Nome do app + coração */}
+          {/* Nome do app */}
           <View style={s.headerBottom}>
-            <Ionicons name="heart" size={16} color="#9b86bd" />
-            <Text style={s.appTitle}>o amor que fica</Text>
+            <Text style={s.appTitle}>Atravessia</Text>
           </View>
         </View>
 
@@ -108,25 +107,25 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* ===== PERFIL E CUIDADOS ===== */}
+          {/* ===== ACESSO RÁPIDO ===== */}
           <View style={s.sect}>
-            <Text style={s.sectTitle}>Perfil e cuidados</Text>
+            <Text style={s.sectTitle}>Acesso rápido</Text>
             <View style={s.perfilGrid}>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('DatasSensiveis')} activeOpacity={0.85}>
-                <Ionicons name="calendar-outline" size={20} color="#9b86bd" />
-                <Text style={s.perfilLbl}>Datas Sensíveis</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('RedeApoio')} activeOpacity={0.85}>
-                <Ionicons name="people-outline" size={20} color="#9b86bd" />
-                <Text style={s.perfilLbl}>Rede de Apoio</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Cartas')} activeOpacity={0.85}>
-                <Ionicons name="mail-outline" size={20} color="#9b86bd" />
-                <Text style={s.perfilLbl}>Cartas</Text>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Audios')} activeOpacity={0.85}>
+                <Ionicons name="headset-outline" size={20} color="#8B7AC0" />
+                <Text style={s.perfilLbl}>Conteúdos</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('PequenasVitorias')} activeOpacity={0.85}>
-                <Ionicons name="star-outline" size={20} color="#9b86bd" />
+                <Ionicons name="star-outline" size={20} color="#8B7AC0" />
                 <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Cartas')} activeOpacity={0.85}>
+                <Ionicons name="mail-outline" size={20} color="#8B7AC0" />
+                <Text style={s.perfilLbl}>Cartas</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Relatorios')} activeOpacity={0.85}>
+                <Ionicons name="bar-chart-outline" size={20} color="#8B7AC0" />
+                <Text style={s.perfilLbl}>Relatórios</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -144,17 +143,16 @@ export default function HomeScreen({ navigation }) {
         {[
           { name: 'Início', icon: 'home', active: true },
           { name: 'Conteúdos', icon: 'headset', screen: 'Audios' },
-          { name: 'Jornadas', icon: 'leaf', screen: 'Jornadas' },
-          { name: 'Memorial', icon: 'flame', screen: 'Memorial' },
-          { name: 'Mais', icon: 'menu', screen: 'Relatorios' },
+          { name: 'Vitórias', icon: 'star', screen: 'PequenasVitorias' },
+          { name: 'Relatórios', icon: 'bar-chart', screen: 'Relatorios' },
+          { name: 'Planos', icon: 'diamond', screen: 'Planos' },
         ].map(item => (
           <TouchableOpacity key={item.name} style={s.navItem}
             onPress={() => item.screen && navigation.navigate(item.screen)}>
             <Ionicons
               name={item.active ? item.icon : `${item.icon}-outline`}
               size={20}
-              color={item.active ? '#9b86bd' : '#8c8597'}
-              style={item.active ? { opacity: 1 } : {}}
+              color={item.active ? '#8B7AC0' : '#8c8597'}
             />
             <Text style={[s.navLbl, item.active && s.navLblActive]}>{item.name}</Text>
           </TouchableOpacity>
