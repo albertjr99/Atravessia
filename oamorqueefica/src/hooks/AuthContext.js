@@ -37,12 +37,13 @@ export function AuthProvider({ children }) {
     return () => { unsubAuth(); if (unsubPerfil) unsubPerfil(); };
   }, []);
 
-  const cadastrar = async ({ email, senha, nome, estado, perda, tempo, tipoLuto }) => {
+  const cadastrar = async ({ email, senha, nome, apelido, telefone, cidade, linkEmpresa }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, senha);
     const role = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : 'user';
     const perfilNovo = {
-      nome, email, estado, perda, tempo, tipoLuto,
-      plano: 1,
+      nome, apelido: apelido || '', telefone: telefone || '', cidade: cidade || '',
+      email, linkEmpresa: linkEmpresa ?? null,
+      plano: 0,
       role,
       criadoEm: serverTimestamp(),
     };
