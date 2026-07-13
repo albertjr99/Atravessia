@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert,
+  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
 } from 'react-native';
+
+const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
 import * as WebBrowser from 'expo-web-browser';
@@ -61,8 +63,11 @@ export default function PlanosScreen({ navigation }) {
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ScriptTitle size={24}>Planos</ScriptTitle>
-          <Text style={styles.sub}>Escolha o que faz mais sentido para você agora</Text>
+          <View style={{ flex: 1 }}>
+            <ScriptTitle size={24}>Planos</ScriptTitle>
+            <Text style={styles.sub}>Escolha o que faz mais sentido para você agora</Text>
+          </View>
+          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
         {planosAtivos.map((p, idx) => (
@@ -150,7 +155,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
+  headerIlustracao: { width: 80, height: 80, marginLeft: 8 },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
   planCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.md,

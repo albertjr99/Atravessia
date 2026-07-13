@@ -1,7 +1,9 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Image,
 } from 'react-native';
+
+const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { pequenasVitorias } from '../../data';
@@ -41,10 +43,13 @@ export default function PequenasVitoriasScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ScriptTitle size={22}>Cada passo importa</ScriptTitle>
-          <QuoteText style={{ marginTop: 8 }}>
-            "As grandes reconstruções começam em passos quase invisíveis."
-          </QuoteText>
+          <View style={{ flex: 1 }}>
+            <ScriptTitle size={22}>Cada passo importa</ScriptTitle>
+            <QuoteText style={{ marginTop: 8 }}>
+              "As grandes reconstruções começam em passos quase invisíveis."
+            </QuoteText>
+          </View>
+          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
         <View style={styles.grid}>
@@ -92,7 +97,8 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
+  headerIlustracao: { width: 80, height: 80, marginLeft: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

@@ -9,7 +9,7 @@ import { audios } from '../../data';
 import { ScriptTitle, PlanBadge } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-const ilustracao = require('../../../assets/images/audios_mulher.png');
+const ilustracao = require('../../../assets/images/il_audio_respiracao.png');
 
 const categorias = [
   { id: 'todos', label: 'Todos' },

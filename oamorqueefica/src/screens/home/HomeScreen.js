@@ -13,6 +13,8 @@ import { confirmar } from '../../utils/confirm';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
+const ilMulher = require('../../../assets/images/il_mulher_flores.png');
+const ilCoracao = require('../../../assets/images/il_coracao_ramos.png');
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
@@ -62,8 +64,13 @@ export default function HomeScreen({ navigation }) {
 
           {/* Saudação */}
           <View style={s.greetSect}>
-            <Text style={s.greetName}>{saudacao()}, {usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
-            <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.greetName}>{saudacao()}, {usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
+                <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
+              </View>
+              <Image source={ilMulher} style={s.greetIl} resizeMode="contain" />
+            </View>
           </View>
 
           {/* ===== FRASE DO DIA ===== */}
@@ -71,6 +78,7 @@ export default function HomeScreen({ navigation }) {
             <View style={s.fraseTagRow}>
               <Ionicons name="sunny-outline" size={13} color="#9b86bd" />
               <Text style={s.fraseTag}>Frase do dia</Text>
+              <Image source={ilCoracao} style={s.fraseIl} resizeMode="contain" />
             </View>
             <Text style={s.fraseTxt}>"{frases[fraseIdx].texto}"</Text>
             {frases[fraseIdx].autor ? <Text style={s.fraseAutor}>— {frases[fraseIdx].autor}</Text> : null}
@@ -213,6 +221,7 @@ const s = StyleSheet.create({
     fontFamily: 'Lato_400Regular',
     fontSize: 14, color: '#8c8597', marginTop: 4,
   },
+  greetIl: { width: 80, height: 80, marginLeft: 8 },
 
   // Frase
   fraseCard: {
@@ -231,6 +240,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 7,
     marginBottom: 12,
   },
+  fraseIl: { width: 32, height: 32, marginLeft: 'auto' },
   fraseTag: {
     fontFamily: 'Lato_700Bold', fontSize: 12,
     color: '#9b86bd', letterSpacing: 1, textTransform: 'uppercase',

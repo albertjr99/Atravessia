@@ -9,7 +9,7 @@ import { emocoes, audios } from '../../data';
 import { Button } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-const lavSmall = require('../../../assets/images/lavanda_small.png');
+const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
 export default function CheckInScreen({ navigation }) {
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario } = useApp();
@@ -120,8 +120,13 @@ export default function CheckInScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={s.headerBox}>
-          <Text style={s.headerQ}>Como você está se sentindo hoje?</Text>
-          <Text style={s.headerSub}>Sua resposta ajuda a te acolher e a receber conteúdos que fazem sentido para você.</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.headerQ}>Como você está se sentindo hoje?</Text>
+              <Text style={s.headerSub}>Sua resposta ajuda a te acolher e a receber conteúdos que fazem sentido para você.</Text>
+            </View>
+            <Image source={ilustracao} style={s.headerIlustracao} resizeMode="contain" />
+          </View>
         </View>
 
         {/* Grid de emoções */}
@@ -239,6 +244,7 @@ const s = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   headerBox: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  headerIlustracao: { width: 72, height: 72, marginLeft: 8, flexShrink: 0 },
   headerQ: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, marginBottom: 6 },
   headerSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 19 },
   emoGrid: {

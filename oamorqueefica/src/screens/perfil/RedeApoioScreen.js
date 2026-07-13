@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, TextInput, Modal,
+  SafeAreaView, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
+
+const ilustracao = require('../../../assets/images/il_rede_apoio.png');
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { vinculosRedeApoio } from '../../data';
@@ -54,7 +56,7 @@ export default function RedeApoioScreen({ navigation }) {
 
         {redeApoio.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="people-outline" size={36} color={colors.lav3} />
+            <Image source={ilustracao} style={styles.emptyIlustracao} resizeMode="contain" />
             <Text style={styles.emptyText}>Nenhum contato cadastrado ainda.</Text>
           </View>
         ) : (
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
   itemNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   itemVinculo: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: 8 },
+  emptyIlustracao: { width: 100, height: 100 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(74,63,85,0.35)', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xl },

@@ -9,6 +9,7 @@ import { Button, Disclaimer } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
+const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 
 function mensagemErro(code) {
   switch (code) {
@@ -81,6 +82,10 @@ export default function CadastroScreen({ navigation }) {
           <Image source={logo} style={styles.logo} resizeMode="contain" />
           <Text style={styles.appName}>Atravessia</Text>
           <Text style={styles.tagline}>Crie sua conta gratuita</Text>
+        </View>
+
+        <View style={styles.ilWrap}>
+          <Image source={ilustracao} style={styles.il} resizeMode="contain" />
         </View>
 
         <View style={styles.card}>
@@ -200,7 +205,9 @@ export default function CadastroScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  heroSection: { alignItems: 'center', paddingTop: 40, paddingBottom: 24 },
+  heroSection: { alignItems: 'center', paddingTop: 40, paddingBottom: 16 },
+  ilWrap: { alignItems: 'center', marginBottom: 16, marginTop: -4 },
+  il: { width: 180, height: 180 },
   logo: { width: 80, height: 80, marginBottom: 10 },
   appName: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 32, color: colors.lav6, letterSpacing: 0.5 },
   tagline: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 4 },
