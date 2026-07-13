@@ -669,12 +669,29 @@ export default function RelatoriosScreen({ navigation }) {
 
   const handleExportar = async () => {
     if (Platform.OS === 'web') {
-      Alert.alert('Exportar PDF', 'O download de PDF está disponível apenas no aplicativo mobile (iOS e Android).');
+      setExportando(true);
+      try {
+        const html = tab === 'mensal'
+          ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
+          : gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT });
+        const w = typeof window !== 'undefined' && window.open ? window.open('', '_blank') : null;
+        if (w) {
+          w.document.write(html);
+          w.document.close();
+          w.focus();
+          setTimeout(() => { w.print(); }, 400);
+        } else {
+          Alert.alert('PDF', 'Permita pop-ups neste site e tente novamente.');
+        }
+      } catch {
+        Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+      } finally {
+        setExportando(false);
+      }
       return;
     }
     setExportando(true);
     try {
-      // Dynamic require keeps expo-print fora do bundle web
       const Print = require('expo-print');
       const Sharing = require('expo-sharing');
       const html = tab === 'mensal'
@@ -687,7 +704,7 @@ export default function RelatoriosScreen({ navigation }) {
       } else {
         Alert.alert('PDF gerado', 'Arquivo salvo em: ' + uri);
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível gerar o PDF. Tente novamente.');
     } finally {
       setExportando(false);
@@ -726,7 +743,7 @@ export default function RelatoriosScreen({ navigation }) {
         <TouchableOpacity style={[s.tab, tab === 'anual' && s.tabSel]} onPress={() => setTab('anual')}>
           <Ionicons name={tab === 'anual' ? 'calendar' : 'calendar-outline'} size={13} color={tab === 'anual' ? colors.lav4 : colors.tl} style={{ marginRight: 4 }} />
           <Text style={[s.tabTxt, tab === 'anual' && s.tabTxtSel]}>Anual</Text>
-          {!temAcesso(3) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
+          {!temAcesso(1) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
         </TouchableOpacity>
       </View>
 
@@ -895,14 +912,14 @@ export default function RelatoriosScreen({ navigation }) {
         {/* ═══════════════════════════════════ RELATÓRIO ANUAL ═══════════════════ */}
         {tab === 'anual' && (
           <>
-            {!temAcesso(3) ? (
+            {!temAcesso(1) ? (
               <View style={s.lockedAnnual}>
                 <Ionicons name="bar-chart-outline" size={48} color={colors.lav3} />
                 <Text style={s.lockedAnnualTit}>Relatório Anual</Text>
                 <Text style={s.lockedAnnualDesc}>
                   Veja sua jornada emocional completa do ano — evolução por mês, meses mais intensos, distribuição por trimestre e muito mais.
                 </Text>
-                <Text style={s.lockedAnnualBadge}>Disponível em breve no Plano Evoluir</Text>
+                <Text style={s.lockedAnnualBadge}>Disponível no Plano Acolher</Text>
                 <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
                   <Text style={s.emptyBtnTxt}>Ver planos</Text>
                 </TouchableOpacity>
