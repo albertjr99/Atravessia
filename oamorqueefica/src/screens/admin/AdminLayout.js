@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Platform, Image,
-  ScrollView, Dimensions, SafeAreaView, StatusBar,
+  ScrollView, Dimensions, StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/AuthContext';
@@ -235,11 +236,11 @@ const sty = StyleSheet.create({
   // Mobile
   mobileHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
+    paddingHorizontal: spacing.md, paddingVertical: 14,
     backgroundColor: colors.card,
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  hamburger: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  hamburger: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   mobileLogo: { width: 36, height: 36, borderRadius: 10 },
   drawerContainer: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
