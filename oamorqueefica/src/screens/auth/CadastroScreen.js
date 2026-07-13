@@ -5,9 +5,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { ScriptTitle, Button, Disclaimer } from '../../components';
+import { Button, Disclaimer } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
+const logo = require('../../../assets/images/travessia_logo.png');
 const decoracaoFlores = require('../../../assets/images/decoracao_flores.png');
 
 function mensagemErro(code) {
@@ -94,12 +95,13 @@ export default function CadastroScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        <View style={styles.header}>
-          <ScriptTitle size={28}>Atravessia</ScriptTitle>
-          <Text style={styles.headerSub}>Crie sua conta gratuita</Text>
+        <View style={styles.heroSection}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.appName}>Atravessia</Text>
+          <Text style={styles.tagline}>Crie sua conta gratuita</Text>
         </View>
 
-        <View style={styles.section}>
+        <View style={styles.card}>
 
           {/* ── Campos obrigatórios ── */}
           <Text style={styles.fieldLabel}>Nome completo <Text style={styles.required}>*</Text></Text>
@@ -214,14 +216,28 @@ export default function CadastroScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md, alignItems: 'center' },
-  headerSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 4 },
-  section: { paddingHorizontal: spacing.lg },
+  heroSection: { alignItems: 'center', paddingTop: 40, paddingBottom: 24 },
+  logo: { width: 80, height: 80, marginBottom: 10 },
+  appName: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 32, color: colors.lav6, letterSpacing: 0.5 },
+  tagline: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 4 },
+  card: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: 24,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#6b5b7a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
   fieldLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 4, marginTop: spacing.sm },
   required: { color: colors.rose },
   optional: { color: colors.tl, fontSize: 11 },
   input: {
-    backgroundColor: colors.card, borderRadius: radius.md,
+    backgroundColor: colors.bg, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: spacing.md, paddingVertical: 12,
     fontFamily: fonts.body, fontSize: 13, color: colors.td,
