@@ -5,7 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, Video, ResizeMode } from 'expo-av';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { Disclaimer } from '../../components';
+import { Disclaimer, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 export default function AudioPlayerScreen({ route, navigation }) {
@@ -65,6 +65,7 @@ export default function AudioPlayerScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />

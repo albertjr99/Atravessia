@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { tiposDataSensivel } from '../../data';
-import { ScriptTitle, Button, Card } from '../../components';
+import { ScriptTitle, Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/il_datas_sensiveis.png');
@@ -19,6 +19,7 @@ export default function DatasSensiveisScreen({ navigation }) {
   if (!temAcesso(2)) {
     return (
       <SafeAreaView style={styles.safe}>
+        <LavandaBg />
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
           <Text style={styles.lockTitle}>Disponível no Plano 2</Text>
@@ -41,6 +42,7 @@ export default function DatasSensiveisScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
