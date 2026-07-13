@@ -13,12 +13,20 @@ const TIPOS = [
   { id: 'incentivo', label: 'Incentivo' },
   { id: 'live', label: 'Live / Evento' },
   { id: 'novidade', label: 'Novidade' },
+  { id: 'lembrete', label: 'Lembrete' },
+];
+
+const ALVOS = [
+  { id: 'todos', label: 'Todas as usuárias' },
+  { id: 'plano1', label: 'Somente Acolher (pago)' },
+  { id: 'gratis', label: 'Somente Perceber (grátis)' },
 ];
 
 export default function AdminNotificacoesScreen({ navigation }) {
   const [lista, setLista] = useState([]);
   const [texto, setTexto] = useState('');
   const [tipo, setTipo] = useState('incentivo');
+  const [alvo, setAlvo] = useState('todos');
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
@@ -35,7 +43,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
     setEnviando(true);
     try {
       await addDoc(collection(db, 'notificacoesEditoriais'), {
-        tipo, texto: texto.trim(), ativa: true, criadoEm: serverTimestamp(),
+        tipo, alvo, texto: texto.trim(), ativa: true, criadoEm: serverTimestamp(),
       });
       setTexto('');
     } catch (e) {
@@ -71,16 +79,26 @@ export default function AdminNotificacoesScreen({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          <Text style={styles.formLabel}>Destinatárias</Text>
+          <View style={styles.row}>
+            {ALVOS.map(a => (
+              <TouchableOpacity key={a.id} style={[styles.chip, alvo === a.id && styles.chipSel]} onPress={() => setAlvo(a.id)}>
+                <Text style={[styles.chipText, alvo === a.id && styles.chipTextSel]}>{a.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <Text style={styles.formLabel}>Mensagem</Text>
           <TextInput
             style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-            placeholder="Escreva a mensagem que todas as usuárias verão..."
+            placeholder="Escreva a mensagem que as usuárias verão..."
             placeholderTextColor={colors.tl}
             multiline
             value={texto}
             onChangeText={setTexto}
           />
-          <Button title={enviando ? 'Publicando...' : 'Publicar para todas'} onPress={handlePublicar} style={{ marginTop: spacing.md }} />
+          <Button title={enviando ? 'Publicando...' : 'Publicar notificação'} onPress={handlePublicar} style={{ marginTop: spacing.md }} />
         </Card>
 
         <Text style={styles.sectionTitle}>Publicadas</Text>
@@ -88,7 +106,14 @@ export default function AdminNotificacoesScreen({ navigation }) {
         {lista.map(n => (
           <Card key={n.id} style={styles.item}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.itemTipo}>{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</Text>
+              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+                <Text style={styles.itemTipo}>{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</Text>
+                {n.alvo && n.alvo !== 'todos' && (
+                  <Text style={[styles.itemTipo, { color: colors.sage }]}>
+                    {ALVOS.find(a => a.id === n.alvo)?.label || n.alvo}
+                  </Text>
+                )}
+              </View>
               <Text style={styles.itemTexto}>{n.texto}</Text>
             </View>
             <View style={{ alignItems: 'center', gap: 8 }}>
