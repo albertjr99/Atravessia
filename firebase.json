@@ -13,5 +13,8 @@
   ],
   "firestore": {
     "rules": "oamorqueefica/firestore.rules"
+  },
+  "storage": {
+    "rules": "oamorqueefica/storage.rules"
   }
 }
