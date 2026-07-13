@@ -27,6 +27,13 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita o acesso à galeria para enviar fotos e imagens."
+        }
+      ]
+    ]
   }
 }

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
@@ -17,22 +18,50 @@ export default function AdminPerfilScreen({ navigation }) {
   const [salvando, setSalvando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
 
-  const handleFotoUpload = () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Upload', 'O upload de foto está disponível apenas no portal web.\nNo celular, cole o link da imagem no campo abaixo.');
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const handleFotoUpload = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadando(true);
+        try {
+          const nomeArq = `perfil_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+          const fileRef = sRef(storage, `perfis/${nomeArq}`);
+          await uploadBytes(fileRef, file);
+          const url = await getDownloadURL(fileRef);
+          setPhotoURL(url);
+          Alert.alert('Foto carregada!', 'Clique em "Salvar" para aplicar a foto.');
+        } catch (err) {
+          Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+        } finally {
+          setUploadando(false);
+        }
+      };
+      document.body.appendChild(input);
+      input.click();
+      setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria nas configurações do app.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (result.canceled) return;
+      const uri = result.assets[0].uri;
       setUploadando(true);
       try {
-        const nomeArq = `perfil_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const nomeArq = `perfil_${Date.now()}.jpg`;
         const fileRef = sRef(storage, `perfis/${nomeArq}`);
-        await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, blob);
         const url = await getDownloadURL(fileRef);
         setPhotoURL(url);
         Alert.alert('Foto carregada!', 'Clique em "Salvar" para aplicar a foto.');
@@ -41,10 +70,7 @@ export default function AdminPerfilScreen({ navigation }) {
       } finally {
         setUploadando(false);
       }
-    };
-    document.body.appendChild(input);
-    input.click();
-    setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    }
   };
 
   const handleSalvar = async () => {
@@ -106,9 +132,6 @@ export default function AdminPerfilScreen({ navigation }) {
           )}
 
           <Text style={s.avatarHint}>Toque para fazer upload de uma foto</Text>
-          <Text style={[s.avatarHint, { color: colors.tl, fontSize: 10, marginTop: 2 }]}>
-            (apenas no portal web)
-          </Text>
         </Card>
 
         {/* Link da foto */}

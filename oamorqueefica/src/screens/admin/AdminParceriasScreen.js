@@ -11,6 +11,7 @@ import {
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
+import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 
@@ -34,24 +35,54 @@ export default function AdminParceriasScreen({ navigation }) {
     return unsub;
   }, []);
 
-  const handleUploadImagem = () => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Upload', 'O upload de imagens está disponível apenas no portal web.');
-      return;
-    }
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  const handleUploadImagem = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadando(true);
+        try {
+          const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
+          const { storage } = require('../../services/firebase');
+          const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+          const fileRef = sRef(storage, `parcerias/${nomeArq}`);
+          await uploadBytes(fileRef, file);
+          const url = await getDownloadURL(fileRef);
+          setImagemUrl(url);
+          Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
+        } catch (err) {
+          Alert.alert('Erro no upload', err?.code || err?.message || 'Tente novamente.');
+        } finally {
+          setUploadando(false);
+        }
+      };
+      document.body.appendChild(input);
+      input.click();
+      setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria nas configurações do app.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (result.canceled) return;
+      const uri = result.assets[0].uri;
       setUploadando(true);
       try {
         const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
         const { storage } = require('../../services/firebase');
-        const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const nomeArq = `parcerias_${Date.now()}.jpg`;
         const fileRef = sRef(storage, `parcerias/${nomeArq}`);
-        await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, blob);
         const url = await getDownloadURL(fileRef);
         setImagemUrl(url);
         Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
@@ -60,10 +91,7 @@ export default function AdminParceriasScreen({ navigation }) {
       } finally {
         setUploadando(false);
       }
-    };
-    document.body.appendChild(input);
-    input.click();
-    setTimeout(() => { if (document.body.contains(input)) document.body.removeChild(input); }, 5000);
+    }
   };
 
   const toggleCategoria = (cat) => {
