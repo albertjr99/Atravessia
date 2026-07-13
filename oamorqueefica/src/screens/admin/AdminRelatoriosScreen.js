@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
+  View, Text, ScrollView, StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collectionGroup, getDocs } from 'firebase/firestore';
@@ -8,6 +8,7 @@ import { db } from '../../services/firebase';
 import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, ProgressBar } from '../../components';
+import AdminLayout from './AdminLayout';
 
 export default function AdminRelatoriosScreen({ navigation }) {
   const [carregando, setCarregando] = useState(true);
@@ -42,16 +43,11 @@ export default function AdminRelatoriosScreen({ navigation }) {
   const ultimosDias = Object.entries(porDia).sort((a, b) => a[0].localeCompare(b[0])).slice(-7);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Relatórios gerais</Text>
-        <View style={{ width: 32 }} />
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+    <AdminLayout navigation={navigation} currentScreen="AdminRelatorios">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <Text style={styles.pageTitle}>Relatórios</Text>
+        <Text style={styles.pageSub}>Dados de engajamento e uso do aplicativo.</Text>
+
         <Card style={{ alignItems: 'center', marginBottom: spacing.lg }}>
           <Text style={styles.totalNumber}>{carregando ? '—' : totalCheckins}</Text>
           <Text style={styles.totalLabel}>check-ins registrados (todas as usuárias)</Text>
@@ -87,15 +83,14 @@ export default function AdminRelatoriosScreen({ navigation }) {
           {ultimosDias.length === 0 && <Text style={styles.emptyText}>Sem dados ainda.</Text>}
         </Card>
       </ScrollView>
-    </SafeAreaView>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  scroll: { padding: spacing.lg, paddingBottom: 40 },
+  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
+  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
   totalNumber: { fontFamily: fonts.bodyBold, fontSize: 32, color: colors.lav5 },
   totalLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 4, textAlign: 'center' },
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },

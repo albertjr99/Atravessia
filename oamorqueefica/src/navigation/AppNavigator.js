@@ -22,6 +22,7 @@ import AdminConteudosScreen from '../screens/admin/AdminConteudosScreen';
 import AdminNotificacoesScreen from '../screens/admin/AdminNotificacoesScreen';
 import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
+import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { colors } from '../theme';
@@ -63,6 +64,7 @@ function AdminStack() {
       <Stack.Screen name="AdminNotificacoes" component={AdminNotificacoesScreen} />
       <Stack.Screen name="AdminUsuarias" component={AdminUsuariasScreen} />
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
+      <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
     </Stack.Navigator>
   );
 }

@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
+const logo = require('../../../assets/images/travessia_logo.png');
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
@@ -50,8 +51,9 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity style={s.logoutBtn} onPress={handleSair}>
             <Ionicons name="log-out-outline" size={18} color="#9b86bd" />
           </TouchableOpacity>
-          {/* Nome do app */}
+          {/* Logo + nome do app */}
           <View style={s.headerBottom}>
+            <Image source={logo} style={s.headerLogo} resizeMode="contain" />
             <Text style={s.appTitle}>Atravessia</Text>
           </View>
         </View>
@@ -188,8 +190,9 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,253,249,0.8)',
     alignItems: 'center', justifyContent: 'center',
   },
+  headerLogo: { width: 44, height: 44, marginBottom: 2 },
   headerBottom: {
-    position: 'absolute', bottom: 12, left: 0, right: 0,
+    position: 'absolute', bottom: 10, left: 0, right: 0,
     alignItems: 'center',
   },
   appTitle: {

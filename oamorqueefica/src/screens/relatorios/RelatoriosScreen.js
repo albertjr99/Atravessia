@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform,
+  StyleSheet, SafeAreaView, StatusBar, Dimensions, Alert, Platform, Image,
 } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+const logo = require('../../../assets/images/travessia_logo.png');
 const CHART_W = SCREEN_W - 48;
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -754,6 +755,7 @@ export default function RelatoriosScreen({ navigation }) {
           <>
             {/* Cabeçalho */}
             <View style={s.reportHeader}>
+              <Image source={logo} style={s.reportLogo} resizeMode="contain" />
               <Text style={s.reportTitle}>RELATÓRIO MENSAL</Text>
               <View style={s.reportMes}>
                 <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
@@ -928,6 +930,7 @@ export default function RelatoriosScreen({ navigation }) {
               <>
                 {/* Cabeçalho anual */}
                 <View style={s.reportHeader}>
+                  <Image source={logo} style={s.reportLogo} resizeMode="contain" />
                   <Text style={s.reportTitle}>RELATÓRIO ANUAL</Text>
                   <View style={s.reportMes}>
                     <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
@@ -1064,6 +1067,7 @@ const s = StyleSheet.create({
   tabTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
   tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav4 },
 
+  reportLogo: { width: 48, height: 48, marginBottom: 8 },
   reportHeader: { alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   reportTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.lav6, letterSpacing: 1 },
   reportMes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
