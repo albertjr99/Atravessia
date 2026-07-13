@@ -80,7 +80,7 @@ export default function HomeScreen({ navigation }) {
           <View style={s.sect}>
             <Text style={s.sectTitle}>Como estou me sentindo hoje?</Text>
             <View style={s.emoGrid}>
-              {emocoes.slice(0, 5).map(e => (
+              {emocoes.filter(e => e.positiva).map(e => (
                 <TouchableOpacity key={e.id} style={s.emoCard} onPress={() => navigation.navigate('CheckIn')} activeOpacity={0.8}>
                   <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
                     <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
