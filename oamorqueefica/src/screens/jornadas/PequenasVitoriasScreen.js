@@ -1,7 +1,8 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';

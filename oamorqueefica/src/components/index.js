@@ -24,12 +24,12 @@ export function LavandaBg() {
 
 const bgSty = StyleSheet.create({
   container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
-  topRight: { position: 'absolute', top: -10, right: -10, width: 170, height: 170, opacity: 0.32 },
-  bottomLeft: { position: 'absolute', bottom: 40, left: -10, width: 150, height: 150, opacity: 0.30 },
-  topLeft: { position: 'absolute', top: 60, left: -15, width: 120, height: 120, opacity: 0.22 },
-  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 120, height: 120, opacity: 0.26 },
-  centerLeft: { position: 'absolute', top: '38%', left: -20, width: 100, height: 100, opacity: 0.18 },
-  centerRight: { position: 'absolute', top: '55%', right: -10, width: 90, height: 90, opacity: 0.22 },
+  topRight: { position: 'absolute', top: -10, right: -10, width: 170, height: 170, opacity: 0.55, tintColor: '#B8A6C9' },
+  bottomLeft: { position: 'absolute', bottom: 40, left: -10, width: 150, height: 150, opacity: 0.50, tintColor: '#B8A6C9' },
+  topLeft: { position: 'absolute', top: 60, left: -15, width: 120, height: 120, opacity: 0.42, tintColor: '#8BAF9A' },
+  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 120, height: 120, opacity: 0.48, tintColor: '#E8A898' },
+  centerLeft: { position: 'absolute', top: '38%', left: -20, width: 100, height: 100, opacity: 0.38, tintColor: '#B8A6C9' },
+  centerRight: { position: 'absolute', top: '55%', right: -10, width: 90, height: 90, opacity: 0.40, tintColor: '#B8A6C9' },
 });
 
 export function Card({ children, style, onPress }) {

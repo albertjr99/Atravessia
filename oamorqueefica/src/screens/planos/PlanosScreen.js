@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar, Alert, Image,
+  StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';

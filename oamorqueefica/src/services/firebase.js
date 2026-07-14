@@ -21,5 +21,5 @@ export const auth = Platform.OS === 'web'
 
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
-export const storage = getStorage(app);
+export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
 export default app;

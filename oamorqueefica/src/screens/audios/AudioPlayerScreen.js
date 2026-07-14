@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, Video, ResizeMode } from 'expo-av';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, TextInput, Modal, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_rede_apoio.png');
 import { Ionicons } from '@expo/vector-icons';
