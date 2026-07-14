@@ -52,7 +52,7 @@ export default function AudiosScreen({ navigation }) {
     categoria: c.grupo,
     duracao: '',
     descricao: '',
-    plano: PLANO_POR_GRUPO[c.grupo] || 1,
+    plano: typeof c.plano === 'number' ? c.plano : (PLANO_POR_GRUPO[c.grupo] || 1),
     tipo: c.tipo,
     url: c.url,
   }));

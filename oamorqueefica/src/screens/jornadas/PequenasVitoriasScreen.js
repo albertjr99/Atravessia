@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,6 +14,8 @@ import { hojeStrBR, formatDataBR } from '../../utils/date';
 
 export default function PequenasVitoriasScreen({ navigation }) {
   const { vitorias, adicionarVitoria, temAcesso } = useApp();
+  const [textoCustom, setTextoCustom] = useState('');
+  const [mostraInputCustom, setMostraInputCustom] = useState(false);
 
   if (!temAcesso(1)) {
     return (
@@ -32,6 +34,16 @@ export default function PequenasVitoriasScreen({ navigation }) {
   }
 
   const registradosHoje = vitorias.filter(v => v.data?.slice(0, 10) === hojeStrBR()).map(v => v.label);
+
+  const handleAdicionarCustom = () => {
+    const label = textoCustom.trim();
+    if (!label) return;
+    if (!registradosHoje.includes(label)) {
+      adicionarVitoria({ label });
+    }
+    setTextoCustom('');
+    setMostraInputCustom(false);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -71,6 +83,40 @@ export default function PequenasVitoriasScreen({ navigation }) {
               </TouchableOpacity>
             );
           })}
+
+          {/* Custom victory */}
+          {mostraInputCustom ? (
+            <View style={styles.customRow}>
+              <TextInput
+                style={styles.customInput}
+                placeholder="Minha conquista..."
+                placeholderTextColor={colors.tl}
+                value={textoCustom}
+                onChangeText={setTextoCustom}
+                autoFocus
+                onSubmitEditing={handleAdicionarCustom}
+                returnKeyType="done"
+              />
+              <TouchableOpacity onPress={handleAdicionarCustom} style={styles.customBtnOk}>
+                <Ionicons name="checkmark" size={16} color="white" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { setMostraInputCustom(false); setTextoCustom(''); }}
+                style={styles.customBtnCancel}
+              >
+                <Ionicons name="close" size={16} color={colors.tl} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.chip, styles.chipCustom]}
+              onPress={() => setMostraInputCustom(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={colors.lav5} />
+              <Text style={[styles.chipText, { color: colors.lav5 }]}>Personalizar</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -111,7 +157,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8, paddingHorizontal: 12,
   },
   chipFeito: { backgroundColor: colors.sage + '30', borderColor: colors.sage },
+  chipCustom: { borderStyle: 'dashed', borderColor: colors.lav3, backgroundColor: colors.lav1 },
   chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.td },
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexBasis: '100%' },
+  customInput: {
+    flex: 1, backgroundColor: colors.card, borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.lav3,
+    paddingVertical: 8, paddingHorizontal: 14,
+    fontFamily: fonts.body, fontSize: 12, color: colors.td,
+  },
+  customBtnOk: {
+    backgroundColor: colors.lav4, borderRadius: radius.full,
+    width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
+  },
+  customBtnCancel: {
+    backgroundColor: colors.bg, borderRadius: radius.full,
+    width: 32, height: 32, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border,
+  },
   section: { paddingHorizontal: spacing.lg },
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', paddingVertical: spacing.lg },
