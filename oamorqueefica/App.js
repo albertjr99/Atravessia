@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { Lato_300Light, Lato_400Regular, Lato_700Bold } from '@expo-google-fonts/lato';
 import { PlayfairDisplay_400Regular, PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
@@ -30,10 +31,12 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppNavigator />
-      </AppProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppProvider>
+          <AppNavigator />
+        </AppProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
