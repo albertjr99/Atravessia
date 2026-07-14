@@ -228,6 +228,141 @@ const BOTANICA_WATERMARK = `
   </svg>
 </div>`;
 
+function gerarInsightsMensais(mesal, diasPassados) {
+  if (mesal.total === 0) return [];
+  const insights = [];
+  const pctDias = diasPassados > 0 ? Math.round((mesal.com / diasPassados) * 100) : 0;
+  const avgInt = parseFloat(mesal.avgInt) || 0;
+  const emoObj = getEmoObj(mesal.dominante);
+
+  if (pctDias >= 80) {
+    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Constância admirável', texto: `Você registrou ${mesal.com} de ${diasPassados} dias deste mês (${pctDias}%). Esse comprometimento com o autoconhecimento é um ato genuíno de cuidado consigo mesm@.` });
+  } else if (pctDias >= 50) {
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Boa frequência de registros', texto: `Você registrou ${mesal.com} de ${diasPassados} dias passados (${pctDias}%). Tente incluir o check-in nos dias sem registro para uma análise ainda mais completa.` });
+  } else if (mesal.com > 0) {
+    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Continue registrando', texto: `Você registrou ${mesal.com} dia(s) este mês. Cada check-in, mesmo nos dias difíceis, é uma forma de cuidado próprio. Tente tornar esse hábito parte da rotina.` });
+  }
+
+  if (avgInt >= 4) {
+    insights.push({ tipo: 'atencao', icone: '🌊', titulo: 'Mês emocionalmente intenso', texto: `A intensidade média de ${mesal.avgInt} (escala 1–5) indica um período desafiador. Buscar apoio de pessoas próximas ou de um profissional é sempre um ato de coragem.` });
+  } else if (avgInt >= 2.5) {
+    insights.push({ tipo: 'neutro', icone: '🌿', titulo: 'Intensidade equilibrada', texto: `A intensidade média foi de ${mesal.avgInt} — um nível moderado. Você está processando suas emoções de forma constante ao longo dos dias.` });
+  } else if (avgInt > 0) {
+    insights.push({ tipo: 'positivo', icone: '☀️', titulo: 'Mês relativamente leve', texto: `A intensidade média foi de ${mesal.avgInt} — um indicativo de um período mais tranquilo. Aproveite esses momentos para fortalecer suas bases de bem-estar.` });
+  }
+
+  if (emoObj) {
+    if (emoObj.positiva) {
+      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} em destaque`, texto: `${emoObj.label} foi a emoção mais presente este mês. Identificar e acolher sentimentos positivos é parte essencial da jornada de cura.` });
+    } else {
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando a ${emoObj.label.toLowerCase()}`, texto: `${emoObj.label} foi sua emoção mais frequente este mês. Sentir isso é natural no processo de luto — nomear o que você sente é o primeiro passo para atravessá-lo.` });
+    }
+  }
+
+  if (mesal.sorted.length >= 5) {
+    insights.push({ tipo: 'neutro', icone: '🎨', titulo: 'Alta consciência emocional', texto: `Você identificou ${mesal.sorted.length} emoções diferentes este mês. Essa riqueza de percepção mostra que está desenvolvendo um olhar mais atento para o que sente.` });
+  }
+
+  return insights;
+}
+
+function gerarInsightsAnuais(anual) {
+  if (anual.total === 0) return [];
+  const insights = [];
+  const dominante = anual.sorted[0]?.[0];
+  const emoObj = getEmoObj(dominante);
+
+  if (anual.consistencia >= 70) {
+    insights.push({ tipo: 'positivo', icone: '🏆', titulo: 'Constância ao longo do ano', texto: `Você registrou ${anual.uniqueDays} dias únicos — ${anual.consistencia}% de constância anual. Esse comprometimento ao longo de meses inteiros é extraordinário.` });
+  } else if (anual.consistencia >= 40) {
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Presença ao longo do ano', texto: `Você manteve registros em ${anual.uniqueDays} dias no ano (${anual.consistencia}% de constância). Cada período registrado conta uma parte importante da sua jornada.` });
+  } else {
+    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Construa o hábito em doses', texto: `Você fez ${anual.total} check-ins este ano. No próximo período, tente pelo menos uma vez por semana — pequenos hábitos constantes constroem uma memória emocional muito valiosa.` });
+  }
+
+  if (anual.maisLeves.length > 0) {
+    const leve = anual.maisLeves[0];
+    insights.push({ tipo: 'positivo', icone: '🌸', titulo: `${MONTH_SHORT[leve.m]} — seu mês mais leve`, texto: `${MONTH_SHORT[leve.m]} teve a menor intensidade média do ano (${leve.v.toFixed(1)}). Esses períodos mostram que é possível atravessar e encontrar leveza mesmo dentro do luto.` });
+  }
+
+  if (anual.maisIntens.length > 0) {
+    const intens = anual.maisIntens[0];
+    insights.push({ tipo: 'atencao', icone: '🌊', titulo: `${MONTH_SHORT[intens.m]} — período de maior intensidade`, texto: `${MONTH_SHORT[intens.m]} foi o mês mais intenso emocionalmente (média ${intens.v.toFixed(1)}). Olhar para esses momentos nos ajuda a entender o que precisa de mais atenção e cuidado.` });
+  }
+
+  if (emoObj) {
+    if (emoObj.positiva) {
+      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} marcou seu ano`, texto: `${emoObj.label} foi a emoção mais registrada no ano. Que ela continue sendo parte da sua jornada de cura.` });
+    } else {
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Um ano atravessando a ${emoObj.label.toLowerCase()}`, texto: `${emoObj.label} foi sua emoção mais frequente do ano. Atravessar um ano inteiro com essa emoção presente exige uma coragem enorme — e você chegou até aqui.` });
+    }
+  }
+
+  if (anual.total >= 100) {
+    insights.push({ tipo: 'positivo', icone: '✨', titulo: `${anual.total} registros: um mapa emocional rico`, texto: `Mais de 100 check-ins neste ano! Seus dados formam um mapa detalhado de como você se sentiu ao longo dos meses — isso é autoconhecimento em ação.` });
+  }
+
+  return insights;
+}
+
+function gerarInsightsPeriodo(rangeData, diasPeriodo) {
+  if (!rangeData || rangeData.total === 0) return [];
+  const insights = [];
+  const avgInt = parseFloat(rangeData.avgInt) || 0;
+  const emoObj = getEmoObj(rangeData.dominante);
+  const pctDias = diasPeriodo > 0 ? Math.round((rangeData.uniqueDays / diasPeriodo) * 100) : 0;
+
+  if (pctDias >= 70) {
+    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Alta frequência no período', texto: `Você registrou ${rangeData.uniqueDays} de ${diasPeriodo} dias do período (${pctDias}%). Essa frequência fornece uma análise consistente da sua jornada emocional.` });
+  } else {
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Seus registros no período', texto: `Você fez ${rangeData.total} check-ins em ${rangeData.uniqueDays} dias dentro do período selecionado. Cada registro contribui para a sua análise emocional.` });
+  }
+
+  if (avgInt >= 4) {
+    insights.push({ tipo: 'atencao', icone: '🌊', titulo: 'Período emocionalmente intenso', texto: `A intensidade média de ${rangeData.avgInt} indica um período desafiador. Cuidar de si com o apoio de pessoas de confiança ou de um profissional é sempre válido.` });
+  } else if (avgInt > 0) {
+    insights.push({ tipo: 'neutro', icone: '🌿', titulo: `Intensidade no período: ${rangeData.avgInt}`, texto: `A intensidade média foi de ${rangeData.avgInt} (escala 1–5) — ${avgInt >= 3 ? 'um nível moderado que pede atenção e autocuidado' : 'um período relativamente equilibrado emocionalmente'}.` });
+  }
+
+  if (emoObj) {
+    if (emoObj.positiva) {
+      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} predominou`, texto: `${emoObj.label} foi a emoção mais registrada neste período. Identificar sentimentos positivos é parte fundamental da jornada de cura.` });
+    } else {
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `${emoObj.label} em destaque`, texto: `${emoObj.label} foi a emoção mais frequente no período. Nomear e acolher esse sentimento é um ato de coragem e de autoconhecimento.` });
+    }
+  }
+
+  return insights;
+}
+
+function renderInsightsHTML(insights) {
+  if (!insights || !insights.length) return '';
+  const corMap = {
+    positivo: { bg: '#EDF7EE', border: '#7A9E7E', text: '#2D5A3D' },
+    neutro: { bg: '#F0EDF8', border: '#8B7AC0', text: '#4A3D8A' },
+    atencao: { bg: '#FFF5E6', border: '#E6A23C', text: '#7A5C14' },
+    dica: { bg: '#E8F4FD', border: '#5BAFD6', text: '#1F5C7A' },
+    acolhimento: { bg: '#FDF0F5', border: '#D4A8B5', text: '#7A3A5C' },
+  };
+  const cards = insights.map(ins => {
+    const cor = corMap[ins.tipo] || corMap.neutro;
+    return `<div style="background:${cor.bg};border:1px solid ${cor.border}77;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
+      <div style="font-size:18px;flex-shrink:0;line-height:1.4">${ins.icone}</div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:${cor.text};margin-bottom:3px">${ins.titulo}</div>
+        <div style="font-size:11px;color:#555;line-height:1.6">${ins.texto}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:16px;margin-bottom:16px;page-break-inside:avoid">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:3px;height:18px;background:#8B7AC0;border-radius:2px;flex-shrink:0"></div>
+      <span style="font-size:13px;font-weight:700;color:#4a4453">Interpretações e insights</span>
+    </div>
+    ${cards}
+  </div>`;
+}
+
 function gerarDonutSVG(data, size = 120, thickness = 22) {
   const tot = data.reduce((s, d) => s + d.value, 0) || 1;
   const r = (size - thickness) / 2;
@@ -293,6 +428,8 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
   const dataStr = `${MONTH_NAMES[month].toUpperCase()}/${year}`;
   const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const nome = usuario?.apelido || usuario?.nome || 'você';
+  const diasPassados = mesal.com + mesal.semRegistro;
+  const insights = gerarInsightsMensais(mesal, diasPassados);
   const donutSVG = mesal.total > 0 ? gerarDonutSVG(mesal.donut, 130, 24) : '';
   const legendaEmocoes = mesal.sorted.map(([id, v], i) => {
     const emo = getEmoObj(id);
@@ -449,6 +586,8 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
     <div class="msg-icon">💜</div>
     <p class="msg-text">${msgEmocao(mesal.dominante)}</p>
   </div>
+
+  ${renderInsightsHTML(insights)}
   `}
 
   <div class="footer">
@@ -463,6 +602,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
 function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
   const nome = usuario?.apelido || usuario?.nome || 'você';
   const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const insights = gerarInsightsAnuais(anual);
   const donutSVG = anual.total > 0 ? gerarDonutSVG(anual.donut, 130, 24) : '';
   const legendaEmocoes = anual.sorted.map(([id, v], i) => {
     const emo = getEmoObj(id);
@@ -634,6 +774,8 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
     <p class="msg-text">Você atravessou altos e baixos, dias leves e dias desafiadores. Cada emoção registrada mostra sua coragem de olhar para dentro. Que o próximo ano seja cheio de leveza, autoconhecimento e cuidado com você.</p>
   </div>
 
+  ${renderInsightsHTML(insights)}
+
   <div class="footer">
     <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Siga se cuidando. Você vale! 💜</div>
@@ -646,6 +788,12 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   if (!rangeData) return '';
   const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const [diI, meI, anoI] = (rangeInicio || '').split('/').map(Number);
+  const [diF, meF, anoF] = (rangeFim || '').split('/').map(Number);
+  const dStart = new Date(anoI, meI - 1, diI);
+  const dEnd = new Date(anoF, meF - 1, diF);
+  const diasPeriodo = (!isNaN(dStart) && !isNaN(dEnd)) ? Math.round((dEnd - dStart) / 86400000) + 1 : 0;
+  const insights = gerarInsightsPeriodo(rangeData, diasPeriodo);
   const donutSVG = rangeData.total > 0 ? gerarDonutSVG(rangeData.donut, 130, 24) : '';
   const legendaEmocoes = rangeData.sorted.map(([id, v], i) => {
     const emo = getEmoObj(id);
@@ -752,6 +900,8 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   <div class="msg-card">
     <p class="msg-text">Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando. 💜</p>
   </div>
+
+  ${renderInsightsHTML(insights)}
 
   <div class="footer">
     <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
