@@ -1,23 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Linking,
+  StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { httpsCallable } from 'firebase/functions';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
+import { functions } from '../../services/firebase';
 
-// Substitua estas URLs pelos links de pagamento do Stripe criados no painel
-const STRIPE_LINKS = {
-  plano1: 'https://buy.stripe.com/CONFIGURAR_PLANO1',
-  plano2: 'https://buy.stripe.com/CONFIGURAR_PLANO2',
-  plano3: 'https://buy.stripe.com/CONFIGURAR_PLANO3',
-};
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -918,6 +915,7 @@ export default function RelatoriosScreen({ navigation }) {
   const { perfil } = useAuth();
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
+  const [comprando, setComprando] = useState(false);
   const [rangeInicio, setRangeInicio] = useState('');
   const [rangeFim, setRangeFim] = useState('');
   const [rangeData, setRangeData] = useState(null);
@@ -1000,6 +998,19 @@ export default function RelatoriosScreen({ navigation }) {
     if (nums.length <= 2) return nums;
     if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
     return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4, 8)}`;
+  };
+
+  const handleDesbloquear = async () => {
+    setComprando(true);
+    try {
+      const criarCheckout = httpsCallable(functions, 'criarCheckoutPeriodoUnlocked');
+      const { data } = await criarCheckout({});
+      await WebBrowser.openBrowserAsync(data.url);
+    } catch (e) {
+      Alert.alert('Não foi possível abrir o checkout', e.message || 'Tente novamente em alguns instantes.');
+    } finally {
+      setComprando(false);
+    }
   };
 
   const handleGerarRange = () => {
@@ -1444,9 +1455,9 @@ export default function RelatoriosScreen({ navigation }) {
                     {(() => {
                       const plano = perfil?.plano ?? usuario?.plano ?? 0;
                       const opcoes = {
-                        1: { preco: 'R$ 9,90', link: STRIPE_LINKS.plano1, cor: colors.rose },
-                        2: { preco: 'R$ 6,90', link: STRIPE_LINKS.plano2, cor: colors.lav4 },
-                        3: { preco: 'R$ 3,90', link: STRIPE_LINKS.plano3, cor: colors.sage },
+                        1: { preco: 'R$ 9,90', cor: colors.rose },
+                        2: { preco: 'R$ 6,90', cor: colors.lav4 },
+                        3: { preco: 'R$ 3,90', cor: colors.sage },
                       };
                       const opcao = opcoes[plano];
                       return opcao ? (
@@ -1457,17 +1468,14 @@ export default function RelatoriosScreen({ navigation }) {
                             <Text style={s.stripePriceSub}>pagamento único — acesso vitalício</Text>
                           </View>
                           <TouchableOpacity
-                            style={[s.stripeBtn, { backgroundColor: opcao.cor }]}
-                            onPress={() => {
-                              if (Platform.OS === 'web') {
-                                window.open(opcao.link, '_blank');
-                              } else {
-                                Linking.openURL(opcao.link).catch(() => Alert.alert('', 'Não foi possível abrir o link de pagamento.'));
-                              }
-                            }}
+                            style={[s.stripeBtn, { backgroundColor: opcao.cor }, comprando && { opacity: 0.6 }]}
+                            onPress={handleDesbloquear}
+                            disabled={comprando}
                           >
                             <Ionicons name="card-outline" size={16} color="white" />
-                            <Text style={s.stripeBtnTxt}>Desbloquear por {opcao.preco}</Text>
+                            <Text style={s.stripeBtnTxt}>
+                              {comprando ? 'Abrindo checkout...' : `Desbloquear por ${opcao.preco}`}
+                            </Text>
                           </TouchableOpacity>
                           <Text style={s.stripeHint}>
                             Após o pagamento, volte aqui. Seu acesso será liberado automaticamente.
