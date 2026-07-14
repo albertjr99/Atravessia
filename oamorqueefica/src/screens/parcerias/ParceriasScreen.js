@@ -1,8 +1,8 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, Image, Linking, Alert, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Linking, Alert, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';

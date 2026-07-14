@@ -33,6 +33,12 @@
         {
           "photosPermission": "Permita o acesso à galeria para enviar fotos e imagens."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permita o uso do Face ID para entrar no app."
+        }
       ]
     ]
   }
