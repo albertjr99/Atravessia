@@ -50,9 +50,16 @@ const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 
 // Preços em centavos (BRL), espelhando src/data/index.js -> planos
 const PLANOS = {
-  1: { nome: 'O Amor que Fica — Plano 1 (Acolher)', valor: 2990 },
-  2: { nome: 'O Amor que Fica — Plano 2 (Compreender)', valor: 4990 },
-  3: { nome: 'O Amor que Fica — Plano 3 (Evoluir)', valor: 8990 },
+  1: { nome: 'Atravessia — Plano Acolher', valor: 2490 },
+  2: { nome: 'Atravessia — Plano Compreender', valor: 4990 },
+  3: { nome: 'Atravessia — Plano Evoluir', valor: 8990 },
+};
+
+// Preço do desbloqueio vitalício do Relatório por Período (varia por plano ativo)
+const PERIODO_PRECOS = {
+  1: { valor: 990,  label: 'R$ 9,90' },
+  2: { valor: 690,  label: 'R$ 6,90' },
+  3: { valor: 390,  label: 'R$ 3,90' },
 };
 
 async function getOrCreateCustomer(stripe, uid, userData) {
@@ -106,6 +113,50 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   return { url: session.url };
 });
 
+exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Faça login para continuar.');
+
+  const userRef = db.collection('usuarios').doc(uid);
+  const userSnap = await userRef.get();
+  const userData = userSnap.data() || {};
+
+  if (userData.periodoUnlocked) {
+    throw new HttpsError('already-exists', 'Você já tem acesso ao Relatório por Período.');
+  }
+
+  const planoId = Number(userData.plano ?? 0);
+  const opcao = PERIODO_PRECOS[planoId];
+  if (!opcao) {
+    throw new HttpsError('failed-precondition', 'Assine um plano primeiro para desbloquear o Relatório por Período.');
+  }
+
+  const stripe = Stripe(STRIPE_SECRET_KEY.value());
+  const customerId = await getOrCreateCustomer(stripe, uid, userData);
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer: customerId,
+    locale: 'pt-BR',
+    line_items: [{
+      price_data: {
+        currency: 'brl',
+        product_data: { name: 'Relatório por Período — Atravessia (acesso vitalício)' },
+        unit_amount: opcao.valor,
+      },
+      quantity: 1,
+    }],
+    success_url: request.data?.successUrl || 'https://oamorquefica.app/checkout-sucesso',
+    cancel_url: request.data?.cancelUrl || 'https://oamorquefica.app/checkout-cancelado',
+    metadata: { uid, tipo: 'periodo_unlock' },
+    custom_text: {
+      submit: { message: 'Acesso vitalício — pague uma única vez.' },
+    },
+  });
+
+  return { url: session.url };
+});
+
 exports.cancelarAssinatura = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login.');
@@ -142,10 +193,17 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
-      await definirPlano(session.metadata?.uid, Number(session.metadata?.planoId), {
-        stripeSubscriptionId: session.subscription,
-        stripeCustomerId: session.customer,
-      });
+      if (session.metadata?.tipo === 'periodo_unlock') {
+        const uid = session.metadata?.uid;
+        if (uid) {
+          await db.collection('usuarios').doc(uid).set({ periodoUnlocked: true }, { merge: true });
+        }
+      } else {
+        await definirPlano(session.metadata?.uid, Number(session.metadata?.planoId), {
+          stripeSubscriptionId: session.subscription,
+          stripeCustomerId: session.customer,
+        });
+      }
       break;
     }
     case 'customer.subscription.updated': {
