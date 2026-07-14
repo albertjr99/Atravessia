@@ -146,6 +146,18 @@ export default function HomeScreen({ navigation }) {
                 <Text style={s.perfilLbl}>Relatórios</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={s.vidaBtn} onPress={() => navigation.navigate('Parcerias')} activeOpacity={0.88}>
+              <View style={s.vidaBtnInner}>
+                <View style={s.vidaIconCircle}>
+                  <Ionicons name="gift-outline" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.vidaBtnTxt}>Experimente a vida</Text>
+                  <Text style={s.vidaBtnSub}>Parcerias e benefícios exclusivos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* ===== PARCERIAS ===== */}
@@ -345,6 +357,30 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
   },
   perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 12, color: '#4a4453', textAlign: 'center' },
+
+  // Experimente a vida
+  vidaBtn: {
+    marginTop: 10,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#5C3FA0',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  vidaBtnInner: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 18, paddingHorizontal: 18,
+    backgroundColor: '#7B5EA7',
+  },
+  vidaIconCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#fff' },
+  vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
 
   // Check-in btn
   checkinBtn: {

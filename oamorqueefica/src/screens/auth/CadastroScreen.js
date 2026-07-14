@@ -10,7 +10,7 @@ import { Button, Disclaimer, LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
-const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
+const headerImg = require('../../../assets/images/header-lavender.jpg');
 
 function mensagemErro(code) {
   switch (code) {
@@ -76,18 +76,18 @@ export default function CadastroScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <StatusBar barStyle="light-content" backgroundColor="#4a4453" />
       <LavandaBg />
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
 
-        <View style={styles.heroSection}>
-          <Image source={logo} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.appName}>Atravessia</Text>
-          <Text style={styles.tagline}>Crie sua conta gratuita</Text>
-        </View>
-
-        <View style={styles.ilWrap}>
-          <Image source={ilustracao} style={styles.il} resizeMode="contain" />
+        <View style={styles.heroWrap}>
+          <Image source={headerImg} style={styles.heroImg} resizeMode="cover" />
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Image source={logo} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.appName}>Atravessia</Text>
+            <Text style={styles.tagline}>Crie sua conta gratuita</Text>
+          </View>
         </View>
 
         <View style={styles.card}>
@@ -207,14 +207,17 @@ export default function CadastroScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  heroSection: { alignItems: 'center', paddingTop: 40, paddingBottom: 16 },
-  ilWrap: { alignItems: 'center', marginBottom: 16, marginTop: -4 },
-  il: { width: 180, height: 180 },
-  logo: { width: 80, height: 80, marginBottom: 10 },
-  appName: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 32, color: colors.lav6, letterSpacing: 0.5 },
-  tagline: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 4 },
+  scroll: { flexGrow: 1, paddingBottom: 32 },
+  heroWrap: { position: 'relative', height: 220 },
+  heroImg: { width: '100%', height: 220 },
+  heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(58,48,74,0.52)' },
+  heroContent: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 8 },
+  logo: { width: 64, height: 64, marginBottom: 8, borderRadius: 16 },
+  appName: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 34, color: '#FFFFFF', letterSpacing: 1, textShadowColor: 'rgba(30,20,50,0.6)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
+  tagline: { fontFamily: fonts.body, fontSize: 13, color: 'rgba(255,240,255,0.95)', marginTop: 4, letterSpacing: 0.4 },
   card: {
     marginHorizontal: spacing.lg,
+    marginTop: -24,
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: spacing.lg,
@@ -222,9 +225,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     shadowColor: '#6b5b7a',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 24,
-    elevation: 4,
+    elevation: 6,
   },
   erroInline: {
     fontFamily: fonts.body,
