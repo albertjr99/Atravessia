@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import AudiosScreen from '../screens/audios/AudiosScreen';
@@ -77,8 +78,29 @@ function AdminStack() {
   );
 }
 
+const SCREEN_MAP = {
+  CheckIn: 'CheckIn',
+  DatasSensiveis: 'DatasSensiveis',
+  RedeApoio: 'RedeApoio',
+  Relatorios: 'Relatorios',
+  Inicio: 'MainTabs',
+};
+
 export default function AppNavigator() {
   const { firebaseUser, isAdmin, carregando } = useAuth();
+  const navigationRef = useRef(null);
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const screen = response.notification.request.content.data?.screen;
+      if (!screen || !navigationRef.current) return;
+      const target = SCREEN_MAP[screen] || screen;
+      try {
+        navigationRef.current.navigate(target);
+      } catch {}
+    });
+    return () => sub.remove();
+  }, []);
 
   let content;
   if (carregando) {
@@ -97,7 +119,7 @@ export default function AppNavigator() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         {content}
       </NavigationContainer>
     </GestureHandlerRootView>

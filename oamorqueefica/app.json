@@ -39,6 +39,16 @@
         {
           "faceIDPermission": "Permita o uso do Face ID para entrar no app."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#B8A6C9",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Atravessia",
+          "iosDisplayInForeground": true
+        }
       ]
     ]
   }

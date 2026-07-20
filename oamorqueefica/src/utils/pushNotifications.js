@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
@@ -34,7 +35,11 @@ export async function registrarPushToken(uid) {
       });
     }
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync();
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId
+      ?? Constants.easConfig?.projectId;
+    const tokenOpts = projectId ? { projectId } : {};
+    const { data: token } = await Notifications.getExpoPushTokenAsync(tokenOpts);
     await updateDoc(doc(db, 'usuarios', uid), { pushToken: token });
     return token;
   } catch {
