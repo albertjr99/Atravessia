@@ -7,13 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
+import { doc, updateDoc, increment } from 'firebase/firestore';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
-import { functions } from '../../services/firebase';
+import { functions, db } from '../../services/firebase';
 
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -229,7 +230,6 @@ function gerarInsightsMensais(mesal, diasPassados) {
   if (mesal.total === 0) return [];
   const insights = [];
   const pctDias = diasPassados > 0 ? Math.round((mesal.com / diasPassados) * 100) : 0;
-  const avgInt = parseFloat(mesal.avgInt) || 0;
   const emoObj = getEmoObj(mesal.dominante);
 
   if (pctDias >= 80) {
@@ -240,19 +240,12 @@ function gerarInsightsMensais(mesal, diasPassados) {
     insights.push({ tipo: 'dica', icone: '💡', titulo: 'Continue registrando', texto: `Você registrou ${mesal.com} dia(s) este mês. Cada check-in, mesmo nos dias difíceis, é uma forma de cuidado próprio. Tente tornar esse hábito parte da rotina.` });
   }
 
-  if (avgInt >= 4) {
-    insights.push({ tipo: 'atencao', icone: '🌊', titulo: 'Mês emocionalmente intenso', texto: `A intensidade média de ${mesal.avgInt} (escala 1–5) indica um período desafiador. Buscar apoio de pessoas próximas ou de um profissional é sempre um ato de coragem.` });
-  } else if (avgInt >= 2.5) {
-    insights.push({ tipo: 'neutro', icone: '🌿', titulo: 'Intensidade equilibrada', texto: `A intensidade média foi de ${mesal.avgInt} — um nível moderado. Você está processando suas emoções de forma constante ao longo dos dias.` });
-  } else if (avgInt > 0) {
-    insights.push({ tipo: 'positivo', icone: '☀️', titulo: 'Mês relativamente leve', texto: `A intensidade média foi de ${mesal.avgInt} — um indicativo de um período mais tranquilo. Aproveite esses momentos para fortalecer suas bases de bem-estar.` });
-  }
-
   if (emoObj) {
     if (emoObj.positiva) {
       insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} em destaque`, texto: `${emoObj.label} foi a emoção mais presente este mês. Identificar e acolher sentimentos positivos é parte essencial da jornada de cura.` });
     } else {
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando a ${emoObj.label.toLowerCase()}`, texto: `${emoObj.label} foi sua emoção mais frequente este mês. Sentir isso é natural no processo de luto — nomear o que você sente é o primeiro passo para atravessá-lo.` });
+      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando ${nomeEmo}`, texto: `${emoObj.label} foi sua emoção mais frequente este mês. Sentir isso é natural no processo de luto — nomear o que você sente é o primeiro passo para atravessá-lo.` });
     }
   }
 
@@ -277,21 +270,12 @@ function gerarInsightsAnuais(anual) {
     insights.push({ tipo: 'dica', icone: '💡', titulo: 'Construa o hábito em doses', texto: `Você fez ${anual.total} check-ins este ano. No próximo período, tente pelo menos uma vez por semana — pequenos hábitos constantes constroem uma memória emocional muito valiosa.` });
   }
 
-  if (anual.maisLeves.length > 0) {
-    const leve = anual.maisLeves[0];
-    insights.push({ tipo: 'positivo', icone: '🌸', titulo: `${MONTH_SHORT[leve.m]} — seu mês mais leve`, texto: `${MONTH_SHORT[leve.m]} teve a menor intensidade média do ano (${leve.v.toFixed(1)}). Esses períodos mostram que é possível atravessar e encontrar leveza mesmo dentro do luto.` });
-  }
-
-  if (anual.maisIntens.length > 0) {
-    const intens = anual.maisIntens[0];
-    insights.push({ tipo: 'atencao', icone: '🌊', titulo: `${MONTH_SHORT[intens.m]} — período de maior intensidade`, texto: `${MONTH_SHORT[intens.m]} foi o mês mais intenso emocionalmente (média ${intens.v.toFixed(1)}). Olhar para esses momentos nos ajuda a entender o que precisa de mais atenção e cuidado.` });
-  }
-
   if (emoObj) {
     if (emoObj.positiva) {
       insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} marcou seu ano`, texto: `${emoObj.label} foi a emoção mais registrada no ano. Que ela continue sendo parte da sua jornada de cura.` });
     } else {
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Um ano atravessando a ${emoObj.label.toLowerCase()}`, texto: `${emoObj.label} foi sua emoção mais frequente do ano. Atravessar um ano inteiro com essa emoção presente exige uma coragem enorme — e você chegou até aqui.` });
+      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Um ano atravessando ${nomeEmo}`, texto: `${emoObj.label} foi sua emoção mais frequente do ano. Atravessar um ano inteiro com essa emoção presente exige uma coragem enorme — e você chegou até aqui.` });
     }
   }
 
@@ -305,7 +289,6 @@ function gerarInsightsAnuais(anual) {
 function gerarInsightsPeriodo(rangeData, diasPeriodo) {
   if (!rangeData || rangeData.total === 0) return [];
   const insights = [];
-  const avgInt = parseFloat(rangeData.avgInt) || 0;
   const emoObj = getEmoObj(rangeData.dominante);
   const pctDias = diasPeriodo > 0 ? Math.round((rangeData.uniqueDays / diasPeriodo) * 100) : 0;
 
@@ -315,17 +298,12 @@ function gerarInsightsPeriodo(rangeData, diasPeriodo) {
     insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Seus registros no período', texto: `Você fez ${rangeData.total} check-ins em ${rangeData.uniqueDays} dias dentro do período selecionado. Cada registro contribui para a sua análise emocional.` });
   }
 
-  if (avgInt >= 4) {
-    insights.push({ tipo: 'atencao', icone: '🌊', titulo: 'Período emocionalmente intenso', texto: `A intensidade média de ${rangeData.avgInt} indica um período desafiador. Cuidar de si com o apoio de pessoas de confiança ou de um profissional é sempre válido.` });
-  } else if (avgInt > 0) {
-    insights.push({ tipo: 'neutro', icone: '🌿', titulo: `Intensidade no período: ${rangeData.avgInt}`, texto: `A intensidade média foi de ${rangeData.avgInt} (escala 1–5) — ${avgInt >= 3 ? 'um nível moderado que pede atenção e autocuidado' : 'um período relativamente equilibrado emocionalmente'}.` });
-  }
-
   if (emoObj) {
     if (emoObj.positiva) {
       insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} predominou`, texto: `${emoObj.label} foi a emoção mais registrada neste período. Identificar sentimentos positivos é parte fundamental da jornada de cura.` });
     } else {
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `${emoObj.label} em destaque`, texto: `${emoObj.label} foi a emoção mais frequente no período. Nomear e acolher esse sentimento é um ato de coragem e de autoconhecimento.` });
+      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
+      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando ${nomeEmo}`, texto: `${emoObj.label} foi a emoção mais frequente no período. Nomear e acolher esse sentimento é um ato de coragem e de autoconhecimento.` });
     }
   }
 
@@ -449,8 +427,9 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
   const msgEmocao = (dominante) => {
     const e = getEmoObj(dominante);
     if (!e) return 'Continue fazendo seus registros. Cada check-in é um passo de autoconhecimento.';
-    if (e.positiva) return `A ${e.label.toLowerCase()} esteve presente em você este mês. Guarde esse sentimento com carinho.`;
-    return `A ${e.label.toLowerCase()} foi sua emoção mais frequente este mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
+    if (e.positiva) return `${e.label} esteve presente em você este mês. Guarde esse sentimento com carinho.`;
+    const nomeEmo = e.nomeRelatorio || e.label.toLowerCase();
+    return `Atravessando ${nomeEmo} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
   };
 
   return `<!DOCTYPE html>
@@ -524,13 +503,6 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
       </div>
     </div>
 
-    <!-- 2. Intensidade -->
-    <div class="card">
-      <span class="card-num">2</span>
-      <p class="card-title">Intensidade das emoções</p>
-      <p style="font-size:10px;color:#aaa;margin-bottom:8px">Média da intensidade por dia (de 1 a 5)</p>
-      ${intensHtml}
-    </div>
   </div>
 
   <div class="grid2">
@@ -568,10 +540,6 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
           <div style="text-align:center;flex:1">
             <div style="font-size:22px;font-weight:900;color:#D4A89A">${mesal.semRegistro}</div>
             <div style="font-size:10px;color:#aaa">dias sem<br>registro</div>
-          </div>
-          <div style="text-align:center;flex:1">
-            <div style="font-size:22px;font-weight:900;color:#7A9E7E">${mesal.avgInt}</div>
-            <div style="font-size:10px;color:#aaa">intensidade<br>média</div>
           </div>
         </div>
       </div>
@@ -707,11 +675,6 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
       <div class="n" style="color:#D4B483">${anual.consistencia}%</div>
       <div class="l">de constância no ano</div>
     </div>
-    <div class="stat-tile">
-      <div class="icon">📈</div>
-      <div class="n" style="color:#7A9E7E">${anual.avgInt}</div>
-      <div class="l">intensidade média do ano (1 a 5)</div>
-    </div>
   </div>
 
   <div class="grid2">
@@ -731,13 +694,6 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
       </div>
     </div>
 
-    <!-- 2. Intensidade ao longo do ano -->
-    <div class="card">
-      <span class="card-num">2</span>
-      <p class="card-title">Intensidade emocional ao longo do ano</p>
-      <p style="font-size:10px;color:#aaa;margin-bottom:8px">Média da intensidade por mês (de 1 a 5)</p>
-      ${intensHtml}
-    </div>
   </div>
 
   <div class="grid2">
@@ -912,13 +868,15 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
   const { checkins, usuario, temAcesso } = useApp();
-  const { perfil } = useAuth();
+  const { perfil, firebaseUser } = useAuth();
+  const uid = firebaseUser?.uid || null;
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
   const [comprando, setComprando] = useState(false);
   const [rangeInicio, setRangeInicio] = useState('');
   const [rangeFim, setRangeFim] = useState('');
   const [rangeData, setRangeData] = useState(null);
+  const [creditoUsado, setCreditoUsado] = useState(false);
 
   const now = new Date();
   const year = now.getFullYear();
@@ -1033,6 +991,10 @@ export default function RelatoriosScreen({ navigation }) {
     const avgInt = avgIntensidade(lista).toFixed(1);
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10))).size;
     setRangeData({ lista, sorted, total, donut, dominante, avgInt, uniqueDays });
+    if (!creditoUsado && uid) {
+      setCreditoUsado(true);
+      updateDoc(doc(db, 'usuarios', uid), { periodoCreditos: increment(-1) }).catch(() => {});
+    }
   };
 
   const handleExportar = async () => {
@@ -1090,8 +1052,9 @@ export default function RelatoriosScreen({ navigation }) {
   const mensagem = (dominante) => {
     const emo = getEmoObj(dominante);
     if (!emo) return 'Cada check-in é um passo de autoconhecimento. Continue cuidando de si.';
-    if (emo.positiva) return `A ${emo.label.toLowerCase()} esteve presente em você este mês. Guarde esse sentimento com carinho e continue se cuidando.`;
-    return `A ${emo.label.toLowerCase()} foi sua emoção mais frequente este mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
+    if (emo.positiva) return `${emo.label} esteve presente em você este mês. Guarde esse sentimento com carinho e continue se cuidando.`;
+    const nomeEmo = emo.nomeRelatorio || emo.label.toLowerCase();
+    return `Atravessando ${nomeEmo} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
   };
 
   return (
@@ -1178,34 +1141,7 @@ export default function RelatoriosScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* 2. Intensidade — Plan 1+ */}
-                {temPlano1 && mesal.intensData.length >= 2 ? (
-                  <View style={s.card}>
-                    <Text style={s.cardNum}>2</Text>
-                    <Text style={s.cardTit}>Intensidade das emoções</Text>
-                    <Text style={s.cardSub}>Média da intensidade por dia (de 1 a 5)</Text>
-                    <View style={{ marginVertical: 8 }}>
-                      <LineChart data={mesal.intensData} color={colors.lav4} height={80} />
-                    </View>
-                    <View style={s.intensScale}>
-                      {[1,2,3,4,5].map(v => (
-                        <Text key={v} style={s.intensNum}>{v}</Text>
-                      ))}
-                    </View>
-                  </View>
-                ) : !temPlano1 && (
-                  <View style={[s.card, s.lockedCard]}>
-                    <View style={s.lockedRow}>
-                      <Ionicons name="lock-closed-outline" size={18} color={colors.lav3} />
-                      <Text style={s.lockedTxt}>Gráfico de intensidade disponível no Plano Acolher</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => navigation.navigate('Planos')} style={s.lockedBtn}>
-                      <Text style={s.lockedBtnTxt}>Conhecer o Plano Acolher →</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* 3. Calendário emocional — Plan 1+ */}
+                {/* 2. Calendário emocional — Plan 1+ */}
                 {temPlano1 ? (
                   <View style={s.card}>
                     <Text style={s.cardNum}>3</Text>
@@ -1265,15 +1201,6 @@ export default function RelatoriosScreen({ navigation }) {
                       <Text style={[s.statNum, { color: mesal.semRegistro > 5 ? colors.rose : colors.sage }]}>{mesal.semRegistro}</Text>
                       <Text style={s.statLbl}>dias sem registro</Text>
                     </View>
-                    {temPlano1 && (
-                      <>
-                        <View style={s.statDivider} />
-                        <View style={s.statBox}>
-                          <Text style={s.statNum}>{mesal.avgInt}</Text>
-                          <Text style={s.statLbl}>intensidade média</Text>
-                        </View>
-                      </>
-                    )}
                   </View>
                 </View>
 
@@ -1326,7 +1253,6 @@ export default function RelatoriosScreen({ navigation }) {
                     { icon: 'calendar-outline', v: anual.total, lbl: 'check-ins realizados', color: colors.lav4 },
                     { icon: 'heart-outline', v: anual.uniqueDays, lbl: 'dias com registro', color: colors.rose },
                     { icon: 'star-outline', v: `${anual.consistencia}%`, lbl: 'de constância', color: colors.gold },
-                    { icon: 'pulse-outline', v: anual.avgInt, lbl: 'intensidade média', color: colors.sage },
                   ].map((t, i) => (
                     <View key={i} style={s.tile}>
                       <Ionicons name={t.icon} size={18} color={t.color} />
@@ -1358,19 +1284,7 @@ export default function RelatoriosScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* 2. Intensidade ao longo do ano */}
-                {anual.porMes.some(v => v > 0) && (
-                  <View style={s.card}>
-                    <Text style={s.cardNum}>2</Text>
-                    <Text style={s.cardTit}>Intensidade emocional ao longo do ano</Text>
-                    <Text style={s.cardSub}>Média da intensidade por mês (de 1 a 5)</Text>
-                    <View style={{ marginTop: 8 }}>
-                      <LineChart data={anual.porMes.map((v, i) => v || 0)} color={colors.lav4} height={80} xLabels={MONTH_SHORT} />
-                    </View>
-                  </View>
-                )}
-
-                {/* 3 e 4. Meses intensos e leves */}
+                {/* 2 e 3. Meses intensos e leves */}
                 <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
                   <View style={[s.card, { flex: 1, margin: 0 }]}>
                     <Text style={s.cardNum}>3</Text>
@@ -1433,7 +1347,7 @@ export default function RelatoriosScreen({ navigation }) {
         {/* ═══════════════════════════════════ RELATÓRIO PERSONALIZADO ═══════ */}
         {tab === 'personalizado' && (
           <>
-            {!perfil?.periodoUnlocked ? (
+            {!(perfil?.periodoCreditos > 0) ? (
               <View style={s.lockedAnnual}>
                 <View style={s.periodoIconWrap}>
                   <Ionicons name="calendar-outline" size={36} color={colors.lav4} />
@@ -1451,39 +1365,26 @@ export default function RelatoriosScreen({ navigation }) {
                     </TouchableOpacity>
                   </>
                 ) : (
-                  <>
-                    {(() => {
-                      const plano = perfil?.plano ?? usuario?.plano ?? 0;
-                      const opcoes = {
-                        1: { preco: 'R$ 9,90', cor: colors.rose },
-                        2: { preco: 'R$ 6,90', cor: colors.lav4 },
-                        3: { preco: 'R$ 3,90', cor: colors.sage },
-                      };
-                      const opcao = opcoes[plano];
-                      return opcao ? (
-                        <View style={s.stripeWrap}>
-                          <View style={s.stripePriceCard}>
-                            <Ionicons name="calendar-outline" size={28} color={opcao.cor} />
-                            <Text style={[s.stripePriceTxt, { color: opcao.cor }]}>{opcao.preco}</Text>
-                            <Text style={s.stripePriceSub}>pagamento único — acesso vitalício</Text>
-                          </View>
-                          <TouchableOpacity
-                            style={[s.stripeBtn, { backgroundColor: opcao.cor }, comprando && { opacity: 0.6 }]}
-                            onPress={handleDesbloquear}
-                            disabled={comprando}
-                          >
-                            <Ionicons name="card-outline" size={16} color="white" />
-                            <Text style={s.stripeBtnTxt}>
-                              {comprando ? 'Abrindo checkout...' : `Desbloquear por ${opcao.preco}`}
-                            </Text>
-                          </TouchableOpacity>
-                          <Text style={s.stripeHint}>
-                            Após o pagamento, volte aqui. Seu acesso será liberado automaticamente.
-                          </Text>
-                        </View>
-                      ) : null;
-                    })()}
-                  </>
+                  <View style={s.stripeWrap}>
+                    <View style={s.stripePriceCard}>
+                      <Ionicons name="calendar-outline" size={28} color={colors.lav4} />
+                      <Text style={[s.stripePriceTxt, { color: colors.lav4 }]}>R$ 5,90</Text>
+                      <Text style={s.stripePriceSub}>por relatório gerado</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[s.stripeBtn, { backgroundColor: colors.lav4 }, comprando && { opacity: 0.6 }]}
+                      onPress={handleDesbloquear}
+                      disabled={comprando}
+                    >
+                      <Ionicons name="card-outline" size={16} color="white" />
+                      <Text style={s.stripeBtnTxt}>
+                        {comprando ? 'Abrindo checkout...' : 'Obter 1 relatório por R$ 5,90'}
+                      </Text>
+                    </TouchableOpacity>
+                    <Text style={s.stripeHint}>
+                      Após o pagamento, volte aqui. Seu crédito será liberado automaticamente.
+                    </Text>
+                  </View>
                 )}
               </View>
             ) : (

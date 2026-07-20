@@ -55,12 +55,8 @@ const PLANOS = {
   3: { nome: 'Atravessia — Plano Evoluir', valor: 8990 },
 };
 
-// Preço do desbloqueio vitalício do Relatório por Período (varia por plano ativo)
-const PERIODO_PRECOS = {
-  1: { valor: 990,  label: 'R$ 9,90' },
-  2: { valor: 690,  label: 'R$ 6,90' },
-  3: { valor: 390,  label: 'R$ 3,90' },
-};
+// Preço por relatório de período (único para todos os planos)
+const PERIODO_PRECO = { valor: 590, label: 'R$ 5,90' };
 
 async function getOrCreateCustomer(stripe, uid, userData) {
   if (userData.stripeCustomerId) return userData.stripeCustomerId;
@@ -121,14 +117,8 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
   const userSnap = await userRef.get();
   const userData = userSnap.data() || {};
 
-  if (userData.periodoUnlocked) {
-    throw new HttpsError('already-exists', 'Você já tem acesso ao Relatório por Período.');
-  }
-
-  const planoId = Number(userData.plano ?? 0);
-  const opcao = PERIODO_PRECOS[planoId];
-  if (!opcao) {
-    throw new HttpsError('failed-precondition', 'Assine um plano primeiro para desbloquear o Relatório por Período.');
+  if (!userData.plano || userData.plano < 1) {
+    throw new HttpsError('failed-precondition', 'Assine um plano primeiro para gerar relatórios por período.');
   }
 
   const stripe = Stripe(STRIPE_SECRET_KEY.value());
@@ -141,16 +131,16 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
     line_items: [{
       price_data: {
         currency: 'brl',
-        product_data: { name: 'Relatório por Período — Atravessia (acesso vitalício)' },
-        unit_amount: opcao.valor,
+        product_data: { name: 'Relatório por Período — Atravessia (1 relatório)' },
+        unit_amount: PERIODO_PRECO.valor,
       },
       quantity: 1,
     }],
     success_url: request.data?.successUrl || 'https://oamorquefica.app/checkout-sucesso',
     cancel_url: request.data?.cancelUrl || 'https://oamorquefica.app/checkout-cancelado',
-    metadata: { uid, tipo: 'periodo_unlock' },
+    metadata: { uid, tipo: 'periodo_credito' },
     custom_text: {
-      submit: { message: 'Acesso vitalício — pague uma única vez.' },
+      submit: { message: 'R$ 5,90 por relatório — use quando quiser.' },
     },
   });
 
@@ -193,10 +183,13 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
-      if (session.metadata?.tipo === 'periodo_unlock') {
+      if (session.metadata?.tipo === 'periodo_credito') {
         const uid = session.metadata?.uid;
         if (uid) {
-          await db.collection('usuarios').doc(uid).set({ periodoUnlocked: true }, { merge: true });
+          await db.collection('usuarios').doc(uid).set(
+            { periodoCreditos: admin.firestore.FieldValue.increment(1) },
+            { merge: true }
+          );
         }
       } else {
         await definirPlano(session.metadata?.uid, Number(session.metadata?.planoId), {

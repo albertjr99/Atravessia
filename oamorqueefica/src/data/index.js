@@ -21,13 +21,12 @@ export const reflexoes = [
   { id: 7, texto: 'A saudade que você sente é prova de um amor verdadeiro. Deixe-a existir sem tentar apagá-la.' },
 ];
 
-// Emoções oficiais do check-in (documento "Dinâmica das mensagens do sistema" / "Tipos de Planos")
-// Cada emoção negativa tem mensagens automáticas (variações) + botão de áudio de acolhimento.
-// Emoções positivas geram apenas uma celebração discreta, sem recomendação de conteúdo.
 export const emocoes = [
+  // ── Negativas ──────────────────────────────────────────────
   {
     id: 'triste', label: 'Triste', icon: 'sad', positiva: false,
     bg: '#EDE5F5', color: '#8FA3BF',
+    nomeRelatorio: 'a tristeza',
     mensagens: [
       'Percebemos que a tristeza esteve presente hoje. Que tal reservar alguns minutos para cuidar de você?',
       'Percebemos que hoje você está triste. Gostaria de ouvir um áudio de acolhimento?',
@@ -36,6 +35,7 @@ export const emocoes = [
   {
     id: 'saudade', label: 'Com saudade', icon: 'leaf', positiva: false,
     bg: '#E8E0F0', color: '#B8A6C9',
+    nomeRelatorio: 'a saudade',
     mensagens: [
       'A saudade apareceu hoje. Você gostaria de acolher esse sentimento por alguns minutos?',
       'A saudade apareceu por aí hoje. Que tal reservar alguns minutos para ela?',
@@ -44,22 +44,25 @@ export const emocoes = [
   {
     id: 'sozinho', label: 'Sozinho', icon: 'person', positiva: false,
     bg: '#E8F0E5', color: '#7a9870',
+    nomeRelatorio: 'o isolamento',
     mensagens: [
       'Sentir-se sozinho pode ser muito difícil. Que tal fazer uma pequena pausa para si agora?',
       'Sentir-se sozinho pode ser pesado. Gostaria de ouvir um áudio de acolhimento?',
     ],
   },
   {
-    id: 'medo', label: 'Com medo', icon: 'cloud', positiva: false,
+    id: 'medo', label: 'Com medo', icon: 'shield', positiva: false,
     bg: '#EAF0F5', color: '#7088A0',
+    nomeRelatorio: 'o medo',
     mensagens: [
-      'Percebemos que o medo está presente hoje. Talvez seja um bom momento para respirar com calma.',
-      'Percebemos que hoje o medo está presente. Vamos atravessar este momento juntos?',
+      'Percebemos que o medo está presente hoje. Vamos atravessar este momento juntos?',
+      'É corajoso reconhecer o medo. Que tal alguns minutos de acolhimento agora?',
     ],
   },
   {
     id: 'culpado', label: 'Culpado', icon: 'alert-circle', positiva: false,
     bg: '#F5EDE5', color: '#B0876A',
+    nomeRelatorio: 'a culpa',
     mensagens: [
       'A culpa apareceu hoje. Você merece olhar para esse sentimento com gentileza.',
       'A culpa costuma trazer muitos questionamentos. Que tal ouvir um áudio de acolhimento?',
@@ -68,34 +71,40 @@ export const emocoes = [
   {
     id: 'ansioso', label: 'Ansioso', icon: 'pulse', positiva: false,
     bg: '#F5EDE5', color: '#B89870',
+    nomeRelatorio: 'a ansiedade',
     mensagens: [
       'Hoje a ansiedade esteve presente. Que tal desacelerar por alguns minutos?',
-      'Sua mente parece estar carregada hoje. Gostaria de fazer uma pausa?',
+      'Sua mente parece estar carregada hoje. Gostaria de um áudio de acolhimento?',
     ],
   },
   {
     id: 'raiva', label: 'Com raiva', icon: 'flash', positiva: false,
     bg: '#F5F0E8', color: '#B0A060',
+    nomeRelatorio: 'a raiva',
     mensagens: [
       'A raiva também faz parte da experiência humana. Você gostaria de acolher esse momento?',
       'Percebemos que hoje existe algo que está incomodando você. Vamos acolher isso?',
     ],
   },
   {
-    id: 'desanimado', label: 'Desanimado', icon: 'cloudy', positiva: false,
+    id: 'desanimado', label: 'Desanimado', icon: 'rainy', positiva: false,
     bg: '#EFEFEF', color: '#9088A0',
+    nomeRelatorio: 'o desânimo',
     mensagens: [
       'Hoje parece estar mais difícil. Talvez alguns minutos de cuidado possam ajudar.',
       'Nem todos os dias precisam ser produtivos. Que tal alguns minutos para você?',
     ],
   },
+  // ── Positivas ──────────────────────────────────────────────
   {
-    id: 'confuso', label: 'Confuso', icon: 'help-circle', positiva: false,
-    bg: '#EAF0F5', color: '#8595B0',
-    mensagens: [
-      'Nem sempre conseguimos entender tudo o que sentimos. Você gostaria de fazer uma pequena pausa agora?',
-      'Quando tudo parece confuso, pequenos passos podem ajudar. Gostaria de ouvir um áudio?',
-    ],
+    id: 'grato', label: 'Grato', icon: 'heart', positiva: true,
+    bg: '#F0EDE5', color: '#D4B483',
+    mensagens: ['A gratidão é um sinal bonito de presença. Guarde esse sentimento com carinho.'],
+  },
+  {
+    id: 'tranquilo', label: 'Em paz', icon: 'flower', positiva: true,
+    bg: '#EDF5F0', color: '#70A890',
+    mensagens: ['Que bom saber que hoje você está em paz. Permita-se sentir isso plenamente.'],
   },
   {
     id: 'esperancoso', label: 'Esperançoso', icon: 'sunny', positiva: true,
@@ -103,14 +112,14 @@ export const emocoes = [
     mensagens: ['Que bom perceber esperança em você hoje. Continue caminhando nesse ritmo.'],
   },
   {
-    id: 'grato', label: 'Grato', icon: 'heart', positiva: true,
-    bg: '#F0EDE5', color: '#D4B483',
-    mensagens: ['A gratidão é um sinal bonito de presença. Guarde esse sentimento com carinho.'],
+    id: 'alegre', label: 'Alegre', icon: 'happy', positiva: true,
+    bg: '#FFF8E5', color: '#C8A840',
+    mensagens: ['A alegria apareceu hoje — que ela possa se expandir e iluminar o seu dia.'],
   },
   {
-    id: 'tranquilo', label: 'Tranquilo', icon: 'flower', positiva: true,
-    bg: '#EDF5F0', color: '#70A890',
-    mensagens: ['Que bom saber que hoje você está em paz. Permita-se sentir isso plenamente.'],
+    id: 'amoroso', label: 'Amoroso', icon: 'rose', positiva: true,
+    bg: '#FFF0F5', color: '#C07090',
+    mensagens: ['Sentir amor é um ato de cura. Permita-se viver isso plenamente hoje.'],
   },
 ];
 

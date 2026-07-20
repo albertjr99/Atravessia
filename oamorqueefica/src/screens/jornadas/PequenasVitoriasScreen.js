@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, TextInput,
 } from 'react-native';
@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { pequenasVitorias } from '../../data';
 import { ScriptTitle, QuoteText, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR, formatDataBR } from '../../utils/date';
@@ -16,6 +17,17 @@ export default function PequenasVitoriasScreen({ navigation }) {
   const { vitorias, adicionarVitoria, temAcesso } = useApp();
   const [textoCustom, setTextoCustom] = useState('');
   const [mostraInputCustom, setMostraInputCustom] = useState(false);
+  const [opcoesFirestore, setOpcoesFirestore] = useState([]);
+
+  useEffect(() => {
+    const ref = query(collection(db, 'vitoriasOpcoes'), orderBy('criadoEm', 'asc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setOpcoesFirestore(
+        snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(v => v.ativo !== false)
+      );
+    }, () => {});
+    return unsub;
+  }, []);
 
   if (!temAcesso(1)) {
     return (
@@ -69,7 +81,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
         </View>
 
         <View style={styles.grid}>
-          {pequenasVitorias.map(v => {
+          {opcoesFirestore.map(v => {
             const jaRegistrada = registradosHoje.includes(v.label);
             return (
               <TouchableOpacity

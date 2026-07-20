@@ -22,6 +22,8 @@ const NAV_ITEMS = [
   { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
   { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
   { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
+  { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
+  { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços', screen: 'AdminPrecos' },
   { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
   { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
 ];
