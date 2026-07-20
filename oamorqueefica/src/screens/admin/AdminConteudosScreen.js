@@ -262,9 +262,15 @@ export default function AdminConteudosScreen({ navigation }) {
           await uploadBytes(fileRef, item.localFile);
           urlFinal = await getDownloadURL(fileRef);
         } else if (item.localUri) {
-          // Native: URI → blob
-          const response = await fetch(item.localUri);
-          const blob = await response.blob();
+          // Native: content:// URIs require XHR — fetch() is unreliable for Android content providers
+          const blob = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.onload = () => resolve(xhr.response);
+            xhr.onerror = () => reject(new Error('Falha ao ler o arquivo'));
+            xhr.responseType = 'blob';
+            xhr.open('GET', item.localUri, true);
+            xhr.send();
+          });
           const nomeArq = `${Date.now()}_${item.localName.replace(/\s+/g, '_')}`;
           const fileRef = sRef(storage, `conteudos/${nomeArq}`);
           await uploadBytes(fileRef, blob);

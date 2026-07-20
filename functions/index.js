@@ -252,7 +252,7 @@ exports.notificarInatividade = onSchedule({ schedule: '0 10 * * *', timeZone: TI
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
     await userDoc.ref.update({ ultimoNivelInatividadeNotificado: nivel });
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: MENSAGENS_INATIVIDADE[nivel] });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: MENSAGENS_INATIVIDADE[nivel], data: { screen: 'CheckIn' } });
   }
 
   await enviarPush(mensagensPush);
@@ -281,7 +281,7 @@ exports.notificarDatasSensiveis = onSchedule({ schedule: '0 9 * * *', timeZone: 
     if (!texto) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: texto });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: texto, data: { screen: 'DatasSensiveis' } });
   }
 
   await enviarPush(mensagensPush);
@@ -300,7 +300,7 @@ exports.notificarFeedbackSemanal = onSchedule({ schedule: '0 18 * * 0', timeZone
     if (checkinsSnap.empty) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Sua retrospectiva emocional da semana está pronta.' });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Sua retrospectiva emocional da semana está pronta.', data: { screen: 'Relatorios' } });
   }
 
   await enviarPush(mensagensPush);
@@ -329,7 +329,7 @@ exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZ
     if (negativas / checkinsSnap.size < 0.6) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Você não precisa atravessar tudo sozinho. Considere se aproximar de alguém da sua rede de apoio.' });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Você não precisa atravessar tudo sozinho. Considere se aproximar de alguém da sua rede de apoio.', data: { screen: 'RedeApoio' } });
   }
 
   await enviarPush(mensagensPush);
@@ -367,7 +367,7 @@ exports.notificarJornadaParada = onSchedule({ schedule: '0 18 * * *', timeZone: 
     if (!parada) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Sua jornada está esperando por você. Quando se sentir pronta, continue de onde parou.' });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Sua jornada está esperando por você. Quando se sentir pronta, continue de onde parou.', data: { screen: 'Inicio' } });
   }
 
   await enviarPush(mensagensPush);
@@ -392,7 +392,7 @@ exports.notificarMemorialSemAtualizacao = onSchedule({ schedule: '0 18 * * *', t
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
     await userDoc.ref.update({ memorialAvisoEnviado: true });
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?' });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?', data: { screen: 'Inicio' } });
   }
 
   await enviarPush(mensagensPush);
@@ -415,7 +415,7 @@ exports.notificarRelatorioMensal = onSchedule({ schedule: '0 19 1 * *', timeZone
     if (!dados.pushToken) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'O Amor que Fica', body: 'Seu relatório emocional do mês está pronto.' });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Seu relatório emocional do mês está pronto.', data: { screen: 'Relatorios' } });
   }
 
   await enviarPush(mensagensPush);
