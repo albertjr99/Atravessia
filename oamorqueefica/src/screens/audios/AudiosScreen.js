@@ -15,18 +15,14 @@ const ilustracao = require('../../../assets/images/il_audio_respiracao.png');
 const categorias = [
   { id: 'todos', label: 'Todos' },
   { id: 'acolhimento', label: 'Acolhimento' },
-  { id: 'respiracao', label: 'Respiração' },
-  { id: 'noturno', label: 'Noturnos' },
-  { id: 'informativo', label: 'Informativos' },
+  { id: 'noturno', label: 'Noturnos', emBreve: true },
   { id: 'complementar', label: 'Complementar' },
   { id: 'sessao', label: 'Sessão' },
 ];
 
 const catIcones = {
   acolhimento: { icon: 'heart-outline', bg: colors.lav1, color: colors.lav5 },
-  respiracao: { icon: 'leaf-outline', bg: '#E8F0E5', color: '#7a9870' },
   noturno: { icon: 'moon-outline', bg: '#F5EDE5', color: colors.peach2 },
-  informativo: { icon: 'book-outline', bg: '#EAF0F5', color: '#7088A0' },
   complementar: { icon: 'sparkles-outline', bg: colors.lav1, color: colors.lav5 },
   sessao: { icon: 'people-outline', bg: '#EAF0F5', color: '#7088A0' },
 };
@@ -108,6 +104,11 @@ export default function AudiosScreen({ navigation }) {
               onPress={() => setCatSel(c.id)}
             >
               <Text style={[styles.chipText, catSel === c.id && styles.chipTextAtivo]}>{c.label}</Text>
+              {c.emBreve && (
+                <View style={styles.emBreveBadge}>
+                  <Text style={styles.emBreveTxt}>Em breve</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -179,4 +180,6 @@ const styles = StyleSheet.create({
   audioSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2, textTransform: 'capitalize' },
   audioRight: { alignItems: 'flex-end', gap: 6 },
   playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  emBreveBadge: { backgroundColor: colors.peach, borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1, marginLeft: 4 },
+  emBreveTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: colors.peach2 },
 });

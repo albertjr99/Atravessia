@@ -24,6 +24,8 @@ import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
 import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
 import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
+import AdminVitoriasScreen from '../screens/admin/AdminVitoriasScreen';
+import AdminPrecosScreen from '../screens/admin/AdminPrecosScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 
 import { useAuth } from '../hooks/AuthContext';
@@ -69,6 +71,8 @@ function AdminStack() {
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
       <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
+      <Stack.Screen name="AdminVitorias" component={AdminVitoriasScreen} />
+      <Stack.Screen name="AdminPrecos" component={AdminPrecosScreen} />
     </Stack.Navigator>
   );
 }

@@ -15,11 +15,9 @@ const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 export default function CheckInScreen({ navigation }) {
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
-  const [intensidade, setIntensidade] = useState(3);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
 
-  const intensLabels = ['', 'Leve', 'Leve', 'Moderado', 'Intenso', 'Intenso'];
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
@@ -31,7 +29,7 @@ export default function CheckInScreen({ navigation }) {
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
-    adicionarCheckin(emocaoSel, intensidade);
+    adicionarCheckin(emocaoSel);
     setSalvo(true);
   };
 
@@ -150,23 +148,6 @@ export default function CheckInScreen({ navigation }) {
           })}
         </View>
 
-        {/* Intensidade */}
-        <View style={s.intensSect}>
-          <Text style={s.intensTitle}>Intensidade do que você está sentindo</Text>
-          <View style={s.intensTrack}>
-            {[1,2,3,4,5].map(v => (
-              <TouchableOpacity key={v} onPress={() => setIntensidade(v)} style={{ flex: 1 }}>
-                <View style={[s.intensBar, intensidade >= v && { backgroundColor: emocaoObj?.color || colors.lav4 }]} />
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={s.intensLabels}>
-            <Text style={s.intensLbl}>Leve</Text>
-            <Text style={[s.intensLbl, { color: emocaoObj?.color || colors.lav5, fontFamily: fonts.bodyBold }]}>{intensLabels[intensidade]}</Text>
-            <Text style={s.intensLbl}>Intenso</Text>
-          </View>
-        </View>
-
         {/* Mensagem de acolhimento */}
         {mensagemAcolhimento && (
           <View style={s.sect}>
@@ -214,7 +195,7 @@ export default function CheckInScreen({ navigation }) {
               {historico.map((c, i) => {
                 const emoObj = emocoes.find(e => e.id === c.emocao);
                 const d = new Date(c.data);
-                const yOffset = (5 - c.intensidade) * 5;
+                const yOffset = 0;
                 return (
                   <View key={i} style={[s.histPt, { marginTop: yOffset }]}>
                     <View style={[s.histDot, { backgroundColor: emoObj?.color || colors.lav3 }]} />
@@ -263,12 +244,6 @@ const s = StyleSheet.create({
   },
   emoIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   emoName: { fontFamily: fonts.body, fontSize: 11, color: colors.td, textAlign: 'center' },
-  intensSect: { paddingHorizontal: spacing.lg, marginTop: 16, marginBottom: 8 },
-  intensTitle: { fontFamily: fonts.body, fontSize: 13, color: colors.td, marginBottom: 10 },
-  intensTrack: { flexDirection: 'row', gap: 4 },
-  intensBar: { height: 6, borderRadius: 3, backgroundColor: colors.lav1 },
-  intensLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  intensLbl: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
   sect: { paddingHorizontal: spacing.lg, marginTop: 14 },
   sectTitle2: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   suggCard: {

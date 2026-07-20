@@ -161,8 +161,8 @@ export function AppProvider({ children }) {
     updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
   };
 
-  const adicionarCheckin = (emocao, intensidade) => {
-    const item = { data: hojeStr(), emocao, intensidade };
+  const adicionarCheckin = (emocao) => {
+    const item = { data: hojeStr(), emocao };
     setCheckins(prev => [...prev, item]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'checkins'), { ...item, criadoEm: serverTimestamp() });
   };

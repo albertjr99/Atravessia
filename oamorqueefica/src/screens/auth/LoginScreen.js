@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.heroContent}>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <Text style={styles.appName}>Atravessia</Text>
-            <Text style={styles.tagline}>Um espaço para você atravessar o luto</Text>
+            <Text style={styles.tagline}>Que você se permita sentir, acolher e seguir.</Text>
           </View>
         </View>
 

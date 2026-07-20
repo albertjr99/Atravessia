@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Platform, Image, Dimensions, Alert, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { frases, reflexoes, emocoes } from '../../data';
@@ -14,11 +14,12 @@ import { confirmar } from '../../utils/confirm';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
-const ilMulher = require('../../../assets/images/il_mulher_flores.png');
+
 const ilCoracao = require('../../../assets/images/il_coracao_ramos.png');
 const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria } = useApp();
   const { sair } = useAuth();
   const [fraseIdx] = useState(0);
@@ -76,13 +77,8 @@ export default function HomeScreen({ navigation }) {
 
           {/* Saudação */}
           <View style={s.greetSect}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.greetName}>{saudacao()}, {usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
-                <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
-              </View>
-              <Image source={ilMulher} style={s.greetIl} resizeMode="contain" />
-            </View>
+            <Text style={s.greetName}>{saudacao()}, {usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
+            <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
           </View>
 
           {/* ===== FRASE DO DIA ===== */}
@@ -217,7 +213,7 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
 
       {/* ===== BOTTOM NAV ===== */}
-      <View style={s.bnav}>
+      <View style={[s.bnav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         {[
           { name: 'Início', icon: 'home', active: true },
           { name: 'Conteúdos', icon: 'headset', screen: 'Audios' },
@@ -437,7 +433,7 @@ const s = StyleSheet.create({
   bnav: {
     backgroundColor: 'rgba(255,253,249,0.95)',
     borderTopWidth: 1, borderTopColor: 'rgba(230,221,210,0.7)',
-    paddingBottom: Platform.OS === 'ios' ? 22 : 8,
+    paddingBottom: 10,
     paddingTop: 8,
     flexDirection: 'row', justifyContent: 'space-around',
     position: 'absolute', bottom: 0, left: 0, right: 0,
