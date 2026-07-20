@@ -75,12 +75,20 @@ export default function AdminPrecosScreen() {
   const handleSalvar = async () => {
     const novo = {};
     for (const campo of ['plano1', 'plano2', 'plano3', 'periodo']) {
-      const val = reaisParaCentavos(inputs[campo] || '');
+      const inputVal = (inputs[campo] || '').trim();
+      if (!inputVal) continue; // campo em branco → não altera
+      const val = reaisParaCentavos(inputVal);
       if (val === null || val <= 0) {
-        Alert.alert('Valor inválido', `Verifique o preço de "${campo}".`);
+        const nomes = { plano1: 'Plano Acolher', plano2: 'Plano Compreender', plano3: 'Plano Evoluir', periodo: 'Relatório por período' };
+        Alert.alert('Valor inválido', `Verifique o preço de "${nomes[campo]}".`);
         return;
       }
       novo[campo] = val;
+    }
+
+    if (Object.keys(novo).length === 0) {
+      Alert.alert('Nenhum campo', 'Preencha ao menos um preço para salvar.');
+      return;
     }
 
     let ativarEmDate = null;
@@ -145,6 +153,7 @@ export default function AdminPrecosScreen() {
         {/* Planos */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Planos de assinatura (mensais)</Text>
+        <Text style={s.cardHint}>Deixe em branco os campos que não deseja alterar.</Text>
           {PLANOS_INFO.map(p => (
             <View key={p.id} style={s.precoRow}>
               <View style={[s.planDot, { backgroundColor: p.cor }]} />
@@ -167,6 +176,7 @@ export default function AdminPrecosScreen() {
         {/* Relatório por período */}
         <View style={s.card}>
           <Text style={s.cardTitle}>Relatório por período (por crédito)</Text>
+        <Text style={s.cardHint}>Deixe em branco para não alterar.</Text>
           <View style={s.precoRow}>
             <Ionicons name="calendar-outline" size={18} color={colors.lav4} />
             <Text style={s.planNome}>Relatório personalizado</Text>
@@ -238,6 +248,7 @@ const s = StyleSheet.create({
   },
   cardTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
   cardSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: spacing.sm, lineHeight: 17 },
+  cardHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginBottom: spacing.sm },
 
   precoRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

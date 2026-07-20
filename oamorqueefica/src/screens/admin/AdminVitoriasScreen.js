@@ -12,6 +12,19 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
 
+const VITORIAS_PADRAO = [
+  'Saí de casa',
+  'Consegui dormir',
+  'Encontrei amigos',
+  'Fiz algo prazeroso',
+  'Me alimentei bem',
+  'Busquei minha rede de apoio',
+  'Concluí uma jornada',
+  'Ouvi música',
+  'Me hidratei bem',
+  'Pratiquei respiração',
+];
+
 export default function AdminVitoriasScreen() {
   const [opcoes, setOpcoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -51,6 +64,38 @@ export default function AdminVitoriasScreen() {
     } catch {
       Alert.alert('Erro', 'Não foi possível alterar o status.');
     }
+  };
+
+  const handleRestaurarPadrao = () => {
+    const existentes = opcoes.map(o => o.label);
+    const faltando = VITORIAS_PADRAO.filter(l => !existentes.includes(l));
+    if (faltando.length === 0) {
+      Alert.alert('Tudo certo', 'Todas as opções padrão já estão cadastradas.');
+      return;
+    }
+    Alert.alert(
+      'Restaurar padrão',
+      `Adicionar ${faltando.length} opção(ões) padrão que estão faltando?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Adicionar',
+          onPress: async () => {
+            setSalvando(true);
+            try {
+              for (const label of faltando) {
+                await addDoc(collection(db, 'vitoriasOpcoes'), { label, ativo: true, criadoEm: serverTimestamp() });
+              }
+              Alert.alert('Pronto', `${faltando.length} opção(ões) adicionada(s).`);
+            } catch {
+              Alert.alert('Erro', 'Não foi possível restaurar as opções padrão.');
+            } finally {
+              setSalvando(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleExcluir = (item) => {
@@ -135,6 +180,11 @@ export default function AdminVitoriasScreen() {
           )}
         </View>
 
+        <TouchableOpacity style={s.padrao} onPress={handleRestaurarPadrao} disabled={salvando}>
+          <Ionicons name="refresh-outline" size={14} color={colors.lav5} />
+          <Text style={s.padraoTxt}>Restaurar opções padrão</Text>
+        </TouchableOpacity>
+
         <Text style={s.hint}>
           Vitórias desativadas não aparecem para as usuárias, mas os registros anteriores são mantidos.
         </Text>
@@ -185,5 +235,11 @@ const s = StyleSheet.create({
   itemLabelOff: { color: colors.tl, textDecorationLine: 'line-through' },
   delBtn: { padding: 6 },
 
+  padrao: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: spacing.md, paddingVertical: 10, borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.lav3, backgroundColor: colors.lav1,
+  },
+  padraoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
   hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: spacing.md, lineHeight: 17, textAlign: 'center' },
 });
