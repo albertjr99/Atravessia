@@ -147,6 +147,31 @@ export function AppProvider({ children }) {
     return unsub;
   }, []);
 
+  // Favoritos do usuário: armazena apenas o conteudoId; join com `conteudos` para detalhes
+  const [favoritosIds, setFavoritosIds] = useState([]);
+  useSubcolecao(uid, 'favoritos', setFavoritosIds);
+
+  const favoritos = useMemo(() =>
+    favoritosIds
+      .map(f => { const c = conteudos.find(c => c.id === f.conteudoId); return c ? { ...f, ...c } : null; })
+      .filter(Boolean)
+  , [favoritosIds, conteudos]);
+
+  const adicionarFavorito = (conteudo) => {
+    if (favoritosIds.some(f => f.conteudoId === conteudo.id)) return;
+    setFavoritosIds(prev => [...prev, { id: `local_${Date.now()}`, conteudoId: conteudo.id }]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'favoritos'), { conteudoId: conteudo.id, criadoEm: serverTimestamp() });
+  };
+
+  const removerFavorito = (conteudoId) => {
+    const fav = favoritosIds.find(f => f.conteudoId === conteudoId);
+    if (!fav) return;
+    setFavoritosIds(prev => prev.filter(f => f.conteudoId !== conteudoId));
+    if (uid) deleteDoc(doc(db, 'usuarios', uid, 'favoritos', fav.id)).catch(() => {});
+  };
+
+  const isFavorito = (conteudoId) => favoritosIds.some(f => f.conteudoId === conteudoId);
+
   // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
   const [parcerias, setParcerias] = useState([]);
   useEffect(() => {
@@ -288,6 +313,7 @@ export function AppProvider({ children }) {
       tipoLuto, setTipoLuto,
       notificacoes, marcarLida,
       conteudos,
+      favoritos, adicionarFavorito, removerFavorito, isFavorito,
       parcerias, registrarCliqueParceria,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
