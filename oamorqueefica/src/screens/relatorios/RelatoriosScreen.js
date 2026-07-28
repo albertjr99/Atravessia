@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import * as WebBrowser from 'expo-web-browser';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
@@ -150,8 +152,14 @@ function calcAno(checkins, year) {
 
 function contagemEmo(lista) {
   const map = {};
-  lista.forEach(c => { map[c.emocao] = (map[c.emocao] || 0) + 1; });
-  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  lista.forEach(c => {
+    if (!map[c.emocao]) map[c.emocao] = { count: 0, ultima: '' };
+    map[c.emocao].count++;
+    if (c.data > map[c.emocao].ultima) map[c.emocao].ultima = c.data;
+  });
+  return Object.entries(map)
+    .sort((a, b) => b[1].count - a[1].count || b[1].ultima.localeCompare(a[1].ultima))
+    .map(([emocao, v]) => [emocao, v.count]);
 }
 
 function avgIntensidade(lista) {
@@ -1028,22 +1036,20 @@ export default function RelatoriosScreen({ navigation }) {
     }
     setExportando(true);
     try {
-      const Print = require('expo-print');
-      const Sharing = require('expo-sharing');
       const html = tab === 'mensal'
         ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
         : tab === 'anual'
           ? gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT })
           : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const { uri } = await Print.printToFileAsync({ html });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: '.pdf' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: '.pdf', dialogTitle: 'Exportar relatório' });
       } else {
         Alert.alert('PDF gerado', 'Arquivo salvo em: ' + uri);
       }
-    } catch {
-      Alert.alert('Erro', 'Não foi possível gerar o PDF. Tente novamente.');
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível gerar o PDF: ' + (err?.message || 'tente novamente.'));
     } finally {
       setExportando(false);
     }

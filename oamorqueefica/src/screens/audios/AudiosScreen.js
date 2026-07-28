@@ -39,11 +39,13 @@ const tipoIcone = {
 const PLANO_POR_GRUPO = { acolhimento: 1, complementar: 2, sessao: 3 };
 
 export default function AudiosScreen({ navigation }) {
-  const { temAcesso, conteudos } = useApp();
+  const { temAcesso, conteudos, adicionarFavorito, removerFavorito, isFavorito } = useApp();
   const [catSel, setCatSel] = useState('todos');
 
   const itensAdmin = conteudos.map(c => ({
     id: `admin-${c.id}`,
+    firestoreId: c.id,
+    _raw: c,
     titulo: c.titulo,
     categoria: c.grupo,
     duracao: '',
@@ -83,7 +85,9 @@ export default function AudiosScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
-        <View style={{ width: 32 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('Favoritos')} style={styles.favBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="heart" size={22} color={colors.lav4} />
+        </TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -133,6 +137,17 @@ export default function AudiosScreen({ navigation }) {
                   <Text style={styles.audioTitulo}>{item.titulo}</Text>
                   <Text style={styles.audioSub}>{[item.duracao, item.categoria].filter(Boolean).join(' · ')}</Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => isFavorito(item.firestoreId) ? removerFavorito(item.firestoreId) : adicionarFavorito(item._raw)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={{ padding: 4 }}
+                >
+                  <Ionicons
+                    name={isFavorito(item.firestoreId) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={isFavorito(item.firestoreId) ? '#C06080' : colors.tl}
+                  />
+                </TouchableOpacity>
                 <View style={styles.audioRight}>
                   {item.plano > 1 && <PlanBadge plano={item.plano} />}
                   <View style={[styles.playBtn, { backgroundColor: bloqueado ? colors.peach : colors.lav4 }]}>
@@ -154,6 +169,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  favBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
   headerIlustracao: { width: 64, height: 64 },

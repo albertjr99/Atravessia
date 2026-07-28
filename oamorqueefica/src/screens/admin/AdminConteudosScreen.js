@@ -34,6 +34,22 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
+const EMOCOES_CHECKIN = [
+  { id: 'triste', label: 'Triste' },
+  { id: 'saudade', label: 'Saudade' },
+  { id: 'sozinho', label: 'Sozinho' },
+  { id: 'medo', label: 'Medo' },
+  { id: 'culpado', label: 'Culpado' },
+  { id: 'ansioso', label: 'Ansioso' },
+  { id: 'raiva', label: 'Raiva' },
+  { id: 'desanimado', label: 'Desanimado' },
+  { id: 'grato', label: 'Grato' },
+  { id: 'tranquilo', label: 'Em paz' },
+  { id: 'esperancoso', label: 'Esperançoso' },
+  { id: 'alegre', label: 'Alegre' },
+  { id: 'amoroso', label: 'Amoroso' },
+];
+
 const PLANO_CORES = {
   0: colors.sage,
   1: colors.lav4,
@@ -60,6 +76,7 @@ function novoItem(overrides = {}) {
     grupo: 'acolhimento',
     plano: 1,
     tags: '',
+    emocoes: [],
     url: '',
     localFile: null,
     localUri: null,
@@ -145,6 +162,22 @@ function ItemCard({ item, onUpdate, onRemove }) {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          <Text style={s.formLabel}>Aparece no check-in para <Text style={s.optional}>(selecione as emoções)</Text></Text>
+          <View style={s.chipRow}>
+            {EMOCOES_CHECKIN.map(e => {
+              const sel = (item.emocoes || []).includes(e.id);
+              return (
+                <TouchableOpacity
+                  key={e.id}
+                  style={[s.chip, sel && s.chipSel]}
+                  onPress={() => onUpdate('emocoes', sel ? item.emocoes.filter(id => id !== e.id) : [...(item.emocoes || []), e.id])}
+                >
+                  <Text style={[s.chipText, sel && s.chipTextSel]}>{e.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Text style={s.formLabel}>Tags <Text style={s.optional}>(separadas por vírgula)</Text></Text>
@@ -293,6 +326,7 @@ export default function AdminConteudosScreen({ navigation }) {
           grupo: item.grupo,
           plano: item.plano,
           tags: tagsArray,
+          emocoes: item.emocoes || [],
           criadoEm: serverTimestamp(),
         });
 
@@ -427,6 +461,14 @@ export default function AdminConteudosScreen({ navigation }) {
                       {planoObj.label}
                     </Text>
                   )}
+                  {(c.emocoes || []).map(eid => {
+                    const eObj = EMOCOES_CHECKIN.find(e => e.id === eid);
+                    return eObj ? (
+                      <Text key={eid} style={[s.itemTag, { backgroundColor: '#E8E0F0', color: '#8060A0' }]}>
+                        {eObj.label}
+                      </Text>
+                    ) : null;
+                  })}
                   {(c.tags || []).map(tag => (
                     <Text key={tag} style={[s.itemTag, { backgroundColor: colors.peach + '33', color: colors.peach2 }]}>
                       {tag}

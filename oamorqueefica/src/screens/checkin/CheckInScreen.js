@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Platform, Image,
+  StyleSheet, StatusBar, Alert, Platform, Image, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,16 +12,37 @@ import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
+const TIPO_ICONE = { audio: 'headset-outline', video: 'videocam-outline', documento: 'document-text-outline', link: 'link-outline' };
+
+function ConteudoCard({ c, onPress, isFav, onFav }) {
+  return (
+    <TouchableOpacity style={s.cCard} onPress={onPress} activeOpacity={0.85}>
+      <View style={s.cThumb}>
+        <Ionicons name={TIPO_ICONE[c.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.cTit} numberOfLines={2}>{c.titulo}</Text>
+        {c.descricao ? <Text style={s.cDesc} numberOfLines={1}>{c.descricao}</Text> : null}
+      </View>
+      <TouchableOpacity onPress={onFav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={18} color={isFav ? '#C06080' : colors.tl} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+}
+
 export default function CheckInScreen({ navigation }) {
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, adicionarFavorito, removerFavorito, isFavorito } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
 
+  const hojeStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const jaFezCheckinHoje = checkins.some(c => c.data === hojeStr);
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
-    ? audios.find(a => a.emocoes.includes(emocaoSel))
+    ? (audios.find(a => a.emocoes[0] === emocaoSel && a.plano <= 1) || audios.find(a => a.emocoes.includes(emocaoSel)))
     : null;
   const mensagemAcolhimento = emocaoObj
     ? emocaoObj.mensagens[Math.floor(Math.random() * emocaoObj.mensagens.length)]
@@ -46,37 +67,83 @@ export default function CheckInScreen({ navigation }) {
 
   const temPlano1 = (usuario?.plano || 0) >= 1;
 
+  // Conteúdos do Firestore vinculados à emoção selecionada pela admin
+  const conteudosSugeridos = emocaoSel
+    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel)).slice(0, 3)
+    : [];
+
+  const handleAbrirConteudo = (c) => {
+    if (c.tipo === 'documento' || c.tipo === 'link') {
+      Linking.openURL(c.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
+      return;
+    }
+    navigation.navigate('AudioPlayer', { audio: { id: `admin-${c.id}`, titulo: c.titulo, categoria: c.grupo, plano: c.plano, tipo: c.tipo, url: c.url } });
+  };
+
+  if (jaFezCheckinHoje && !salvo) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <LavandaBg />
+        <View style={s.savedWrap}>
+          <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
+            <Ionicons name="checkmark-circle" size={48} color={colors.lav4} />
+          </View>
+          <Text style={s.savedTit}>Check-in já registrado 💜</Text>
+          <Text style={s.savedSub}>Você já registrou seu check-in hoje. Volte amanhã para continuar seu acompanhamento emocional.</Text>
+          <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (salvo) {
-    // POSITIVO: celebração discreta, sem recomendação de conteúdo
+    // POSITIVO: celebração discreta + conteúdos admin vinculados (se houver)
     if (emocaoObj?.positiva) {
       return (
         <SafeAreaView style={s.safe}>
           <LavandaBg />
-          <View style={s.savedWrap}>
+          <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
             <View style={s.celebCircle}>
               <Ionicons name="sparkles" size={48} color={colors.gold} />
             </View>
             <Text style={s.savedTit}>Que bom saber disso! 💜</Text>
             <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
             <Text style={s.savedHint}>Continue se cuidando. Voltamos amanhã para o próximo check-in.</Text>
+            {conteudosSugeridos.length > 0 && (
+              <View style={s.sugestaoBloco}>
+                <Text style={s.sugestaoTit}>Conteúdos para você</Text>
+                {conteudosSugeridos.map(c => (
+                  <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
+                ))}
+              </View>
+            )}
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
-          </View>
+          </ScrollView>
         </SafeAreaView>
       );
     }
 
-    // NEGATIVO: mensagem de acolhimento + botão de áudio (Plan 1+)
+    // NEGATIVO: mensagem de acolhimento + conteúdos admin + áudio estático (fallback)
     return (
       <SafeAreaView style={s.safe}>
         <LavandaBg />
-        <View style={s.savedWrap}>
+        <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
           <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
             <Ionicons name="heart" size={40} color={colors.lav4} />
           </View>
           <Text style={s.savedTit}>Check-in registrado</Text>
           <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
 
-          {temPlano1 && audioRec && (
+          {conteudosSugeridos.length > 0 && (
+            <View style={s.sugestaoBloco}>
+              <Text style={s.sugestaoTit}>Conteúdos para você agora</Text>
+              {conteudosSugeridos.map(c => (
+                <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
+              ))}
+            </View>
+          )}
+
+          {conteudosSugeridos.length === 0 && temPlano1 && audioRec && (
             <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
               <Text style={s.recTag}>Áudio de acolhimento para você</Text>
               <View style={s.recRow}>
@@ -94,7 +161,7 @@ export default function CheckInScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {!temPlano1 && (
+          {conteudosSugeridos.length === 0 && !temPlano1 && (
             <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
               <Ionicons name="headset-outline" size={20} color={colors.lav4} />
               <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
@@ -103,7 +170,7 @@ export default function CheckInScreen({ navigation }) {
           )}
 
           <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -142,7 +209,7 @@ export default function CheckInScreen({ navigation }) {
                 <View style={[s.emoIcon, { backgroundColor: e.bg }]}>
                   <Ionicons name={`${e.icon}-outline`} size={24} color={e.color} />
                 </View>
-                <Text style={[s.emoName, selected && { color: e.color, fontFamily: fonts.bodyBold }]}>{e.label}</Text>
+                <Text style={[s.emoName, selected && { color: e.color, fontFamily: fonts.bodyBold }]} numberOfLines={2} adjustsFontSizeToFit>{e.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -237,7 +304,7 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg, gap: 10,
   },
   emoCard: {
-    width: '22%', minWidth: 74, flex: 1,
+    width: '22%', minWidth: 74,
     backgroundColor: 'white', borderRadius: 16,
     paddingVertical: 10, alignItems: 'center', gap: 6,
     borderWidth: 1.5, borderColor: '#E8E0F0',
@@ -294,4 +361,10 @@ const s = StyleSheet.create({
   recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
   upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
+  sugestaoBloco: { width: '100%', marginTop: 16, gap: 8 },
+  sugestaoTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  cCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.lav1, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.lav2 },
+  cThumb: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+  cDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
 });

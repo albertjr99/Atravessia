@@ -28,6 +28,7 @@ import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
 import AdminVitoriasScreen from '../screens/admin/AdminVitoriasScreen';
 import AdminPrecosScreen from '../screens/admin/AdminPrecosScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
+import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { colors } from '../theme';
@@ -58,6 +59,7 @@ function MainStack() {
       <Stack.Screen name="DatasSensiveis" component={DatasSensiveisScreen} />
       <Stack.Screen name="RedeApoio" component={RedeApoioScreen} />
       <Stack.Screen name="Parcerias" component={ParceriasScreen} />
+      <Stack.Screen name="Favoritos" component={FavoritosScreen} />
     </Stack.Navigator>
   );
 }
