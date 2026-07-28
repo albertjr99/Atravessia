@@ -162,7 +162,9 @@ export function AppProvider({ children }) {
   };
 
   const adicionarCheckin = (emocao) => {
-    const item = { data: hojeStr(), emocao };
+    const hoje = hojeStr();
+    if (checkins.some(c => c.data === hoje)) return;
+    const item = { data: hoje, emocao };
     setCheckins(prev => [...prev, item]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'checkins'), { ...item, criadoEm: serverTimestamp() });
   };

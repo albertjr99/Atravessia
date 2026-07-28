@@ -18,10 +18,12 @@ export default function CheckInScreen({ navigation }) {
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
 
+  const hojeStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const jaFezCheckinHoje = checkins.some(c => c.data === hojeStr);
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
-    ? audios.find(a => a.emocoes.includes(emocaoSel))
+    ? (audios.find(a => a.emocoes[0] === emocaoSel && a.plano <= 1) || audios.find(a => a.emocoes.includes(emocaoSel)))
     : null;
   const mensagemAcolhimento = emocaoObj
     ? emocaoObj.mensagens[Math.floor(Math.random() * emocaoObj.mensagens.length)]
@@ -45,6 +47,22 @@ export default function CheckInScreen({ navigation }) {
   };
 
   const temPlano1 = (usuario?.plano || 0) >= 1;
+
+  if (jaFezCheckinHoje && !salvo) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <LavandaBg />
+        <View style={s.savedWrap}>
+          <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
+            <Ionicons name="checkmark-circle" size={48} color={colors.lav4} />
+          </View>
+          <Text style={s.savedTit}>Check-in já registrado 💜</Text>
+          <Text style={s.savedSub}>Você já registrou seu check-in hoje. Volte amanhã para continuar seu acompanhamento emocional.</Text>
+          <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (salvo) {
     // POSITIVO: celebração discreta, sem recomendação de conteúdo
@@ -142,7 +160,7 @@ export default function CheckInScreen({ navigation }) {
                 <View style={[s.emoIcon, { backgroundColor: e.bg }]}>
                   <Ionicons name={`${e.icon}-outline`} size={24} color={e.color} />
                 </View>
-                <Text style={[s.emoName, selected && { color: e.color, fontFamily: fonts.bodyBold }]}>{e.label}</Text>
+                <Text style={[s.emoName, selected && { color: e.color, fontFamily: fonts.bodyBold }]} numberOfLines={2} adjustsFontSizeToFit>{e.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -237,7 +255,7 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg, gap: 10,
   },
   emoCard: {
-    width: '22%', minWidth: 74, flex: 1,
+    width: '22%', minWidth: 74,
     backgroundColor: 'white', borderRadius: 16,
     paddingVertical: 10, alignItems: 'center', gap: 6,
     borderWidth: 1.5, borderColor: '#E8E0F0',

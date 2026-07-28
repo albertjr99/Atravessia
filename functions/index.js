@@ -335,6 +335,51 @@ exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZ
   await enviarPush(mensagensPush);
 });
 
+// Roda 1x por dia às 20h — avisa usuária que está com a mesma emoção difícil há 15 dias seguidos.
+exports.notificarEmocaoPersistente = onSchedule({ schedule: '0 20 * * *', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const quinzeDiasAtras = admin.firestore.Timestamp.fromMillis(agora - 15 * 86400000);
+  const usuariosSnap = await db.collection('usuarios').get();
+  const mensagensPush = [];
+
+  for (const userDoc of usuariosSnap.docs) {
+    const dados = userDoc.data();
+    if (!dados.pushToken) continue;
+
+    const checkinsSnap = await userDoc.ref.collection('checkins')
+      .where('criadoEm', '>=', quinzeDiasAtras)
+      .orderBy('criadoEm', 'desc')
+      .get();
+    if (checkinsSnap.empty) continue;
+
+    // Agrupa por data (YYYY-MM-DD), ficando com o mais recente de cada dia
+    const porData = {};
+    for (const d of checkinsSnap.docs) {
+      const dado = d.data();
+      if (!porData[dado.data]) porData[dado.data] = dado.emocao;
+    }
+
+    const datas = Object.keys(porData).sort().reverse(); // mais recente primeiro
+    if (datas.length < 15) continue;
+
+    const emocaoRef = porData[datas[0]];
+    if (!EMOCOES_NEGATIVAS.has(emocaoRef)) continue;
+
+    const todasIguais = datas.slice(0, 15).every(d => porData[d] === emocaoRef);
+    if (!todasIguais) continue;
+    if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
+
+    mensagensPush.push({
+      to: dados.pushToken,
+      title: 'Atravessia',
+      body: 'Você está há duas semanas assim. Se cuide. Você é importante. 💜',
+      data: { screen: 'CheckIn' },
+    });
+  }
+
+  await enviarPush(mensagensPush);
+});
+
 // Ao registrar um novo check-in, libera a próxima escalada de aviso de inatividade
 // (sem isso, quem voltou a usar o app uma vez nunca mais receberia o aviso de 7/14 dias).
 exports.resetarInatividadeAoCheckin = onDocumentCreated('usuarios/{uid}/checkins/{checkinId}', async (event) => {
