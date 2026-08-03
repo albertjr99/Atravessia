@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
   { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços', screen: 'AdminPrecos' },
   { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
+  { icon: 'chatbubble-ellipses', iconOff: 'chatbubble-ellipses-outline', label: 'Mensagens', screen: 'AdminMensagens' },
   { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
 ];
 

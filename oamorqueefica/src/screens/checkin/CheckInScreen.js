@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Platform, Image, Linking,
+  Animated, Dimensions,
 } from 'react-native';
+
+const SCREEN_W = Dimensions.get('window').width;
+const CONFETTI_COLORS = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
+const CONFETTI_COUNT = 20;
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -36,6 +41,30 @@ export default function CheckInScreen({ navigation }) {
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
+
+  const confettiAnims = useRef(
+    Array.from({ length: CONFETTI_COUNT }, () => ({
+      y: new Animated.Value(-30),
+      rot: new Animated.Value(0),
+      opacity: new Animated.Value(1),
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (!salvo || !emocaoObj?.positiva) return;
+    confettiAnims.forEach(a => { a.y.setValue(-30); a.rot.setValue(0); a.opacity.setValue(1); });
+    const animations = confettiAnims.map((a, i) =>
+      Animated.parallel([
+        Animated.timing(a.y, { toValue: 750, duration: 1200 + (i % 5) * 160, useNativeDriver: true }),
+        Animated.timing(a.rot, { toValue: 1, duration: 1700, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.delay(900),
+          Animated.timing(a.opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    Animated.stagger(55, animations).start();
+  }, [salvo]);
 
   const hojeStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   const jaFezCheckinHoje = checkins.some(c => c.data === hojeStr);
@@ -103,11 +132,37 @@ export default function CheckInScreen({ navigation }) {
   }
 
   if (salvo) {
-    // POSITIVO: celebração discreta + conteúdos admin vinculados (se houver)
+    // POSITIVO: confetti + conteúdos admin vinculados (se houver)
     if (emocaoObj?.positiva) {
       return (
         <SafeAreaView style={s.safe}>
           <LavandaBg />
+          {/* Confetti overlay */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {confettiAnims.map((a, i) => {
+              const xPos = (SCREEN_W / (CONFETTI_COUNT + 1)) * (i + 1);
+              const size = 8 + (i % 4) * 2;
+              return (
+                <Animated.View
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: xPos - size / 2,
+                    width: size,
+                    height: size,
+                    backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                    borderRadius: i % 3 === 0 ? size / 2 : 2,
+                    transform: [
+                      { translateY: a.y },
+                      { rotate: a.rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '720deg'] }) },
+                    ],
+                    opacity: a.opacity,
+                  }}
+                />
+              );
+            })}
+          </View>
           <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
             <View style={s.celebCircle}>
               <Ionicons name="sparkles" size={48} color={colors.gold} />

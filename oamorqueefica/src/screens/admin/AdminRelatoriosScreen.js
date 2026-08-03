@@ -402,6 +402,67 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
   );
 }
 
+// ─── Tab: Empresas ────────────────────────────────────────────────
+function AbaEmpresas({ usuarios }) {
+  const usuariosEmpresa = usuarios.filter(u => u.linkEmpresa === true);
+
+  const porEmpresa = {};
+  usuariosEmpresa.forEach(u => {
+    const nome = u.empresa || '(empresa não identificada)';
+    if (!porEmpresa[nome]) porEmpresa[nome] = [];
+    porEmpresa[nome].push(u);
+  });
+  const empresas = Object.entries(porEmpresa).sort((a, b) => b[1].length - a[1].length);
+
+  return (
+    <View>
+      <Text style={s.pageTitle}>Empresas</Text>
+
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Usuárias via empresa</Text>
+        <View style={s.engRow}>
+          <View style={s.engItem}>
+            <Text style={s.engVal}>{usuariosEmpresa.length}</Text>
+            <Text style={s.engLbl}>total via{'\n'}empresa</Text>
+          </View>
+          <View style={s.engDiv} />
+          <View style={s.engItem}>
+            <Text style={s.engVal}>{empresas.length}</Text>
+            <Text style={s.engLbl}>empresas{'\n'}diferentes</Text>
+          </View>
+          <View style={s.engDiv} />
+          <View style={s.engItem}>
+            <Text style={s.engVal}>{usuarios.length > 0 ? Math.round((usuariosEmpresa.length / usuarios.length) * 100) : 0}%</Text>
+            <Text style={s.engLbl}>do total de{'\n'}usuárias</Text>
+          </View>
+        </View>
+      </View>
+
+      {empresas.length === 0 && (
+        <Text style={s.emptyTxt}>Nenhuma usuária cadastrada via link de empresa ainda.</Text>
+      )}
+
+      {empresas.map(([nome, users]) => (
+        <View key={nome} style={s.card}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+            <Text style={s.cardTitle}>{nome}</Text>
+            <View style={{ backgroundColor: colors.gold + '22', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 3 }}>
+              <Text style={{ fontFamily: fonts.bodyBold, fontSize: 11, color: colors.gold }}>{users.length} usuária{users.length !== 1 ? 's' : ''}</Text>
+            </View>
+          </View>
+          {users.map((u, i) => (
+            <View key={u.id} style={[s.histRow, i === users.length - 1 && { borderBottomWidth: 0 }]}>
+              <View style={[s.emoDot, { backgroundColor: PLANO_CORES[u.plano || 0] }]} />
+              <Text style={[s.histLabel, { flex: 1 }]}>{u.nome || u.email}</Text>
+              <Text style={s.histData}>{PLANO_LABELS[u.plano || 0]}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────
 export default function AdminRelatoriosScreen({ navigation }) {
   const [aba, setAba] = useState('geral');
@@ -469,6 +530,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
           { id: 'geral', label: 'Geral', icon: 'stats-chart' },
           { id: 'emocoes', label: 'Emoções', icon: 'heart' },
           { id: 'usuarios', label: 'Usuárias', icon: 'people' },
+          { id: 'empresas', label: 'Empresas', icon: 'business' },
         ].map(tab => (
           <TouchableOpacity
             key={tab.id}
@@ -502,6 +564,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
             todasVitorias={todasVitorias}
           />
         )}
+        {aba === 'empresas' && <AbaEmpresas usuarios={usuarios} />}
         <View style={{ height: 40 }} />
       </ScrollView>
     </AdminLayout>

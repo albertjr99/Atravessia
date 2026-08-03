@@ -172,6 +172,15 @@ export function AppProvider({ children }) {
 
   const isFavorito = (conteudoId) => favoritosIds.some(f => f.conteudoId === conteudoId);
 
+  // Mensagens personalizadas dos relatórios (configuradas pela admin)
+  const [mensagensRelatorio, setMensagensRelatorio] = useState({});
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'configuracoes', 'mensagensRelatorio'), (snap) => {
+      setMensagensRelatorio(snap.exists() ? snap.data() : {});
+    }, () => {});
+    return unsub;
+  }, []);
+
   // Jornadas criadas pela admin (Firestore), separadas das estáticas do data/
   const [jornadasAdmin, setJornadasAdmin] = useState([]);
   useEffect(() => {
@@ -324,6 +333,7 @@ export function AppProvider({ children }) {
       notificacoes, marcarLida,
       conteudos,
       favoritos, adicionarFavorito, removerFavorito, isFavorito,
+      mensagensRelatorio,
       jornadasAdmin,
       parcerias, registrarCliqueParceria,
       jornadasComProgresso, concluirAtividadeJornada,
