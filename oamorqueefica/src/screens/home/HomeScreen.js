@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Platform, Image, Dimensions, Alert, Linking,
@@ -6,7 +6,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { frases, reflexoes, emocoes } from '../../data';
+import { emocoes } from '../../data';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
@@ -20,9 +20,8 @@ const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria } = useApp();
+  const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria, fraseDoDia } = useApp();
   const { sair } = useAuth();
-  const [fraseIdx] = useState(0);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const handleSair = () => {
@@ -82,15 +81,17 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* ===== FRASE DO DIA ===== */}
-          <View style={s.fraseCard}>
-            <View style={s.fraseTagRow}>
-              <Ionicons name="sunny-outline" size={13} color="#9b86bd" />
-              <Text style={s.fraseTag}>Frase do dia</Text>
-              <Image source={ilCoracao} style={s.fraseIl} resizeMode="contain" />
+          {fraseDoDia && (
+            <View style={s.fraseCard}>
+              <View style={s.fraseTagRow}>
+                <Ionicons name="sunny-outline" size={13} color="#9b86bd" />
+                <Text style={s.fraseTag}>Frase do dia</Text>
+                <Image source={ilCoracao} style={s.fraseIl} resizeMode="contain" />
+              </View>
+              <Text style={s.fraseTxt}>"{fraseDoDia.texto}"</Text>
+              {fraseDoDia.autor ? <Text style={s.fraseAutor}>— {fraseDoDia.autor}</Text> : null}
             </View>
-            <Text style={s.fraseTxt}>"{frases[fraseIdx].texto}"</Text>
-            {frases[fraseIdx].autor ? <Text style={s.fraseAutor}>— {frases[fraseIdx].autor}</Text> : null}
-          </View>
+          )}
 
           {/* ===== CHECK-IN ===== */}
           <View style={s.sect}>
@@ -101,7 +102,7 @@ export default function HomeScreen({ navigation }) {
                   <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
                     <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
                   </View>
-                  <Text style={s.emoLbl}>{e.label}</Text>
+                  <Text style={s.emoLbl} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>{e.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -121,7 +122,7 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity><Text style={s.sectLink}>Ver todas</Text></TouchableOpacity>
             </View>
             <View style={s.reflexaoCard}>
-              <Text style={s.reflexaoTxt}>{reflexoes[0].texto}</Text>
+              <Text style={s.reflexaoTxt}>{fraseDoDia?.reflexao || 'Cada dia traz uma nova chance de cuidar de si. Permita-se sentir, acolher e seguir.'}</Text>
             </View>
           </View>
 
@@ -150,6 +151,19 @@ export default function HomeScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={s.vidaBtnTxt}>Experimente a vida</Text>
                   <Text style={s.vidaBtnSub}>Parcerias e benefícios exclusivos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[s.vidaBtn, { marginTop: 10 }]} onPress={() => navigation.navigate('Jornadas')} activeOpacity={0.88}>
+              <View style={[s.vidaBtnInner, { backgroundColor: '#5C4490' }]}>
+                <View style={s.vidaIconCircle}>
+                  <Ionicons name="people-outline" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.vidaBtnTxt}>Continue a travessia</Text>
+                  <Text style={s.vidaBtnSub}>Eu caminho junto com você</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
               </View>

@@ -25,7 +25,7 @@ export default function CadastroScreen({ navigation }) {
   const { cadastrar } = useAuth();
   const [form, setForm] = useState({
     nome: '', apelido: '', email: '', telefone: '', cidade: '', senha: '',
-    linkEmpresa: null,
+    linkEmpresa: null, empresa: '',
   });
   const [showSenha, setShowSenha] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
@@ -49,6 +49,10 @@ export default function CadastroScreen({ navigation }) {
       Alert.alert('Atenção', 'A senha precisa ter pelo menos 6 caracteres.');
       return;
     }
+    if (form.linkEmpresa === true && !form.empresa.trim()) {
+      Alert.alert('Atenção', 'Informe o nome da empresa ou organização.');
+      return;
+    }
     if (!aceitouTermos || !aceitouPriv) {
       Alert.alert('Atenção', 'É necessário aceitar os termos de uso e a política de privacidade.');
       return;
@@ -63,6 +67,7 @@ export default function CadastroScreen({ navigation }) {
         telefone: form.telefone.trim(),
         cidade: form.cidade.trim(),
         linkEmpresa: form.linkEmpresa,
+        empresa: form.linkEmpresa === true ? form.empresa.trim() : '',
       });
       // onAuthStateChanged handles navigation automatically after account creation
     } catch (e) {
@@ -161,6 +166,22 @@ export default function CadastroScreen({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* ── Nome da empresa (obrigatório quando linkEmpresa = true) ── */}
+          {form.linkEmpresa === true && (
+            <>
+              <Text style={[styles.fieldLabel, { marginTop: 4 }]}>
+                Nome da empresa ou organização <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: Empresa ABC Ltda"
+                placeholderTextColor={colors.tl}
+                value={form.empresa}
+                onChangeText={v => set('empresa', v)}
+              />
+            </>
+          )}
 
           {/* ── Aceite ── */}
           <TouchableOpacity style={styles.checkRow} onPress={() => setAceitouTermos(p => !p)}>

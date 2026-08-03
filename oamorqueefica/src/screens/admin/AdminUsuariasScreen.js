@@ -40,12 +40,14 @@ export default function AdminUsuariasScreen({ navigation }) {
     const matchBusca = !busca || [u.nome, u.apelido, u.email, u.cidade].some(
       v => v?.toLowerCase().includes(busca.toLowerCase())
     );
+    if (filtroPlano === 'empresa') return matchBusca && u.linkEmpresa === true;
     const matchPlano = filtroPlano === 'todos' || String(u.plano ?? 0) === filtroPlano;
     return matchBusca && matchPlano;
   });
 
   const totalGratis = usuarias.filter(u => (u.plano ?? 0) === 0).length;
   const totalPago = usuarias.filter(u => (u.plano ?? 0) === 1).length;
+  const totalEmpresa = usuarias.filter(u => u.linkEmpresa === true).length;
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminUsuarias">
@@ -67,6 +69,10 @@ export default function AdminUsuariasScreen({ navigation }) {
             <Text style={[styles.statN, { color: colors.lav4 }]}>{totalPago}</Text>
             <Text style={styles.statL}>Acolher</Text>
           </View>
+          <View style={[styles.statBox, { borderColor: colors.gold }]}>
+            <Text style={[styles.statN, { color: colors.gold }]}>{totalEmpresa}</Text>
+            <Text style={styles.statL}>Empresa</Text>
+          </View>
         </View>
 
         {/* Busca */}
@@ -85,7 +91,7 @@ export default function AdminUsuariasScreen({ navigation }) {
 
         {/* Filtro por plano */}
         <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
-          {[{ id: 'todos', label: 'Todos' }, { id: '0', label: 'Perceber' }, { id: '1', label: 'Acolher' }].map(f => (
+          {[{ id: 'todos', label: 'Todos' }, { id: '0', label: 'Perceber' }, { id: '1', label: 'Acolher' }, { id: 'empresa', label: 'Empresa' }].map(f => (
             <TouchableOpacity key={f.id} style={[styles.chip, filtroPlano === f.id && styles.chipSel]} onPress={() => setFiltroPlano(f.id)}>
               <Text style={[styles.chipText, filtroPlano === f.id && styles.chipTextSel]}>{f.label}</Text>
             </TouchableOpacity>
@@ -114,7 +120,9 @@ export default function AdminUsuariasScreen({ navigation }) {
                 {u.linkEmpresa && (
                   <View style={styles.empresaTag}>
                     <Ionicons name="business-outline" size={10} color={colors.gold} />
-                    <Text style={styles.empresaText}>Via empresa/parceria</Text>
+                    <Text style={styles.empresaText}>
+                      {u.empresa ? `Empresa: ${u.empresa}` : 'Via empresa/parceria'}
+                    </Text>
                   </View>
                 )}
               </View>

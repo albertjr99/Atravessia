@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Platform, Image, Linking,
+  Animated, Dimensions,
 } from 'react-native';
+
+const SCREEN_W = Dimensions.get('window').width;
+const CONFETTI_COLORS = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
+const CONFETTI_COUNT = 20;
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -37,15 +42,36 @@ export default function CheckInScreen({ navigation }) {
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
 
+  const confettiAnims = useRef(
+    Array.from({ length: CONFETTI_COUNT }, () => ({
+      y: new Animated.Value(-30),
+      rot: new Animated.Value(0),
+      opacity: new Animated.Value(1),
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (!salvo || !emocaoObj?.positiva) return;
+    confettiAnims.forEach(a => { a.y.setValue(-30); a.rot.setValue(0); a.opacity.setValue(1); });
+    const animations = confettiAnims.map((a, i) =>
+      Animated.parallel([
+        Animated.timing(a.y, { toValue: 750, duration: 1200 + (i % 5) * 160, useNativeDriver: true }),
+        Animated.timing(a.rot, { toValue: 1, duration: 1700, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.delay(900),
+          Animated.timing(a.opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    Animated.stagger(55, animations).start();
+  }, [salvo]);
+
   const hojeStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   const jaFezCheckinHoje = checkins.some(c => c.data === hojeStr);
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
     ? (audios.find(a => a.emocoes[0] === emocaoSel && a.plano <= 1) || audios.find(a => a.emocoes.includes(emocaoSel)))
-    : null;
-  const mensagemAcolhimento = emocaoObj
-    ? emocaoObj.mensagens[Math.floor(Math.random() * emocaoObj.mensagens.length)]
     : null;
 
   const handleSalvar = () => {
@@ -67,10 +93,19 @@ export default function CheckInScreen({ navigation }) {
 
   const temPlano1 = (usuario?.plano || 0) >= 1;
 
-  // Conteúdos do Firestore vinculados à emoção selecionada pela admin
+  // Conteúdos do Firestore vinculados à emoção — rotação diária por tipo (diversificação)
   const conteudosSugeridos = emocaoSel
-    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel)).slice(0, 3)
+    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel))
     : [];
+
+  // Seleciona UM conteúdo de forma determinística por dia+emoção para diversificar tipos
+  const conteudoExibido = (() => {
+    if (!emocaoSel || conteudosSugeridos.length === 0) return null;
+    const dayNum = Math.floor(Date.now() / 86400000);
+    let hash = dayNum;
+    for (let i = 0; i < emocaoSel.length; i++) hash = (hash * 31 + emocaoSel.charCodeAt(i)) | 0;
+    return conteudosSugeridos[Math.abs(hash) % conteudosSugeridos.length];
+  })();
 
   const handleAbrirConteudo = (c) => {
     if (c.tipo === 'documento' || c.tipo === 'link') {
@@ -97,24 +132,47 @@ export default function CheckInScreen({ navigation }) {
   }
 
   if (salvo) {
-    // POSITIVO: celebração discreta + conteúdos admin vinculados (se houver)
+    // POSITIVO: confetti + conteúdos admin vinculados (se houver)
     if (emocaoObj?.positiva) {
       return (
         <SafeAreaView style={s.safe}>
           <LavandaBg />
+          {/* Confetti overlay */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {confettiAnims.map((a, i) => {
+              const xPos = (SCREEN_W / (CONFETTI_COUNT + 1)) * (i + 1);
+              const size = 8 + (i % 4) * 2;
+              return (
+                <Animated.View
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: xPos - size / 2,
+                    width: size,
+                    height: size,
+                    backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                    borderRadius: i % 3 === 0 ? size / 2 : 2,
+                    transform: [
+                      { translateY: a.y },
+                      { rotate: a.rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '720deg'] }) },
+                    ],
+                    opacity: a.opacity,
+                  }}
+                />
+              );
+            })}
+          </View>
           <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
             <View style={s.celebCircle}>
               <Ionicons name="sparkles" size={48} color={colors.gold} />
             </View>
             <Text style={s.savedTit}>Que bom saber disso! 💜</Text>
-            <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
             <Text style={s.savedHint}>Continue se cuidando. Voltamos amanhã para o próximo check-in.</Text>
-            {conteudosSugeridos.length > 0 && (
+            {conteudoExibido && (
               <View style={s.sugestaoBloco}>
-                <Text style={s.sugestaoTit}>Conteúdos para você</Text>
-                {conteudosSugeridos.map(c => (
-                  <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
-                ))}
+                <Text style={s.sugestaoTit}>Conteúdo para você</Text>
+                <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
               </View>
             )}
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
@@ -132,18 +190,15 @@ export default function CheckInScreen({ navigation }) {
             <Ionicons name="heart" size={40} color={colors.lav4} />
           </View>
           <Text style={s.savedTit}>Check-in registrado</Text>
-          <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
 
-          {conteudosSugeridos.length > 0 && (
+          {conteudoExibido && (
             <View style={s.sugestaoBloco}>
-              <Text style={s.sugestaoTit}>Conteúdos para você agora</Text>
-              {conteudosSugeridos.map(c => (
-                <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
-              ))}
+              <Text style={s.sugestaoTit}>Conteúdo para você agora</Text>
+              <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
             </View>
           )}
 
-          {conteudosSugeridos.length === 0 && temPlano1 && audioRec && (
+          {!conteudoExibido && temPlano1 && audioRec && (
             <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
               <Text style={s.recTag}>Áudio de acolhimento para você</Text>
               <View style={s.recRow}>
@@ -161,7 +216,7 @@ export default function CheckInScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {conteudosSugeridos.length === 0 && !temPlano1 && (
+          {!conteudoExibido && !temPlano1 && (
             <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
               <Ionicons name="headset-outline" size={20} color={colors.lav4} />
               <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
@@ -215,34 +270,40 @@ export default function CheckInScreen({ navigation }) {
           })}
         </View>
 
-        {/* Mensagem de acolhimento */}
-        {mensagemAcolhimento && (
-          <View style={s.sect}>
-            <View style={s.suggCard}>
-              <Text style={s.suggMsg}>{mensagemAcolhimento}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Conteúdo sugerido */}
-        {audioRec && (
+        {/* Conteúdo sugerido (pré-save) */}
+        {(conteudoExibido || audioRec) && (
           <View style={s.sect}>
             <View style={s.suggCard}>
               <View style={s.suggHeader}>
-                <Text style={s.suggTit}>Conteúdos que podem te ajudar agora</Text>
+                <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
               </View>
-              <View style={s.suggRow}>
-                <View style={s.suggThumb}>
-                  <Ionicons name="headset-outline" size={20} color={colors.lav5} />
+              {conteudoExibido ? (
+                <View style={s.suggRow}>
+                  <View style={s.suggThumb}>
+                    <Ionicons name={TIPO_ICONE[conteudoExibido.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.suggTag}>{conteudoExibido.tipo}</Text>
+                    <Text style={s.suggName}>{conteudoExibido.titulo}</Text>
+                  </View>
+                  <View style={s.playBtnLg}>
+                    <Ionicons name="arrow-forward" size={16} color="white" />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
-                  <Text style={s.suggName}>{audioRec.titulo}</Text>
+              ) : (
+                <View style={s.suggRow}>
+                  <View style={s.suggThumb}>
+                    <Ionicons name="headset-outline" size={20} color={colors.lav5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
+                    <Text style={s.suggName}>{audioRec.titulo}</Text>
+                  </View>
+                  <View style={s.playBtnLg}>
+                    <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
+                  </View>
                 </View>
-                <View style={s.playBtnLg}>
-                  <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
-                </View>
-              </View>
+              )}
             </View>
           </View>
         )}

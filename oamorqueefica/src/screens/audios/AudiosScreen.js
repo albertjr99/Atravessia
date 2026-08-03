@@ -1,68 +1,35 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Image, Linking,
+  StyleSheet, StatusBar, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import {} from '../../data';
-import { ScriptTitle, PlanBadge, LavandaBg } from '../../components';
+import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
-const ilustracao = require('../../../assets/images/il_audio_respiracao.png');
-
-const categorias = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'acolhimento', label: 'Acolhimento' },
-  { id: 'noturno', label: 'Noturnos', emBreve: true },
-  { id: 'complementar', label: 'Complementar' },
-  { id: 'sessao', label: 'Sessão' },
-];
-
-const catIcones = {
-  acolhimento: { icon: 'heart-outline', bg: colors.lav1, color: colors.lav5 },
-  noturno: { icon: 'moon-outline', bg: '#F5EDE5', color: colors.peach2 },
-  complementar: { icon: 'sparkles-outline', bg: colors.lav1, color: colors.lav5 },
-  sessao: { icon: 'people-outline', bg: '#EAF0F5', color: '#7088A0' },
-};
-
-const tipoIcone = {
+const TIPO_ICONE = {
   audio: 'headset-outline',
   video: 'videocam-outline',
   documento: 'document-text-outline',
   link: 'link-outline',
 };
 
-// Conteúdos publicados pelo painel admin não têm plano explícito —
-// o grupo de acesso define o plano mínimo necessário (mesma regra do liberarConteudo).
-const PLANO_POR_GRUPO = { acolhimento: 1, complementar: 2, sessao: 3 };
+const CAT_COR = {
+  acolhimento: { bg: colors.lav1, color: colors.lav5 },
+  noturno:     { bg: '#F5EDE5', color: '#B08070' },
+  complementar:{ bg: colors.lav1, color: colors.lav5 },
+};
 
 export default function AudiosScreen({ navigation }) {
-  const { temAcesso, conteudos, adicionarFavorito, removerFavorito, isFavorito } = useApp();
-  const [catSel, setCatSel] = useState('todos');
-
-  const itensAdmin = conteudos.map(c => ({
-    id: `admin-${c.id}`,
-    firestoreId: c.id,
-    _raw: c,
-    titulo: c.titulo,
-    categoria: c.grupo,
-    duracao: '',
-    descricao: '',
-    plano: typeof c.plano === 'number' ? c.plano : (PLANO_POR_GRUPO[c.grupo] || 1),
-    tipo: c.tipo,
-    url: c.url,
-  }));
-
-  const todosItens = [...itensAdmin];
-  const filtrados = catSel === 'todos' ? todosItens : todosItens.filter(a => a.categoria === catSel);
+  const { favoritos, removerFavorito, temAcesso } = useApp();
 
   const handleItem = (item) => {
     if (!temAcesso(item.plano)) {
       Alert.alert(
         'Conteúdo Premium',
-        `Este conteúdo está disponível no Plano ${item.plano}. Deseja conhecer os planos?`,
+        `Este conteúdo requer um plano superior. Deseja ver os planos?`,
         [
           { text: 'Agora não', style: 'cancel' },
           { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
@@ -74,128 +41,135 @@ export default function AudiosScreen({ navigation }) {
       Linking.openURL(item.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
       return;
     }
-    navigation.navigate('AudioPlayer', { audio: item });
+    navigation.navigate('AudioPlayer', {
+      audio: { id: `admin-${item.id}`, titulo: item.titulo, categoria: item.grupo, plano: item.plano, tipo: item.tipo, url: item.url },
+    });
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <LavandaBg />
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+
+      <View style={s.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Favoritos')} style={styles.favBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="heart" size={22} color={colors.lav4} />
-        </TouchableOpacity>
+        <Text style={s.topTitle}>Conteúdos</Text>
+        <View style={{ width: 36 }} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
 
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <ScriptTitle size={24}>Conteúdos</ScriptTitle>
-            <Text style={styles.sub}>Para cada momento do seu luto</Text>
-          </View>
-          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+
+        {/* Explicação */}
+        <View style={s.infoCard}>
+          <Ionicons name="heart" size={20} color="#C06080" />
+          <Text style={s.infoTxt}>
+            Aqui ficam salvos os conteúdos que você favoritou durante o check-in.
+            Toque em <Text style={{ color: '#C06080' }}>♡</Text> nos conteúdos que aparecerem após o seu check-in para salvá-los aqui.
+          </Text>
         </View>
 
-        {/* Filtros */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsContent}>
-          {categorias.map(c => (
-            <TouchableOpacity
-              key={c.id}
-              style={[styles.chip, catSel === c.id && styles.chipAtivo]}
-              onPress={() => setCatSel(c.id)}
-            >
-              <Text style={[styles.chipText, catSel === c.id && styles.chipTextAtivo]}>{c.label}</Text>
-              {c.emBreve && (
-                <View style={styles.emBreveBadge}>
-                  <Text style={styles.emBreveTxt}>Em breve</Text>
-                </View>
-              )}
+        {favoritos.length === 0 ? (
+          <View style={s.emptyWrap}>
+            <Ionicons name="heart-outline" size={52} color={colors.lav3} />
+            <Text style={s.emptyTit}>Nenhum conteúdo salvo ainda</Text>
+            <Text style={s.emptySub}>
+              Faça seu check-in emocional e toque no ícone de coração nos conteúdos sugeridos para salvá-los aqui.
+            </Text>
+            <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('CheckIn')}>
+              <Text style={s.emptyBtnTxt}>Ir para o check-in</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.lav5} />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Lista */}
-        <View style={styles.lista}>
-          {filtrados.map(item => {
-            const bloqueado = !temAcesso(item.plano);
-            const icone = catIcones[item.categoria] || catIcones.acolhimento;
-            const acaoIcone = item.tipo === 'documento' || item.tipo === 'link' ? 'open-outline' : 'play';
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.audioItem, bloqueado && styles.audioItemBloqueado]}
-                onPress={() => handleItem(item)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.audioThumb, { backgroundColor: icone.bg }]}>
-                  <Ionicons name={bloqueado ? 'lock-closed-outline' : (tipoIcone[item.tipo] || icone.icon)} size={20} color={bloqueado ? colors.peach2 : icone.color} />
-                </View>
-                <View style={styles.audioInfo}>
-                  <Text style={styles.audioTitulo}>{item.titulo}</Text>
-                  <Text style={styles.audioSub}>{[item.duracao, item.categoria].filter(Boolean).join(' · ')}</Text>
-                </View>
+          </View>
+        ) : (
+          <>
+            <Text style={s.countLabel}>{favoritos.length} conteúdo{favoritos.length !== 1 ? 's' : ''} salvo{favoritos.length !== 1 ? 's' : ''}</Text>
+            {favoritos.map(item => {
+              const bloqueado = !temAcesso(item.plano);
+              const cat = CAT_COR[item.grupo] || CAT_COR.acolhimento;
+              const acaoIcone = item.tipo === 'documento' || item.tipo === 'link' ? 'open-outline' : 'play';
+              return (
                 <TouchableOpacity
-                  onPress={() => isFavorito(item.firestoreId) ? removerFavorito(item.firestoreId) : adicionarFavorito(item._raw)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={{ padding: 4 }}
+                  key={item.id}
+                  style={[s.item, bloqueado && s.itemBloqueado]}
+                  onPress={() => handleItem(item)}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons
-                    name={isFavorito(item.firestoreId) ? 'heart' : 'heart-outline'}
-                    size={18}
-                    color={isFavorito(item.firestoreId) ? '#C06080' : colors.tl}
-                  />
-                </TouchableOpacity>
-                <View style={styles.audioRight}>
-                  {item.plano > 1 && <PlanBadge plano={item.plano} />}
-                  <View style={[styles.playBtn, { backgroundColor: bloqueado ? colors.peach : colors.lav4 }]}>
-                    <Ionicons name={bloqueado ? 'lock-closed' : acaoIcone} size={12} color="white" style={!bloqueado && acaoIcone === 'play' && { marginLeft: 2 }} />
+                  <View style={[s.thumb, { backgroundColor: cat.bg }]}>
+                    <Ionicons
+                      name={bloqueado ? 'lock-closed-outline' : (TIPO_ICONE[item.tipo] || 'document-outline')}
+                      size={20}
+                      color={bloqueado ? colors.peach2 : cat.color}
+                    />
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <View style={{ height: spacing.xxl }} />
+                  <View style={s.info}>
+                    <Text style={s.titulo}>{item.titulo}</Text>
+                    {item.descricao ? (
+                      <Text style={s.desc} numberOfLines={1}>{item.descricao}</Text>
+                    ) : (
+                      <Text style={s.grupo}>{item.grupo}</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => removerFavorito(item.conteudoId)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{ padding: 4 }}
+                  >
+                    <Ionicons name="heart" size={20} color="#C06080" />
+                  </TouchableOpacity>
+                  <View style={[s.playBtn, { backgroundColor: bloqueado ? colors.peach : colors.lav4 }]}>
+                    <Ionicons
+                      name={bloqueado ? 'lock-closed' : acaoIcone}
+                      size={12} color="white"
+                      style={!bloqueado && acaoIcone === 'play' ? { marginLeft: 2 } : undefined}
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  favBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
-  sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  headerIlustracao: { width: 64, height: 64 },
-  chipsScroll: { marginBottom: spacing.sm },
-  chipsContent: { paddingHorizontal: spacing.lg, gap: 8, paddingVertical: 4 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full,
-    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
   },
-  chipAtivo: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTextAtivo: { color: colors.white, fontFamily: fonts.bodyBold },
-  lista: { paddingHorizontal: spacing.lg, gap: 10 },
-  audioItem: {
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
+  scroll: { padding: spacing.lg },
+  infoCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#FFF0F5', borderRadius: radius.lg,
+    borderWidth: 1, borderColor: '#F0C0D0',
+    padding: spacing.md, marginBottom: spacing.lg,
+  },
+  infoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18 },
+  countLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: spacing.md },
+  item: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.card, borderRadius: radius.lg,
     padding: spacing.md, borderWidth: 1, borderColor: colors.border,
-    ...shadow.soft,
+    marginBottom: 10, ...shadow.soft,
   },
-  audioItemBloqueado: { opacity: 0.65 },
-  audioThumb: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  audioInfo: { flex: 1 },
-  audioTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  audioSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2, textTransform: 'capitalize' },
-  audioRight: { alignItems: 'flex-end', gap: 6 },
-  playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  emBreveBadge: { backgroundColor: colors.peach, borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1, marginLeft: 4 },
-  emBreveTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: colors.peach2 },
+  itemBloqueado: { opacity: 0.65 },
+  thumb: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  info: { flex: 1 },
+  titulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+  desc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
+  grupo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 2, textTransform: 'capitalize' },
+  playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
+  emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
+  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: colors.lav1, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav3 },
+  emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
 });

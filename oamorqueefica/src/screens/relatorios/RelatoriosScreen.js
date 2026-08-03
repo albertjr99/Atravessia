@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput,
+  StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
@@ -94,7 +94,7 @@ function LineChart({ data, width = CHART_W, height = 90, color = colors.lav4, xL
 }
 
 // ── Calendário emocional ──────────────────────────────────────────────────────
-function CalendarGrid({ year, month, checkinsByDate }) {
+function CalendarGrid({ year, month, checkinsByDate, onDayPress }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
@@ -114,16 +114,21 @@ function CalendarGrid({ year, month, checkinsByDate }) {
           const emo = checkinsByDate[key];
           const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
           const isFuture = new Date(year, month, d) > today;
-          return (
-            <View key={d} style={[
-              cs.cell,
-              emo && { backgroundColor: emo.color + '55' },
-              isToday && { borderWidth: 1.5, borderColor: colors.lav4 },
-              isFuture && { opacity: 0.3 },
-            ]}>
-              <Text style={[cs.dayNum, emo && { color: emo.color }, isToday && { fontFamily: fonts.bodyBold }]}>{d}</Text>
-            </View>
-          );
+          const cellStyle = [
+            cs.cell,
+            emo && { backgroundColor: emo.color + '55' },
+            isToday && { borderWidth: 1.5, borderColor: colors.lav4 },
+            isFuture && { opacity: 0.3 },
+          ];
+          const dayText = <Text style={[cs.dayNum, emo && { color: emo.color }, isToday && { fontFamily: fonts.bodyBold }]}>{d}</Text>;
+          if (emo && onDayPress && !isFuture) {
+            return (
+              <TouchableOpacity key={d} style={cellStyle} onPress={() => onDayPress(key)} activeOpacity={0.7}>
+                {dayText}
+              </TouchableOpacity>
+            );
+          }
+          return <View key={d} style={cellStyle}>{dayText}</View>;
         })}
       </View>
     </View>
@@ -875,7 +880,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
-  const { checkins, usuario, temAcesso } = useApp();
+  const { checkins, usuario, temAcesso, mensagensRelatorio } = useApp();
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
   const [tab, setTab] = useState('mensal');
@@ -885,6 +890,9 @@ export default function RelatoriosScreen({ navigation }) {
   const [rangeFim, setRangeFim] = useState('');
   const [rangeData, setRangeData] = useState(null);
   const [creditoUsado, setCreditoUsado] = useState(false);
+  const [calMes, setCalMes] = useState(new Date().getMonth());
+  const [calAno, setCalAno] = useState(new Date().getFullYear());
+  const [dayModal, setDayModal] = useState(null);
 
   const now = new Date();
   const year = now.getFullYear();
@@ -958,6 +966,25 @@ export default function RelatoriosScreen({ navigation }) {
 
     return { lista, sorted, total, donut, porMes, uniqueDays: uniqueDays.size, consistencia, avgInt, maisIntens, maisLeves, trimPct };
   }, [checkins, year]);
+
+  const calByDate = useMemo(() => {
+    const lista = calcMes(checkins, calAno, calMes);
+    return checkinsByDate(lista);
+  }, [checkins, calAno, calMes]);
+
+  const handleCalNav = (dir) => {
+    setCalMes(prev => {
+      const next = prev + dir;
+      if (next < 0) { setCalAno(a => a - 1); return 11; }
+      if (next > 11) { setCalAno(a => a + 1); return 0; }
+      return next;
+    });
+  };
+
+  const handleDayPress = (dateKey) => {
+    const dayCheckins = checkins.filter(c => c.data?.startsWith(dateKey));
+    setDayModal({ date: dateKey, checkins: dayCheckins });
+  };
 
   const formatarData = (text) => {
     const nums = text.replace(/\D/g, '');
@@ -1056,6 +1083,7 @@ export default function RelatoriosScreen({ navigation }) {
   };
 
   const mensagem = (dominante) => {
+    if (mensagensRelatorio?.[dominante]) return mensagensRelatorio[dominante];
     const emo = getEmoObj(dominante);
     if (!emo) return 'Cada check-in é um passo de autoconhecimento. Continue cuidando de si.';
     if (emo.positiva) return `${emo.label} esteve presente em você este mês. Guarde esse sentimento com carinho e continue se cuidando.`;
@@ -1152,9 +1180,27 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.card}>
                     <Text style={s.cardNum}>3</Text>
                     <Text style={s.cardTit}>Calendário emocional</Text>
-                    <Text style={s.cardSub}>Cada cor representa a emoção predominante do dia</Text>
-                    <View style={{ marginTop: 12 }}>
-                      <CalendarGrid year={year} month={month} checkinsByDate={mesal.byDate} />
+                    <Text style={s.cardSub}>Toque num dia marcado para ver o check-in</Text>
+                    {/* Navegação de mês */}
+                    <View style={s.calNavRow}>
+                      <TouchableOpacity style={s.calNavBtn} onPress={() => handleCalNav(-1)}>
+                        <Ionicons name="chevron-back" size={18} color={colors.lav4} />
+                      </TouchableOpacity>
+                      <Text style={s.calNavTitle}>{MONTH_NAMES[calMes]} {calAno}</Text>
+                      <TouchableOpacity
+                        style={s.calNavBtn}
+                        onPress={() => handleCalNav(1)}
+                        disabled={calAno === year && calMes >= month}
+                      >
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={(calAno === year && calMes >= month) ? colors.lav2 : colors.lav4}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ marginTop: 8 }}>
+                      <CalendarGrid year={calAno} month={calMes} checkinsByDate={calByDate} onDayPress={handleDayPress} />
                     </View>
                     {/* Legenda do calendário */}
                     <View style={s.calLegend}>
@@ -1199,8 +1245,8 @@ export default function RelatoriosScreen({ navigation }) {
                   <Text style={s.cardTit}>Seus registros</Text>
                   <View style={s.statsRow}>
                     <View style={s.statBox}>
-                      <Text style={s.statNum}>{mesal.total}</Text>
-                      <Text style={s.statLbl}>check-ins realizados</Text>
+                      <Text style={s.statNum}>{mesal.com}</Text>
+                      <Text style={s.statLbl}>dias com check-in</Text>
                     </View>
                     <View style={s.statDivider} />
                     <View style={s.statBox}>
@@ -1353,6 +1399,39 @@ export default function RelatoriosScreen({ navigation }) {
         {/* ═══════════════════════════════════ RELATÓRIO PERSONALIZADO ═══════ */}
         {tab === 'personalizado' && (
           <>
+            {/* Datas — sempre visíveis */}
+            <View style={s.card}>
+              <Text style={s.cardTit}>Defina o período</Text>
+              <Text style={s.cardSub}>Selecione o intervalo de datas para gerar o relatório</Text>
+              <View style={s.dateRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.dateLabel}>Início</Text>
+                  <TextInput
+                    style={s.dateInput}
+                    placeholder="DD/MM/AAAA"
+                    placeholderTextColor={colors.tl}
+                    value={rangeInicio}
+                    onChangeText={t => setRangeInicio(formatarData(t))}
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                </View>
+                <Ionicons name="arrow-forward" size={16} color={colors.tl} style={{ marginTop: 20 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.dateLabel}>Fim</Text>
+                  <TextInput
+                    style={s.dateInput}
+                    placeholder="DD/MM/AAAA"
+                    placeholderTextColor={colors.tl}
+                    value={rangeFim}
+                    onChangeText={t => setRangeFim(formatarData(t))}
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                </View>
+              </View>
+            </View>
+
             {!(perfil?.periodoCreditos > 0) ? (
               <View style={s.lockedAnnual}>
                 <View style={s.periodoIconWrap}>
@@ -1360,7 +1439,7 @@ export default function RelatoriosScreen({ navigation }) {
                 </View>
                 <Text style={s.lockedAnnualTit}>Relatório por Período</Text>
                 <Text style={s.lockedAnnualDesc}>
-                  Escolha qualquer período da sua jornada e gere um relatório completo das suas emoções. Este é um recurso adicional com pagamento único.
+                  Adquira um crédito para gerar o relatório do período selecionado acima.
                 </Text>
 
                 {!temAcesso(1) ? (
@@ -1395,36 +1474,7 @@ export default function RelatoriosScreen({ navigation }) {
               </View>
             ) : (
               <>
-                <View style={s.card}>
-                  <Text style={s.cardTit}>Defina o período</Text>
-                  <Text style={s.cardSub}>Selecione o intervalo de datas para gerar o relatório</Text>
-                  <View style={s.dateRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.dateLabel}>Início</Text>
-                      <TextInput
-                        style={s.dateInput}
-                        placeholder="DD/MM/AAAA"
-                        placeholderTextColor={colors.tl}
-                        value={rangeInicio}
-                        onChangeText={t => setRangeInicio(formatarData(t))}
-                        keyboardType="numeric"
-                        maxLength={10}
-                      />
-                    </View>
-                    <Ionicons name="arrow-forward" size={16} color={colors.tl} style={{ marginTop: 20 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.dateLabel}>Fim</Text>
-                      <TextInput
-                        style={s.dateInput}
-                        placeholder="DD/MM/AAAA"
-                        placeholderTextColor={colors.tl}
-                        value={rangeFim}
-                        onChangeText={t => setRangeFim(formatarData(t))}
-                        keyboardType="numeric"
-                        maxLength={10}
-                      />
-                    </View>
-                  </View>
+                <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
                   <TouchableOpacity style={s.gerarBtn} onPress={handleGerarRange}>
                     <Ionicons name="bar-chart-outline" size={15} color="white" />
                     <Text style={s.gerarBtnTxt}>Gerar relatório</Text>
@@ -1514,6 +1564,34 @@ export default function RelatoriosScreen({ navigation }) {
         )}
 
       </ScrollView>
+
+      {/* Modal de detalhe do dia */}
+      <Modal
+        visible={dayModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDayModal(null)}
+      >
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setDayModal(null)}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>
+              {dayModal?.date ? dayModal.date.split('-').reverse().join('/') : ''}
+            </Text>
+            {dayModal?.checkins.map((c, i) => {
+              const emo = getEmoObj(c.emocao);
+              return (
+                <View key={i} style={s.modalRow}>
+                  <View style={[s.legendDot, { backgroundColor: emo?.color || colors.lav3, width: 12, height: 12 }]} />
+                  <Text style={s.modalEmo}>{emo?.label || c.emocao}</Text>
+                </View>
+              );
+            })}
+            <TouchableOpacity onPress={() => setDayModal(null)} style={s.modalCloseBtn}>
+              <Text style={s.modalCloseTxt}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1653,4 +1731,16 @@ const s = StyleSheet.create({
   },
   stripeBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   stripeHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', lineHeight: 17 },
+
+  calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
+  calNavBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  modalCard: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 320, gap: 8 },
+  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
+  modalRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  modalEmo: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
+  modalCloseBtn: { marginTop: 8, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24, backgroundColor: colors.lav1, borderRadius: radius.full },
+  modalCloseTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
 });

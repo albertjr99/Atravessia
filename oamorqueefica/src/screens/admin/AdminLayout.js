@@ -19,12 +19,15 @@ const isWide = Platform.OS === 'web' || SCREEN_W >= 700;
 const NAV_ITEMS = [
   { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
   { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
+  { icon: 'quote', iconOff: 'quote-outline', label: 'Frases', screen: 'AdminFrases' },
   { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
   { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
   { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
+  { icon: 'compass', iconOff: 'compass-outline', label: 'Jornadas', screen: 'AdminJornadas' },
   { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
   { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços', screen: 'AdminPrecos' },
   { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
+  { icon: 'chatbubble-ellipses', iconOff: 'chatbubble-ellipses-outline', label: 'Mensagens', screen: 'AdminMensagens' },
   { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
 ];
 

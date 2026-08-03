@@ -11,8 +11,11 @@ import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/jornadas_caminho.png');
 
+const PLANO_LABEL = { 0: 'Grátis', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
+const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
+
 export default function JornadasScreen({ navigation }) {
-  const { temAcesso, jornadasComProgresso } = useApp();
+  const { temAcesso, jornadasComProgresso, jornadasAdmin } = useApp();
 
   const handleJornada = (j) => {
     if (!temAcesso(j.plano)) {
@@ -43,13 +46,54 @@ export default function JornadasScreen({ navigation }) {
 
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <ScriptTitle size={24}>Jornadas</ScriptTitle>
-            <Text style={styles.sub}>Percursos estruturados de transformação</Text>
+            <ScriptTitle size={24}>Continue a travessia</ScriptTitle>
+            <Text style={styles.sub}>Eu caminho junto com você</Text>
           </View>
           <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
 
-        <View style={styles.lista}>
+        {/* Jornadas criadas pela admin (Firestore) */}
+        {jornadasAdmin.length > 0 && (
+          <View style={styles.lista}>
+            {jornadasAdmin.map(j => {
+              const acesso = temAcesso(j.plano);
+              const cor = PLANO_COR[j.plano] ?? colors.lav4;
+              return (
+                <TouchableOpacity
+                  key={j.id}
+                  style={[styles.jornadaCard, !acesso && styles.cardBloqueado]}
+                  onPress={() => {
+                    if (!acesso) {
+                      Alert.alert(j.titulo, `Disponível no plano ${PLANO_LABEL[j.plano]}.`, [
+                        { text: 'Agora não', style: 'cancel' },
+                        { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
+                      ]);
+                      return;
+                    }
+                    Alert.alert(j.titulo, j.descricao || 'Jornada em breve.');
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.jornadaHeader}>
+                    <View style={[styles.jornadaIcone, { backgroundColor: cor + '22' }]}>
+                      <Ionicons name={acesso ? (j.icone || 'compass-outline') : 'lock-closed-outline'} size={22} color={cor} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jornadaTitulo}>{j.titulo}</Text>
+                      {j.descricao ? <Text style={styles.jornadaDesc}>{j.descricao}</Text> : null}
+                      {!acesso && <Text style={[styles.planoLabel, { color: cor }]}>Plano {PLANO_LABEL[j.plano]}</Text>}
+                    </View>
+                    <Ionicons name={acesso ? 'chevron-forward' : 'lock-closed'} size={16} color={acesso ? colors.lav4 : colors.tl} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Jornadas estáticas com progresso */}
+        <View style={[styles.lista, { marginTop: jornadasAdmin.length > 0 ? 16 : 0 }]}>
+          {jornadasAdmin.length > 0 && <Text style={styles.sectionLabel}>Trilhas de autoconhecimento</Text>}
           {jornadasComProgresso.map(j => {
             const bloqueado = !temAcesso(j.plano);
             const progresso = j.totalAtividades > 0 ? j.atividadesConcluidas / j.totalAtividades : 0;
@@ -85,7 +129,6 @@ export default function JornadasScreen({ navigation }) {
             );
           })}
 
-          {/* Pequenas Vitórias */}
           <TouchableOpacity
             style={styles.vitoriaCard}
             onPress={() => navigation.navigate('PequenasVitorias')}
@@ -137,4 +180,7 @@ const styles = StyleSheet.create({
   vitoriaIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
   vitoriaTitulo: { fontFamily: fonts.script, fontSize: 16, color: colors.lav6 },
   vitoriaSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
+  jornadaIcone: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  planoLabel: { fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
 });
