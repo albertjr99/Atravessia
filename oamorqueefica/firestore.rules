@@ -15,9 +15,6 @@ service cloud.firestore {
     match /usuarios/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId;
-      // a própria usuária pode atualizar seu perfil, mas não plano/role/dados do Stripe
-      // (isso só é definido pelas Cloud Functions, via Admin SDK, após confirmação de pagamento)
-      // admin pode alterar qualquer campo, incluindo plano/role
       allow update: if isSignedIn() && (
         (request.auth.uid == userId &&
           !request.resource.data.diff(resource.data).affectedKeys()
@@ -32,6 +29,12 @@ service cloud.firestore {
       }
     }
 
+    // Frases e reflexões do dia — leitura para todas, escrita só admin
+    match /frases/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Biblioteca de conteúdos (áudios, documentos, links) — leitura para todas, escrita só admin
     match /conteudos/{docId} {
       allow read: if isSignedIn();
@@ -40,6 +43,30 @@ service cloud.firestore {
 
     // Notificações editoriais — leitura para todas, escrita só admin
     match /notificacoesEditoriais/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Jornadas criadas pela admin — leitura para todas, escrita só admin
+    match /jornadas/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Opções de pequenas vitórias — leitura para todas, escrita só admin
+    match /vitoriasOpcoes/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Parcerias e benefícios — leitura para todas, escrita só admin
+    match /parcerias/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Configurações globais (preços, mensagens de relatório) — leitura para todas, escrita só admin
+    match /configuracoes/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }

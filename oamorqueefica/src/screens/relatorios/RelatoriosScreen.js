@@ -4,7 +4,7 @@ import {
   StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Polyline } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
 import { doc, updateDoc, increment } from 'firebase/firestore';
@@ -24,7 +24,6 @@ const logo = require('../../../assets/images/travessia_logo.png');
 const CHART_W = SCREEN_W - 48;
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MONTH_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const DAY_LABELS  = ['D','S','T','Q','Q','S','S'];
 
 // ── Gráfico de rosca (SVG) ────────────────────────────────────────────────────
@@ -58,37 +57,6 @@ function DonutChart({ data, size = 160, thickness = 30, total, label }) {
         <Text style={{ fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav4 }}>{total}</Text>
         <Text style={{ fontFamily: fonts.body, fontSize: 9, color: colors.tl }}>{label}</Text>
       </View>
-    </View>
-  );
-}
-
-// ── Gráfico de linha (SVG) ────────────────────────────────────────────────────
-function LineChart({ data, width = CHART_W, height = 90, color = colors.lav4, xLabels }) {
-  if (!data || data.length < 2) return null;
-  const max = Math.max(...data, 5);
-  const px = 12, py = 12;
-  const w = width - px * 2;
-  const h = height - py * 2;
-  const pts = data.map((v, i) => ({
-    x: px + (i / (data.length - 1)) * w,
-    y: py + (1 - (v - 1) / (max - 1 || 1)) * h,
-  }));
-  const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  return (
-    <View>
-      <Svg width={width} height={height}>
-        <Polyline points={poly} stroke={color} strokeWidth={1.8} fill="none" strokeLinejoin="round" strokeLinecap="round" />
-        {pts.map((p, i) => (
-          <Circle key={i} cx={p.x} cy={p.y} r={2.5} fill={color} />
-        ))}
-      </Svg>
-      {xLabels && (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: px }}>
-          {xLabels.map((l, i) => (
-            <Text key={i} style={{ fontFamily: fonts.body, fontSize: 8, color: colors.tl }}>{l}</Text>
-          ))}
-        </View>
-      )}
     </View>
   );
 }
@@ -165,11 +133,6 @@ function contagemEmo(lista) {
   return Object.entries(map)
     .sort((a, b) => b[1].count - a[1].count || b[1].ultima.localeCompare(a[1].ultima))
     .map(([emocao, v]) => [emocao, v.count]);
-}
-
-function avgIntensidade(lista) {
-  if (!lista.length) return 0;
-  return lista.reduce((s, c) => s + (c.intensidade || 3), 0) / lista.length;
 }
 
 function checkinsByDate(checkins) {
@@ -372,25 +335,6 @@ function gerarDonutSVG(data, size = 120, thickness = 22) {
   </svg>`;
 }
 
-function gerarLinhaHTML(data, labels, cor = '#8B7AC0') {
-  if (!data || data.length < 2) return '<p style="color:#aaa;font-size:11px">Dados insuficientes</p>';
-  const w = 400, h = 80, px = 16, py = 10;
-  const max = Math.max(...data, 5);
-  const pts = data.map((v, i) => ({
-    x: px + (i / (data.length - 1)) * (w - px * 2),
-    y: py + (1 - (v - 1) / (max - 1 || 1)) * (h - py * 2),
-  }));
-  const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const dots = pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${cor}" />`).join('');
-  const labelHtml = labels
-    ? `<div style="display:flex;justify-content:space-between;padding:0 ${px}px;font-size:9px;color:#999;">${labels.map(l => `<span>${l}</span>`).join('')}</div>`
-    : '';
-  return `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" style="display:block">
-    <polyline points="${poly}" stroke="${cor}" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-    ${dots}
-  </svg>${labelHtml}`;
-}
-
 function gerarCalendarioHTML(year, month, checkinsByDateMap) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -412,7 +356,7 @@ function gerarCalendarioHTML(year, month, checkinsByDateMap) {
   </div>`;
 }
 
-function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT }) {
+function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES }) {
   const dataStr = `${MONTH_NAMES[month].toUpperCase()}/${year}`;
   const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const nome = usuario?.apelido || usuario?.nome || 'você';
@@ -430,7 +374,6 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
     </div>`;
   }).join('');
 
-  const intensHtml = mesal.intensData.length >= 2 ? gerarLinhaHTML(mesal.intensData, mesal.intensLabels) : '<p style="color:#aaa;font-size:11px;text-align:center">Registre mais dias para ver a intensidade</p>';
   const calHtml = gerarCalendarioHTML(year, month, mesal.byDate);
 
   const emoObj = getEmoObj(mesal.dominante);
@@ -577,7 +520,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MO
 </html>`;
 }
 
-function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
+function gerarRelatorioAnualHTML({ anual, usuario, year }) {
   const nome = usuario?.apelido || usuario?.nome || 'você';
   const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const insights = gerarInsightsAnuais(anual);
@@ -592,28 +535,6 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
       <span style="font-size:10px;font-weight:700;color:#4a4453">${pct}%</span>
     </div>`;
   }).join('');
-
-  const intensHtml = anual.porMes.some(v => v > 0)
-    ? gerarLinhaHTML(anual.porMes.map(v => v || 0), MONTH_SHORT.map(l => l.slice(0, 1)))
-    : '<p style="color:#aaa;font-size:11px;text-align:center">Registre mais meses para ver</p>';
-
-  const mesIntensHtml = anual.maisIntens.map(({ m, v }) =>
-    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:11px;color:#8B7AC0;font-weight:700;width:70px">${MONTH_SHORT[m]}</span>
-      <div style="flex:1;height:8px;background:#EDE9F5;border-radius:4px">
-        <div style="width:${Math.round((v / 5) * 100)}%;height:100%;background:#8B7AC0;border-radius:4px"></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#4a4453">${v.toFixed(1)}</span>
-    </div>`).join('');
-
-  const mesLevesHtml = anual.maisLeves.map(({ m, v }) =>
-    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:11px;color:#7A9E7E;font-weight:700;width:70px">${MONTH_SHORT[m]}</span>
-      <div style="flex:1;height:8px;background:#E8F0E8;border-radius:4px">
-        <div style="width:${Math.round((v / 5) * 100)}%;height:100%;background:#7A9E7E;border-radius:4px"></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#4a4453">${v.toFixed(1)}</span>
-    </div>`).join('');
 
   const trimColors = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#B9C8DF'];
   const trimLabels = ['1º Trim.', '2º Trim.', '3º Trim.', '4º Trim.'];
@@ -709,27 +630,9 @@ function gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT }) {
 
   </div>
 
-  <div class="grid2">
-    <!-- 3. Meses mais intensos -->
-    <div class="card">
-      <span class="card-num">3</span>
-      <p class="card-title">Meses mais intensos</p>
-      <p style="font-size:10px;color:#aaa;margin-bottom:10px">Maiores intensidades médias</p>
-      ${mesIntensHtml || '<p style="color:#aaa;font-size:11px">Dados insuficientes</p>'}
-    </div>
-
-    <!-- 4. Meses mais leves -->
-    <div class="card">
-      <span class="card-num">4</span>
-      <p class="card-title">Meses mais leves</p>
-      <p style="font-size:10px;color:#aaa;margin-bottom:10px">Menores intensidades médias</p>
-      ${mesLevesHtml || '<p style="color:#aaa;font-size:11px">Dados insuficientes</p>'}
-    </div>
-  </div>
-
-  <!-- 5. Distribuição por trimestre -->
+  <!-- 2. Distribuição por trimestre -->
   <div class="card" style="margin-bottom:16px">
-    <span class="card-num">5</span>
+    <span class="card-num">2</span>
     <p class="card-title">Distribuição por trimestre</p>
     ${trimHtml}
   </div>
@@ -829,10 +732,6 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
       <div class="n">${rangeData.uniqueDays}</div>
       <div class="l">dias com registro</div>
     </div>
-    <div class="stat-box">
-      <div class="n" style="color:#7A9E7E">${rangeData.avgInt}</div>
-      <div class="l">intensidade média</div>
-    </div>
   </div>
 
   <div class="grid2">
@@ -899,34 +798,21 @@ export default function RelatoriosScreen({ navigation }) {
   const month = now.getMonth();
   const temPlano1 = temAcesso(1);
 
-  // ── Dados mensais ──
+  // ── Dados mensais (segue calMes/calAno para que o calendário conduza todos os gráficos) ──
   const mesal = useMemo(() => {
-    const lista = calcMes(checkins, year, month);
+    const lista = calcMes(checkins, calAno, calMes);
     const sorted = contagemEmo(lista);
     const total = lista.length;
     const donut = sorted.map(([id, v], i) => ({
       id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
     }));
-
-    // Intensidade por dia do mês
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const intensByDay = Array.from({ length: daysInMonth }, (_, d) => {
-      const dayKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d + 1).padStart(2, '0')}`;
-      const dayCheckins = lista.filter(c => c.data?.startsWith(dayKey));
-      return dayCheckins.length ? avgIntensidade(dayCheckins) : null;
-    });
-    const intensData = intensByDay.filter(v => v !== null);
-    // Labels: apenas 1, 8, 15, 22, último dia
-    const intensLabels = ['01', '08', '15', '22', String(daysInMonth)];
-
     const byDate = checkinsByDate(lista);
     const dominante = sorted[0]?.[0];
-    const { com, total: totalDias } = diasComRegistro(lista, year, month);
+    const { com, total: totalDias } = diasComRegistro(lista, calAno, calMes);
     const semRegistro = totalDias - com;
-    const avgInt = avgIntensidade(lista).toFixed(1);
 
-    return { lista, sorted, total, donut, intensData, intensLabels, byDate, dominante, com, semRegistro, avgInt };
-  }, [checkins, year, month]);
+    return { lista, sorted, total, donut, byDate, dominante, com, semRegistro };
+  }, [checkins, calAno, calMes]);
 
   // ── Dados anuais ──
   const anual = useMemo(() => {
@@ -937,24 +823,9 @@ export default function RelatoriosScreen({ navigation }) {
       id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
     }));
 
-    // Intensidade média por mês
-    const porMes = Array.from({ length: 12 }, (_, m) => {
-      const ml = calcMes(checkins, year, m);
-      return ml.length ? avgIntensidade(ml) : 0;
-    });
-
-    // Dias com registro no ano
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10)));
     const totalDias = Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1;
     const consistencia = Math.round((uniqueDays.size / totalDias) * 100);
-    const avgInt = avgIntensidade(lista).toFixed(1);
-
-    // Meses mais intensos e mais leves (que tiveram checkins)
-    const mesComDados = porMes.map((v, i) => ({ m: i, v })).filter(x => x.v > 0);
-    const sorted3asc = [...mesComDados].sort((a, b) => a.v - b.v);
-    const sorted3desc = [...mesComDados].sort((a, b) => b.v - a.v);
-    const maisIntens = sorted3desc.slice(0, 3);
-    const maisLeves = sorted3asc.slice(0, 3);
 
     // Trimestres
     const trims = [0, 1, 2, 3].map(t => {
@@ -964,13 +835,8 @@ export default function RelatoriosScreen({ navigation }) {
     const totalTrims = trims.reduce((s, v) => s + v, 0) || 1;
     const trimPct = trims.map(v => Math.round((v / totalTrims) * 100));
 
-    return { lista, sorted, total, donut, porMes, uniqueDays: uniqueDays.size, consistencia, avgInt, maisIntens, maisLeves, trimPct };
+    return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, consistencia, trimPct };
   }, [checkins, year]);
-
-  const calByDate = useMemo(() => {
-    const lista = calcMes(checkins, calAno, calMes);
-    return checkinsByDate(lista);
-  }, [checkins, calAno, calMes]);
 
   const handleCalNav = (dir) => {
     setCalMes(prev => {
@@ -1023,9 +889,8 @@ export default function RelatoriosScreen({ navigation }) {
       id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
     }));
     const dominante = sorted[0]?.[0];
-    const avgInt = avgIntensidade(lista).toFixed(1);
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10))).size;
-    setRangeData({ lista, sorted, total, donut, dominante, avgInt, uniqueDays });
+    setRangeData({ lista, sorted, total, donut, dominante, uniqueDays });
     if (!creditoUsado && uid) {
       setCreditoUsado(true);
       updateDoc(doc(db, 'usuarios', uid), { periodoCreditos: increment(-1) }).catch(() => {});
@@ -1041,9 +906,9 @@ export default function RelatoriosScreen({ navigation }) {
       setExportando(true);
       try {
         const html = tab === 'mensal'
-          ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
+          ? gerarRelatorioMensalHTML({ mesal, usuario, month: calMes, year: calAno, MONTH_NAMES })
           : tab === 'anual'
-            ? gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT })
+            ? gerarRelatorioAnualHTML({ anual, usuario, year })
             : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
         const w = typeof window !== 'undefined' && window.open ? window.open('', '_blank') : null;
         if (w) {
@@ -1064,9 +929,9 @@ export default function RelatoriosScreen({ navigation }) {
     setExportando(true);
     try {
       const html = tab === 'mensal'
-        ? gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES, MONTH_SHORT })
+        ? gerarRelatorioMensalHTML({ mesal, usuario, month: calMes, year: calAno, MONTH_NAMES })
         : tab === 'anual'
-          ? gerarRelatorioAnualHTML({ anual, usuario, year, MONTH_SHORT })
+          ? gerarRelatorioAnualHTML({ anual, usuario, year })
           : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
       const { uri } = await Print.printToFileAsync({ html });
       const canShare = await Sharing.isAvailableAsync();
@@ -1137,7 +1002,7 @@ export default function RelatoriosScreen({ navigation }) {
               <Text style={s.reportTitle}>RELATÓRIO MENSAL</Text>
               <View style={s.reportMes}>
                 <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
-                <Text style={s.reportMesTxt}>{MONTH_NAMES[month].toUpperCase()}/{year}</Text>
+                <Text style={s.reportMesTxt}>{MONTH_NAMES[calMes].toUpperCase()}/{calAno}</Text>
               </View>
               <Text style={s.reportSub}>Seu resumo emocional do mês</Text>
             </View>
@@ -1200,7 +1065,7 @@ export default function RelatoriosScreen({ navigation }) {
                       </TouchableOpacity>
                     </View>
                     <View style={{ marginTop: 8 }}>
-                      <CalendarGrid year={calAno} month={calMes} checkinsByDate={calByDate} onDayPress={handleDayPress} />
+                      <CalendarGrid year={calAno} month={calMes} checkinsByDate={mesal.byDate} onDayPress={handleDayPress} />
                     </View>
                     {/* Legenda do calendário */}
                     <View style={s.calLegend}>
@@ -1279,7 +1144,7 @@ export default function RelatoriosScreen({ navigation }) {
                 <Ionicons name="bar-chart-outline" size={48} color={colors.lav3} />
                 <Text style={s.lockedAnnualTit}>Relatório Anual</Text>
                 <Text style={s.lockedAnnualDesc}>
-                  Veja sua jornada emocional completa do ano — evolução por mês, meses mais intensos, distribuição por trimestre e muito mais.
+                  Veja sua jornada emocional completa do ano — emoções ao longo do ano, distribuição por trimestre, constância e muito mais.
                 </Text>
                 <Text style={s.lockedAnnualBadge}>Disponível no Plano Acolher</Text>
                 <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
@@ -1336,37 +1201,9 @@ export default function RelatoriosScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* 2 e 3. Meses intensos e leves */}
-                <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-                  <View style={[s.card, { flex: 1, margin: 0 }]}>
-                    <Text style={s.cardNum}>3</Text>
-                    <Text style={s.cardTit}>Meses mais intensos</Text>
-                    {anual.maisIntens.map((x, i) => (
-                      <View key={i} style={s.mesRow}>
-                        <Text style={s.mesNome}>{MONTH_SHORT[x.m]}</Text>
-                        <Text style={[s.mesVal, { color: colors.rose }]}>{x.v.toFixed(1)}</Text>
-                        <View style={[s.mesBar, { backgroundColor: colors.rose + '50', width: `${Math.min(x.v / 5 * 100, 100)}%` }]} />
-                      </View>
-                    ))}
-                    {!anual.maisIntens.length && <Text style={s.emptySmall}>—</Text>}
-                  </View>
-                  <View style={[s.card, { flex: 1, margin: 0 }]}>
-                    <Text style={s.cardNum}>4</Text>
-                    <Text style={s.cardTit}>Meses mais leves</Text>
-                    {anual.maisLeves.map((x, i) => (
-                      <View key={i} style={s.mesRow}>
-                        <Text style={s.mesNome}>{MONTH_SHORT[x.m]}</Text>
-                        <Text style={[s.mesVal, { color: colors.sage }]}>{x.v.toFixed(1)}</Text>
-                        <View style={[s.mesBar, { backgroundColor: colors.sage + '50', width: `${Math.min(x.v / 5 * 100, 100)}%` }]} />
-                      </View>
-                    ))}
-                    {!anual.maisLeves.length && <Text style={s.emptySmall}>—</Text>}
-                  </View>
-                </View>
-
-                {/* 5. Distribuição por trimestre */}
+                {/* 2. Distribuição por trimestre */}
                 <View style={s.card}>
-                  <Text style={s.cardNum}>5</Text>
+                  <Text style={s.cardNum}>2</Text>
                   <Text style={s.cardTit}>Distribuição por trimestre</Text>
                   {['1º Trimestre','2º Trimestre','3º Trimestre','4º Trimestre'].map((label, i) => (
                     <View key={i} style={s.trimRow}>
@@ -1379,9 +1216,9 @@ export default function RelatoriosScreen({ navigation }) {
                   ))}
                 </View>
 
-                {/* 6. Mensagem anual */}
+                {/* 3. Mensagem anual */}
                 <View style={[s.card, s.msgCard]}>
-                  <Text style={s.cardNum}>6</Text>
+                  <Text style={s.cardNum}>3</Text>
                   <Text style={s.cardTit}>Mensagem para você</Text>
                   <Text style={s.msgTxt}>
                     Você atravessou altos e baixos, dias leves e dias desafiadores. Cada emoção registrada mostra sua coragem de olhar para dentro. Que o próximo ano seja cheio de leveza, autoconhecimento e cuidado com você.
@@ -1496,7 +1333,6 @@ export default function RelatoriosScreen({ navigation }) {
                       {[
                         { icon: 'calendar-outline', v: rangeData.total, lbl: 'check-ins no período', color: colors.lav4 },
                         { icon: 'today-outline', v: rangeData.uniqueDays, lbl: 'dias com registro', color: colors.rose },
-                        { icon: 'pulse-outline', v: rangeData.avgInt, lbl: 'intensidade média', color: colors.sage },
                       ].map((t, i) => (
                         <View key={i} style={[s.tile, { minWidth: '30%' }]}>
                           <Ionicons name={t.icon} size={18} color={t.color} />
@@ -1670,11 +1506,6 @@ const s = StyleSheet.create({
   tileNum: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav4 },
   tileLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl, textAlign: 'center' },
 
-  mesRow: { marginBottom: 8, gap: 2 },
-  mesNome: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td },
-  mesVal: { fontFamily: fonts.bodyBold, fontSize: 11 },
-  mesBar: { height: 4, borderRadius: 2 },
-  emptySmall: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
 
   trimRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
   trimLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.td, width: 90 },
