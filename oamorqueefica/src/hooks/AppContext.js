@@ -172,6 +172,16 @@ export function AppProvider({ children }) {
 
   const isFavorito = (conteudoId) => favoritosIds.some(f => f.conteudoId === conteudoId);
 
+  // Jornadas criadas pela admin (Firestore), separadas das estáticas do data/
+  const [jornadasAdmin, setJornadasAdmin] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'jornadas'), orderBy('ordem', 'asc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setJornadasAdmin(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => j.ativa !== false));
+    }, () => {});
+    return unsub;
+  }, []);
+
   // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
   const [parcerias, setParcerias] = useState([]);
   useEffect(() => {
@@ -314,6 +324,7 @@ export function AppProvider({ children }) {
       notificacoes, marcarLida,
       conteudos,
       favoritos, adicionarFavorito, removerFavorito, isFavorito,
+      jornadasAdmin,
       parcerias, registrarCliqueParceria,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,

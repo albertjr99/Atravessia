@@ -44,9 +44,6 @@ export default function CheckInScreen({ navigation }) {
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
     ? (audios.find(a => a.emocoes[0] === emocaoSel && a.plano <= 1) || audios.find(a => a.emocoes.includes(emocaoSel)))
     : null;
-  const mensagemAcolhimento = emocaoObj
-    ? emocaoObj.mensagens[Math.floor(Math.random() * emocaoObj.mensagens.length)]
-    : null;
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
@@ -67,10 +64,19 @@ export default function CheckInScreen({ navigation }) {
 
   const temPlano1 = (usuario?.plano || 0) >= 1;
 
-  // Conteúdos do Firestore vinculados à emoção selecionada pela admin
+  // Conteúdos do Firestore vinculados à emoção — rotação diária por tipo (diversificação)
   const conteudosSugeridos = emocaoSel
-    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel)).slice(0, 3)
+    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel))
     : [];
+
+  // Seleciona UM conteúdo de forma determinística por dia+emoção para diversificar tipos
+  const conteudoExibido = (() => {
+    if (!emocaoSel || conteudosSugeridos.length === 0) return null;
+    const dayNum = Math.floor(Date.now() / 86400000);
+    let hash = dayNum;
+    for (let i = 0; i < emocaoSel.length; i++) hash = (hash * 31 + emocaoSel.charCodeAt(i)) | 0;
+    return conteudosSugeridos[Math.abs(hash) % conteudosSugeridos.length];
+  })();
 
   const handleAbrirConteudo = (c) => {
     if (c.tipo === 'documento' || c.tipo === 'link') {
@@ -107,14 +113,11 @@ export default function CheckInScreen({ navigation }) {
               <Ionicons name="sparkles" size={48} color={colors.gold} />
             </View>
             <Text style={s.savedTit}>Que bom saber disso! 💜</Text>
-            <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
             <Text style={s.savedHint}>Continue se cuidando. Voltamos amanhã para o próximo check-in.</Text>
-            {conteudosSugeridos.length > 0 && (
+            {conteudoExibido && (
               <View style={s.sugestaoBloco}>
-                <Text style={s.sugestaoTit}>Conteúdos para você</Text>
-                {conteudosSugeridos.map(c => (
-                  <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
-                ))}
+                <Text style={s.sugestaoTit}>Conteúdo para você</Text>
+                <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
               </View>
             )}
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
@@ -132,18 +135,15 @@ export default function CheckInScreen({ navigation }) {
             <Ionicons name="heart" size={40} color={colors.lav4} />
           </View>
           <Text style={s.savedTit}>Check-in registrado</Text>
-          <Text style={s.savedSub}>{mensagemAcolhimento}</Text>
 
-          {conteudosSugeridos.length > 0 && (
+          {conteudoExibido && (
             <View style={s.sugestaoBloco}>
-              <Text style={s.sugestaoTit}>Conteúdos para você agora</Text>
-              {conteudosSugeridos.map(c => (
-                <ConteudoCard key={c.id} c={c} onPress={() => handleAbrirConteudo(c)} isFav={isFavorito(c.id)} onFav={() => isFavorito(c.id) ? removerFavorito(c.id) : adicionarFavorito(c)} />
-              ))}
+              <Text style={s.sugestaoTit}>Conteúdo para você agora</Text>
+              <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
             </View>
           )}
 
-          {conteudosSugeridos.length === 0 && temPlano1 && audioRec && (
+          {!conteudoExibido && temPlano1 && audioRec && (
             <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
               <Text style={s.recTag}>Áudio de acolhimento para você</Text>
               <View style={s.recRow}>
@@ -161,7 +161,7 @@ export default function CheckInScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {conteudosSugeridos.length === 0 && !temPlano1 && (
+          {!conteudoExibido && !temPlano1 && (
             <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
               <Ionicons name="headset-outline" size={20} color={colors.lav4} />
               <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
@@ -215,34 +215,40 @@ export default function CheckInScreen({ navigation }) {
           })}
         </View>
 
-        {/* Mensagem de acolhimento */}
-        {mensagemAcolhimento && (
-          <View style={s.sect}>
-            <View style={s.suggCard}>
-              <Text style={s.suggMsg}>{mensagemAcolhimento}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Conteúdo sugerido */}
-        {audioRec && (
+        {/* Conteúdo sugerido (pré-save) */}
+        {(conteudoExibido || audioRec) && (
           <View style={s.sect}>
             <View style={s.suggCard}>
               <View style={s.suggHeader}>
-                <Text style={s.suggTit}>Conteúdos que podem te ajudar agora</Text>
+                <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
               </View>
-              <View style={s.suggRow}>
-                <View style={s.suggThumb}>
-                  <Ionicons name="headset-outline" size={20} color={colors.lav5} />
+              {conteudoExibido ? (
+                <View style={s.suggRow}>
+                  <View style={s.suggThumb}>
+                    <Ionicons name={TIPO_ICONE[conteudoExibido.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.suggTag}>{conteudoExibido.tipo}</Text>
+                    <Text style={s.suggName}>{conteudoExibido.titulo}</Text>
+                  </View>
+                  <View style={s.playBtnLg}>
+                    <Ionicons name="arrow-forward" size={16} color="white" />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
-                  <Text style={s.suggName}>{audioRec.titulo}</Text>
+              ) : (
+                <View style={s.suggRow}>
+                  <View style={s.suggThumb}>
+                    <Ionicons name="headset-outline" size={20} color={colors.lav5} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
+                    <Text style={s.suggName}>{audioRec.titulo}</Text>
+                  </View>
+                  <View style={s.playBtnLg}>
+                    <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
+                  </View>
                 </View>
-                <View style={s.playBtnLg}>
-                  <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
-                </View>
-              </View>
+              )}
             </View>
           </View>
         )}

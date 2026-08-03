@@ -101,7 +101,7 @@ export default function HomeScreen({ navigation }) {
                   <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
                     <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
                   </View>
-                  <Text style={s.emoLbl}>{e.label}</Text>
+                  <Text style={s.emoLbl} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>{e.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -150,6 +150,19 @@ export default function HomeScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={s.vidaBtnTxt}>Experimente a vida</Text>
                   <Text style={s.vidaBtnSub}>Parcerias e benefícios exclusivos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[s.vidaBtn, { marginTop: 10 }]} onPress={() => navigation.navigate('Jornadas')} activeOpacity={0.88}>
+              <View style={[s.vidaBtnInner, { backgroundColor: '#5C4490' }]}>
+                <View style={s.vidaIconCircle}>
+                  <Ionicons name="people-outline" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.vidaBtnTxt}>Continue a travessia</Text>
+                  <Text style={s.vidaBtnSub}>Eu caminho junto com você</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
               </View>
