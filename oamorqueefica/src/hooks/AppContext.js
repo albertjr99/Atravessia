@@ -6,6 +6,7 @@ import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { registrarPushToken } from '../utils/pushNotifications';
 import { jornadas as jornadasBase } from '../data';
+import { FRASES_SEED } from '../data/frasesSeed';
 
 const AppContext = createContext();
 
@@ -172,6 +173,27 @@ export function AppProvider({ children }) {
 
   const isFavorito = (conteudoId) => favoritosIds.some(f => f.conteudoId === conteudoId);
 
+  // Frases e reflexões — carregadas do Firestore, com fallback no seed local
+  const [frases, setFrases] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'frases'), orderBy('criadoEm', 'asc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(f => f.ativa !== false);
+      setFrases(docs.length > 0 ? docs : FRASES_SEED);
+    }, () => { setFrases(FRASES_SEED); });
+    return unsub;
+  }, []);
+
+  // Frase do dia — determinística por uid + dia do ano (muda a cada 24h, diferente por usuária)
+  const fraseDoDia = useMemo(() => {
+    if (!frases.length) return null;
+    const now = new Date();
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    const uidHash = uid ? uid.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) : 0;
+    const idx = (dayOfYear + uidHash) % frases.length;
+    return frases[idx];
+  }, [frases, uid]);
+
   // Mensagens personalizadas dos relatórios (configuradas pela admin)
   const [mensagensRelatorio, setMensagensRelatorio] = useState({});
   useEffect(() => {
@@ -333,6 +355,8 @@ export function AppProvider({ children }) {
       notificacoes, marcarLida,
       conteudos,
       favoritos, adicionarFavorito, removerFavorito, isFavorito,
+      frases,
+      fraseDoDia,
       mensagensRelatorio,
       jornadasAdmin,
       parcerias, registrarCliqueParceria,
