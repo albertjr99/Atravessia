@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.oamorqueefica.app"
+      "bundleIdentifier": "com.atravessia"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FAF7F3"
       },
-      "package": "com.oamorqueefica.app"
+      "package": "com.atravessia"
     },
     "web": {
       "favicon": "./assets/favicon.png"
