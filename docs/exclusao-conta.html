@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exclusão de Conta – Atravessia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #FAF7F4;
+      color: #3D2B2B;
+      min-height: 100vh;
+    }
+    header {
+      background: #B8A6C9;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    header p {
+      color: #f0eaf8;
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+    main {
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 20px 60px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    h2 {
+      font-size: 1.15rem;
+      color: #7A5C8A;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+    p, li {
+      font-size: 0.97rem;
+      line-height: 1.7;
+      color: #4A3A3A;
+    }
+    ol, ul {
+      padding-left: 22px;
+      margin-top: 8px;
+    }
+    li { margin-bottom: 8px; }
+    .steps li {
+      padding-left: 4px;
+    }
+    .highlight {
+      background: #f3eef8;
+      border-left: 4px solid #B8A6C9;
+      padding: 14px 18px;
+      border-radius: 0 10px 10px 0;
+      margin-top: 16px;
+      font-size: 0.93rem;
+    }
+    a.email-link {
+      display: inline-block;
+      margin-top: 16px;
+      background: #B8A6C9;
+      color: #fff;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.97rem;
+      transition: background 0.2s;
+    }
+    a.email-link:hover { background: #9a88b0; }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .data-table th {
+      background: #f3eef8;
+      color: #7A5C8A;
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .data-table td {
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #f0e8f5;
+    }
+    .del { color: #c0392b; font-weight: 600; }
+    .ret { color: #8e44ad; font-weight: 600; }
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 0.82rem;
+      color: #9e8e8e;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Atravessia</h1>
+  <p>Solicitação de Exclusão de Conta e Dados</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>Como solicitar a exclusão da sua conta</h2>
+    <p>Você pode solicitar a exclusão completa da sua conta e dos seus dados pessoais a qualquer momento. Siga um dos métodos abaixo:</p>
+
+    <h2 style="margin-top:24px;">Opção 1 — Pelo próprio aplicativo</h2>
+    <ol class="steps">
+      <li>Abra o app <strong>Atravessia</strong> no seu dispositivo.</li>
+      <li>Toque no ícone do seu perfil (canto superior direito).</li>
+      <li>Acesse <strong>Configurações → Conta</strong>.</li>
+      <li>Toque em <strong>"Excluir minha conta"</strong>.</li>
+      <li>Confirme a exclusão quando solicitado.</li>
+    </ol>
+
+    <h2 style="margin-top:24px;">Opção 2 — Por e-mail</h2>
+    <p>Envie um e-mail para o nosso suporte informando o endereço de e-mail cadastrado na sua conta. Processamos todas as solicitações em até <strong>15 dias úteis</strong>.</p>
+    <a class="email-link" href="mailto:carla.zambi.psi@gmail.com?subject=Solicita%C3%A7%C3%A3o%20de%20Exclus%C3%A3o%20de%20Conta%20%E2%80%93%20Atravessia">
+      Enviar e-mail de solicitação
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>O que é excluído e o que é retido</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Dado</th>
+          <th>Ação</th>
+          <th>Prazo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Conta (e-mail, senha)</td>
+          <td class="del">Excluído</td>
+          <td>Imediato</td>
+        </tr>
+        <tr>
+          <td>Perfil (nome, foto)</td>
+          <td class="del">Excluído</td>
+          <td>Imediato</td>
+        </tr>
+        <tr>
+          <td>Check-ins emocionais</td>
+          <td class="del">Excluído</td>
+          <td>Imediato</td>
+        </tr>
+        <tr>
+          <td>Diário / anotações</td>
+          <td class="del">Excluído</td>
+          <td>Imediato</td>
+        </tr>
+        <tr>
+          <td>Tokens de notificação</td>
+          <td class="del">Excluído</td>
+          <td>Imediato</td>
+        </tr>
+        <tr>
+          <td>Registros de assinatura (Stripe)</td>
+          <td class="ret">Retido por obrigação legal</td>
+          <td>5 anos (legislação fiscal)</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="highlight">
+      Os registros financeiros são mantidos exclusivamente para cumprir obrigações legais fiscais e contábeis previstas na legislação brasileira, não sendo utilizados para nenhuma finalidade de marketing ou análise.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Desenvolvedor responsável</h2>
+    <p><strong>App:</strong> Atravessia</p>
+    <p style="margin-top:8px;"><strong>Responsável:</strong> Carla Zambi Meirelles</p>
+    <p style="margin-top:8px;"><strong>E-mail:</strong> <a href="mailto:carla.zambi.psi@gmail.com" style="color:#7A5C8A;">carla.zambi.psi@gmail.com</a></p>
+  </div>
+
+</main>
+
+<footer>
+  © 2025 Atravessia · Carla Zambi Meirelles · Todos os direitos reservados
+</footer>
+
+</body>
+</html>

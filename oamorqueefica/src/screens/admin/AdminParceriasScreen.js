@@ -71,18 +71,17 @@ export default function AdminParceriasScreen({ navigation }) {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
+        base64: true,
       });
       if (result.canceled) return;
-      const uri = result.assets[0].uri;
+      const base64 = result.assets[0].base64;
       setUploadando(true);
       try {
-        const { ref: sRef, uploadBytes, getDownloadURL } = require('firebase/storage');
+        const { ref: sRef, uploadString, getDownloadURL } = require('firebase/storage');
         const { storage } = require('../../services/firebase');
-        const response = await fetch(uri);
-        const blob = await response.blob();
         const nomeArq = `parcerias_${Date.now()}.jpg`;
         const fileRef = sRef(storage, `parcerias/${nomeArq}`);
-        await uploadBytes(fileRef, blob);
+        await uploadString(fileRef, base64, 'base64');
         const url = await getDownloadURL(fileRef);
         setImagemUrl(url);
         Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
