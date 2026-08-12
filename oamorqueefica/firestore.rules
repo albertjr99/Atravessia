@@ -70,5 +70,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // Áudios de acolhimento por emoção — leitura para todas, escrita só admin
+    match /audiosAcolhimento/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }

@@ -148,6 +148,16 @@ export function AppProvider({ children }) {
     return unsub;
   }, []);
 
+  // Áudios de acolhimento por emoção — exibidos no check-in
+  const [audiosAcolhimento, setAudiosAcolhimento] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'audiosAcolhimento'), orderBy('criadoEm', 'desc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setAudiosAcolhimento(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, []);
+
   // Favoritos do usuário: armazena apenas o conteudoId; join com `conteudos` para detalhes
   const [favoritosIds, setFavoritosIds] = useState([]);
   useSubcolecao(uid, 'favoritos', setFavoritosIds);
@@ -354,6 +364,7 @@ export function AppProvider({ children }) {
       tipoLuto, setTipoLuto,
       notificacoes, marcarLida,
       conteudos,
+      audiosAcolhimento,
       favoritos, adicionarFavorito, removerFavorito, isFavorito,
       frases,
       fraseDoDia,
