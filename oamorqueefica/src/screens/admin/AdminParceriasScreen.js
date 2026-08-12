@@ -13,6 +13,7 @@ import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
+import { uploadToStorage } from '../../utils/storageUpload';
 import AdminLayout from './AdminLayout';
 
 const CATEGORIAS = ['Saúde', 'Bem-estar', 'Terapias', 'Educação', 'Farmácia', 'Clínica', 'Produtos'];
@@ -71,18 +72,13 @@ export default function AdminParceriasScreen({ navigation }) {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
-        base64: true,
       });
       if (result.canceled) return;
-      const base64 = result.assets[0].base64;
+      const uri = result.assets[0].uri;
       setUploadando(true);
       try {
-        const { ref: sRef, uploadString, getDownloadURL } = require('firebase/storage');
-        const { storage } = require('../../services/firebase');
         const nomeArq = `parcerias_${Date.now()}.jpg`;
-        const fileRef = sRef(storage, `parcerias/${nomeArq}`);
-        await uploadString(fileRef, base64, 'base64');
-        const url = await getDownloadURL(fileRef);
+        const url = await uploadToStorage(uri, `parcerias/${nomeArq}`, 'image/jpeg');
         setImagemUrl(url);
         Alert.alert('', 'Imagem carregada! O link foi preenchido automaticamente.');
       } catch (err) {
