@@ -11,7 +11,7 @@ const CONFETTI_COUNT = 20;
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
-import { emocoes, audios } from '../../data';
+import { emocoes, audios as audiosEstaticos } from '../../data';
 import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -37,7 +37,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 }
 
 export default function CheckInScreen({ navigation }) {
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, adicionarFavorito, removerFavorito, isFavorito } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
@@ -70,8 +70,12 @@ export default function CheckInScreen({ navigation }) {
   const jaFezCheckinHoje = checkins.some(c => c.data === hojeStr);
   const historico = checkins.slice(-7);
   const emocaoObj = emocaoSel ? emocoes.find(e => e.id === emocaoSel) : null;
+  const fonteAudios = audiosAcolhimento.filter(a => a.ativo !== false).length > 0
+    ? audiosAcolhimento.filter(a => a.ativo !== false)
+    : audiosEstaticos;
   const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
-    ? (audios.find(a => a.emocoes[0] === emocaoSel && a.plano <= 1) || audios.find(a => a.emocoes.includes(emocaoSel)))
+    ? (fonteAudios.find(a => (a.emocoes || [])[0] === emocaoSel && (a.plano || 0) <= 1)
+      || fonteAudios.find(a => (a.emocoes || []).includes(emocaoSel)))
     : null;
 
   const handleSalvar = () => {
