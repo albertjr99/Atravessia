@@ -3,7 +3,8 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Image, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ref as sRef, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToStorage } from '../../utils/storageUpload';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
@@ -52,16 +53,13 @@ export default function AdminPerfilScreen({ navigation }) {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
-        base64: true,
       });
       if (result.canceled) return;
-      const base64 = result.assets[0].base64;
+      const uri = result.assets[0].uri;
       setUploadando(true);
       try {
         const nomeArq = `perfil_${Date.now()}.jpg`;
-        const fileRef = sRef(storage, `perfis/${nomeArq}`);
-        await uploadString(fileRef, base64, 'base64');
-        const url = await getDownloadURL(fileRef);
+        const url = await uploadToStorage(uri, `perfis/${nomeArq}`, 'image/jpeg');
         setPhotoURL(url);
         Alert.alert('Foto carregada!', 'Clique em "Salvar" para aplicar a foto.');
       } catch (err) {

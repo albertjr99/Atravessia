@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp,
 } from 'firebase/firestore';
-import { ref as sRef, uploadString, getDownloadURL } from 'firebase/storage';
-import * as FileSystem from 'expo-file-system';
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { uploadToStorage } from '../../utils/storageUpload';
 import { db, storage } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
@@ -296,13 +296,8 @@ export default function AdminConteudosScreen({ navigation }) {
           await uploadBytes(fileRef, item.localFile);
           urlFinal = await getDownloadURL(fileRef);
         } else if (item.localUri) {
-          const base64 = await FileSystem.readAsStringAsync(item.localUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
           const nomeArq = `${Date.now()}_${item.localName.replace(/\s+/g, '_')}`;
-          const fileRef = sRef(storage, `conteudos/${nomeArq}`);
-          await uploadString(fileRef, base64, 'base64');
-          urlFinal = await getDownloadURL(fileRef);
+          urlFinal = await uploadToStorage(item.localUri, `conteudos/${nomeArq}`, item.mimeType || 'application/octet-stream');
         }
 
         if (!urlFinal) {
