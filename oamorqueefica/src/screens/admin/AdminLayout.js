@@ -19,6 +19,7 @@ const isWide = Platform.OS === 'web' || SCREEN_W >= 700;
 const NAV_ITEMS = [
   { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
   { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
+  { icon: 'musical-notes', iconOff: 'musical-notes-outline', label: 'Áudios Check-in', screen: 'AdminAudios' },
   { icon: 'quote', iconOff: 'quote-outline', label: 'Frases', screen: 'AdminFrases' },
   { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
   { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
