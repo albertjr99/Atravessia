@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atravessia",
     "slug": "atravessia",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "sdkVersion": "54.0.0",
     "newArchEnabled": true,
     "orientation": "portrait",
@@ -23,7 +23,12 @@
         "backgroundColor": "#FAF7F3"
       },
       "package": "com.atravessia",
-      "versionCode": 3
+      "versionCode": 4,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -51,6 +56,11 @@
           "iosDisplayInForeground": true
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "87497b0a-d29e-4c73-bb76-42a69cbd026f"
+      }
+    }
   }
 }
