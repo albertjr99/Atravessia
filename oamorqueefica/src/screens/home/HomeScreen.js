@@ -157,7 +157,7 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity style={[s.vidaBtn, { marginTop: 10 }]} onPress={() => navigation.navigate('Jornadas')} activeOpacity={0.88}>
-              <View style={[s.vidaBtnInner, { backgroundColor: '#5C4490' }]}>
+              <View style={s.vidaBtnInner}>
                 <View style={s.vidaIconCircle}>
                   <Ionicons name="people-outline" size={22} color="#fff" />
                 </View>
@@ -329,8 +329,8 @@ const s = StyleSheet.create({
   },
   fraseTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 22, fontStyle: 'italic',
-    color: '#4a4453', lineHeight: 32, textAlign: 'center',
+    fontSize: 26, fontStyle: 'italic',
+    color: '#4a4453', lineHeight: 36, textAlign: 'center',
   },
   fraseAutor: {
     fontFamily: 'Lato_400Regular', fontSize: 12,
@@ -414,8 +414,8 @@ const s = StyleSheet.create({
   },
   reflexaoTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 18, fontStyle: 'italic',
-    color: '#6b5b88', lineHeight: 28,
+    fontSize: 15, fontStyle: 'italic',
+    color: '#6b5b88', lineHeight: 24, textAlign: 'justify',
   },
 
   disclaimer: {
