@@ -277,7 +277,11 @@ export default function CheckInScreen({ navigation }) {
         {/* Conteúdo sugerido (pré-save) */}
         {(conteudoExibido || audioRec) && (
           <View style={s.sect}>
-            <View style={s.suggCard}>
+            <TouchableOpacity
+              style={s.suggCard}
+              onPress={() => conteudoExibido ? handleAbrirConteudo(conteudoExibido) : handleOuvirAudio()}
+              activeOpacity={0.85}
+            >
               <View style={s.suggHeader}>
                 <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
               </View>
@@ -308,7 +312,7 @@ export default function CheckInScreen({ navigation }) {
                   </View>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
           </View>
         )}
 
