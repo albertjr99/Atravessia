@@ -31,6 +31,7 @@ import AdminJornadasScreen from '../screens/admin/AdminJornadasScreen';
 import AdminMensagensRelatorioScreen from '../screens/admin/AdminMensagensRelatorioScreen';
 import AdminFrasesScreen from '../screens/admin/AdminFrasesScreen';
 import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
+import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
@@ -86,6 +87,7 @@ function AdminStack() {
       <Stack.Screen name="AdminMensagens" component={AdminMensagensRelatorioScreen} />
       <Stack.Screen name="AdminFrases" component={AdminFrasesScreen} />
       <Stack.Screen name="AdminAudios" component={AdminAudiosScreen} />
+      <Stack.Screen name="AdminTravessia" component={AdminTravessiaScreen} />
     </Stack.Navigator>
   );
 }

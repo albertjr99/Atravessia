@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card } from '../../components';
@@ -16,6 +16,7 @@ export default function AdminUsuariasScreen({ navigation }) {
   const [usuarias, setUsuarias] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtroPlano, setFiltroPlano] = useState('todos');
+  const [cortesiaModal, setCortesiaModal] = useState({ vis: false, usuaria: null, dias: '30' });
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'usuarios'), (snap) => {
@@ -29,11 +30,40 @@ export default function AdminUsuariasScreen({ navigation }) {
   }, []);
 
   const handleAlterarPlano = (usuaria) => {
-    Alert.alert('Alterar plano', `Plano de ${usuaria.apelido || usuaria.nome}:`, [
-      { text: 'Perceber (gratuito)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 0 }) },
-      { text: 'Acolher (R$24,90)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 1 }) },
+    const temAcessoTotal = usuaria.acessoTotal === true;
+    Alert.alert('Gerenciar acesso', `${usuaria.apelido || usuaria.nome}:`, [
+      { text: 'Perceber (gratuito)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 0, acessoTotal: false }) },
+      { text: 'Acolher (R$24,90)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 1, acessoTotal: false }) },
+      {
+        text: temAcessoTotal ? '✓ Acesso Total — remover' : 'Acesso Total (teste admin)',
+        onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { acessoTotal: !temAcessoTotal }),
+      },
+      { text: 'Cortesia temporária...', onPress: () => setCortesiaModal({ vis: true, usuaria, dias: '30' }) },
       { text: 'Cancelar', style: 'cancel' },
     ]);
+  };
+
+  const concederCortesia = async () => {
+    const { usuaria, dias } = cortesiaModal;
+    const numDias = parseInt(dias, 10) || 30;
+    const expiracao = Timestamp.fromDate(new Date(Date.now() + numDias * 86400000));
+    await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: { ativo: true, expiracao } });
+    setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
+  };
+
+  const revogarCortesia = async () => {
+    await updateDoc(doc(db, 'usuarios', cortesiaModal.usuaria.id), { cortesia: { ativo: false } });
+    setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
+  };
+
+  const cortesiaDiasRestantes = (u) => {
+    if (!u.cortesia?.ativo) return null;
+    if (!u.cortesia.expiracao) return '∞';
+    try {
+      const exp = u.cortesia.expiracao.toDate ? u.cortesia.expiracao.toDate() : new Date(u.cortesia.expiracao);
+      const dias = Math.ceil((exp - new Date()) / 86400000);
+      return dias > 0 ? `${dias}d` : null;
+    } catch { return null; }
   };
 
   const lista = usuarias.filter(u => {
@@ -125,6 +155,18 @@ export default function AdminUsuariasScreen({ navigation }) {
                     </Text>
                   </View>
                 )}
+                {u.acessoTotal && (
+                  <View style={[styles.empresaTag, { marginTop: 2 }]}>
+                    <Ionicons name="shield-checkmark-outline" size={10} color={colors.lav5} />
+                    <Text style={[styles.empresaText, { color: colors.lav5 }]}>Acesso Total</Text>
+                  </View>
+                )}
+                {(() => { const d = cortesiaDiasRestantes(u); return d ? (
+                  <View style={[styles.empresaTag, { marginTop: 2 }]}>
+                    <Ionicons name="gift-outline" size={10} color={colors.peach2} />
+                    <Text style={[styles.empresaText, { color: colors.peach2 }]}>Cortesia: {d}</Text>
+                  </View>
+                ) : null; })()}
               </View>
               <TouchableOpacity style={[styles.planoBadge, { backgroundColor: cor + '22', borderColor: cor }]} onPress={() => handleAlterarPlano(u)}>
                 <Text style={[styles.planoBadgeText, { color: cor }]}>{PLANO_NOME[plano] || 'Perceber'}</Text>
@@ -140,6 +182,35 @@ export default function AdminUsuariasScreen({ navigation }) {
           </Text>
         )}
       </ScrollView>
+
+      <Modal visible={cortesiaModal.vis} transparent animationType="fade" onRequestClose={() => setCortesiaModal({ vis: false, usuaria: null, dias: '30' })}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.cortesiaBox}>
+            <Text style={styles.cortesiaTitulo}>Cortesia temporária</Text>
+            <Text style={styles.cortesiaSub}>
+              Acesso completo para {cortesiaModal.usuaria?.apelido || cortesiaModal.usuaria?.nome}
+            </Text>
+            <Text style={[styles.statL, { marginTop: 16, marginBottom: 4 }]}>Duração (dias):</Text>
+            <TextInput
+              style={styles.diasInput}
+              value={cortesiaModal.dias}
+              onChangeText={v => setCortesiaModal(p => ({ ...p, dias: v }))}
+              keyboardType="number-pad"
+              placeholder="30"
+              placeholderTextColor={colors.tl}
+            />
+            <TouchableOpacity style={styles.concederBtn} onPress={concederCortesia}>
+              <Text style={styles.concederBtnText}>Conceder acesso</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.revogarBtn} onPress={revogarCortesia}>
+              <Text style={styles.revogarBtnText}>Revogar cortesia</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginTop: 8 }} onPress={() => setCortesiaModal({ vis: false, usuaria: null, dias: '30' })}>
+              <Text style={[styles.statL, { textAlign: 'center' }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </AdminLayout>
   );
 }
@@ -171,4 +242,13 @@ const styles = StyleSheet.create({
   planoBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: radius.full, borderWidth: 1.5, paddingVertical: 5, paddingHorizontal: 9, marginTop: 2 },
   planoBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', marginTop: spacing.xl },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  cortesiaBox: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg, width: '100%', maxWidth: 360 },
+  cortesiaTitulo: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
+  cortesiaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
+  diasInput: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 15, color: colors.td, marginBottom: 14 },
+  concederBtn: { backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
+  concederBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },
+  revogarBtn: { borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.peach2 },
+  revogarBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.peach2 },
 });
