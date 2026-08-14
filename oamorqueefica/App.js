@@ -12,7 +12,7 @@ import { AuthProvider } from './src/hooks/AuthContext';
 import { colors } from './src/theme';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Lato_300Light,
     Lato_400Regular,
     Lato_700Bold,
@@ -22,7 +22,7 @@ export default function App() {
     DancingScript_600SemiBold,
   });
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF7F4' }}>
         <ActivityIndicator color="#B8A6C9" size="large" />
