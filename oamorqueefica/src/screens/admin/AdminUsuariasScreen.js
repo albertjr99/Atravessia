@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput, Modal,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
@@ -16,6 +16,7 @@ export default function AdminUsuariasScreen({ navigation }) {
   const [usuarias, setUsuarias] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtroPlano, setFiltroPlano] = useState('todos');
+  const [planoModal, setPlanoModal] = useState({ vis: false, usuaria: null });
   const [cortesiaModal, setCortesiaModal] = useState({ vis: false, usuaria: null, dias: '30' });
 
   useEffect(() => {
@@ -30,17 +31,26 @@ export default function AdminUsuariasScreen({ navigation }) {
   }, []);
 
   const handleAlterarPlano = (usuaria) => {
-    const temAcessoTotal = usuaria.acessoTotal === true;
-    Alert.alert('Gerenciar acesso', `${usuaria.apelido || usuaria.nome}:`, [
-      { text: 'Perceber (gratuito)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 0, acessoTotal: false }) },
-      { text: 'Acolher (R$24,90)', onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { plano: 1, acessoTotal: false }) },
-      {
-        text: temAcessoTotal ? '✓ Acesso Total — remover' : 'Acesso Total (teste admin)',
-        onPress: () => updateDoc(doc(db, 'usuarios', usuaria.id), { acessoTotal: !temAcessoTotal }),
-      },
-      { text: 'Cortesia temporária...', onPress: () => setCortesiaModal({ vis: true, usuaria, dias: '30' }) },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    setPlanoModal({ vis: true, usuaria });
+  };
+
+  const fecharPlanoModal = () => setPlanoModal({ vis: false, usuaria: null });
+
+  const setPlano = (plano) => {
+    updateDoc(doc(db, 'usuarios', planoModal.usuaria.id), { plano, acessoTotal: false });
+    fecharPlanoModal();
+  };
+
+  const toggleAcessoTotal = () => {
+    const u = planoModal.usuaria;
+    updateDoc(doc(db, 'usuarios', u.id), { acessoTotal: !(u.acessoTotal === true) });
+    fecharPlanoModal();
+  };
+
+  const abrirCortesia = () => {
+    const u = planoModal.usuaria;
+    fecharPlanoModal();
+    setCortesiaModal({ vis: true, usuaria: u, dias: '30' });
   };
 
   const concederCortesia = async () => {
@@ -183,6 +193,40 @@ export default function AdminUsuariasScreen({ navigation }) {
         )}
       </ScrollView>
 
+      <Modal visible={planoModal.vis} transparent animationType="fade" onRequestClose={fecharPlanoModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.cortesiaBox}>
+            <Text style={styles.cortesiaTitulo}>Gerenciar acesso</Text>
+            <Text style={styles.cortesiaSub}>
+              {planoModal.usuaria?.apelido || planoModal.usuaria?.nome}
+            </Text>
+            <View style={styles.planoOpcoesCol}>
+              <TouchableOpacity style={[styles.planoOpcao, (planoModal.usuaria?.plano ?? 0) === 0 && !planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={() => setPlano(0)}>
+                <Ionicons name={(planoModal.usuaria?.plano ?? 0) === 0 && !planoModal.usuaria?.acessoTotal ? 'radio-button-on' : 'radio-button-off'} size={16} color={colors.sage} />
+                <Text style={styles.planoOpcaoText}>Perceber (gratuito)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.planoOpcao, (planoModal.usuaria?.plano ?? 0) === 1 && !planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={() => setPlano(1)}>
+                <Ionicons name={(planoModal.usuaria?.plano ?? 0) === 1 && !planoModal.usuaria?.acessoTotal ? 'radio-button-on' : 'radio-button-off'} size={16} color={colors.lav5} />
+                <Text style={styles.planoOpcaoText}>Acolher (R$24,90)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.planoOpcao, planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={toggleAcessoTotal}>
+                <Ionicons name={planoModal.usuaria?.acessoTotal ? 'shield-checkmark' : 'shield-checkmark-outline'} size={16} color={colors.lav5} />
+                <Text style={styles.planoOpcaoText}>
+                  {planoModal.usuaria?.acessoTotal ? 'Acesso Total — remover' : 'Acesso Total (admin)'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.planoOpcao} onPress={abrirCortesia}>
+                <Ionicons name="gift-outline" size={16} color={colors.peach2} />
+                <Text style={[styles.planoOpcaoText, { color: colors.peach2 }]}>Cortesia temporária...</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={{ marginTop: 12, paddingVertical: 8, alignItems: 'center' }} onPress={fecharPlanoModal}>
+              <Text style={[styles.statL, { textAlign: 'center', fontSize: 13 }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={cortesiaModal.vis} transparent animationType="fade" onRequestClose={() => setCortesiaModal({ vis: false, usuaria: null, dias: '30' })}>
         <View style={styles.modalOverlay}>
           <View style={styles.cortesiaBox}>
@@ -246,6 +290,10 @@ const styles = StyleSheet.create({
   cortesiaBox: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg, width: '100%', maxWidth: 360 },
   cortesiaTitulo: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
   cortesiaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
+  planoOpcoesCol: { marginTop: 16, gap: 4 },
+  planoOpcao: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.md },
+  planoOpcaoSel: { backgroundColor: colors.lav1 },
+  planoOpcaoText: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
   diasInput: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 15, color: colors.td, marginBottom: 14 },
   concederBtn: { backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
   concederBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },
