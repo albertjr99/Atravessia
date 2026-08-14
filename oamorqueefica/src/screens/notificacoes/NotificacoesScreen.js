@@ -19,8 +19,25 @@ const ICONES = {
   live: 'videocam-outline',
 };
 
+const DESTINO = {
+  inatividade: 'CheckIn',
+  conteudo: 'CheckIn',
+  data_sensivel: 'DatasSensiveis',
+  feedback: 'Relatorios',
+  relatorio: 'Relatorios',
+  vitoria: 'Inicio',
+  incentivo: 'CheckIn',
+  live: 'Audios',
+};
+
 export default function NotificacoesScreen({ navigation }) {
   const { notificacoes, marcarLida } = useApp();
+
+  const handlePress = (n) => {
+    marcarLida(n.id);
+    const dest = DESTINO[n.tipo];
+    if (dest) navigation.navigate(dest);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -45,13 +62,18 @@ export default function NotificacoesScreen({ navigation }) {
             <TouchableOpacity
               key={n.id}
               style={[styles.item, !n.lida && styles.itemNaoLido]}
-              onPress={() => marcarLida(n.id)}
+              onPress={() => handlePress(n)}
               activeOpacity={0.85}
             >
               <View style={styles.itemIcon}>
                 <Ionicons name={ICONES[n.tipo] || 'notifications-outline'} size={16} color={colors.lav5} />
               </View>
-              <Text style={styles.itemTexto}>{n.texto}</Text>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.itemTexto}>{n.texto}</Text>
+                {DESTINO[n.tipo] && (
+                  <Text style={styles.itemAcao}>Toque para acessar</Text>
+                )}
+              </View>
               {!n.lida && <View style={styles.dot} />}
             </TouchableOpacity>
           ))
@@ -75,7 +97,8 @@ const styles = StyleSheet.create({
   },
   itemNaoLido: { backgroundColor: colors.lav1, borderColor: colors.lav2 },
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'white', alignItems: 'center', justifyContent: 'center' },
-  itemTexto: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 18 },
+  itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 18 },
+  itemAcao: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.rose },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
