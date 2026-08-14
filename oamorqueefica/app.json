@@ -26,7 +26,11 @@
       "versionCode": 3
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static",
+      "name": "Atravessia Admin",
+      "lang": "pt-BR"
     },
     "plugins": [
       [

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Image,
+  StyleSheet, StatusBar, Alert, Image, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ const PLANO_LABEL = { 0: 'Grátis', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir'
 const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
 
 export default function JornadasScreen({ navigation }) {
-  const { temAcesso, jornadasComProgresso, jornadasAdmin } = useApp();
+  const { temAcesso, jornadasComProgresso, jornadasAdmin, travessiaItens } = useApp();
 
   const handleJornada = (j) => {
     if (!temAcesso(j.plano)) {
@@ -51,6 +51,32 @@ export default function JornadasScreen({ navigation }) {
           </View>
           <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
+
+        {/* Itens da Travessia — gerenciados pela admin */}
+        {travessiaItens.length > 0 && (
+          <View style={styles.lista}>
+            {travessiaItens.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.travessiaCard}
+                onPress={() => {
+                  if (!item.url) return;
+                  Linking.openURL(item.url).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
+                }}
+                activeOpacity={0.85}
+              >
+                <View style={styles.travessiaIcon}>
+                  <Ionicons name={item.icone || 'link-outline'} size={20} color={colors.lav5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.travessiaTitulo}>{item.titulo}</Text>
+                  {item.descricao ? <Text style={styles.travessiaSub}>{item.descricao}</Text> : null}
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.lav4} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Jornadas criadas pela admin (Firestore) */}
         {jornadasAdmin.length > 0 && (
@@ -129,20 +155,6 @@ export default function JornadasScreen({ navigation }) {
             );
           })}
 
-          <TouchableOpacity
-            style={styles.vitoriaCard}
-            onPress={() => navigation.navigate('PequenasVitorias')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.vitoriaIcon}>
-              <Ionicons name="star-outline" size={22} color={colors.lav5} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.vitoriaTitulo}>Pequenas Vitórias</Text>
-              <Text style={styles.vitoriaSub}>Registre conquistas do seu dia a dia</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.lav4} />
-          </TouchableOpacity>
         </View>
 
         <View style={{ height: spacing.xxl }} />
@@ -183,4 +195,13 @@ const styles = StyleSheet.create({
   jornadaIcone: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   planoLabel: { fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
   sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
+  travessiaCard: {
+    backgroundColor: colors.card, borderRadius: radius.xl,
+    padding: spacing.md, borderWidth: 1, borderColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    ...shadow.soft,
+  },
+  travessiaIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  travessiaTitulo: { fontFamily: fonts.script, fontSize: 16, color: colors.lav6 },
+  travessiaSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
 });

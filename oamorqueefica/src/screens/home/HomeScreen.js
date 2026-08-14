@@ -76,7 +76,7 @@ export default function HomeScreen({ navigation }) {
 
           {/* Saudação */}
           <View style={s.greetSect}>
-            <Text style={s.greetName}>{saudacao()}, {usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
+            <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
             <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
           </View>
 

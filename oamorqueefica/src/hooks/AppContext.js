@@ -43,7 +43,22 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (perfil) {
-      setUsuarioLocal({ nome: (perfil.nome || '').split(' ')[0] || 'Você', plano: perfil.plano ?? 0, cadastrado: true });
+      const cortesiaAtiva = (() => {
+        if (!perfil.cortesia?.ativo) return false;
+        if (!perfil.cortesia.expiracao) return true;
+        try {
+          const exp = perfil.cortesia.expiracao.toDate ? perfil.cortesia.expiracao.toDate() : new Date(perfil.cortesia.expiracao);
+          return exp > new Date();
+        } catch { return false; }
+      })();
+      setUsuarioLocal({
+        nome: (perfil.nome || '').split(' ')[0] || 'Você',
+        apelido: perfil.apelido || '',
+        plano: perfil.plano ?? 0,
+        acessoTotal: perfil.acessoTotal === true,
+        cortesiaAtiva,
+        cadastrado: true,
+      });
     }
   }, [perfil]);
 
@@ -223,6 +238,16 @@ export function AppProvider({ children }) {
     return unsub;
   }, []);
 
+  // Itens da seção "Continue a Travessia" — gerenciados pela admin
+  const [travessiaItens, setTravessiaItens] = useState([]);
+  useEffect(() => {
+    const ref = query(collection(db, 'travessiaItens'), orderBy('ordem', 'asc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setTravessiaItens(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false));
+    }, () => {});
+    return unsub;
+  }, []);
+
   // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
   const [parcerias, setParcerias] = useState([]);
   useEffect(() => {
@@ -278,7 +303,7 @@ export function AppProvider({ children }) {
     if (uid) deleteDoc(doc(db, 'usuarios', uid, 'redeApoio', String(id))).catch(() => {});
   };
 
-  const temAcesso = (planoNecessario) => usuario.plano >= planoNecessario;
+  const temAcesso = (planoNecessario) => usuario.acessoTotal || usuario.cortesiaAtiva || usuario.plano >= planoNecessario;
 
   // ---- Regras de liberação diária de conteúdo (Plano 1: 1 áudio de acolhimento/dia; Plano 2+: +1 complementar/dia) ----
   const liberadoHoje = (grupo) => conteudosLiberados.some(c => c.grupo === grupo && c.data === hojeStr());
@@ -370,6 +395,7 @@ export function AppProvider({ children }) {
       fraseDoDia,
       mensagensRelatorio,
       jornadasAdmin,
+      travessiaItens,
       parcerias, registrarCliqueParceria,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
