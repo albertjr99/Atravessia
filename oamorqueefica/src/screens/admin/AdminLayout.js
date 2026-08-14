@@ -10,6 +10,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';
+import AdminPreviewPanel from './AdminPreviewPanel';
 
 const logo = require('../../../assets/images/travessia_logo.png');
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -122,6 +123,9 @@ export default function AdminLayout({ children, currentScreen }) {
             />
           </View>
           <View style={sty.main}><LavandaBg />{children}</View>
+          {Platform.OS === 'web' && (
+            <AdminPreviewPanel currentScreen={currentScreen} />
+          )}
         </View>
       ) : (
         <View style={{ flex: 1 }}>
