@@ -17,6 +17,13 @@ import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
+const LOCAIS = [
+  { id: 'saude', label: 'Saúde física', icon: 'fitness-outline' },
+  { id: 'eu', label: 'Eu comigo mesmo(a)', icon: 'person-outline' },
+  { id: 'trabalho', label: 'Trabalho e estudos', icon: 'briefcase-outline' },
+  { id: 'relacionamentos', label: 'Relacionamentos', icon: 'people-outline' },
+];
+
 const TIPO_ICONE = { audio: 'headset-outline', video: 'videocam-outline', documento: 'document-text-outline', link: 'link-outline' };
 
 function ConteudoCard({ c, onPress, isFav, onFav }) {
@@ -39,6 +46,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 export default function CheckInScreen({ navigation }) {
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
+  const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);
 
@@ -80,7 +88,7 @@ export default function CheckInScreen({ navigation }) {
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
-    adicionarCheckin(emocaoSel);
+    adicionarCheckin(emocaoSel, localSel);
     setSalvo(true);
   };
 
@@ -274,6 +282,30 @@ export default function CheckInScreen({ navigation }) {
           })}
         </View>
 
+        {/* Pergunta sobre onde o sentimento está presente */}
+        {emocaoSel && (
+          <View style={s.sect}>
+            <Text style={s.sectTitle2}>Onde esse sentimento esteve mais presente?</Text>
+            <Text style={[s.headerSub, { marginBottom: 10, marginTop: 4 }]}>Opcional — ajuda a personalizar seu acompanhamento.</Text>
+            <View style={s.localGrid}>
+              {LOCAIS.map(l => {
+                const sel = localSel === l.id;
+                return (
+                  <TouchableOpacity
+                    key={l.id}
+                    style={[s.localCard, sel && { borderColor: colors.lav4, backgroundColor: colors.lav1 }]}
+                    onPress={() => setLocalSel(sel ? null : l.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={l.icon} size={20} color={sel ? colors.lav4 : colors.tl} />
+                    <Text style={[s.localLabel, sel && { color: colors.lav5, fontFamily: fonts.bodyBold }]}>{l.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* Conteúdo sugerido (pré-save) */}
         {(conteudoExibido || audioRec) && (
           <View style={s.sect}>
@@ -430,6 +462,13 @@ const s = StyleSheet.create({
   recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
   upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
+  localGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  localCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'white', borderRadius: 12, borderWidth: 1.5, borderColor: '#E8E0F0',
+    paddingVertical: 10, paddingHorizontal: 12, width: '48%',
+  },
+  localLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
   sugestaoBloco: { width: '100%', marginTop: 16, gap: 8 },
   sugestaoTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
   cCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.lav1, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.lav2 },

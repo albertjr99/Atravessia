@@ -12,6 +12,12 @@ const AppContext = createContext();
 
 const hojeStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
+const PLANO_MAP = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
+const normalizarPlano = (p) => {
+  if (typeof p === 'number') return p;
+  return PLANO_MAP[String(p || '').toLowerCase()] ?? 0;
+};
+
 // Calcula a próxima ocorrência anual de uma data sensível (ignora o ano cadastrado)
 function proximaOcorrencia(dataStr) {
   const original = new Date(dataStr);
@@ -54,7 +60,7 @@ export function AppProvider({ children }) {
       setUsuarioLocal({
         nome: (perfil.nome || '').split(' ')[0] || 'Você',
         apelido: perfil.apelido || '',
-        plano: perfil.plano ?? 0,
+        plano: normalizarPlano(perfil.plano),
         acessoTotal: perfil.acessoTotal === true,
         cortesiaAtiva,
         cadastrado: true,
@@ -262,10 +268,10 @@ export function AppProvider({ children }) {
     updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
   };
 
-  const adicionarCheckin = (emocao) => {
+  const adicionarCheckin = (emocao, local = null) => {
     const hoje = hojeStr();
     if (checkins.some(c => c.data === hoje)) return;
-    const item = { data: hoje, emocao };
+    const item = { data: hoje, emocao, ...(local ? { local } : {}) };
     setCheckins(prev => [...prev, item]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'checkins'), { ...item, criadoEm: serverTimestamp() });
   };

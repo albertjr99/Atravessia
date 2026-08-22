@@ -23,7 +23,7 @@ export default function Notificacoes({ showToast }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const ref = query(collection(db, 'notificacoes'), orderBy('enviadoEm', 'desc'));
+    const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('enviadoEm', 'desc'));
     const unsub1 = onSnapshot(ref, snap => {
       setEnviadas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
@@ -44,23 +44,27 @@ export default function Notificacoes({ showToast }) {
     try {
       if (form.destino === 'todas') {
         const lote = usuarios.map(u =>
-          addDoc(collection(db, 'notificacoes'), {
+          addDoc(collection(db, 'notificacoesEditoriais'), {
             usuarioId: u.id,
             tipo: form.tipo,
             texto: form.texto.trim(),
+            ativa: true,
             lida: false,
             enviadoEm: serverTimestamp(),
+            criadoEm: serverTimestamp(),
           })
         );
         await Promise.all(lote);
         showToast(`Notificação enviada para ${usuarios.length} usuária(s)!`);
       } else {
-        await addDoc(collection(db, 'notificacoes'), {
+        await addDoc(collection(db, 'notificacoesEditoriais'), {
           usuarioId: form.destino,
           tipo: form.tipo,
           texto: form.texto.trim(),
+          ativa: true,
           lida: false,
           enviadoEm: serverTimestamp(),
+          criadoEm: serverTimestamp(),
         });
         showToast('Notificação enviada!');
       }
