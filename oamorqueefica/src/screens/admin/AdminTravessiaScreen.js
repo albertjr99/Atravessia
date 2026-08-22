@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Modal, Switch,
+  TextInput, Alert, Modal, Switch, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -79,8 +79,8 @@ export default function AdminTravessiaScreen({ navigation }) {
         });
       }
       setModalVis(false);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar. Verifique a conexão.');
+    } catch (e) {
+      Alert.alert('Erro', e?.message || 'Não foi possível salvar. Verifique a conexão.');
     }
     setSaving(false);
   };
@@ -173,6 +173,7 @@ export default function AdminTravessiaScreen({ navigation }) {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVis(false)}
       >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={s.modal}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{editId ? 'Editar item' : 'Novo item'}</Text>
@@ -247,6 +248,7 @@ export default function AdminTravessiaScreen({ navigation }) {
             <View style={{ height: 40 }} />
           </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </AdminLayout>
   );

@@ -41,12 +41,12 @@ export default function ParceriasScreen({ navigation }) {
           <View style={s.heroIcon}>
             <Ionicons name="people-outline" size={30} color={colors.lav5} />
           </View>
-          <Text style={s.heroTitle}>Benefícios exclusivos{'\n'}para você se cuidar ainda mais</Text>
+          <Text style={s.heroTitle}>Aqui você encontra descontos{'\n'}exclusivos para cuidar:</Text>
           <Text style={s.heroSub}>
-            Selecionamos parcerias com cuidado para apoiar você na sua jornada de cura e bem-estar.
+            Parcerias selecionadas com cuidado para apoiar você na sua jornada de cura e bem-estar.
           </Text>
           <View style={s.catRow}>
-            {['Saúde', 'Bem-estar', 'Terapias', 'Educação', 'e muito mais'].map(cat => (
+            {['Saúde física', 'Bem-estar', 'Terapias', 'Educação', 'e muito mais'].map(cat => (
               <View key={cat} style={s.catChip}>
                 <Text style={s.catChipTxt}>{cat}</Text>
               </View>

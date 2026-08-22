@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { ScriptTitle, ProgressBar, PlanBadge, LockedOverlay, LavandaBg } from '../../components';
+import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const ilustracao = require('../../../assets/images/jornadas_caminho.png');
@@ -15,22 +15,7 @@ const PLANO_LABEL = { 0: 'Grátis', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir'
 const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
 
 export default function JornadasScreen({ navigation }) {
-  const { temAcesso, jornadasComProgresso, jornadasAdmin, travessiaItens } = useApp();
-
-  const handleJornada = (j) => {
-    if (!temAcesso(j.plano)) {
-      Alert.alert(
-        j.titulo,
-        `Esta jornada está disponível no Plano ${j.plano}. Deseja conhecer os planos?`,
-        [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
-        ]
-      );
-      return;
-    }
-    navigation.navigate('JornadaDetalhe', { jornadaId: j.id });
-  };
+  const { temAcesso, jornadasAdmin, travessiaItens } = useApp();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -116,46 +101,6 @@ export default function JornadasScreen({ navigation }) {
             })}
           </View>
         )}
-
-        {/* Jornadas estáticas com progresso */}
-        <View style={[styles.lista, { marginTop: jornadasAdmin.length > 0 ? 16 : 0 }]}>
-          {jornadasAdmin.length > 0 && <Text style={styles.sectionLabel}>Trilhas de autoconhecimento</Text>}
-          {jornadasComProgresso.map(j => {
-            const bloqueado = !temAcesso(j.plano);
-            const progresso = j.totalAtividades > 0 ? j.atividadesConcluidas / j.totalAtividades : 0;
-            return (
-              <TouchableOpacity
-                key={j.id}
-                style={[styles.jornadaCard, bloqueado && styles.cardBloqueado]}
-                onPress={() => handleJornada(j)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.jornadaHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.jornadaTitulo}>{j.titulo}</Text>
-                    <Text style={styles.jornadaDesc}>{j.descricao}</Text>
-                  </View>
-                  <PlanBadge plano={j.plano} />
-                </View>
-
-                <View style={styles.jornadaProgress}>
-                  <ProgressBar progress={progresso} color={bloqueado ? colors.lav2 : colors.lav4} />
-                  <View style={styles.progressInfo}>
-                    <Text style={styles.progressText}>{j.atividadesConcluidas} de {j.totalAtividades} atividades</Text>
-                    {progresso > 0 && (
-                      <Text style={[styles.progressPct, { color: colors.lav5 }]}>{Math.round(progresso * 100)}%</Text>
-                    )}
-                  </View>
-                </View>
-
-                {bloqueado && (
-                  <LockedOverlay plano={j.plano} onUpgrade={() => navigation.navigate('Planos')} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-
-        </View>
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>

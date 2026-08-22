@@ -29,7 +29,7 @@ export const emocoes = [
     nomeRelatorio: 'a tristeza',
     mensagens: [
       'Percebemos que a tristeza esteve presente hoje. Que tal reservar alguns minutos para cuidar de você?',
-      'Percebemos que hoje você está triste. Gostaria de ouvir um áudio de acolhimento?',
+      'Percebemos que hoje você está triste. Gostaria de ouvir acolhimento?',
     ],
   },
   {
@@ -47,7 +47,7 @@ export const emocoes = [
     nomeRelatorio: 'o isolamento',
     mensagens: [
       'Sentir-se sozinho pode ser muito difícil. Que tal fazer uma pequena pausa para si agora?',
-      'Sentir-se sozinho pode ser pesado. Gostaria de ouvir um áudio de acolhimento?',
+      'Sentir-se sozinho pode ser pesado. Gostaria de ouvir acolhimento?',
     ],
   },
   {
@@ -65,7 +65,7 @@ export const emocoes = [
     nomeRelatorio: 'a culpa',
     mensagens: [
       'A culpa apareceu hoje. Você merece olhar para esse sentimento com gentileza.',
-      'A culpa costuma trazer muitos questionamentos. Que tal ouvir um áudio de acolhimento?',
+      'A culpa costuma trazer muitos questionamentos. Que tal ouvir acolhimento?',
     ],
   },
   {
@@ -74,7 +74,7 @@ export const emocoes = [
     nomeRelatorio: 'a ansiedade',
     mensagens: [
       'Hoje a ansiedade esteve presente. Que tal desacelerar por alguns minutos?',
-      'Sua mente parece estar carregada hoje. Gostaria de um áudio de acolhimento?',
+      'Sua mente parece estar carregada hoje. Gostaria de acolhimento?',
     ],
   },
   {
