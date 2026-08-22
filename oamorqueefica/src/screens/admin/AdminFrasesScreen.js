@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
-  Modal, ActivityIndicator,
+  Modal, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -287,6 +287,7 @@ export default function AdminFrasesScreen({ navigation }) {
 
       {/* Modal adicionar/editar */}
       <Modal visible={modal !== null} animationType="slide" transparent onRequestClose={fecharModal}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
@@ -343,6 +344,7 @@ export default function AdminFrasesScreen({ navigation }) {
             </ScrollView>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </AdminLayout>
   );
