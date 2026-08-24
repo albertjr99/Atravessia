@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
@@ -7,18 +7,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
-import { planos } from '../../data';
+import { planos as planosPadrao } from '../../data';
 import { ScriptTitle, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
-import { functions } from '../../services/firebase';
+import { db, functions } from '../../services/firebase';
 
 export default function PlanosScreen({ navigation }) {
   const { usuario } = useApp();
   const [sel, setSel] = useState(usuario.plano);
   const [carregando, setCarregando] = useState(false);
+  const [planosList, setPlanosList] = useState(planosPadrao);
+
+  useEffect(() => {
+    const ref = query(collection(db, 'planos'), orderBy('id', 'asc'));
+    const unsub = onSnapshot(ref, snap => {
+      if (snap.docs.length > 0) {
+        setPlanosList(
+          snap.docs.map(d => ({ ...d.data() })).sort((a, b) => a.id - b.id)
+        );
+      }
+    }, () => {});
+    return unsub;
+  }, []);
 
   const assinarPlano = async (planoId) => {
     setCarregando(true);
@@ -49,9 +63,10 @@ export default function PlanosScreen({ navigation }) {
     }
   };
 
-  const planosAtivos = planos.filter(p => !p.emBreve);
-  const planosEmBreve = planos.filter(p => p.emBreve);
+  const planosAtivos = planosList.filter(p => !p.emBreve);
+  const planosEmBreve = planosList.filter(p => p.emBreve);
   const coresAtivos = [colors.sage, colors.lav4];
+  const selectedPlan = planosList.find(p => p.id === sel);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -139,7 +154,7 @@ export default function PlanosScreen({ navigation }) {
             />
           ) : (
             <Button
-              title={carregando ? 'Abrindo checkout...' : `Assinar Acolher — R$ 24,90/mês`}
+              title={carregando ? 'Abrindo checkout...' : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
               onPress={() => assinarPlano(sel)}
               disabled={carregando || sel === usuario.plano}
             />
