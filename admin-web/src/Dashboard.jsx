@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, getDocs, query, orderBy, limit, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 
 function timeAgo(ts) {
   if (!ts) return '—';
@@ -19,72 +19,92 @@ function timeAgo(ts) {
 const PLAN_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ users: 0, checkins: 0, frases: 0, conteudos: 0, audios: 0, vitorias: 0 });
-  const [recentUsers, setRecentUsers] = useState([]);
-  const [planDist, setPlanDist] = useState({});
+  const [usuarios, setUsuarios] = useState([]);
+  const [counts, setCounts] = useState({ frases: 0, conteudos: 0, audios: 0, parcerias: 0, vitorias: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [usersSnap, checkinsSnap, frasesSnap, conteudosSnap, audiosSnap, vitoriasSnap] = await Promise.all([
-          getDocs(collection(db, 'usuarios')),
-          getDocs(collection(db, 'checkins')),
-          getDocs(collection(db, 'frases')),
-          getDocs(collection(db, 'conteudos')),
-          getDocs(collection(db, 'audiosAcolhimento')),
-          getDocs(collection(db, 'vitoriasOpcoes')),
-        ]);
-        setStats({
-          users: usersSnap.size,
-          checkins: checkinsSnap.size,
-          frases: frasesSnap.size,
-          conteudos: conteudosSnap.size,
-          audios: audiosSnap.size,
-          vitorias: vitoriasSnap.size,
-        });
+    const unsubs = [];
+    let loaded = 0;
+    const totalSubs = 6;
+    const markLoaded = () => { loaded++; if (loaded >= totalSubs) setLoading(false); };
 
-        const dist = {};
-        usersSnap.docs.forEach(d => {
-          const p = d.data().plano || 'perceber';
-          dist[p] = (dist[p] || 0) + 1;
-        });
-        setPlanDist(dist);
-
-        const sorted = usersSnap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const ta = a.criadoEm?.toMillis?.() || 0;
-            const tb = b.criadoEm?.toMillis?.() || 0;
-            return tb - ta;
-          })
-          .slice(0, 8);
-        setRecentUsers(sorted);
-      } catch (e) {
-        console.error(e);
+    // Usuárias — main subscription
+    unsubs.push(onSnapshot(
+      query(collection(db, 'usuarios'), orderBy('criadoEm', 'desc')),
+      snap => {
+        setUsuarios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setError(null);
+        markLoaded();
+      },
+      err => {
+        setError('Sem permissão para listar usuárias. Verifique se seu perfil tem role: "admin" no Firestore.');
+        markLoaded();
       }
-      setLoading(false);
-    };
-    load();
+    ));
+
+    // Content counts
+    const collections = [
+      ['frases', 'frases'],
+      ['conteudos', 'conteudos'],
+      ['audios', 'audiosAcolhimento'],
+      ['parcerias', 'parcerias'],
+      ['vitorias', 'vitoriasOpcoes'],
+    ];
+    for (const [key, col] of collections) {
+      unsubs.push(onSnapshot(
+        collection(db, col),
+        snap => { setCounts(c => ({ ...c, [key]: snap.size })); markLoaded(); },
+        () => markLoaded()
+      ));
+    }
+
+    return () => unsubs.forEach(u => u());
   }, []);
 
-  if (loading) return <div className="loading-state"><div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando...</div>;
+  const planDist = {};
+  usuarios.forEach(u => {
+    const p = u.acessoTotal ? 'total' : (u.plano || 'perceber');
+    planDist[p] = (planDist[p] || 0) + 1;
+  });
+
+  const recentUsers = usuarios.slice(0, 8);
+
+  if (loading) {
+    return (
+      <div className="loading-state">
+        <div className="spinner" style={{ margin: '0 auto 10px' }} />
+        Carregando...
+      </div>
+    );
+  }
 
   return (
     <div className="screen-content">
       <div className="screen-header">
         <h1 className="screen-title">🏠 Dashboard</h1>
-        <p className="screen-sub">Visão geral do Atravessia — dados em tempo real.</p>
+        <p className="screen-sub">Visão geral do Atravessia — atualizado em tempo real.</p>
       </div>
+
+      {error && (
+        <div style={{
+          background: '#FFF3CD', border: '1px solid #FFECB3',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          fontSize: 13, color: '#8A5B00',
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
 
       <div className="stats-grid">
         {[
-          { icon: '👥', value: stats.users, label: 'Usuárias' },
-          { icon: '✅', value: stats.checkins, label: 'Check-ins' },
-          { icon: '💬', value: stats.frases, label: 'Frases' },
-          { icon: '📚', value: stats.conteudos, label: 'Conteúdos' },
-          { icon: '🎵', value: stats.audios, label: 'Áudios' },
-          { icon: '⭐', value: stats.vitorias, label: 'Vitórias' },
+          { icon: '👥', value: usuarios.length, label: 'Usuárias' },
+          { icon: '💬', value: counts.frases, label: 'Frases' },
+          { icon: '📚', value: counts.conteudos, label: 'Conteúdos' },
+          { icon: '🎵', value: counts.audios, label: 'Áudios' },
+          { icon: '🤝', value: counts.parcerias, label: 'Parcerias' },
+          { icon: '⭐', value: counts.vitorias, label: 'Opções Vitórias' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-icon">{s.icon}</div>
@@ -97,7 +117,11 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 20 }}>
         <div className="card">
           <h2 className="card-title">Usuárias recentes</h2>
-          {recentUsers.length === 0 ? (
+          {error ? (
+            <p style={{ color: 'var(--text-light)', fontSize: 13 }}>
+              Não foi possível carregar. Verifique as permissões do admin no Firestore.
+            </p>
+          ) : recentUsers.length === 0 ? (
             <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhuma usuária cadastrada ainda.</p>
           ) : (
             <table className="data-table">
@@ -117,7 +141,9 @@ export default function Dashboard() {
                     <td>
                       {u.acessoTotal
                         ? <span className="badge badge-total">Acesso Total</span>
-                        : <span className={`badge badge-${u.plano || 'perceber'}`}>{PLAN_LABEL[u.plano] || u.plano || 'Perceber'}</span>
+                        : <span className={`badge badge-${u.plano || 'perceber'}`}>
+                            {PLAN_LABEL[u.plano] || u.plano || 'Perceber'}
+                          </span>
                       }
                     </td>
                     <td style={{ color: 'var(--text-light)' }}>{timeAgo(u.criadoEm)}</td>
@@ -131,19 +157,24 @@ export default function Dashboard() {
         <div className="card">
           <h2 className="card-title">Distribuição de planos</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Object.entries(planDist).length === 0 ? (
+            {Object.keys(planDist).length === 0 ? (
               <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhum dado.</p>
             ) : (
               Object.entries(planDist).map(([plano, count]) => {
-                const pct = stats.users > 0 ? Math.round((count / stats.users) * 100) : 0;
+                const pct = usuarios.length > 0 ? Math.round((count / usuarios.length) * 100) : 0;
+                const label = plano === 'total' ? '🔓 Acesso Total' : (PLAN_LABEL[plano] || plano);
                 return (
                   <div key={plano}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>{PLAN_LABEL[plano] || plano}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
                       <span style={{ fontSize: 12, color: 'var(--text-light)' }}>{count} ({pct}%)</span>
                     </div>
                     <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', borderRadius: 3, transition: 'width 0.6s ease' }} />
+                      <div style={{
+                        height: '100%', width: `${pct}%`,
+                        background: 'var(--primary)', borderRadius: 3,
+                        transition: 'width 0.6s ease',
+                      }} />
                     </div>
                   </div>
                 );

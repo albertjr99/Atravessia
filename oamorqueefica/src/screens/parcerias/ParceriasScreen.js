@@ -13,11 +13,12 @@ export default function ParceriasScreen({ navigation }) {
 
   const handleAbrirParceria = (p) => {
     if (!p.link) return;
+    const url = p.link.startsWith('http') ? p.link : `https://${p.link}`;
     registrarCliqueParceria(p.id);
     if (Platform.OS === 'web') {
-      window.open(p.link, '_blank');
+      window.open(url, '_blank');
     } else {
-      Linking.openURL(p.link).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
+      Linking.openURL(url).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
     }
   };
 

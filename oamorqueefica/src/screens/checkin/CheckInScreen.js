@@ -185,6 +185,10 @@ export default function CheckInScreen({ navigation }) {
               <View style={s.sugestaoBloco}>
                 <Text style={s.sugestaoTit}>Conteúdo para você</Text>
                 <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
+                <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
+                  <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
+                  <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+                </TouchableOpacity>
               </View>
             )}
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
@@ -207,6 +211,10 @@ export default function CheckInScreen({ navigation }) {
             <View style={s.sugestaoBloco}>
               <Text style={s.sugestaoTit}>Conteúdo para você agora</Text>
               <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
+              <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
+                <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
+                <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -309,41 +317,58 @@ export default function CheckInScreen({ navigation }) {
         {/* Conteúdo sugerido (pré-save) */}
         {(conteudoExibido || audioRec) && (
           <View style={s.sect}>
-            <TouchableOpacity
-              style={s.suggCard}
-              onPress={() => conteudoExibido ? handleAbrirConteudo(conteudoExibido) : handleOuvirAudio()}
-              activeOpacity={0.85}
-            >
+            <View style={s.suggCard}>
               <View style={s.suggHeader}>
                 <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
+                {conteudoExibido && (
+                  <TouchableOpacity
+                    onPress={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name={isFavorito(conteudoExibido.id) ? 'heart' : 'heart-outline'}
+                      size={20}
+                      color={isFavorito(conteudoExibido.id) ? '#C06080' : colors.tl}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
-              {conteudoExibido ? (
-                <View style={s.suggRow}>
-                  <View style={s.suggThumb}>
-                    <Ionicons name={TIPO_ICONE[conteudoExibido.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+              <TouchableOpacity
+                onPress={() => conteudoExibido ? handleAbrirConteudo(conteudoExibido) : handleOuvirAudio()}
+                activeOpacity={0.85}
+              >
+                {conteudoExibido ? (
+                  <View style={s.suggRow}>
+                    <View style={s.suggThumb}>
+                      <Ionicons name={TIPO_ICONE[conteudoExibido.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.suggTag}>{conteudoExibido.tipo}</Text>
+                      <Text style={s.suggName}>{conteudoExibido.titulo}</Text>
+                    </View>
+                    <View style={s.playBtnLg}>
+                      <Ionicons name="arrow-forward" size={16} color="white" />
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.suggTag}>{conteudoExibido.tipo}</Text>
-                    <Text style={s.suggName}>{conteudoExibido.titulo}</Text>
+                ) : (
+                  <View style={s.suggRow}>
+                    <View style={s.suggThumb}>
+                      <Ionicons name="headset-outline" size={20} color={colors.lav5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
+                      <Text style={s.suggName}>{audioRec.titulo}</Text>
+                    </View>
+                    <View style={s.playBtnLg}>
+                      <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
+                    </View>
                   </View>
-                  <View style={s.playBtnLg}>
-                    <Ionicons name="arrow-forward" size={16} color="white" />
-                  </View>
-                </View>
-              ) : (
-                <View style={s.suggRow}>
-                  <View style={s.suggThumb}>
-                    <Ionicons name="headset-outline" size={20} color={colors.lav5} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
-                    <Text style={s.suggName}>{audioRec.titulo}</Text>
-                  </View>
-                  <View style={s.playBtnLg}>
-                    <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
-                  </View>
-                </View>
-              )}
+                )}
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
+              <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
+              <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
             </TouchableOpacity>
           </View>
         )}
@@ -420,7 +445,7 @@ const s = StyleSheet.create({
     boxShadow: '0px 2px 10px rgba(184,166,201,0.12)',
   },
   suggMsg: { fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic', color: colors.tm, lineHeight: 20 },
-  suggHeader: { marginBottom: 10 },
+  suggHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   suggTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td },
   suggRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   suggThumb: {
@@ -462,6 +487,8 @@ const s = StyleSheet.create({
   recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
   upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
+  verConteudosLink: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: 8 },
+  verConteudosLinkTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.lav4 },
   localGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   localCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

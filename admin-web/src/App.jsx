@@ -6,9 +6,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import Travessia from './Travessia';
-import Frases from './Frases';
-import Conteudos from './Conteudos';
-import Audios from './Audios';
+import Biblioteca from './Biblioteca';
+import Planos from './Planos';
 import Usuarias from './Usuarias';
 import Vitorias from './Vitorias';
 import Notificacoes from './Notificacoes';
@@ -17,22 +16,20 @@ import Preview from './Preview';
 const NAV = [
   { id: 'dashboard',    icon: '🏠', label: 'Dashboard' },
   { id: 'travessia',    icon: '🧭', label: 'Travessia' },
-  { id: 'frases',       icon: '💬', label: 'Frases' },
-  { id: 'conteudos',    icon: '📚', label: 'Conteúdos' },
-  { id: 'audios',       icon: '🎵', label: 'Áudios Check-in' },
+  { id: 'biblioteca',   icon: '📖', label: 'Biblioteca' },
+  { id: 'planos',       icon: '💜', label: 'Planos' },
   { id: 'usuarias',     icon: '👥', label: 'Usuárias' },
   { id: 'vitorias',     icon: '⭐', label: 'Vitórias' },
   { id: 'notificacoes', icon: '🔔', label: 'Notificações' },
 ];
 
 const SCREENS = {
-  dashboard: Dashboard,
-  travessia: Travessia,
-  frases: Frases,
-  conteudos: Conteudos,
-  audios: Audios,
-  usuarias: Usuarias,
-  vitorias: Vitorias,
+  dashboard:    Dashboard,
+  travessia:    Travessia,
+  biblioteca:   Biblioteca,
+  planos:       Planos,
+  usuarias:     Usuarias,
+  vitorias:     Vitorias,
   notificacoes: Notificacoes,
 };
 

@@ -779,7 +779,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
-  const { checkins, usuario, temAcesso, mensagensRelatorio } = useApp();
+  const { checkins, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
   const [tab, setTab] = useState('mensal');
@@ -837,6 +837,26 @@ export default function RelatoriosScreen({ navigation }) {
 
     return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, consistencia, trimPct };
   }, [checkins, year]);
+
+  const vitoriasMes = useMemo(() => {
+    const prefixo = `${calAno}-${String(calMes + 1).padStart(2, '0')}`;
+    return (vitorias || []).filter(v => v.data?.startsWith(prefixo));
+  }, [vitorias, calAno, calMes]);
+
+  const vitoriasAno = useMemo(
+    () => (vitorias || []).filter(v => v.data?.startsWith(String(year))),
+    [vitorias, year]
+  );
+
+  const vitoriasRange = useMemo(() => {
+    if (!rangeData || !rangeInicio || !rangeFim) return [];
+    const [dI, mI, yI] = rangeInicio.split('/').map(Number);
+    const [dF, mF, yF] = rangeFim.split('/').map(Number);
+    if (!yI || !yF) return [];
+    const startStr = `${yI}-${String(mI).padStart(2, '0')}-${String(dI).padStart(2, '0')}`;
+    const endStr = `${yF}-${String(mF).padStart(2, '0')}-${String(dF).padStart(2, '0')}`;
+    return (vitorias || []).filter(v => v.data >= startStr && v.data <= endStr);
+  }, [vitorias, rangeData, rangeInicio, rangeFim]);
 
   const handleCalNav = (dir) => {
     setCalMes(prev => {
@@ -1121,6 +1141,23 @@ export default function RelatoriosScreen({ navigation }) {
                   </View>
                 </View>
 
+                {vitoriasMes.length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.cardNum}>⭐</Text>
+                    <Text style={s.cardTit}>Pequenas Vitórias</Text>
+                    <Text style={s.cardSub}>{vitoriasMes.length} conquista{vitoriasMes.length !== 1 ? 's' : ''} registrada{vitoriasMes.length !== 1 ? 's' : ''} este mês</Text>
+                    {vitoriasMes.slice(0, 5).map((v, i) => (
+                      <View key={i} style={s.vitRow}>
+                        <Ionicons name="star" size={11} color={colors.gold} />
+                        <Text style={s.vitTxt}>{v.label}</Text>
+                      </View>
+                    ))}
+                    {vitoriasMes.length > 5 && (
+                      <Text style={s.vitMore}>+{vitoriasMes.length - 5} mais conquistas este mês</Text>
+                    )}
+                  </View>
+                )}
+
                 {/* 6. Mensagem */}
                 <View style={[s.card, s.msgCard]}>
                   <Text style={s.cardNum}>6</Text>
@@ -1215,6 +1252,23 @@ export default function RelatoriosScreen({ navigation }) {
                     </View>
                   ))}
                 </View>
+
+                {vitoriasAno.length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.cardNum}>⭐</Text>
+                    <Text style={s.cardTit}>Pequenas Vitórias</Text>
+                    <Text style={s.cardSub}>{vitoriasAno.length} conquista{vitoriasAno.length !== 1 ? 's' : ''} registrada{vitoriasAno.length !== 1 ? 's' : ''} este ano</Text>
+                    {vitoriasAno.slice(0, 5).map((v, i) => (
+                      <View key={i} style={s.vitRow}>
+                        <Ionicons name="star" size={11} color={colors.gold} />
+                        <Text style={s.vitTxt}>{v.label}</Text>
+                      </View>
+                    ))}
+                    {vitoriasAno.length > 5 && (
+                      <Text style={s.vitMore}>+{vitoriasAno.length - 5} mais conquistas este ano</Text>
+                    )}
+                  </View>
+                )}
 
                 {/* 3. Mensagem anual */}
                 <View style={[s.card, s.msgCard]}>
@@ -1384,6 +1438,23 @@ export default function RelatoriosScreen({ navigation }) {
                       </View>
                     )}
 
+                    {vitoriasRange.length > 0 && (
+                      <View style={s.card}>
+                        <Text style={s.cardNum}>⭐</Text>
+                        <Text style={s.cardTit}>Pequenas Vitórias</Text>
+                        <Text style={s.cardSub}>{vitoriasRange.length} conquista{vitoriasRange.length !== 1 ? 's' : ''} registrada{vitoriasRange.length !== 1 ? 's' : ''} no período</Text>
+                        {vitoriasRange.slice(0, 5).map((v, i) => (
+                          <View key={i} style={s.vitRow}>
+                            <Ionicons name="star" size={11} color={colors.gold} />
+                            <Text style={s.vitTxt}>{v.label}</Text>
+                          </View>
+                        ))}
+                        {vitoriasRange.length > 5 && (
+                          <Text style={s.vitMore}>+{vitoriasRange.length - 5} mais conquistas no período</Text>
+                        )}
+                      </View>
+                    )}
+
                     <View style={[s.card, s.msgCard]}>
                       <Text style={s.cardTit}>Mensagem para você</Text>
                       <Text style={s.msgTxt}>Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando.</Text>
@@ -1457,6 +1528,9 @@ const s = StyleSheet.create({
     backgroundColor: colors.white, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, padding: spacing.md,
   },
+  vitRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
+  vitTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
+  vitMore: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 4 },
   cardNum: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav3, marginBottom: 2 },
   cardTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: 4 },
   cardSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginBottom: 4 },

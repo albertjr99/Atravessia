@@ -76,5 +76,17 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // Itens da seção "Continue a Travessia" — leitura para todas, escrita só admin
+    match /travessiaItens/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Planos do aplicativo — leitura para todas, escrita só admin
+    match /planos/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }

@@ -154,7 +154,10 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('criadoEm', 'desc'));
     const unsub = onSnapshot(ref, (snap) => {
-      setNotificacoesEditoriais(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(n => n.ativa !== false));
+      setNotificacoesEditoriais(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(n => n.ativa !== false && (!n.usuarioId || n.usuarioId === uid))
+      );
     }, () => {});
     return unsub;
   }, []);
