@@ -32,6 +32,13 @@ service cloud.firestore {
       }
     }
 
+    // Consulta por grupo de coleção (collectionGroup) sobre os check-ins de todas
+    // as usuárias — usada pelo Dashboard e pelos relatórios administrativos.
+    // Sem esta regra a query falha e os indicadores ficam zerados.
+    match /{path=**}/checkins/{docId} {
+      allow read: if isAdmin();
+    }
+
     // Frases e reflexões do dia — leitura para todas, escrita só admin
     match /frases/{docId} {
       allow read: if isSignedIn();
