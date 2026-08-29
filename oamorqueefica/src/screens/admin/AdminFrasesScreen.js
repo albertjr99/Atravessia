@@ -155,7 +155,7 @@ export default function AdminFrasesScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminFrases">
-      <AdminSubTabs grupo="conteudos" atual="AdminFrases" />
+      <AdminSubTabs grupo="biblioteca" atual="AdminFrases" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
         <Text style={styles.pageTitle}>Frases e Reflexões</Text>
         <Text style={styles.pageSub}>Gerencie as frases do dia e reflexões exibidas às usuárias.</Text>

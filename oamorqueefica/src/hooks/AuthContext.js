@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
-import { ADMIN_EMAIL } from '../services/firebaseConfig';
+import { isAdminEmail } from '../services/firebaseConfig';
 
 const AuthContext = createContext();
 
@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
 
   const cadastrar = async ({ email, senha, nome, apelido, telefone, cidade, linkEmpresa, empresa }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, senha);
-    const role = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : 'user';
+    const role = isAdminEmail(email) ? 'admin' : 'user';
     const perfilNovo = {
       nome, apelido: apelido || '', telefone: telefone || '', cidade: cidade || '',
       email, linkEmpresa: linkEmpresa ?? null,

@@ -29,10 +29,11 @@ const NAV_GRUPOS = [
   {
     titulo: 'Conteúdo do app',
     itens: [
+      { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
       {
-        icon: 'headset', iconOff: 'headset-outline',
-        label: 'Conteúdos', sub: 'Áudios de check-in · Frases',
-        screen: 'AdminConteudos', irmas: ['AdminAudios', 'AdminFrases'],
+        icon: 'library', iconOff: 'library-outline',
+        label: 'Biblioteca', sub: 'Áudios de check-in · Frases',
+        screen: 'AdminAudios', irmas: ['AdminFrases'],
       },
       {
         icon: 'compass', iconOff: 'compass-outline',

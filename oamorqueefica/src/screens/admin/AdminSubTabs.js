@@ -7,8 +7,8 @@ import { colors, fonts, spacing, radius } from '../../theme';
 // (ex.: Conteúdos / Áudios Check-in / Frases) sob um único item da barra
 // lateral, sem duplicar o conteúdo de cada tela.
 export const GRUPOS_SUBTABS = {
-  conteudos: [
-    { label: 'Conteúdos', screen: 'AdminConteudos' },
+  // "Conteúdos" é uma seção própria da barra lateral, não uma sub-aba.
+  biblioteca: [
     { label: 'Áudios Check-in', screen: 'AdminAudios' },
     { label: 'Frases', screen: 'AdminFrases' },
   ],

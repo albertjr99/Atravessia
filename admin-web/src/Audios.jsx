@@ -5,6 +5,7 @@ import {
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { IconAudio, IconClose, IconEdit, IconEye, IconEyeOff, IconPlay, IconSpark, IconTrash } from './Icons';
 
 const EMOCOES = [
   { id: 'triste', label: 'Triste' }, { id: 'saudade', label: 'Saudade' },
@@ -15,8 +16,8 @@ const EMOCOES = [
 ];
 
 const PLANOS = [
-  { id: 0, label: '🌱 Grátis' }, { id: 1, label: '💜 Acolher' },
-  { id: 2, label: '🌿 Compreender' }, { id: 3, label: '⭐ Evoluir' },
+  { id: 0, label: 'Grátis' }, { id: 1, label: 'Acolher' },
+  { id: 2, label: 'Compreender' }, { id: 3, label: 'Evoluir' },
 ];
 
 function novoForm() {
@@ -130,15 +131,14 @@ export default function Audios({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">🎵 Áudios de Acolhimento</h1>
+          <h1 className="screen-title">Áudios de Acolhimento</h1>
           <p className="screen-sub">Áudios exibidos no check-in de acordo com a emoção da usuária.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Novo áudio</button>
       </div>
 
       <div className="filter-row" style={{ flexWrap: 'wrap' }}>
-        <button className={`chip ${filtroEmocao === 'todos' ? 'chip-active' : ''}`} onClick={() => setFiltroEmocao('todos')}>
-          Todos ({audios.length})
+        <button className={`chip ${filtroEmocao === 'todos' ? 'chip-active' : ''}`} onClick={() => setFiltroEmocao('todos')}>Todos ({audios.length})
         </button>
         {EMOCOES.map(e => {
           const count = audios.filter(a => a.emocoes?.includes(e.id)).length;
@@ -152,20 +152,20 @@ export default function Audios({ showToast }) {
 
       {lista.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🎵</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhum áudio{filtroEmocao !== 'todos' ? ` para a emoção "${EMOCOES.find(e => e.id === filtroEmocao)?.label}"` : ''} ainda.</p>
         </div>
       ) : (
         <div className="list-grid">
           {lista.map(item => (
             <div key={item.id} className={`audio-card ${item.ativo === false ? 'inactive' : ''}`}>
-              <div className="audio-card-icon">🎵</div>
+              <div className="audio-card-icon"><IconAudio size={18} /></div>
               <div className="audio-card-body">
                 <div className="audio-card-title">{item.titulo}</div>
                 {item.descricao && <div className="audio-card-desc">{item.descricao}</div>}
                 <div className="audio-card-badges">
                   <span className="badge">{PLANOS.find(p => p.id === item.plano)?.label || `Plano ${item.plano}`}</span>
-                  {item.duracao && <span className="badge" style={{ background: '#F0EDEB', color: 'var(--text-mid)' }}>⏱ {item.duracao}</span>}
+                  {item.duracao && <span className="badge" style={{ background: '#F0EDEB', color: 'var(--text-mid)' }}> {item.duracao}</span>}
                   {item.ativo === false && <span className="badge badge-inactive">Inativo</span>}
                 </div>
                 {item.emocoes?.length > 0 && (
@@ -182,14 +182,14 @@ export default function Audios({ showToast }) {
               <div className="audio-card-actions">
                 {item.url && (
                   <a href={item.url} target="_blank" rel="noreferrer">
-                    <button className="icon-btn" title="Ouvir">▶️</button>
+                    <button className="icon-btn" title="Ouvir"><IconPlay size={15} /></button>
                   </a>
                 )}
                 <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
-                  {item.ativo === false ? '👁️' : '🔕'}
+                  {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar">✏️</button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir">🗑️</button>
+                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
+                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}
@@ -200,8 +200,8 @@ export default function Audios({ showToast }) {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editId ? '✏️ Editar áudio' : '🎵 Novo áudio de acolhimento'}</h2>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <h2>{editId ? 'Editar áudio' : 'Novo áudio de acolhimento'}</h2>
+              <button className="modal-close" onClick={closeModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-row">
@@ -221,10 +221,10 @@ export default function Audios({ showToast }) {
               </div>
 
               <div className="field-group">
-                <label>📁 Fazer upload do arquivo de áudio</label>
+                <label>Fazer upload do arquivo de áudio</label>
                 <label className="file-upload-area" htmlFor="audio-file">
                   <input id="audio-file" type="file" accept="audio/*" onChange={handleFileChange} />
-                  <div className="file-upload-icon">📁</div>
+                  <div className="file-upload-icon"></div>
                   <div className="file-upload-text">Clique para selecionar o arquivo</div>
                   <div className="file-upload-sub">MP3, M4A, WAV (máx. 50MB)</div>
                 </label>
@@ -241,7 +241,7 @@ export default function Audios({ showToast }) {
               <div className="field-group">
                 <label>Ou URL direta (YouTube, Podcast, etc.)</label>
                 <input type="url" value={form.url} onChange={e => set('url', e.target.value)} placeholder="https://..." />
-                {form.url && <span className="field-hint">✅ URL definida: {form.url.slice(0, 60)}...</span>}
+                {form.url && <span className="field-hint">URL definida: {form.url.slice(0, 60)}...</span>}
               </div>
 
               <div className="field-group">
@@ -268,7 +268,7 @@ export default function Audios({ showToast }) {
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={closeModal}>Cancelar</button>
                 <button className="btn-primary" onClick={salvar} disabled={saving || uploadProgress !== null}>
-                  {saving ? '⏳ Salvando...' : 'Salvar'}
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </div>

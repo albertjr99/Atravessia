@@ -4,17 +4,18 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   serverTimestamp, updateDoc,
 } from 'firebase/firestore';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
 
 const CATEGORIAS = [
-  { id: 'saúde física', label: '🏃 Saúde física' },
-  { id: 'bem-estar', label: '🧘 Bem-estar' },
-  { id: 'ambiente', label: '🏠 Ambiente' },
-  { id: 'espiritualidade', label: '✨ Espiritualidade' },
-  { id: 'trabalho', label: '💼 Trabalho' },
-  { id: 'estudos', label: '📖 Estudos' },
-  { id: 'relacionamentos', label: '💞 Relacionamentos' },
-  { id: 'família', label: '👨‍👩‍👧 Família' },
-  { id: 'outros', label: '🔖 Outros' },
+  { id: 'saúde física', label: 'Saúde física' },
+  { id: 'bem-estar', label: 'Bem-estar' },
+  { id: 'ambiente', label: 'Ambiente' },
+  { id: 'espiritualidade', label: 'Espiritualidade' },
+  { id: 'trabalho', label: 'Trabalho' },
+  { id: 'estudos', label: 'Estudos' },
+  { id: 'relacionamentos', label: 'Relacionamentos' },
+  { id: 'família', label: 'Família' },
+  { id: 'outros', label: 'Outros' },
 ];
 
 function novoForm() {
@@ -105,15 +106,14 @@ export default function Parcerias({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">🤝 Parcerias e Benefícios</h1>
+          <h1 className="screen-title">Parcerias e Benefícios</h1>
           <p className="screen-sub">Gerenciar parcerias e descontos exclusivos exibidos no aplicativo.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Nova parceria</button>
       </div>
 
       <div className="filter-row" style={{ flexWrap: 'wrap' }}>
-        <button className={`chip ${filtro === 'todas' ? 'chip-active' : ''}`} onClick={() => setFiltro('todas')}>
-          Todas ({parcerias.length})
+        <button className={`chip ${filtro === 'todas' ? 'chip-active' : ''}`} onClick={() => setFiltro('todas')}>Todas ({parcerias.length})
         </button>
         {CATEGORIAS.map(c => {
           const count = parcerias.filter(p => (p.categorias || []).includes(c.id)).length;
@@ -127,7 +127,7 @@ export default function Parcerias({ showToast }) {
 
       {lista.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🤝</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhuma parceria{filtro !== 'todas' ? ` na categoria selecionada` : ''} ainda.</p>
         </div>
       ) : (
@@ -147,7 +147,7 @@ export default function Parcerias({ showToast }) {
                   background: 'var(--lav-light, #F0EDFB)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 28,
-                }}>🤝</div>
+                }}></div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-dark)', marginBottom: 4 }}>
@@ -163,7 +163,7 @@ export default function Parcerias({ showToast }) {
                   <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`}
                     target="_blank" rel="noreferrer"
                     style={{ fontSize: 11, color: 'var(--primary)', wordBreak: 'break-all' }}>
-                    🔗 {item.link}
+                    {item.link}
                   </a>
                 )}
                 {(item.categorias || []).length > 0 && (
@@ -182,10 +182,10 @@ export default function Parcerias({ showToast }) {
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button className="icon-btn" onClick={() => toggleAtivo(item)}
                   title={item.ativo === false ? 'Ativar' : 'Desativar'}>
-                  {item.ativo === false ? '👁️' : '🔕'}
+                  {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar">✏️</button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir">🗑️</button>
+                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
+                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}
@@ -196,8 +196,8 @@ export default function Parcerias({ showToast }) {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editId ? '✏️ Editar parceria' : '🤝 Nova parceria'}</h2>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <h2>{editId ? 'Editar parceria' : 'Nova parceria'}</h2>
+              <button className="modal-close" onClick={closeModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-group">
@@ -254,15 +254,14 @@ export default function Parcerias({ showToast }) {
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.ativo}
                     onChange={e => set('ativo', e.target.checked)}
-                    style={{ width: 16, height: 16 }} />
-                  Parceria ativa (visível no aplicativo)
+                    style={{ width: 16, height: 16 }} />Parceria ativa (visível no aplicativo)
                 </label>
               </div>
 
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={closeModal}>Cancelar</button>
                 <button className="btn-primary" onClick={salvar} disabled={saving}>
-                  {saving ? '⏳ Salvando...' : 'Salvar'}
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </div>

@@ -12,4 +12,14 @@ export const firebaseConfig = {
 
 // E-mail da conta administradora. Usuárias com este e-mail (ou com
 // role: 'admin' no documento Firestore usuarios/{uid}) acessam o painel admin.
-export const ADMIN_EMAIL = 'carla.zambi.psi@gmail.com';
+// Administradoras autorizadas.
+export const ADMIN_EMAILS = [
+  'carla.zambi.psi@gmail.com',
+  'larissapjaniques@gmail.com',
+];
+
+export const isAdminEmail = (email) =>
+  ADMIN_EMAILS.includes(String(email || '').trim().toLowerCase());
+
+// Mantido por compatibilidade com código antigo.
+export const ADMIN_EMAIL = ADMIN_EMAILS[0];

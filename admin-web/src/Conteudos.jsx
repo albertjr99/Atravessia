@@ -4,18 +4,19 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
+import { IconAudio, IconClose, IconDoc, IconEdit, IconEye, IconEyeOff, IconLink, IconPlay, IconSpark, IconTrash } from './Icons';
 
 const TIPOS = [
-  { id: 'audio', label: '🎧 Áudio', icon: '🎧' },
-  { id: 'video', label: '▶️ Vídeo', icon: '▶️' },
-  { id: 'documento', label: '📄 Documento', icon: '📄' },
-  { id: 'link', label: '🔗 Link', icon: '🔗' },
+  { id: 'audio', label: 'Áudio', Icon: IconAudio },
+  { id: 'video', label: 'Vídeo', Icon: IconPlay },
+  { id: 'documento', label: 'Documento', Icon: IconDoc },
+  { id: 'link', label: 'Link', Icon: IconLink },
 ];
 
 const GRUPOS = [
-  { id: 'acolhimento', label: '💜 Acolhimento' },
-  { id: 'noturno', label: '🌙 Noturno' },
-  { id: 'complementar', label: '✨ Complementar' },
+  { id: 'acolhimento', label: 'Acolhimento' },
+  { id: 'noturno', label: 'Noturno' },
+  { id: 'complementar', label: 'Complementar' },
 ];
 
 const PLANOS = [
@@ -111,7 +112,7 @@ export default function Conteudos({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">📚 Conteúdos</h1>
+          <h1 className="screen-title">Conteúdos</h1>
           <p className="screen-sub">Áudios, vídeos e documentos disponíveis no app.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Novo conteúdo</button>
@@ -128,14 +129,19 @@ export default function Conteudos({ showToast }) {
 
       {lista.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📚</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhum conteúdo encontrado.</p>
         </div>
       ) : (
         <div className="list-grid">
           {lista.map(item => (
             <div key={item.id} className={`list-card ${item.ativo === false ? 'inactive' : ''}`}>
-              <div className="list-card-icon">{TIPOS.find(t => t.id === item.tipo)?.icon || '📄'}</div>
+              <div className="list-card-icon">
+                {(() => {
+                  const T = TIPOS.find(t => t.id === item.tipo)?.Icon || IconDoc;
+                  return <T size={17} />;
+                })()}
+              </div>
               <div className="list-card-body">
                 <div className="list-card-title">{item.titulo}</div>
                 {item.descricao && <div className="list-card-desc">{item.descricao}</div>}
@@ -150,10 +156,10 @@ export default function Conteudos({ showToast }) {
               </div>
               <div className="list-card-actions">
                 <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
-                  {item.ativo === false ? '👁️' : '🔕'}
+                  {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar">✏️</button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir">🗑️</button>
+                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
+                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}
@@ -164,8 +170,8 @@ export default function Conteudos({ showToast }) {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editId ? '✏️ Editar conteúdo' : '✨ Novo conteúdo'}</h2>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <h2>{editId ? 'Editar conteúdo' : 'Novo conteúdo'}</h2>
+              <button className="modal-close" onClick={closeModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-row">
@@ -233,7 +239,7 @@ export default function Conteudos({ showToast }) {
 
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={closeModal}>Cancelar</button>
-                <button className="btn-primary" onClick={salvar} disabled={saving}>{saving ? '⏳ Salvando...' : 'Salvar'}</button>
+                <button className="btn-primary" onClick={salvar} disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
               </div>
             </div>
           </div>

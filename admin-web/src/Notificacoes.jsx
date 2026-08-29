@@ -6,13 +6,13 @@ import {
 } from 'firebase/firestore';
 
 const TIPOS = [
-  { id: 'incentivo', label: '💜 Incentivo', desc: 'Mensagem motivacional' },
-  { id: 'conteudo', label: '📚 Conteúdo', desc: 'Novo conteúdo disponível' },
-  { id: 'vitoria', label: '⭐ Vitória', desc: 'Registro de vitória do dia' },
-  { id: 'live', label: '🎙️ Live / Áudio', desc: 'Aviso de áudio novo' },
-  { id: 'inatividade', label: '⏰ Inatividade', desc: 'Usuária sem acesso há dias' },
-  { id: 'data_sensivel', label: '📅 Data sensível', desc: 'Datas emocionalmente difíceis' },
-  { id: 'feedback', label: '📊 Feedback', desc: 'Pedido de relatório emocional' },
+  { id: 'incentivo', label: 'Incentivo', desc: 'Mensagem motivacional' },
+  { id: 'conteudo', label: 'Conteúdo', desc: 'Novo conteúdo disponível' },
+  { id: 'vitoria', label: 'Vitória', desc: 'Registro de vitória do dia' },
+  { id: 'live', label: 'Live / Áudio', desc: 'Aviso de áudio novo' },
+  { id: 'inatividade', label: 'Inatividade', desc: 'Usuária sem acesso há dias' },
+  { id: 'data_sensivel', label: 'Data sensível', desc: 'Datas emocionalmente difíceis' },
+  { id: 'feedback', label: 'Feedback', desc: 'Pedido de relatório emocional' },
 ];
 
 export default function Notificacoes({ showToast }) {
@@ -90,12 +90,12 @@ export default function Notificacoes({ showToast }) {
   return (
     <div className="screen-content">
       <div className="screen-header">
-        <h1 className="screen-title">🔔 Notificações</h1>
+        <h1 className="screen-title">Notificações</h1>
         <p className="screen-sub">Envie notificações personalizadas para as usuárias do app.</p>
       </div>
 
       <div className="card" style={{ marginBottom: 28 }}>
-        <h2 className="card-title">✍️ Nova notificação</h2>
+        <h2 className="card-title"> Nova notificação</h2>
 
         <div className="field-group">
           <label>Tipo</label>
@@ -131,13 +131,13 @@ export default function Notificacoes({ showToast }) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn-primary" onClick={enviar} disabled={enviando || !form.texto.trim()}>
-            {enviando ? '⏳ Enviando...' : '📤 Enviar notificação'}
+            {enviando ? 'Enviando...' : 'Enviar notificação'}
           </button>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="card-title">📋 Histórico</h2>
+        <h2 className="card-title"> Histórico</h2>
         {loading ? (
           <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Carregando...</p>
         ) : enviadas.length === 0 ? (
@@ -158,7 +158,7 @@ export default function Notificacoes({ showToast }) {
                   <td><span className="badge">{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</span></td>
                   <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.texto}</td>
                   <td style={{ color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{timeAgo(n.enviadoEm)}</td>
-                  <td>{n.lida ? '✅' : '⏳'}</td>
+                  <td>{n.lida ? '' : ''}</td>
                 </tr>
               ))}
             </tbody>

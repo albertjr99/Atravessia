@@ -4,6 +4,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   orderBy, query, serverTimestamp, updateDoc, writeBatch,
 } from 'firebase/firestore';
+import { IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
 
 const VITORIAS_PADRAO = [
   'Saí de casa', 'Consegui dormir', 'Encontrei amigos',
@@ -12,17 +13,17 @@ const VITORIAS_PADRAO = [
   'Pratiquei respiração',
 ];
 
-const EMOJIS = ['⭐', '🌟', '✨', '💪', '🏆', '🎉', '🌱', '💜', '🌸', '🌈', '🔥', '🕊️', '🌙', '☀️', '🤝'];
+const EMOJIS = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
 
 export default function Vitorias({ showToast }) {
   const [opcoes, setOpcoes] = useState([]);
   const [novoLabel, setNovoLabel] = useState('');
-  const [novoEmoji, setNovoEmoji] = useState('⭐');
+  const [novoEmoji, setNovoEmoji] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null);
   const [editLabel, setEditLabel] = useState('');
-  const [editEmoji, setEditEmoji] = useState('⭐');
+  const [editEmoji, setEditEmoji] = useState('');
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
@@ -39,10 +40,10 @@ export default function Vitorias({ showToast }) {
     setSalvando(true);
     try {
       await addDoc(collection(db, 'vitoriasOpcoes'), {
-        label, emoji: novoEmoji || '⭐', ativo: true, criadoEm: serverTimestamp(),
+        label, emoji: novoEmoji || '', ativo: true, criadoEm: serverTimestamp(),
       });
       setNovoLabel('');
-      setNovoEmoji('⭐');
+      setNovoEmoji('');
       showToast('Vitória adicionada!');
     } catch { showToast('Erro ao adicionar.', 'error'); }
     setSalvando(false);
@@ -51,7 +52,7 @@ export default function Vitorias({ showToast }) {
   const startEdit = (item) => {
     setEditId(item.id);
     setEditLabel(item.label || '');
-    setEditEmoji(item.emoji || '⭐');
+    setEditEmoji(item.emoji || '');
   };
 
   const saveEdit = async () => {
@@ -80,7 +81,7 @@ export default function Vitorias({ showToast }) {
       const batch = writeBatch(db);
       VITORIAS_PADRAO.forEach(label => {
         const ref = doc(collection(db, 'vitoriasOpcoes'));
-        batch.set(ref, { label, emoji: '⭐', ativo: true, criadoEm: serverTimestamp() });
+        batch.set(ref, { label, emoji: '', ativo: true, criadoEm: serverTimestamp() });
       });
       await batch.commit();
       showToast(`${VITORIAS_PADRAO.length} vitórias importadas!`);
@@ -94,11 +95,11 @@ export default function Vitorias({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">⭐ Vitórias</h1>
+          <h1 className="screen-title">Vitórias</h1>
           <p className="screen-sub">Opções de vitórias do dia disponíveis para as usuárias registrarem.</p>
         </div>
         <button className="btn-secondary" onClick={importarPadrao} disabled={importando} style={{ marginRight: 8 }}>
-          {importando ? '⏳ Importando...' : '📥 Importar padrão'}
+          {importando ? 'Importando...' : ' Importar padrão'}
         </button>
       </div>
 
@@ -122,14 +123,14 @@ export default function Vitorias({ showToast }) {
             </select>
           </div>
           <button className="btn-primary" onClick={handleAdicionar} disabled={salvando || !novoLabel.trim()}>
-            {salvando ? '⏳' : '+ Adicionar'}
+            {salvando ? '' : '+ Adicionar'}
           </button>
         </div>
       </div>
 
       {opcoes.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">⭐</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhuma vitória cadastrada. Adicione acima ou importe o conjunto padrão.</p>
         </div>
       ) : (
@@ -149,22 +150,22 @@ export default function Vitorias({ showToast }) {
                     onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                     autoFocus
                   />
-                  <button className="btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={saveEdit}>✓ Salvar</button>
+                  <button className="btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={saveEdit}> Salvar</button>
                   <button className="btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }} onClick={cancelEdit}>Cancelar</button>
                 </>
               ) : (
                 <>
                   <div className="vitoria-label">
-                    <span className="vitoria-emoji">{item.emoji || '⭐'}</span>
+                    <span className="vitoria-emoji">{item.emoji || ''}</span>
                     <span>{item.label}</span>
                     {item.ativo === false && <span className="badge badge-inactive" style={{ marginLeft: 8 }}>Inativo</span>}
                   </div>
                   <div className="vitoria-actions">
                     <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
-                      {item.ativo === false ? '👁️' : '🔕'}
+                      {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                     </button>
-                    <button className="icon-btn" onClick={() => startEdit(item)} title="Editar">✏️</button>
-                    <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir">🗑️</button>
+                    <button className="icon-btn" onClick={() => startEdit(item)} title="Editar"><IconEdit size={16} /></button>
+                    <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir"><IconTrash size={16} /></button>
                   </div>
                 </>
               )}
