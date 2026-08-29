@@ -20,14 +20,18 @@ const PLAN_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Com
 
 export default function Dashboard() {
   const [usuarios, setUsuarios] = useState([]);
-  const [counts, setCounts] = useState({ frases: 0, conteudos: 0, audios: 0, parcerias: 0, vitorias: 0 });
+  const [counts, setCounts] = useState({
+    frases: 0, conteudos: 0, audios: 0, parcerias: 0,
+    vitorias: 0, travessia: 0, notificacoes: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [falhas, setFalhas] = useState([]);
 
   useEffect(() => {
     const unsubs = [];
     let loaded = 0;
-    const totalSubs = 6;
+    const totalSubs = 8;
     const markLoaded = () => { loaded++; if (loaded >= totalSubs) setLoading(false); };
 
     // Usuárias — query without orderBy to avoid index/field dependency; sort client-side
@@ -57,25 +61,30 @@ export default function Dashboard() {
       ['audios', 'audiosAcolhimento'],
       ['parcerias', 'parcerias'],
       ['vitorias', 'vitoriasOpcoes'],
+      ['travessia', 'travessiaItens'],
+      ['notificacoes', 'notificacoesEditoriais'],
     ];
     for (const [key, col] of collections) {
       unsubs.push(onSnapshot(
         collection(db, col),
         snap => { setCounts(c => ({ ...c, [key]: snap.size })); markLoaded(); },
-        () => markLoaded()
+        () => { setFalhas(f => [...new Set([...f, col])]); markLoaded(); }
       ));
     }
 
     return () => unsubs.forEach(u => u());
   }, []);
 
+  // Contas administrativas não são "usuárias do app" — separá-las evita o número inflado.
+  const usuariasReais = usuarios.filter(u => u.role !== 'admin');
+
   const planDist = {};
-  usuarios.forEach(u => {
+  usuariasReais.forEach(u => {
     const p = u.acessoTotal ? 'total' : (u.plano || 'perceber');
     planDist[p] = (planDist[p] || 0) + 1;
   });
 
-  const recentUsers = usuarios.slice(0, 8);
+  const recentUsers = usuariasReais.slice(0, 8);
 
   if (loading) {
     return (
@@ -103,14 +112,44 @@ export default function Dashboard() {
         </div>
       )}
 
+      {falhas.length > 0 && (
+        <div style={{
+          background: '#FFF3CD', border: '1px solid #FFECB3',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+          fontSize: 13, color: '#8A5B00',
+        }}>
+          ⚠️ Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
+        </div>
+      )}
+
+      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>
+        Pessoas
+      </div>
+      <div className="stats-grid" style={{ marginBottom: 22 }}>
+        {[
+          { icon: '👥', value: usuariasReais.length, label: 'Usuárias' },
+          { icon: '💜', value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
+          { icon: '🔔', value: counts.notificacoes, label: 'Notificações' },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <div className="stat-icon">{s.icon}</div>
+            <div className="stat-value">{s.value}</div>
+            <div className="stat-label">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>
+        Conteúdo publicado
+      </div>
       <div className="stats-grid">
         {[
-          { icon: '👥', value: usuarios.length, label: 'Usuárias' },
           { icon: '💬', value: counts.frases, label: 'Frases' },
           { icon: '📚', value: counts.conteudos, label: 'Conteúdos' },
           { icon: '🎵', value: counts.audios, label: 'Áudios' },
           { icon: '🤝', value: counts.parcerias, label: 'Parcerias' },
           { icon: '⭐', value: counts.vitorias, label: 'Opções Vitórias' },
+          { icon: '🧭', value: counts.travessia, label: 'Itens Travessia' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-icon">{s.icon}</div>
@@ -167,7 +206,7 @@ export default function Dashboard() {
               <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhum dado.</p>
             ) : (
               Object.entries(planDist).map(([plano, count]) => {
-                const pct = usuarios.length > 0 ? Math.round((count / usuarios.length) * 100) : 0;
+                const pct = usuariasReais.length > 0 ? Math.round((count / usuariasReais.length) * 100) : 0;
                 const label = plano === 'total' ? '🔓 Acesso Total' : (PLAN_LABEL[plano] || plano);
                 return (
                   <div key={plano}>

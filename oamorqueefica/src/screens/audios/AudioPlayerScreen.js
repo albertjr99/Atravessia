@@ -20,8 +20,16 @@ function fmt(ms) {
 
 export default function AudioPlayerScreen({ route, navigation }) {
   const { audio } = route.params;
-  const { liberarConteudo, jaLiberado } = useApp();
+  const {
+    liberarConteudo, jaLiberado,
+    isFavorito, adicionarFavorito, removerFavorito,
+  } = useApp();
   const grupo = audio.categoria === 'acolhimento' ? 'acolhimento' : 'complementar';
+  const favoritado = isFavorito(audio.id);
+
+  const toggleFavorito = () => {
+    favoritado ? removerFavorito(audio.id) : adicionarFavorito(audio);
+  };
 
   const [tocando, setTocando]       = useState(false);
   const [posicao, setPosicao]       = useState(0);
@@ -126,7 +134,17 @@ export default function AudioPlayerScreen({ route, navigation }) {
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
         <Text style={styles.topTitle}>{isVideo ? 'Vídeo' : 'Áudio'}</Text>
-        <View style={{ width: 32 }} />
+        <TouchableOpacity
+          onPress={toggleFavorito}
+          style={styles.favTopBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name={favoritado ? 'heart' : 'heart-outline'}
+            size={22}
+            color={favoritado ? colors.rose : colors.tm}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -227,7 +245,28 @@ export default function AudioPlayerScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={{ marginTop: spacing.xl }}>
+        {/* Favoritar — salva o áudio na aba Conteúdos */}
+        <TouchableOpacity
+          onPress={toggleFavorito}
+          style={[styles.favBtn, favoritado && styles.favBtnAtivo]}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name={favoritado ? 'heart' : 'heart-outline'}
+            size={18}
+            color={favoritado ? 'white' : colors.rose}
+          />
+          <Text style={[styles.favBtnTxt, favoritado && styles.favBtnTxtAtivo]}>
+            {favoritado ? 'Salvo nos seus conteúdos' : 'Salvar nos meus conteúdos'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.favHint}>
+          {favoritado
+            ? 'Você pode ouvir novamente quando quiser na aba Conteúdos.'
+            : 'Toque no coração para guardar este áudio e ouvir de novo na aba Conteúdos.'}
+        </Text>
+
+        <View style={{ marginTop: spacing.lg }}>
           <Disclaimer />
         </View>
       </View>
@@ -243,6 +282,21 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  favTopBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+
+  favBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, paddingVertical: 10, paddingHorizontal: 18,
+    borderRadius: radius.full, backgroundColor: colors.card,
+    borderWidth: 1.5, borderColor: colors.rose,
+  },
+  favBtnAtivo: { backgroundColor: colors.rose, borderColor: colors.rose },
+  favBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.rose },
+  favBtnTxtAtivo: { color: 'white' },
+  favHint: {
+    fontFamily: fonts.body, fontSize: 11, color: colors.tl,
+    textAlign: 'center', marginTop: 8, maxWidth: 280, lineHeight: 16,
+  },
 
   content: {
     flex: 1, alignItems: 'center', justifyContent: 'center',

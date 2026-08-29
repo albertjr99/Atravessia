@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import {
   collection, doc, onSnapshot, orderBy, query,
-  serverTimestamp, setDoc, updateDoc,
+  serverTimestamp, setDoc,
 } from 'firebase/firestore';
 
 const PLANOS_PADRAO = [
@@ -54,6 +54,7 @@ function formVazio(plano) {
     preco: plano?.preco?.toString() || '0',
     precoLabel: plano?.precoLabel || '',
     descricao: plano?.descricao || '',
+    mensagem: plano?.mensagem || '',
     recursos: (plano?.recursos || []).join('\n'),
     destaque: plano?.destaque || false,
     emBreve: plano?.emBreve || false,
@@ -100,11 +101,14 @@ export default function Planos({ showToast }) {
         preco: parseFloat(form.preco) || 0,
         precoLabel: form.precoLabel.trim(),
         descricao: form.descricao.trim(),
+        mensagem: form.mensagem.trim(),
         recursos,
         destaque: form.destaque,
         emBreve: form.emBreve,
       };
-      await updateDoc(doc(db, 'planos', String(modal.id)), data);
+      // setDoc+merge (e não updateDoc) para funcionar mesmo se o documento
+      // ainda não existir no Firestore — updateDoc falha nesse caso.
+      await setDoc(doc(db, 'planos', String(modal.id)), data, { merge: true });
       showToast(`Plano "${data.nome}" atualizado!`);
       fecharModal();
     } catch (e) {
@@ -199,6 +203,16 @@ export default function Planos({ showToast }) {
                 {p.descricao}
               </p>
 
+              {p.mensagem && (
+                <div style={{
+                  background: '#F4F1FB', borderLeft: '3px solid var(--primary)',
+                  borderRadius: 6, padding: '8px 10px', marginBottom: 10,
+                  fontSize: 11, color: '#5B3D9E', lineHeight: 1.5,
+                }}>
+                  💬 {p.mensagem}
+                </div>
+              )}
+
               <div style={{ marginBottom: 14 }}>
                 {(p.recursos || []).map((r, i) => (
                   <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-dark)' }}>
@@ -281,6 +295,19 @@ export default function Planos({ showToast }) {
                   placeholder="Breve descrição do plano..."
                   rows={2}
                 />
+              </div>
+
+              <div className="field-group">
+                <label>💬 Mensagem do plano <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 400 }}>(destaque exibido no app)</span></label>
+                <textarea
+                  value={form.mensagem}
+                  onChange={e => set('mensagem', e.target.value)}
+                  placeholder="Ex: Neste plano você tem acesso a todo o acervo de áudios de acolhimento e às Pequenas Vitórias."
+                  rows={3}
+                />
+                <span className="field-hint">
+                  Aparece em destaque no card do plano dentro do aplicativo. Deixe em branco para não exibir.
+                </span>
               </div>
 
               <div className="field-group">

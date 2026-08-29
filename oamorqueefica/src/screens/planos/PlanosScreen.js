@@ -113,6 +113,12 @@ export default function PlanosScreen({ navigation }) {
                 {p.preco > 0 && <Text style={styles.planPrecoPer}>/mês</Text>}
               </View>
             </View>
+            {!!p.mensagem && (
+              <View style={styles.planMensagemBox}>
+                <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.lav5} />
+                <Text style={styles.planMensagemTxt}>{p.mensagem}</Text>
+              </View>
+            )}
             <View style={styles.recursosList}>
               {p.recursos.map((r, i) => (
                 <View key={i} style={styles.recursoRow}>
@@ -197,6 +203,16 @@ const styles = StyleSheet.create({
   planPrecoBox: { alignItems: 'flex-end' },
   planPreco: { fontFamily: fonts.bodyBold, fontSize: 18 },
   planPrecoPer: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
+  planMensagemBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 7,
+    backgroundColor: colors.lav1, borderRadius: radius.md,
+    borderLeftWidth: 3, borderLeftColor: colors.lav4,
+    padding: 10, marginBottom: spacing.md,
+  },
+  planMensagemTxt: {
+    flex: 1, fontFamily: fonts.body, fontSize: 11,
+    color: colors.lav6, lineHeight: 16,
+  },
   recursosList: { gap: 6, marginBottom: spacing.md },
   recursoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   recursoText: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
