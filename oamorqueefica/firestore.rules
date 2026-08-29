@@ -7,8 +7,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && (
+        request.auth.token.email == 'carla.zambi.psi@gmail.com' ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     // Perfil da usuária + suas subcoleções (check-ins, memórias, cartas, etc.)

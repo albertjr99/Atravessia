@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 function timeAgo(ts) {
   if (!ts) return '—';
@@ -30,15 +30,21 @@ export default function Dashboard() {
     const totalSubs = 6;
     const markLoaded = () => { loaded++; if (loaded >= totalSubs) setLoading(false); };
 
-    // Usuárias — main subscription
+    // Usuárias — query without orderBy to avoid index/field dependency; sort client-side
     unsubs.push(onSnapshot(
-      query(collection(db, 'usuarios'), orderBy('criadoEm', 'desc')),
+      collection(db, 'usuarios'),
       snap => {
-        setUsuarios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        docs.sort((a, b) => {
+          const ta = a.criadoEm?.toMillis?.() ?? 0;
+          const tb = b.criadoEm?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+        setUsuarios(docs);
         setError(null);
         markLoaded();
       },
-      err => {
+      () => {
         setError('Sem permissão para listar usuárias. Verifique se seu perfil tem role: "admin" no Firestore.');
         markLoaded();
       }

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Platform, Image, Linking,
@@ -81,10 +81,23 @@ export default function CheckInScreen({ navigation }) {
   const fonteAudios = audiosAcolhimento.filter(a => a.ativo !== false).length > 0
     ? audiosAcolhimento.filter(a => a.ativo !== false)
     : audiosEstaticos;
-  const audioRec = emocaoSel && emocaoObj && !emocaoObj.positiva
-    ? (fonteAudios.find(a => (a.emocoes || [])[0] === emocaoSel && (a.plano || 0) <= 1)
-      || fonteAudios.find(a => (a.emocoes || []).includes(emocaoSel)))
-    : null;
+
+  // Índice aleatório fixado por sessão para evitar repetição entre check-ins consecutivos
+  const randomIdxRef = useRef({});
+
+  const audioRec = useMemo(() => {
+    if (!emocaoSel || !emocaoObj || emocaoObj.positiva) return null;
+    const candidatos = fonteAudios.filter(a =>
+      (a.emocoes || []).includes(emocaoSel) && (a.plano || 0) <= 1
+    );
+    const pool = candidatos.length > 0 ? candidatos : fonteAudios.filter(a => (a.emocoes || []).includes(emocaoSel));
+    if (pool.length === 0) return null;
+    const key = `audio_${emocaoSel}`;
+    if (randomIdxRef.current[key] === undefined) {
+      randomIdxRef.current[key] = Math.floor(Math.random() * pool.length);
+    }
+    return pool[randomIdxRef.current[key] % pool.length];
+  }, [emocaoSel, emocaoObj, fonteAudios]);
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
@@ -105,19 +118,19 @@ export default function CheckInScreen({ navigation }) {
 
   const temPlano1 = (usuario?.plano || 0) >= 1;
 
-  // Conteúdos do Firestore vinculados à emoção — rotação diária por tipo (diversificação)
-  const conteudosSugeridos = emocaoSel
-    ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel))
-    : [];
+  // Conteúdos do Firestore vinculados à emoção
+  const conteudosSugeridos = useMemo(
+    () => emocaoSel ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel)) : [],
+    [emocaoSel, conteudos]
+  );
 
-  // Seleciona UM conteúdo de forma determinística por dia+emoção para diversificar tipos
-  const conteudoExibido = (() => {
+  const conteudoExibido = useMemo(() => {
     if (!emocaoSel || conteudosSugeridos.length === 0) return null;
-    const dayNum = Math.floor(Date.now() / 86400000);
-    let hash = dayNum;
-    for (let i = 0; i < emocaoSel.length; i++) hash = (hash * 31 + emocaoSel.charCodeAt(i)) | 0;
-    return conteudosSugeridos[Math.abs(hash) % conteudosSugeridos.length];
-  })();
+    if (randomIdxRef.current[emocaoSel] === undefined) {
+      randomIdxRef.current[emocaoSel] = Math.floor(Math.random() * conteudosSugeridos.length);
+    }
+    return conteudosSugeridos[randomIdxRef.current[emocaoSel] % conteudosSugeridos.length];
+  }, [emocaoSel, conteudosSugeridos]);
 
   const handleAbrirConteudo = (c) => {
     if (c.tipo === 'documento' || c.tipo === 'link') {
@@ -219,21 +232,42 @@ export default function CheckInScreen({ navigation }) {
           )}
 
           {!conteudoExibido && temPlano1 && audioRec && (
-            <TouchableOpacity style={s.recCard} onPress={handleOuvirAudio} activeOpacity={0.85}>
-              <Text style={s.recTag}>Áudio de acolhimento para você</Text>
-              <View style={s.recRow}>
-                <View style={s.recThumb}>
-                  <Ionicons name="headset-outline" size={22} color={colors.lav4} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.recTit}>{audioRec.titulo}</Text>
-                  <Text style={s.recSub}>Áudio · {audioRec.duracao}</Text>
-                </View>
-                <View style={s.playBtn}>
-                  <Ionicons name="play" size={14} color="white" style={{ marginLeft: 2 }} />
-                </View>
+            <View style={s.recCard}>
+              <View style={s.recTagRow}>
+                <Text style={s.recTag}>Acolhimento</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    const favId = `audio-${audioRec.id}`;
+                    const favObj = { id: favId, titulo: audioRec.titulo, tipo: 'audio', url: audioRec.url, duracao: audioRec.duracao, emocoes: audioRec.emocoes || [] };
+                    isFavorito(favId) ? removerFavorito(favId) : adicionarFavorito({ ...favObj, id: favId });
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name={isFavorito(`audio-${audioRec.id}`) ? 'heart' : 'heart-outline'}
+                    size={18}
+                    color={isFavorito(`audio-${audioRec.id}`) ? '#C06080' : colors.tl}
+                  />
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+              {!isFavorito(`audio-${audioRec.id}`) && (
+                <Text style={s.recFavHint}>Toque no ♡ para salvar em Conteúdos</Text>
+              )}
+              <TouchableOpacity onPress={handleOuvirAudio} activeOpacity={0.85}>
+                <View style={s.recRow}>
+                  <View style={s.recThumb}>
+                    <Ionicons name="headset-outline" size={22} color={colors.lav4} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.recTit}>{audioRec.titulo}</Text>
+                    <Text style={s.recSub}>Áudio · {audioRec.duracao}</Text>
+                  </View>
+                  <View style={s.playBtn}>
+                    <Ionicons name="play" size={14} color="white" style={{ marginLeft: 2 }} />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
           )}
 
           {!conteudoExibido && !temPlano1 && (
@@ -320,7 +354,7 @@ export default function CheckInScreen({ navigation }) {
             <View style={s.suggCard}>
               <View style={s.suggHeader}>
                 <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
-                {conteudoExibido && (
+                {conteudoExibido ? (
                   <TouchableOpacity
                     onPress={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -331,7 +365,22 @@ export default function CheckInScreen({ navigation }) {
                       color={isFavorito(conteudoExibido.id) ? '#C06080' : colors.tl}
                     />
                   </TouchableOpacity>
-                )}
+                ) : audioRec ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const favId = `audio-${audioRec.id}`;
+                      const favObj = { id: favId, titulo: audioRec.titulo, tipo: 'audio', url: audioRec.url, duracao: audioRec.duracao, emocoes: audioRec.emocoes || [] };
+                      isFavorito(favId) ? removerFavorito(favId) : adicionarFavorito({ ...favObj, id: favId });
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name={isFavorito(`audio-${audioRec.id}`) ? 'heart' : 'heart-outline'}
+                      size={20}
+                      color={isFavorito(`audio-${audioRec.id}`) ? '#C06080' : colors.tl}
+                    />
+                  </TouchableOpacity>
+                ) : null}
               </View>
               <TouchableOpacity
                 onPress={() => conteudoExibido ? handleAbrirConteudo(conteudoExibido) : handleOuvirAudio()}
@@ -480,7 +529,9 @@ const s = StyleSheet.create({
   savedSub: { fontFamily: fonts.quote, fontSize: 16, fontStyle: 'italic', color: colors.tm, marginBottom: 8, textAlign: 'center', lineHeight: 24 },
   savedHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', lineHeight: 18, marginBottom: 8 },
   recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
-  recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  recTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recFavHint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginBottom: 8 },
   recRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   recThumb: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
   recTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
