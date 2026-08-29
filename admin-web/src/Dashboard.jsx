@@ -89,8 +89,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="loading-state">
-        <div className="spinner" style={{ margin: '0 auto 10px' }} />
-        Carregando...
+        <div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando...
       </div>
     );
   }
@@ -98,7 +97,7 @@ export default function Dashboard() {
   return (
     <div className="screen-content">
       <div className="screen-header">
-        <h1 className="screen-title">🏠 Dashboard</h1>
+        <h1 className="screen-title">Dashboard</h1>
         <p className="screen-sub">Visão geral do Atravessia — atualizado em tempo real.</p>
       </div>
 
@@ -108,7 +107,7 @@ export default function Dashboard() {
           borderRadius: 10, padding: '12px 16px', marginBottom: 16,
           fontSize: 13, color: '#8A5B00',
         }}>
-          ⚠️ {error}
+          {error}
         </div>
       )}
 
@@ -117,19 +116,17 @@ export default function Dashboard() {
           background: '#FFF3CD', border: '1px solid #FFECB3',
           borderRadius: 10, padding: '12px 16px', marginBottom: 16,
           fontSize: 13, color: '#8A5B00',
-        }}>
-          ⚠️ Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
+        }}>Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
         </div>
       )}
 
-      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>
-        Pessoas
+      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>Pessoas
       </div>
       <div className="stats-grid" style={{ marginBottom: 22 }}>
         {[
-          { icon: '👥', value: usuariasReais.length, label: 'Usuárias' },
-          { icon: '💜', value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
-          { icon: '🔔', value: counts.notificacoes, label: 'Notificações' },
+          { icon: '', value: usuariasReais.length, label: 'Usuárias' },
+          { icon: '', value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
+          { icon: '', value: counts.notificacoes, label: 'Notificações' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-icon">{s.icon}</div>
@@ -139,17 +136,16 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>
-        Conteúdo publicado
+      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>Conteúdo publicado
       </div>
       <div className="stats-grid">
         {[
-          { icon: '💬', value: counts.frases, label: 'Frases' },
-          { icon: '📚', value: counts.conteudos, label: 'Conteúdos' },
-          { icon: '🎵', value: counts.audios, label: 'Áudios' },
-          { icon: '🤝', value: counts.parcerias, label: 'Parcerias' },
-          { icon: '⭐', value: counts.vitorias, label: 'Opções Vitórias' },
-          { icon: '🧭', value: counts.travessia, label: 'Itens Travessia' },
+          { icon: '', value: counts.frases, label: 'Frases' },
+          { icon: '', value: counts.conteudos, label: 'Conteúdos' },
+          { icon: '', value: counts.audios, label: 'Áudios' },
+          { icon: '', value: counts.parcerias, label: 'Parcerias' },
+          { icon: '', value: counts.vitorias, label: 'Opções Vitórias' },
+          { icon: '', value: counts.travessia, label: 'Itens Travessia' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-icon">{s.icon}</div>
@@ -163,8 +159,7 @@ export default function Dashboard() {
         <div className="card">
           <h2 className="card-title">Usuárias recentes</h2>
           {error ? (
-            <p style={{ color: 'var(--text-light)', fontSize: 13 }}>
-              Não foi possível carregar. Verifique as permissões do admin no Firestore.
+            <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Não foi possível carregar. Verifique as permissões do admin no Firestore.
             </p>
           ) : recentUsers.length === 0 ? (
             <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhuma usuária cadastrada ainda.</p>
@@ -207,7 +202,7 @@ export default function Dashboard() {
             ) : (
               Object.entries(planDist).map(([plano, count]) => {
                 const pct = usuariasReais.length > 0 ? Math.round((count / usuariasReais.length) * 100) : 0;
-                const label = plano === 'total' ? '🔓 Acesso Total' : (PLAN_LABEL[plano] || plano);
+                const label = plano === 'total' ? 'Acesso Total' : (PLAN_LABEL[plano] || plano);
                 return (
                   <div key={plano}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

@@ -4,15 +4,14 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTrash } from './Icons';
 
 const TIPOS = [
-  { id: 'link', label: '🔗 Link externo' },
-  { id: 'whatsapp', label: '💬 WhatsApp' },
-  { id: 'video', label: '▶️ Vídeo (YouTube)' },
-  { id: 'audio', label: '🎵 Áudio / Podcast' },
+  { id: 'link', label: 'Link externo' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+  { id: 'video', label: 'Vídeo (YouTube)' },
+  { id: 'audio', label: 'Áudio / Podcast' },
 ];
-
-const TIPO_ICON = { link: '🔗', whatsapp: '💬', video: '▶️', audio: '🎵' };
 
 const FORM_INIT = { titulo: '', descricao: '', tipo: 'link', url: '', ativo: true };
 
@@ -84,7 +83,7 @@ export default function Travessia({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">🧭 Continue a Travessia</h1>
+          <h1 className="screen-title">Continue a Travessia</h1>
           <p className="screen-sub">Links, vídeos e conteúdos exibidos na seção de travessia do app.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Novo item</button>
@@ -92,31 +91,31 @@ export default function Travessia({ showToast }) {
 
       {itens.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🧭</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhum item ainda.<br />Adicione terapia, livros, vídeos ou links.</p>
         </div>
       ) : (
         <div className="list-grid">
           {itens.map((item, idx) => (
             <div key={item.id} className={`list-card ${item.ativo === false ? 'inactive' : ''}`}>
-              <div className="list-card-icon">{TIPO_ICON[item.tipo] || '🔗'}</div>
+              <div className="list-card-icon"><IconLink size={17} /></div>
               <div className="list-card-body">
                 <div className="list-card-title">{item.titulo}</div>
                 {item.descricao && <div className="list-card-desc">{item.descricao}</div>}
                 <div className="list-card-url">{item.url}</div>
                 <div className="list-card-badges">
-                  <span className="badge">{TIPOS.find(t => t.id === item.tipo)?.label.split(' ').slice(1).join(' ') || item.tipo}</span>
+                  <span className="badge">{TIPOS.find(t => t.id === item.tipo)?.label || item.tipo}</span>
                   {item.ativo === false && <span className="badge badge-inactive">Inativo</span>}
                 </div>
               </div>
               <div className="list-card-actions">
-                <button className="icon-btn" onClick={() => mover(item, -1)} disabled={idx === 0} title="Subir">↑</button>
-                <button className="icon-btn" onClick={() => mover(item, 1)} disabled={idx === itens.length - 1} title="Descer">↓</button>
+                <button className="icon-btn" onClick={() => mover(item, -1)} disabled={idx === 0} title="Subir"></button>
+                <button className="icon-btn" onClick={() => mover(item, 1)} disabled={idx === itens.length - 1} title="Descer"></button>
                 <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
-                  {item.ativo === false ? '👁️' : '🔕'}
+                  {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar">✏️</button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir">🗑️</button>
+                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
+                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}
@@ -128,7 +127,7 @@ export default function Travessia({ showToast }) {
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editId ? 'Editar item' : 'Novo item da Travessia'}</h2>
-              <button className="modal-close" onClick={closeModal}>✕</button>
+              <button className="modal-close" onClick={closeModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-group">
@@ -164,7 +163,7 @@ export default function Travessia({ showToast }) {
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={closeModal}>Cancelar</button>
                 <button className="btn-primary" onClick={salvar} disabled={saving}>
-                  {saving ? '⏳ Salvando...' : 'Salvar'}
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </div>

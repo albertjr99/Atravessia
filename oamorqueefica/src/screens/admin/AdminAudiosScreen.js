@@ -192,7 +192,7 @@ export default function AdminAudiosScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminAudios">
-      <AdminSubTabs grupo="conteudos" atual="AdminAudios" />
+      <AdminSubTabs grupo="biblioteca" atual="AdminAudios" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <Text style={s.pageTitle}>Áudios de Acolhimento</Text>
         <Text style={s.pageSub}>Áudios exibidos no check-in por emoção.</Text>

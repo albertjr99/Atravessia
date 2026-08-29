@@ -14,7 +14,6 @@ import { Card, Button } from '../../components';
 import * as DocumentPicker from 'expo-document-picker';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
-import AdminSubTabs from './AdminSubTabs';
 
 const TIPOS = [
   { id: 'audio',     label: 'Áudio',     icon: 'headset-outline' },
@@ -352,7 +351,6 @@ export default function AdminConteudosScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminConteudos">
-      <AdminSubTabs grupo="conteudos" atual="AdminConteudos" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

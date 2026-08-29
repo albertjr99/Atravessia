@@ -4,6 +4,7 @@ import {
   collection, doc, onSnapshot, orderBy, query,
   serverTimestamp, setDoc,
 } from 'firebase/firestore';
+import { IconClose, IconSpark } from './Icons';
 
 const PLANOS_PADRAO = [
   {
@@ -136,8 +137,7 @@ export default function Planos({ showToast }) {
   if (loading) {
     return (
       <div className="loading-state">
-        <div className="spinner" style={{ margin: '0 auto 10px' }} />
-        Carregando...
+        <div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando...
       </div>
     );
   }
@@ -146,24 +146,21 @@ export default function Planos({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">💜 Planos</h1>
-          <p className="screen-sub">
-            Edite os nomes, descrições e recursos de cada plano exibidos no app.
+          <h1 className="screen-title">Planos</h1>
+          <p className="screen-sub">Edite os nomes, descrições e recursos de cada plano exibidos no app.
           </p>
         </div>
         {planos.length === 0 && (
           <button className="btn-primary" onClick={handleSemear} disabled={semeando}>
-            {semeando ? '⏳ Criando...' : '✨ Criar planos padrão'}
+            {semeando ? 'Criando...' : 'Criar planos padrão'}
           </button>
         )}
       </div>
 
       {planos.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">💜</div>
-          <p>
-            Nenhum plano cadastrado no Firestore.<br />
-            Clique em "Criar planos padrão" para começar.
+          <div className="empty-icon"><IconSpark size={34} /></div>
+          <p>Nenhum plano cadastrado no Firestore.<br />Clique em "Criar planos padrão" para começar.
           </p>
         </div>
       ) : (
@@ -183,8 +180,7 @@ export default function Planos({ showToast }) {
                   background: 'var(--primary)', color: 'white',
                   fontSize: 10, fontWeight: 700, padding: '2px 10px',
                   borderRadius: '0 0 8px 8px', letterSpacing: 0.5,
-                }}>
-                  RECOMENDADO
+                }}>RECOMENDADO
                 </div>
               )}
 
@@ -209,14 +205,14 @@ export default function Planos({ showToast }) {
                   borderRadius: 6, padding: '8px 10px', marginBottom: 10,
                   fontSize: 11, color: '#5B3D9E', lineHeight: 1.5,
                 }}>
-                  💬 {p.mensagem}
+                  {p.mensagem}
                 </div>
               )}
 
               <div style={{ marginBottom: 14 }}>
                 {(p.recursos || []).map((r, i) => (
                   <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-dark)' }}>
-                    <span style={{ color: 'var(--sage)', flexShrink: 0 }}>✓</span>
+                    <span style={{ color: 'var(--sage)', flexShrink: 0 }}></span>
                     <span>{r}</span>
                   </div>
                 ))}
@@ -226,8 +222,7 @@ export default function Planos({ showToast }) {
                 className="btn-ghost"
                 style={{ width: '100%', fontSize: 13 }}
                 onClick={() => abrirEditar(p)}
-              >
-                ✏️ Editar este plano
+              >Editar este plano
               </button>
             </div>
           ))}
@@ -238,8 +233,8 @@ export default function Planos({ showToast }) {
         <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>✏️ Editar plano — {modal.nome}</h2>
-              <button className="modal-close" onClick={fecharModal}>✕</button>
+              <h2>Editar plano — {modal.nome}</h2>
+              <button className="modal-close" onClick={fecharModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-row">
@@ -298,15 +293,14 @@ export default function Planos({ showToast }) {
               </div>
 
               <div className="field-group">
-                <label>💬 Mensagem do plano <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 400 }}>(destaque exibido no app)</span></label>
+                <label>Mensagem do plano <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 400 }}>(destaque exibido no app)</span></label>
                 <textarea
                   value={form.mensagem}
                   onChange={e => set('mensagem', e.target.value)}
                   placeholder="Ex: Neste plano você tem acesso a todo o acervo de áudios de acolhimento e às Pequenas Vitórias."
                   rows={3}
                 />
-                <span className="field-hint">
-                  Aparece em destaque no card do plano dentro do aplicativo. Deixe em branco para não exibir.
+                <span className="field-hint">Aparece em destaque no card do plano dentro do aplicativo. Deixe em branco para não exibir.
                 </span>
               </div>
 
@@ -334,8 +328,7 @@ export default function Planos({ showToast }) {
                     />
                     <span className="toggle-slider" />
                   </label>
-                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>
-                    Plano em destaque (recomendado)
+                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Plano em destaque (recomendado)
                   </span>
                 </div>
                 <div className="toggle-row" style={{ flex: 1 }}>
@@ -347,8 +340,7 @@ export default function Planos({ showToast }) {
                     />
                     <span className="toggle-slider" />
                   </label>
-                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>
-                    Em breve (não exibir botão)
+                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Em breve (não exibir botão)
                   </span>
                 </div>
               </div>
@@ -356,7 +348,7 @@ export default function Planos({ showToast }) {
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={fecharModal}>Cancelar</button>
                 <button className="btn-primary" onClick={handleSalvar} disabled={salvando}>
-                  {salvando ? '⏳ Salvando...' : 'Salvar alterações'}
+                  {salvando ? 'Salvando...' : 'Salvar alterações'}
                 </button>
               </div>
             </div>

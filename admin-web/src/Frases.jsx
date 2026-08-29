@@ -4,6 +4,7 @@ import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
   orderBy, query, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconQuote, IconSpark, IconTrash } from './Icons';
 
 const VAZIO = { texto: '', autor: '', reflexao: '' };
 
@@ -93,7 +94,7 @@ export default function Frases({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">💬 Frases e Reflexões</h1>
+          <h1 className="screen-title">Frases e Reflexões</h1>
           <p className="screen-sub">Gerencie as frases do dia e reflexões exibidas às usuárias.</p>
         </div>
         <button className="btn-primary" onClick={abrirAdicionar}>+ Nova frase</button>
@@ -106,13 +107,13 @@ export default function Frases({ showToast }) {
       </div>
 
       <div className="search-bar">
-        <span>🔍</span>
+        <span></span>
         <input
           value={busca}
           onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por frase, autor ou reflexão..."
         />
-        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>✕</button>}
+        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}></button>}
       </div>
 
       <div className="filter-row">
@@ -123,7 +124,7 @@ export default function Frases({ showToast }) {
 
       {frases.length === 0 && (
         <div className="empty-state">
-          <div className="empty-icon">💬</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhuma frase cadastrada ainda.<br />Comece adicionando a primeira frase.</p>
         </div>
       )}
@@ -134,21 +135,21 @@ export default function Frases({ showToast }) {
             <div className="frase-num">#{i + 1} {item.ativa === false && <span className="badge badge-inactive" style={{ marginLeft: 6, fontSize: 10 }}>inativa</span>}</div>
             <div className="frase-text">"{item.texto}"</div>
             {item.autor && <div className="frase-autor">— {item.autor}</div>}
-            {item.reflexao && <div className="frase-reflexao">📖 {item.reflexao}</div>}
+            {item.reflexao && <div className="frase-reflexao">{item.reflexao}</div>}
           </div>
           <div className="frase-actions">
-            <button className="icon-btn" onClick={() => abrirEditar(item)} title="Editar">✏️</button>
+            <button className="icon-btn" onClick={() => abrirEditar(item)} title="Editar"><IconEdit size={16} /></button>
             <button className="icon-btn" onClick={() => handleToggle(item)} title={item.ativa === false ? 'Ativar' : 'Desativar'}>
-              {item.ativa === false ? '👁️' : '🔕'}
+              {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
             </button>
-            <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir">🗑️</button>
+            <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir"><IconTrash size={16} /></button>
           </div>
         </div>
       ))}
 
       {lista.length === 0 && frases.length > 0 && (
         <div className="empty-state">
-          <div className="empty-icon">🔍</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhuma frase encontrada para esta busca.</p>
         </div>
       )}
@@ -157,8 +158,8 @@ export default function Frases({ showToast }) {
         <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{modal.mode === 'add' ? '✨ Nova frase' : '✏️ Editar frase'}</h2>
-              <button className="modal-close" onClick={fecharModal}>✕</button>
+              <h2>{modal.mode === 'add' ? 'Nova frase' : 'Editar frase'}</h2>
+              <button className="modal-close" onClick={fecharModal}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <div className="field-group">
@@ -188,7 +189,7 @@ export default function Frases({ showToast }) {
               <div className="modal-footer">
                 <button className="btn-ghost" onClick={fecharModal}>Cancelar</button>
                 <button className="btn-primary" onClick={handleSalvar} disabled={salvando}>
-                  {salvando ? '⏳ Salvando...' : 'Salvar'}
+                  {salvando ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
             </div>

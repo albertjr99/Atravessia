@@ -3,14 +3,15 @@ import { db } from './firebase';
 import {
   collection, onSnapshot, orderBy, query, doc, updateDoc, Timestamp,
 } from 'firebase/firestore';
+import { IconClose, IconSpark } from './Icons';
 
 const PLANO_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
 
 const PLANOS_OPCOES = [
-  { id: 'perceber', label: 'Perceber', desc: 'Plano gratuito — acesso básico', icon: '🌱' },
-  { id: 'acolher', label: 'Acolher', desc: 'R$ 24,90/mês — acesso acolhimento', icon: '💜' },
-  { id: 'compreender', label: 'Compreender', desc: 'R$ 39,90/mês — acesso completo', icon: '🌿' },
-  { id: 'evoluir', label: 'Evoluir', desc: 'R$ 59,90/mês — experiência total', icon: '⭐' },
+  { id: 'perceber', label: 'Perceber', desc: 'Plano gratuito — acesso básico', icon: '' },
+  { id: 'acolher', label: 'Acolher', desc: 'R$ 24,90/mês — acesso acolhimento', icon: '' },
+  { id: 'compreender', label: 'Compreender', desc: 'R$ 39,90/mês — acesso completo', icon: '' },
+  { id: 'evoluir', label: 'Evoluir', desc: 'R$ 59,90/mês — experiência total', icon: '' },
 ];
 
 function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
@@ -32,9 +33,8 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
 
   return (
     <div className="cortesia-box">
-      <div className="cortesia-title">⏰ Cortesia temporária</div>
-      <p style={{ fontSize: 13, color: '#8A5B00', marginBottom: 12 }}>
-        Concede acesso total temporário a <strong>{usuaria.nome || usuaria.email}</strong> por um número de dias.
+      <div className="cortesia-title">Cortesia temporária</div>
+      <p style={{ fontSize: 13, color: '#8A5B00', marginBottom: 12 }}>Concede acesso total temporário a <strong>{usuaria.nome || usuaria.email}</strong> por um número de dias.
       </p>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <div className="field-group" style={{ flex: 1, marginBottom: 0 }}>
@@ -42,7 +42,7 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
           <input type="number" value={dias} onChange={e => setDias(e.target.value)} min={1} max={365} />
         </div>
         <button className="btn-primary" style={{ background: '#D4A500', marginBottom: 0 }} onClick={aplicar} disabled={salvando}>
-          {salvando ? '⏳ Aplicando...' : '✓ Aplicar'}
+          {salvando ? 'Aplicando...' : ' Aplicar'}
         </button>
         <button className="btn-ghost" onClick={onCancelar}>Cancelar</button>
       </div>
@@ -83,8 +83,8 @@ function PlanoModal({ usuaria, onClose, showToast }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>⚙️ Gerenciar acesso — {usuaria.nome?.split(' ')[0] || usuaria.email}</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <h2> Gerenciar acesso — {usuaria.nome?.split(' ')[0] || usuaria.email}</h2>
+          <button className="modal-close" onClick={onClose}><IconClose size={17} /></button>
         </div>
         <div className="modal-body">
           <div style={{ marginBottom: 14, padding: 12, background: 'var(--primary-lav)', borderRadius: 10, fontSize: 13 }}>
@@ -122,17 +122,17 @@ function PlanoModal({ usuaria, onClose, showToast }) {
               disabled={saving}
               style={{ flex: 1 }}
             >
-              {hasAcessoTotal ? '🔒 Remover acesso total' : '🔓 Conceder acesso total'}
+              {hasAcessoTotal ? ' Remover acesso total' : 'Conceder acesso total'}
             </button>
             <button
               className="btn-secondary"
               onClick={() => setShowCortesia(v => !v)}
               style={{ flex: 1 }}
             >
-              ⏰ {cortesiaAtiva ? 'Renovar cortesia' : 'Cortesia temporária'}
+              {cortesiaAtiva ? 'Renovar cortesia' : 'Cortesia temporária'}
             </button>
             {cortesiaAtiva && (
-              <button className="btn-danger" onClick={removerCortesia}>❌ Remover cortesia</button>
+              <button className="btn-danger" onClick={removerCortesia}> Remover cortesia</button>
             )}
           </div>
 
@@ -199,15 +199,15 @@ export default function Usuarias({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">👥 Usuárias</h1>
+          <h1 className="screen-title">Usuárias</h1>
           <p className="screen-sub">Gerencie planos e acessos das {usuarios.length} usuária(s) cadastradas.</p>
         </div>
       </div>
 
       <div className="search-bar">
-        <span>🔍</span>
+        <span></span>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou e-mail..." />
-        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>✕</button>}
+        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}></button>}
       </div>
 
       <div className="filter-row">
@@ -217,8 +217,8 @@ export default function Usuarias({ showToast }) {
           { id: 'acolher', label: 'Acolher' },
           { id: 'compreender', label: 'Compreender' },
           { id: 'evoluir', label: 'Evoluir' },
-          { id: 'total', label: '🔓 Acesso Total' },
-          { id: 'cortesia', label: '⏰ Cortesia' },
+          { id: 'total', label: 'Acesso Total' },
+          { id: 'cortesia', label: 'Cortesia' },
         ].map(f => (
           <button key={f.id} className={`chip ${filtroPlano === f.id ? 'chip-active' : ''}`} onClick={() => setFiltroPlano(f.id)}>{f.label}</button>
         ))}
@@ -226,7 +226,7 @@ export default function Usuarias({ showToast }) {
 
       {lista.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">👥</div>
+          <div className="empty-icon"><IconSpark size={34} /></div>
           <p>Nenhuma usuária encontrada.</p>
         </div>
       ) : (
@@ -244,7 +244,7 @@ export default function Usuarias({ showToast }) {
                 <div className="user-email">{u.email}</div>
                 <div className="user-meta">
                   {getBadge(u)}
-                  {u.criadoEm && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>📅 {timeAgo(u.criadoEm)}</span>}
+                  {u.criadoEm && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{timeAgo(u.criadoEm)}</span>}
                 </div>
               </div>
               <div style={{ color: 'var(--text-light)', fontSize: 18 }}>›</div>
