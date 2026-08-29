@@ -13,6 +13,7 @@ import { colors, fonts, spacing, radius } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 const PLANOS = [
   { id: 0, label: 'Grátis (Perceber)' },
@@ -77,6 +78,7 @@ export default function AdminJornadasScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminJornadas">
+      <AdminSubTabs grupo="jornada" atual="AdminJornadas" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <Text style={s.pageTitle}>Jornadas</Text>
         <Text style={s.pageSub}>Crie programas e trilhas de conteúdo, definindo plano de acesso e ordem de exibição.</Text>

@@ -12,6 +12,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 const TIPOS = [
   { id: 'link', label: 'Link externo', icon: 'link-outline' },
@@ -107,6 +108,7 @@ export default function AdminTravessiaScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminTravessia">
+      <AdminSubTabs grupo="jornada" atual="AdminTravessia" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         <View style={s.headerRow}>

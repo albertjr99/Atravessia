@@ -7,6 +7,7 @@ import { db } from '../../services/firebase';
 import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 export default function AdminMensagensRelatorioScreen() {
   const [mensagens, setMensagens] = useState({});
@@ -34,6 +35,7 @@ export default function AdminMensagensRelatorioScreen() {
 
   return (
     <AdminLayout currentScreen="AdminMensagens">
+      <AdminSubTabs grupo="comunicacao" atual="AdminMensagens" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

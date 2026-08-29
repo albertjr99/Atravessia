@@ -215,9 +215,11 @@ export function AppProvider({ children }) {
   const favoritos = useMemo(() =>
     favoritosIds
       .map(f => {
-        const c = conteudos.find(c => c.id === f.conteudoId);
+        // Favoritos antigos foram gravados como `audio-<id>`; aceita os dois formatos.
+        const idLimpo = String(f.conteudoId || '').replace(/^audio-/, '');
+        const c = conteudos.find(c => c.id === f.conteudoId || c.id === idLimpo);
         if (c) return { ...f, ...c };
-        const a = audiosAcolhimento.find(a => a.id === f.conteudoId);
+        const a = audiosAcolhimento.find(a => a.id === f.conteudoId || a.id === idLimpo);
         if (a) return { ...f, ...a, tipo: a.tipo || 'audio', categoria: a.categoria || 'acolhimento' };
         return null;
       })
@@ -225,19 +227,28 @@ export function AppProvider({ children }) {
   , [favoritosIds, conteudos, audiosAcolhimento]);
 
   const adicionarFavorito = (conteudo) => {
-    if (favoritosIds.some(f => f.conteudoId === conteudo.id)) return;
+    if (!conteudo?.id) return;
+    if (favoritosIds.some(f => mesmoConteudo(f.conteudoId, conteudo.id))) return;
     setFavoritosIds(prev => [...prev, { id: `local_${Date.now()}`, conteudoId: conteudo.id }]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'favoritos'), { conteudoId: conteudo.id, criadoEm: serverTimestamp() });
   };
 
-  const removerFavorito = (conteudoId) => {
-    const fav = favoritosIds.find(f => f.conteudoId === conteudoId);
-    if (!fav) return;
-    setFavoritosIds(prev => prev.filter(f => f.conteudoId !== conteudoId));
-    if (uid) deleteDoc(doc(db, 'usuarios', uid, 'favoritos', fav.id)).catch(() => {});
+  // Tolerante ao formato legado `audio-<id>` para que o coração reflita o estado
+  // real e desfavoritar funcione em favoritos gravados antes da correção.
+  const mesmoConteudo = (conteudoIdSalvo, id) => {
+    const a = String(conteudoIdSalvo || '').replace(/^audio-/, '');
+    const b = String(id || '').replace(/^audio-/, '');
+    return a === b;
   };
 
-  const isFavorito = (conteudoId) => favoritosIds.some(f => f.conteudoId === conteudoId);
+  const removerFavorito = (conteudoId) => {
+    const alvos = favoritosIds.filter(f => mesmoConteudo(f.conteudoId, conteudoId));
+    if (alvos.length === 0) return;
+    setFavoritosIds(prev => prev.filter(f => !mesmoConteudo(f.conteudoId, conteudoId)));
+    if (uid) alvos.forEach(fav => deleteDoc(doc(db, 'usuarios', uid, 'favoritos', fav.id)).catch(() => {}));
+  };
+
+  const isFavorito = (conteudoId) => favoritosIds.some(f => mesmoConteudo(f.conteudoId, conteudoId));
 
   // Frases e reflexões — carregadas do Firestore, com fallback no seed local
   const [frases, setFrases] = useState([]);

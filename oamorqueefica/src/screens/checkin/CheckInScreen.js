@@ -116,6 +116,14 @@ export default function CheckInScreen({ navigation }) {
     }
   };
 
+  // Favoritar o áudio guardando o id REAL do documento. Antes era salvo como
+  // `audio-<id>`, um id sintético que não existia em nenhuma coleção — por isso
+  // o áudio favoritado nunca aparecia na aba Conteúdos.
+  const toggleFavAudio = (audio) => {
+    if (!audio?.id) return;
+    isFavorito(audio.id) ? removerFavorito(audio.id) : adicionarFavorito(audio);
+  };
+
   const temPlano1 = (usuario?.plano || 0) >= 1;
 
   // Conteúdos do Firestore vinculados à emoção
@@ -236,21 +244,17 @@ export default function CheckInScreen({ navigation }) {
               <View style={s.recTagRow}>
                 <Text style={s.recTag}>Acolhimento</Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    const favId = `audio-${audioRec.id}`;
-                    const favObj = { id: favId, titulo: audioRec.titulo, tipo: 'audio', url: audioRec.url, duracao: audioRec.duracao, emocoes: audioRec.emocoes || [] };
-                    isFavorito(favId) ? removerFavorito(favId) : adicionarFavorito({ ...favObj, id: favId });
-                  }}
+                  onPress={() => toggleFavAudio(audioRec)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Ionicons
-                    name={isFavorito(`audio-${audioRec.id}`) ? 'heart' : 'heart-outline'}
+                    name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
                     size={18}
-                    color={isFavorito(`audio-${audioRec.id}`) ? '#C06080' : colors.tl}
+                    color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
                   />
                 </TouchableOpacity>
               </View>
-              {!isFavorito(`audio-${audioRec.id}`) && (
+              {!isFavorito(audioRec.id) && (
                 <Text style={s.recFavHint}>Toque no ♡ para salvar em Conteúdos</Text>
               )}
               <TouchableOpacity onPress={handleOuvirAudio} activeOpacity={0.85}>
@@ -367,17 +371,13 @@ export default function CheckInScreen({ navigation }) {
                   </TouchableOpacity>
                 ) : audioRec ? (
                   <TouchableOpacity
-                    onPress={() => {
-                      const favId = `audio-${audioRec.id}`;
-                      const favObj = { id: favId, titulo: audioRec.titulo, tipo: 'audio', url: audioRec.url, duracao: audioRec.duracao, emocoes: audioRec.emocoes || [] };
-                      isFavorito(favId) ? removerFavorito(favId) : adicionarFavorito({ ...favObj, id: favId });
-                    }}
+                    onPress={() => toggleFavAudio(audioRec)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <Ionicons
-                      name={isFavorito(`audio-${audioRec.id}`) ? 'heart' : 'heart-outline'}
+                      name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
                       size={20}
-                      color={isFavorito(`audio-${audioRec.id}`) ? '#C06080' : colors.tl}
+                      color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
                     />
                   </TouchableOpacity>
                 ) : null}
