@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
@@ -23,13 +23,13 @@ export default function PlanosScreen({ navigation }) {
   const [planosList, setPlanosList] = useState(planosPadrao);
 
   useEffect(() => {
-    const ref = query(collection(db, 'planos'), orderBy('id', 'asc'));
-    const unsub = onSnapshot(ref, snap => {
-      if (snap.docs.length > 0) {
-        setPlanosList(
-          snap.docs.map(d => ({ ...d.data() })).sort((a, b) => a.id - b.id)
-        );
-      }
+    // Sem orderBy: planos gravados sem o campo `id` sumiriam da lista.
+    const unsub = onSnapshot(collection(db, 'planos'), snap => {
+      const docs = snap.docs
+        .map(d => ({ ...d.data(), id: d.data().id ?? Number(d.id) }))
+        .filter(p => Number.isFinite(p.id))
+        .sort((a, b) => a.id - b.id);
+      if (docs.length > 0) setPlanosList(docs);
     }, () => {});
     return unsub;
   }, []);

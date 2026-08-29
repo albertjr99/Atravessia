@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment,
+  collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc, increment,
 } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './AuthContext';
@@ -29,13 +29,39 @@ function proximaOcorrencia(dataStr) {
   return candidata;
 }
 
+// IMPORTANTE: no Firestore, `orderBy('campo')` REMOVE do resultado todo documento
+// que não possua esse campo. Documentos gravados sem `criadoEm`/`ordem` (versões
+// antigas, seeds, ou enquanto o serverTimestamp ainda não resolveu) simplesmente
+// desapareciam do app mesmo estando ativos no painel. Por isso todas as consultas
+// abaixo leem a coleção inteira e ordenam aqui, sem descartar nada.
+function valorOrdem(doc, campo) {
+  const v = doc?.[campo];
+  if (v == null) return null;
+  if (typeof v?.toMillis === 'function') return v.toMillis();
+  if (typeof v === 'number') return v;
+  const t = new Date(v).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+// Ordena mantendo os documentos sem o campo no fim (nunca os descarta).
+function ordenarPor(docs, campo, dir = 'asc') {
+  const sinal = dir === 'desc' ? -1 : 1;
+  return [...docs].sort((a, b) => {
+    const va = valorOrdem(a, campo);
+    const vb = valorOrdem(b, campo);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return (va - vb) * sinal;
+  });
+}
+
 // Sincroniza uma subcoleção usuarios/{uid}/{nome} com um state local.
 function useSubcolecao(uid, nome, setState) {
   useEffect(() => {
     if (!uid) { setState([]); return; }
-    const ref = query(collection(db, 'usuarios', uid, nome), orderBy('criadoEm', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setState(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(collection(db, 'usuarios', uid, nome), (snap) => {
+      setState(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'asc'));
     }, () => {});
     return unsub;
   }, [uid, nome]);
@@ -153,12 +179,10 @@ export function AppProvider({ children }) {
   const [notificacoesEditoriais, setNotificacoesEditoriais] = useState([]);
   useEffect(() => {
     if (!uid) { setNotificacoesEditoriais([]); return; }
-    const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setNotificacoesEditoriais(
-        snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(n => n.ativa !== false && (!n.usuarioId || n.usuarioId === uid))
-      );
+    const unsub = onSnapshot(collection(db, 'notificacoesEditoriais'), (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .filter(n => n.ativa !== false && (!n.usuarioId || n.usuarioId === uid));
+      setNotificacoesEditoriais(ordenarPor(docs, 'criadoEm', 'desc'));
     }, () => {});
     return unsub;
   }, [uid]);
@@ -166,9 +190,8 @@ export function AppProvider({ children }) {
   // Biblioteca de conteúdos (áudios, documentos, links) publicada pela administração
   const [conteudos, setConteudos] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'conteudos'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setConteudos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(collection(db, 'conteudos'), (snap) => {
+      setConteudos(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
     }, () => {});
     return unsub;
   }, []);
@@ -176,9 +199,8 @@ export function AppProvider({ children }) {
   // Áudios de acolhimento por emoção — exibidos no check-in
   const [audiosAcolhimento, setAudiosAcolhimento] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'audiosAcolhimento'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setAudiosAcolhimento(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(collection(db, 'audiosAcolhimento'), (snap) => {
+      setAudiosAcolhimento(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
     }, () => {});
     return unsub;
   }, []);
@@ -220,9 +242,11 @@ export function AppProvider({ children }) {
   // Frases e reflexões — carregadas do Firestore, com fallback no seed local
   const [frases, setFrases] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'frases'), orderBy('criadoEm', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(f => f.ativa !== false);
+    const unsub = onSnapshot(collection(db, 'frases'), (snap) => {
+      const docs = ordenarPor(
+        snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(f => f.ativa !== false),
+        'criadoEm', 'asc'
+      );
       setFrases(docs.length > 0 ? docs : FRASES_SEED);
     }, () => { setFrases(FRASES_SEED); });
     return unsub;
@@ -250,9 +274,9 @@ export function AppProvider({ children }) {
   // Jornadas criadas pela admin (Firestore), separadas das estáticas do data/
   const [jornadasAdmin, setJornadasAdmin] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'jornadas'), orderBy('ordem', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setJornadasAdmin(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => j.ativa !== false));
+    const unsub = onSnapshot(collection(db, 'jornadas'), (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => j.ativa !== false);
+      setJornadasAdmin(ordenarPor(docs, 'ordem', 'asc'));
     }, () => {});
     return unsub;
   }, []);
@@ -260,9 +284,9 @@ export function AppProvider({ children }) {
   // Itens da seção "Continue a Travessia" — gerenciados pela admin
   const [travessiaItens, setTravessiaItens] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'travessiaItens'), orderBy('ordem', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setTravessiaItens(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false));
+    const unsub = onSnapshot(collection(db, 'travessiaItens'), (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false);
+      setTravessiaItens(ordenarPor(docs, 'ordem', 'asc'));
     }, () => {});
     return unsub;
   }, []);
