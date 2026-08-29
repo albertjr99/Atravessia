@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import Frases from './Frases';
 import Conteudos from './Conteudos';
 import Audios from './Audios';
+import Parcerias from './Parcerias';
 
 const TABS = [
-  { id: 'frases',    label: '💬 Frases' },
-  { id: 'conteudos', label: '📚 Conteúdos' },
-  { id: 'audios',    label: '🎵 Áudios Check-in' },
+  { id: 'frases',     label: '💬 Frases' },
+  { id: 'conteudos',  label: '📚 Conteúdos' },
+  { id: 'audios',     label: '🎵 Áudios Check-in' },
+  { id: 'parcerias',  label: '🤝 Parcerias' },
 ];
 
 export default function Biblioteca({ showToast }) {
@@ -57,6 +59,7 @@ export default function Biblioteca({ showToast }) {
       {aba === 'frases'    && <Frases    showToast={showToast} />}
       {aba === 'conteudos' && <Conteudos showToast={showToast} />}
       {aba === 'audios'    && <Audios    showToast={showToast} />}
+      {aba === 'parcerias' && <Parcerias showToast={showToast} />}
     </>
   );
 }
