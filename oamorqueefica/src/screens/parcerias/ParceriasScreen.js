@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Linking, Alert, Platform,
 } from 'react-native';
@@ -8,8 +8,18 @@ import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
+const FILTROS = [
+  { id: 'todos',           label: 'Todos',                       match: null },
+  { id: 'saude',           label: 'Da saúde física',             match: ['saúde', 'saude', 'saúde física', 'saude fisica', 'fisio', 'nutrição'] },
+  { id: 'voce',            label: 'De você e do ambiente',       match: ['você', 'voce', 'bem-estar', 'bem estar', 'ambiente', 'casa', 'moradia', 'espiritualidade', 'meditação'] },
+  { id: 'trabalho',        label: 'Do trabalho e estudos',       match: ['trabalho', 'estudos', 'educação', 'educacao', 'carreira', 'curso'] },
+  { id: 'relacionamentos', label: 'Dos relacionamentos',         match: ['relacionamentos', 'relacionamento', 'família', 'familia', 'social'] },
+  { id: 'outros',          label: 'Outros',                      match: ['outros', 'other'] },
+];
+
 export default function ParceriasScreen({ navigation }) {
   const { parcerias, registrarCliqueParceria } = useApp();
+  const [filtroAtivo, setFiltroAtivo] = useState('todos');
 
   const handleAbrirParceria = (p) => {
     if (!p.link) return;
@@ -22,6 +32,15 @@ export default function ParceriasScreen({ navigation }) {
     }
   };
 
+  const parceriasExibidas = filtroAtivo === 'todos'
+    ? parcerias
+    : parcerias.filter(p => {
+        const cats = (p.categorias || []).map(c => c.toLowerCase());
+        const filtro = FILTROS.find(f => f.id === filtroAtivo);
+        if (!filtro?.match) return true;
+        return filtro.match.some(m => cats.some(c => c.includes(m)));
+      });
+
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
@@ -31,7 +50,7 @@ export default function ParceriasScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Espaço para Parcerias</Text>
+        <Text style={s.topTitle}>Benefícios e Parcerias</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -40,26 +59,38 @@ export default function ParceriasScreen({ navigation }) {
         {/* Hero */}
         <View style={s.hero}>
           <View style={s.heroIcon}>
-            <Ionicons name="people-outline" size={30} color={colors.lav5} />
+            <Ionicons name="gift-outline" size={28} color={colors.lav5} />
           </View>
           <Text style={s.heroTitle}>Aqui você encontra descontos{'\n'}exclusivos para cuidar:</Text>
           <Text style={s.heroSub}>
-            Parcerias selecionadas com cuidado para apoiar você na sua jornada de cura e bem-estar.
+            Você é o autor da sua história e a Atravessia caminha com você.{'\n'}
+            Experimente a vida — descubra novos parceiros, benefícios e descontos para cuidar de você e viver melhor o hoje.
           </Text>
-          <View style={s.catRow}>
-            {['Saúde física', 'Bem-estar', 'Terapias', 'Educação', 'e muito mais'].map(cat => (
-              <View key={cat} style={s.catChip}>
-                <Text style={s.catChipTxt}>{cat}</Text>
-              </View>
+        </View>
+
+        {/* Filtros */}
+        <View style={s.filtrosWrap}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
+            {FILTROS.map(f => (
+              <TouchableOpacity
+                key={f.id}
+                style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
+                onPress={() => setFiltroAtivo(f.id)}
+                activeOpacity={0.75}
+              >
+                <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         {/* Benefícios ilustrativos */}
         <View style={s.beneficiosRow}>
           {[
             { icon: 'pricetag-outline', label: 'Descontos\nexclusivos' },
-            { icon: 'ticket-outline', label: 'Cupons gerados\npelo aplicativo' },
+            { icon: 'ticket-outline', label: 'Cupons pelo\naplicativo' },
             { icon: 'heart-outline', label: 'Parcerias que\nfazem bem' },
           ].map(b => (
             <View key={b.label} style={s.beneficioItem}>
@@ -80,10 +111,18 @@ export default function ParceriasScreen({ navigation }) {
               Novas parcerias e benefícios exclusivos serão anunciados em breve. Fique de olho!
             </Text>
           </View>
+        ) : parceriasExibidas.length === 0 ? (
+          <View style={s.emptyBox}>
+            <Ionicons name="search-outline" size={36} color={colors.lav3} />
+            <Text style={s.emptyTit}>Sem parcerias aqui</Text>
+            <Text style={s.emptySub}>Nenhuma parceria nesta categoria ainda. Tente outro filtro.</Text>
+          </View>
         ) : (
           <View style={s.lista}>
-            <Text style={s.listaTitle}>Parcerias disponíveis</Text>
-            {parcerias.map(p => (
+            <Text style={s.listaTitle}>
+              {filtroAtivo === 'todos' ? 'Parcerias disponíveis' : FILTROS.find(f => f.id === filtroAtivo)?.label}
+            </Text>
+            {parceriasExibidas.map(p => (
               <TouchableOpacity
                 key={p.id}
                 style={s.card}
@@ -94,7 +133,7 @@ export default function ParceriasScreen({ navigation }) {
                   <Image source={{ uri: p.imagemUrl }} style={s.cardImg} resizeMode="cover" />
                 ) : (
                   <View style={s.cardImgPlaceholder}>
-                    <Ionicons name="people-outline" size={32} color={colors.lav3} />
+                    <Ionicons name="gift-outline" size={32} color={colors.lav3} />
                     <Text style={s.cardImgPlaceholderTxt}>Parceria Atravessia</Text>
                   </View>
                 )}
@@ -150,15 +189,18 @@ const s = StyleSheet.create({
   },
   heroSub: {
     fontFamily: fonts.body, fontSize: 13, color: colors.tm,
-    textAlign: 'center', lineHeight: 20, marginBottom: 14,
+    textAlign: 'center', lineHeight: 20, marginBottom: 8,
   },
-  catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' },
-  catChip: {
-    backgroundColor: colors.lav1, borderRadius: radius.full,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: colors.lav2,
+  filtrosWrap: { marginBottom: spacing.sm },
+  filtrosRow: { paddingHorizontal: spacing.lg, gap: 8, paddingVertical: 4 },
+  filtroChip: {
+    backgroundColor: colors.card, borderRadius: radius.full,
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderWidth: 1.5, borderColor: colors.border,
   },
-  catChipTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
+  filtroChipAtivo: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
+  filtroChipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.td },
+  filtroChipTxtAtivo: { fontFamily: fonts.bodyBold, color: 'white' },
 
   beneficiosRow: {
     flexDirection: 'row', justifyContent: 'space-around',

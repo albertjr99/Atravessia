@@ -234,7 +234,7 @@ export default function CheckInScreen({ navigation }) {
           {!conteudoExibido && temPlano1 && audioRec && (
             <View style={s.recCard}>
               <View style={s.recTagRow}>
-                <Text style={s.recTag}>Áudio de acolhimento para você</Text>
+                <Text style={s.recTag}>Acolhimento</Text>
                 <TouchableOpacity
                   onPress={() => {
                     const favId = `audio-${audioRec.id}`;
