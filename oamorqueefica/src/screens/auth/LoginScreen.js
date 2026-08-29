@@ -127,7 +127,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#4a4453" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView
         showsVerticalScrollIndicator={false}

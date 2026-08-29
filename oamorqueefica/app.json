@@ -8,6 +8,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "#00000000",
+      "barStyle": "dark-content"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -24,6 +29,7 @@
       },
       "package": "com.atravessia",
       "versionCode": 6,
+      "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.USE_BIOMETRIC",

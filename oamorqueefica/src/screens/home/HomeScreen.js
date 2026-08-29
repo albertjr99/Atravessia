@@ -24,6 +24,7 @@ export default function HomeScreen({ navigation }) {
   const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria, fraseDoDia } = useApp();
   const { sair } = useAuth();
   const naoLidas = notificacoes.filter(n => !n.lida).length;
+  const primeiraNaoLida = notificacoes.find(n => !n.lida);
 
   const handleSair = () => {
     confirmar('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', sair, 'Sair');
@@ -44,23 +45,27 @@ export default function HomeScreen({ navigation }) {
   const weekHistory = checkins.slice(-6);
 
   return (
-    <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F4EE" />
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
         {/* ===== HEADER COM AQUARELA ===== */}
-        <View style={s.headerWrap}>
-          <Image source={headerLavender} style={s.headerImg} resizeMode="cover" />
+        <View style={[s.headerWrap, { height: 210 + insets.top }]}>
+          <Image source={headerLavender} style={[s.headerImg, { height: 210 + insets.top }]} resizeMode="cover" />
           {/* Gradiente fade para o fundo */}
           <View style={s.headerFade} />
           {/* Sino notificação */}
-          <TouchableOpacity style={s.bellBtn} onPress={() => navigation.navigate('Notificacoes')}>
-            <Ionicons name="notifications-outline" size={18} color="#9b86bd" />
-            {naoLidas > 0 && <View style={s.bellBadge} />}
+          <TouchableOpacity style={[s.bellBtn, { top: 16 + insets.top }]} onPress={() => navigation.navigate('Notificacoes')}>
+            <Ionicons name={naoLidas > 0 ? 'notifications' : 'notifications-outline'} size={18} color="#9b86bd" />
+            {naoLidas > 0 && (
+              <View style={s.bellBadge}>
+                <Text style={s.bellBadgeTxt}>{naoLidas > 9 ? '9+' : naoLidas}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           {/* Sair / trocar conta */}
-          <TouchableOpacity style={s.logoutBtn} onPress={handleSair}>
+          <TouchableOpacity style={[s.logoutBtn, { top: 16 + insets.top }]} onPress={handleSair}>
             <Ionicons name="log-out-outline" size={18} color="#9b86bd" />
           </TouchableOpacity>
           {/* Logo + nome do app */}
@@ -77,6 +82,28 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
             <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
           </View>
+
+          {/* Aviso de notificações não lidas */}
+          {naoLidas > 0 && (
+            <TouchableOpacity
+              style={s.notifBanner}
+              onPress={() => navigation.navigate('Notificacoes')}
+              activeOpacity={0.88}
+            >
+              <View style={s.notifBannerIcon}>
+                <Ionicons name="notifications" size={19} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.notifBannerTit}>
+                  {naoLidas === 1 ? 'Você tem 1 mensagem nova' : `Você tem ${naoLidas} mensagens novas`}
+                </Text>
+                <Text style={s.notifBannerSub} numberOfLines={1}>
+                  {primeiraNaoLida?.texto || 'Toque para ver'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.lav5} />
+            </TouchableOpacity>
+          )}
 
           {/* ===== FRASE DO DIA ===== */}
           {fraseDoDia && (
@@ -268,9 +295,36 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   bellBadge: {
-    position: 'absolute', right: 10, top: 10,
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#D8B4B6',
+    position: 'absolute', right: 3, top: 3,
+    minWidth: 18, height: 18, borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#C4566B',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#FFFDF9',
+  },
+  bellBadgeTxt: {
+    fontFamily: 'Lato_700Bold', fontSize: 10, color: '#fff', lineHeight: 13,
+  },
+
+  notifBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#EDE9F5', borderRadius: 16,
+    borderWidth: 1, borderColor: '#C8BCE2',
+    paddingVertical: 13, paddingHorizontal: 14,
+    marginBottom: 18,
+    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 3,
+  },
+  notifBannerIcon: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#8B7AC0',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  notifBannerTit: {
+    fontFamily: 'Lato_700Bold', fontSize: 13.5, color: '#4A4B4A',
+  },
+  notifBannerSub: {
+    fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#76737A', marginTop: 2,
   },
   logoutBtn: {
     position: 'absolute', right: 64, top: 16,

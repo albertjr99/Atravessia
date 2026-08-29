@@ -37,7 +37,7 @@ export default function SessaoScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false}>
 
