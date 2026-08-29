@@ -166,6 +166,71 @@ function diasComRegistro(checkins, year, month) {
   return { com: uniqueDays.size, total: diasPassados };
 }
 
+// ── Áreas da vida ─────────────────────────────────────────────────────────────
+const LOCAIS_INFO = [
+  { id: 'saude',          label: 'Saúde física',     icon: 'fitness-outline'   },
+  { id: 'eu',             label: 'Eu comigo',         icon: 'person-outline'    },
+  { id: 'trabalho',       label: 'Trabalho',          icon: 'briefcase-outline' },
+  { id: 'relacionamentos',label: 'Relacionamentos',   icon: 'people-outline'    },
+];
+
+function calcAreaData(lista) {
+  return LOCAIS_INFO.map((loc, li) => {
+    const items = lista.filter(c => c.local === loc.id);
+    const sorted = contagemEmo(items);
+    const total = items.length;
+    const donut = sorted.map(([id, v], i) => ({
+      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[(li * 4 + i) % EMO_CHART_COLORS.length],
+    }));
+    return { ...loc, sorted, total, donut };
+  });
+}
+
+function AreaDonutCard({ area }) {
+  const empty = area.total === 0;
+  const chartData = empty ? [{ value: 1, color: colors.lav2 }] : area.donut;
+  return (
+    <View style={areaStyles.card}>
+      <View style={areaStyles.header}>
+        <Ionicons name={area.icon} size={13} color={colors.lav5} />
+        <Text style={areaStyles.name} numberOfLines={2}>{area.label}</Text>
+      </View>
+      <DonutChart data={chartData} size={90} thickness={16} total={empty ? 0 : area.total} label="reg." />
+      <View style={areaStyles.breakdown}>
+        {empty ? (
+          <Text style={areaStyles.empty}>Sem registros</Text>
+        ) : (
+          area.sorted.slice(0, 3).map(([id, v], i) => {
+            const emo = getEmoObj(id);
+            const pct = Math.round((v / area.total) * 100);
+            return (
+              <View key={id} style={areaStyles.emoRow}>
+                <View style={[areaStyles.dot, { backgroundColor: area.donut[i]?.color || colors.lav3 }]} />
+                <Text style={areaStyles.emoName} numberOfLines={1}>{emo?.label || id}</Text>
+                <Text style={areaStyles.emoPct}>{pct}%</Text>
+              </View>
+            );
+          })
+        )}
+      </View>
+      <Text style={areaStyles.total}>Total: {area.total} reg.</Text>
+    </View>
+  );
+}
+
+const areaStyles = StyleSheet.create({
+  card: { width: 155, backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center', gap: 6 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
+  name: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, flex: 1 },
+  breakdown: { alignSelf: 'stretch', gap: 3 },
+  emoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dot: { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
+  emoName: { flex: 1, fontFamily: fonts.body, fontSize: 10, color: colors.td },
+  emoPct: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.tm },
+  empty: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', paddingVertical: 4 },
+  total: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, alignSelf: 'flex-end' },
+});
+
 // ── Cores para emoções no gráfico ─────────────────────────────────────────────
 const EMO_CHART_COLORS = [
   colors.lav4, colors.rose, colors.sage, colors.gold,
@@ -810,8 +875,9 @@ export default function RelatoriosScreen({ navigation }) {
     const dominante = sorted[0]?.[0];
     const { com, total: totalDias } = diasComRegistro(lista, calAno, calMes);
     const semRegistro = totalDias - com;
+    const areaData = calcAreaData(lista);
 
-    return { lista, sorted, total, donut, byDate, dominante, com, semRegistro };
+    return { lista, sorted, total, donut, byDate, dominante, com, semRegistro, totalDias, areaData };
   }, [checkins, calAno, calMes]);
 
   // ── Dados anuais ──
@@ -835,7 +901,8 @@ export default function RelatoriosScreen({ navigation }) {
     const totalTrims = trims.reduce((s, v) => s + v, 0) || 1;
     const trimPct = trims.map(v => Math.round((v / totalTrims) * 100));
 
-    return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, consistencia, trimPct };
+    const areaData = calcAreaData(lista);
+    return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, consistencia, trimPct, areaData };
   }, [checkins, year]);
 
   const vitoriasMes = useMemo(() => {
@@ -910,7 +977,8 @@ export default function RelatoriosScreen({ navigation }) {
     }));
     const dominante = sorted[0]?.[0];
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10))).size;
-    setRangeData({ lista, sorted, total, donut, dominante, uniqueDays });
+    const areaData = calcAreaData(lista);
+    setRangeData({ lista, sorted, total, donut, dominante, uniqueDays, areaData });
     if (!creditoUsado && uid) {
       setCreditoUsado(true);
       updateDoc(doc(db, 'usuarios', uid), { periodoCreditos: increment(-1) }).catch(() => {});
@@ -1038,10 +1106,10 @@ export default function RelatoriosScreen({ navigation }) {
               </View>
             ) : (
               <>
-                {/* 1. Emoções do mês */}
+                {/* Seção 1 — Suas emoções no mês */}
                 <View style={s.card}>
-                  <Text style={s.cardNum}>1</Text>
-                  <Text style={s.cardTit}>Seu mês em emoções</Text>
+                  <Text style={s.sectionLabel}>1</Text>
+                  <Text style={s.cardTit}>Suas emoções no mês</Text>
                   <View style={s.donutRow}>
                     <DonutChart data={mesal.donut} size={150} thickness={28} total={mesal.total} label="registros" />
                     <View style={s.donutLegend}>
@@ -1058,15 +1126,51 @@ export default function RelatoriosScreen({ navigation }) {
                       })}
                     </View>
                   </View>
+                  <Text style={s.registrosTxt}>
+                    Você fez registros em <Text style={s.registrosBold}>{mesal.com}</Text> de <Text style={s.registrosBold}>{mesal.totalDias}</Text> dias deste mês.
+                  </Text>
                 </View>
 
-                {/* 2. Calendário emocional — Plan 1+ */}
-                {temPlano1 ? (
+                {/* Seção 2 — Suas emoções nas áreas da vida */}
+                <View style={s.card}>
+                  <Text style={s.sectionLabel}>2</Text>
+                  <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
+                    {mesal.areaData.map(area => (
+                      <AreaDonutCard key={area.id} area={area} />
+                    ))}
+                  </ScrollView>
+                  <Text style={s.areasSummaryTxt}>
+                    A soma dos registros nas áreas é{' '}
+                    <Text style={s.registrosBold}>{mesal.areaData.reduce((acc, a) => acc + a.total, 0)}</Text> dias
+                    {' '}(cada check-in conta para a área escolhida).
+                  </Text>
+                </View>
+
+                {/* Seção 3 — Pequenas Vitórias */}
+                {vitoriasMes.length > 0 && (
                   <View style={s.card}>
-                    <Text style={s.cardNum}>3</Text>
+                    <Text style={s.sectionLabel}>3</Text>
+                    <Text style={s.cardTit}>As {Math.min(6, vitoriasMes.length)} maiores pequenas vitórias deste mês</Text>
+                    <View style={s.vitCardsWrap}>
+                      {vitoriasMes.slice(0, 6).map((v, i) => (
+                        <View key={i} style={s.vitCardItem}>
+                          <Ionicons name="star" size={13} color={colors.gold} />
+                          <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {vitoriasMes.length > 6 && (
+                      <Text style={s.vitMore}>+{vitoriasMes.length - 6} mais conquistas este mês</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Calendário emocional — Plan 1+ */}
+                {temPlano1 && (
+                  <View style={s.card}>
                     <Text style={s.cardTit}>Calendário emocional</Text>
                     <Text style={s.cardSub}>Toque num dia marcado para ver o check-in</Text>
-                    {/* Navegação de mês */}
                     <View style={s.calNavRow}>
                       <TouchableOpacity style={s.calNavBtn} onPress={() => handleCalNav(-1)}>
                         <Ionicons name="chevron-back" size={18} color={colors.lav4} />
@@ -1087,7 +1191,6 @@ export default function RelatoriosScreen({ navigation }) {
                     <View style={{ marginTop: 8 }}>
                       <CalendarGrid year={calAno} month={calMes} checkinsByDate={mesal.byDate} onDayPress={handleDayPress} />
                     </View>
-                    {/* Legenda do calendário */}
                     <View style={s.calLegend}>
                       {mesal.sorted.slice(0, 4).map(([id], i) => {
                         const emo = getEmoObj(id);
@@ -1100,68 +1203,10 @@ export default function RelatoriosScreen({ navigation }) {
                       })}
                     </View>
                   </View>
-                ) : null}
-
-                {/* 4. Emoção predominante */}
-                {mesal.dominante && (
-                  <View style={s.card}>
-                    <Text style={s.cardNum}>4</Text>
-                    <Text style={s.cardTit}>Emoção predominante</Text>
-                    {(() => {
-                      const emo = getEmoObj(mesal.dominante);
-                      return (
-                        <View style={s.predominRow}>
-                          <View style={[s.predominCircle, { backgroundColor: emo?.bg || colors.lav1 }]}>
-                            <Ionicons name={`${emo?.icon || 'heart'}-outline`} size={28} color={emo?.color || colors.lav4} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[s.predominNome, { color: emo?.color || colors.lav4 }]}>{emo?.label || mesal.dominante}</Text>
-                            <Text style={s.predominDesc}>foi a emoção mais presente neste mês.</Text>
-                          </View>
-                        </View>
-                      );
-                    })()}
-                  </View>
                 )}
 
-                {/* 5. Seus registros */}
-                <View style={s.card}>
-                  <Text style={s.cardNum}>5</Text>
-                  <Text style={s.cardTit}>Seus registros</Text>
-                  <View style={s.statsRow}>
-                    <View style={s.statBox}>
-                      <Text style={s.statNum}>{mesal.com}</Text>
-                      <Text style={s.statLbl}>dias com check-in</Text>
-                    </View>
-                    <View style={s.statDivider} />
-                    <View style={s.statBox}>
-                      <Text style={[s.statNum, { color: mesal.semRegistro > 5 ? colors.rose : colors.sage }]}>{mesal.semRegistro}</Text>
-                      <Text style={s.statLbl}>dias sem registro</Text>
-                    </View>
-                  </View>
-                </View>
-
-                {vitoriasMes.length > 0 && (
-                  <View style={s.card}>
-                    <Text style={s.cardNum}>⭐</Text>
-                    <Text style={s.cardTit}>Pequenas Vitórias</Text>
-                    <Text style={s.cardSub}>{vitoriasMes.length} conquista{vitoriasMes.length !== 1 ? 's' : ''} registrada{vitoriasMes.length !== 1 ? 's' : ''} este mês</Text>
-                    {vitoriasMes.slice(0, 5).map((v, i) => (
-                      <View key={i} style={s.vitRow}>
-                        <Ionicons name="star" size={11} color={colors.gold} />
-                        <Text style={s.vitTxt}>{v.label}</Text>
-                      </View>
-                    ))}
-                    {vitoriasMes.length > 5 && (
-                      <Text style={s.vitMore}>+{vitoriasMes.length - 5} mais conquistas este mês</Text>
-                    )}
-                  </View>
-                )}
-
-                {/* 6. Mensagem */}
+                {/* Mensagem */}
                 <View style={[s.card, s.msgCard]}>
-                  <Text style={s.cardNum}>6</Text>
-                  <Text style={s.cardTit}>Mensagem para você</Text>
                   <Text style={s.msgTxt}>{mensagem(mesal.dominante)}</Text>
                   <View style={s.msgRodape}>
                     <Ionicons name="leaf-outline" size={12} color={colors.lav3} />
@@ -1238,9 +1283,23 @@ export default function RelatoriosScreen({ navigation }) {
                   </View>
                 </View>
 
-                {/* 2. Distribuição por trimestre */}
+                {/* Suas emoções nas áreas da vida — anual */}
                 <View style={s.card}>
-                  <Text style={s.cardNum}>2</Text>
+                  <Text style={s.sectionLabel}>2</Text>
+                  <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
+                    {anual.areaData.map(area => (
+                      <AreaDonutCard key={area.id} area={area} />
+                    ))}
+                  </ScrollView>
+                  <Text style={s.areasSummaryTxt}>
+                    Total de registros por área ao longo do ano.
+                  </Text>
+                </View>
+
+                {/* 3. Distribuição por trimestre */}
+                <View style={s.card}>
+                  <Text style={s.cardNum}>3</Text>
                   <Text style={s.cardTit}>Distribuição por trimestre</Text>
                   {['1º Trimestre','2º Trimestre','3º Trimestre','4º Trimestre'].map((label, i) => (
                     <View key={i} style={s.trimRow}>
@@ -1255,17 +1314,18 @@ export default function RelatoriosScreen({ navigation }) {
 
                 {vitoriasAno.length > 0 && (
                   <View style={s.card}>
-                    <Text style={s.cardNum}>⭐</Text>
-                    <Text style={s.cardTit}>Pequenas Vitórias</Text>
-                    <Text style={s.cardSub}>{vitoriasAno.length} conquista{vitoriasAno.length !== 1 ? 's' : ''} registrada{vitoriasAno.length !== 1 ? 's' : ''} este ano</Text>
-                    {vitoriasAno.slice(0, 5).map((v, i) => (
-                      <View key={i} style={s.vitRow}>
-                        <Ionicons name="star" size={11} color={colors.gold} />
-                        <Text style={s.vitTxt}>{v.label}</Text>
-                      </View>
-                    ))}
-                    {vitoriasAno.length > 5 && (
-                      <Text style={s.vitMore}>+{vitoriasAno.length - 5} mais conquistas este ano</Text>
+                    <Text style={s.sectionLabel}>⭐</Text>
+                    <Text style={s.cardTit}>As {Math.min(6, vitoriasAno.length)} maiores pequenas vitórias do ano</Text>
+                    <View style={s.vitCardsWrap}>
+                      {vitoriasAno.slice(0, 6).map((v, i) => (
+                        <View key={i} style={s.vitCardItem}>
+                          <Ionicons name="star" size={13} color={colors.gold} />
+                          <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    {vitoriasAno.length > 6 && (
+                      <Text style={s.vitMore}>+{vitoriasAno.length - 6} mais conquistas este ano</Text>
                     )}
                   </View>
                 )}
@@ -1417,9 +1477,25 @@ export default function RelatoriosScreen({ navigation }) {
                       </View>
                     </View>
 
+                    {/* Áreas da vida — período */}
+                    {rangeData.areaData && (
+                      <View style={s.card}>
+                        <Text style={s.sectionLabel}>2</Text>
+                        <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
+                          {rangeData.areaData.map(area => (
+                            <AreaDonutCard key={area.id} area={area} />
+                          ))}
+                        </ScrollView>
+                        <Text style={s.areasSummaryTxt}>
+                          Total de registros por área no período selecionado.
+                        </Text>
+                      </View>
+                    )}
+
                     {rangeData.dominante && (
                       <View style={s.card}>
-                        <Text style={s.cardNum}>2</Text>
+                        <Text style={s.cardNum}>3</Text>
                         <Text style={s.cardTit}>Emoção predominante</Text>
                         {(() => {
                           const emo = getEmoObj(rangeData.dominante);
@@ -1440,17 +1516,18 @@ export default function RelatoriosScreen({ navigation }) {
 
                     {vitoriasRange.length > 0 && (
                       <View style={s.card}>
-                        <Text style={s.cardNum}>⭐</Text>
-                        <Text style={s.cardTit}>Pequenas Vitórias</Text>
-                        <Text style={s.cardSub}>{vitoriasRange.length} conquista{vitoriasRange.length !== 1 ? 's' : ''} registrada{vitoriasRange.length !== 1 ? 's' : ''} no período</Text>
-                        {vitoriasRange.slice(0, 5).map((v, i) => (
-                          <View key={i} style={s.vitRow}>
-                            <Ionicons name="star" size={11} color={colors.gold} />
-                            <Text style={s.vitTxt}>{v.label}</Text>
-                          </View>
-                        ))}
-                        {vitoriasRange.length > 5 && (
-                          <Text style={s.vitMore}>+{vitoriasRange.length - 5} mais conquistas no período</Text>
+                        <Text style={s.sectionLabel}>⭐</Text>
+                        <Text style={s.cardTit}>As {Math.min(6, vitoriasRange.length)} maiores pequenas vitórias do período</Text>
+                        <View style={s.vitCardsWrap}>
+                          {vitoriasRange.slice(0, 6).map((v, i) => (
+                            <View key={i} style={s.vitCardItem}>
+                              <Ionicons name="star" size={13} color={colors.gold} />
+                              <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                        {vitoriasRange.length > 6 && (
+                          <Text style={s.vitMore}>+{vitoriasRange.length - 6} mais conquistas no período</Text>
                         )}
                       </View>
                     )}
@@ -1637,6 +1714,13 @@ const s = StyleSheet.create({
   stripeBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   stripeHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', lineHeight: 17 },
 
+  sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, marginBottom: 2 },
+  registrosTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 10, lineHeight: 18 },
+  registrosBold: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  areasSummaryTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 4, lineHeight: 16 },
+  vitCardsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  vitCardItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, width: '47%', backgroundColor: colors.bg, borderRadius: 10, padding: 8, borderWidth: 1, borderColor: colors.border },
+  vitCardTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11, color: colors.td, lineHeight: 15 },
   calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
   calNavBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
