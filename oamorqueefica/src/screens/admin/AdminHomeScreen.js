@@ -1,48 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 
-const hojeStr = () => new Date().toISOString().split('T')[0];
+const hojeStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+const normalizarPlano = (p) => {
+  if (typeof p === 'number') return p;
+  return ({ perceber: 0, acolher: 1, compreender: 2, evoluir: 3 })[String(p || '').toLowerCase()] ?? 0;
+};
 
 export default function AdminHomeScreen({ navigation }) {
-  const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: { 0: 0, 1: 0 } });
+  const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: {} });
+  const [conteudo, setConteudo] = useState({ conteudos: 0, audios: 0, parcerias: 0 });
   const [carregando, setCarregando] = useState(true);
+  const [erroCheckins, setErroCheckins] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const usuariasSnap = await getDocs(collection(db, 'usuarios'));
-        const porPlano = { 0: 0, 1: 0 };
-        usuariasSnap.forEach(d => {
-          const plano = d.data().plano ?? 0;
-          if (d.data().role !== 'admin') porPlano[plano] = (porPlano[plano] || 0) + 1;
-        });
+    const unsubs = [];
 
-        const checkinsSnap = await getDocs(collectionGroup(db, 'checkins'));
-        const hoje = hojeStr();
-        let checkinsHoje = 0;
-        checkinsSnap.forEach(d => { if (d.data().data === hoje) checkinsHoje++; });
+    // Cada assinatura é independente: antes, uma única consulta que falhava
+    // (a de check-ins) impedia o setStats e zerava TODOS os indicadores.
+    unsubs.push(onSnapshot(collection(db, 'usuarios'), snap => {
+      const reais = snap.docs.map(d => d.data()).filter(u => u.role !== 'admin');
+      const porPlano = {};
+      reais.forEach(u => {
+        const p = u.acessoTotal ? 3 : normalizarPlano(u.plano);
+        porPlano[p] = (porPlano[p] || 0) + 1;
+      });
+      setStats(s => ({ ...s, usuarias: reais.length, porPlano }));
+      setCarregando(false);
+    }, () => setCarregando(false)));
 
-        const totalUsuarias = usuariasSnap.docs.filter(d => d.data().role !== 'admin').length;
-        setStats({ usuarias: totalUsuarias, checkinsHoje, porPlano });
-      } catch {
-        // sem dados
-      } finally {
-        setCarregando(false);
-      }
-    })();
+    unsubs.push(onSnapshot(collectionGroup(db, 'checkins'), snap => {
+      const hoje = hojeStr();
+      let n = 0;
+      snap.forEach(d => { if (d.data().data === hoje) n++; });
+      setStats(s => ({ ...s, checkinsHoje: n }));
+      setErroCheckins(false);
+    }, () => setErroCheckins(true)));
+
+    const cols = [['conteudos', 'conteudos'], ['audios', 'audiosAcolhimento'], ['parcerias', 'parcerias']];
+    for (const [chave, col] of cols) {
+      unsubs.push(onSnapshot(collection(db, col),
+        snap => setConteudo(c => ({ ...c, [chave]: snap.size })),
+        () => {}
+      ));
+    }
+
+    return () => unsubs.forEach(u => u());
   }, []);
 
   const tiles = [
     { icon: 'people', color: colors.lav4, value: stats.usuarias, label: 'usuárias cadastradas' },
-    { icon: 'heart', color: colors.peach2, value: stats.checkinsHoje, label: 'check-ins hoje' },
+    { icon: 'heart', color: colors.peach2, value: erroCheckins ? '—' : stats.checkinsHoje, label: 'check-ins hoje' },
     { icon: 'leaf', color: colors.sage, value: stats.porPlano[0] || 0, label: 'Perceber (grátis)' },
     { icon: 'diamond', color: colors.gold, value: stats.porPlano[1] || 0, label: 'Acolher (pago)' },
+    { icon: 'headset', color: colors.lav5, value: conteudo.conteudos, label: 'conteúdos publicados' },
+    { icon: 'musical-notes', color: colors.lav3, value: conteudo.audios, label: 'áudios de check-in' },
+    { icon: 'gift', color: colors.peach2, value: conteudo.parcerias, label: 'parcerias ativas' },
   ];
 
   const atalhos = [
@@ -62,6 +82,16 @@ export default function AdminHomeScreen({ navigation }) {
           <Text style={s.pageTitle}>Dashboard</Text>
           <Text style={s.pageSub}>Bem-vinda ao painel Atravessia</Text>
         </View>
+
+        {erroCheckins && (
+          <View style={s.avisoBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.gold} />
+            <Text style={s.avisoTxt}>
+              Não foi possível ler os check-ins. Publique as regras do Firestore
+              (firebase deploy --only firestore:rules) para liberar esse indicador.
+            </Text>
+          </View>
+        )}
 
         {/* Tiles de estatística */}
         <View style={s.tilesGrid}>
@@ -104,6 +134,13 @@ const s = StyleSheet.create({
   pageHeader: { marginBottom: spacing.lg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginTop: 2 },
+  avisoBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: colors.gold + '18', borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.gold + '55',
+    padding: 10, marginBottom: spacing.md,
+  },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11, color: colors.td, lineHeight: 16 },
   tilesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.lg },
   tile: { flexBasis: '47%', flexGrow: 1, alignItems: 'center', gap: 6, paddingVertical: spacing.md, ...shadow.card },
   tileIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

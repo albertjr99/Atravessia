@@ -17,21 +17,43 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const SIDEBAR_W = 230;
 const isWide = Platform.OS === 'web' || SCREEN_W >= 700;
 
-const NAV_ITEMS = [
-  { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
-  { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
-  { icon: 'musical-notes', iconOff: 'musical-notes-outline', label: 'Áudios Check-in', screen: 'AdminAudios' },
-  { icon: 'quote', iconOff: 'quote-outline', label: 'Frases', screen: 'AdminFrases' },
-  { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
-  { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
-  { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
-  { icon: 'compass', iconOff: 'compass-outline', label: 'Travessia', screen: 'AdminTravessia' },
-  { icon: 'map', iconOff: 'map-outline', label: 'Jornadas', screen: 'AdminJornadas' },
-  { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
-  { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços', screen: 'AdminPrecos' },
-  { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
-  { icon: 'chatbubble-ellipses', iconOff: 'chatbubble-ellipses-outline', label: 'Mensagens', screen: 'AdminMensagens' },
-  { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
+// Agrupado por finalidade: 14 itens soltos poluíam a barra e não deixavam
+// claro onde encontrar cada tarefa.
+const NAV_GRUPOS = [
+  {
+    titulo: null,
+    itens: [
+      { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
+    ],
+  },
+  {
+    titulo: 'Conteúdo do app',
+    itens: [
+      { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
+      { icon: 'musical-notes', iconOff: 'musical-notes-outline', label: 'Áudios Check-in', screen: 'AdminAudios' },
+      { icon: 'chatbox', iconOff: 'chatbox-outline', label: 'Frases', screen: 'AdminFrases' },
+      { icon: 'compass', iconOff: 'compass-outline', label: 'Travessia', screen: 'AdminTravessia' },
+      { icon: 'map', iconOff: 'map-outline', label: 'Jornadas', screen: 'AdminJornadas' },
+      { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
+      { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
+    ],
+  },
+  {
+    titulo: 'Pessoas',
+    itens: [
+      { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
+      { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
+      { icon: 'chatbubble-ellipses', iconOff: 'chatbubble-ellipses-outline', label: 'Mensagens', screen: 'AdminMensagens' },
+      { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
+    ],
+  },
+  {
+    titulo: 'Configuração',
+    itens: [
+      { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços e planos', screen: 'AdminPrecos' },
+      { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
+    ],
+  },
 ];
 
 function SidebarContent({ navigate, currentScreen, perfil, sair }) {
@@ -66,25 +88,30 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
 
       {/* Nav items */}
       <ScrollView style={sty.navScroll} showsVerticalScrollIndicator={false}>
-        {NAV_ITEMS.map(item => {
-          const active = item.screen === currentScreen;
-          return (
-            <TouchableOpacity
-              key={item.screen}
-              style={[sty.navItem, active && sty.navItemActive]}
-              onPress={() => navigate(item.screen)}
-              activeOpacity={0.75}
-            >
-              <View style={[sty.navBar, active && sty.navBarActive]} />
-              <Ionicons
-                name={active ? item.icon : item.iconOff}
-                size={17}
-                color={active ? colors.lav5 : colors.tm}
-              />
-              <Text style={[sty.navLabel, active && sty.navLabelActive]}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        {NAV_GRUPOS.map((grupo, gi) => (
+          <View key={grupo.titulo || `g${gi}`} style={gi > 0 && sty.navGrupo}>
+            {grupo.titulo && <Text style={sty.navGrupoTitulo}>{grupo.titulo}</Text>}
+            {grupo.itens.map(item => {
+              const active = item.screen === currentScreen;
+              return (
+                <TouchableOpacity
+                  key={item.screen}
+                  style={[sty.navItem, active && sty.navItemActive]}
+                  onPress={() => navigate(item.screen)}
+                  activeOpacity={0.75}
+                >
+                  <View style={[sty.navBar, active && sty.navBarActive]} />
+                  <Ionicons
+                    name={active ? item.icon : item.iconOff}
+                    size={17}
+                    color={active ? colors.lav5 : colors.tm}
+                  />
+                  <Text style={[sty.navLabel, active && sty.navLabelActive]}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
       </ScrollView>
 
       {/* Logout */}
@@ -219,6 +246,12 @@ const sty = StyleSheet.create({
 
   // Navigation
   navScroll: { flex: 1, paddingHorizontal: 8 },
+  navGrupo: { marginTop: spacing.md },
+  navGrupoTitulo: {
+    fontFamily: fonts.bodyBold, fontSize: 9.5, color: colors.tl,
+    letterSpacing: 1, textTransform: 'uppercase',
+    paddingHorizontal: 12, marginBottom: 6,
+  },
   navItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 11, paddingHorizontal: 12,
