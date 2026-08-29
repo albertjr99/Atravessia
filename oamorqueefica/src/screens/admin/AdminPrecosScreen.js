@@ -8,6 +8,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
+import AdminPlanosCards from './AdminPlanosCards';
 
 const PLANOS_INFO = [
   { id: 1, nome: 'Plano Acolher', cor: colors.rose, campo: 'plano1' },
@@ -149,6 +150,9 @@ export default function AdminPrecosScreen() {
         <Text style={s.sub}>
           Edite os valores dos planos e do relatório por período. Os preços são armazenados em centavos e usados pelas funções do Stripe.
         </Text>
+
+        {/* Cards dos planos exibidos no app */}
+        <AdminPlanosCards />
 
         {/* Planos */}
         <View style={s.card}>

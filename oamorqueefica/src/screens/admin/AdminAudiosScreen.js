@@ -16,6 +16,7 @@ import { Card, Button } from '../../components';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 const EMOCOES = [
   { id: 'triste',      label: 'Triste' },
@@ -191,6 +192,7 @@ export default function AdminAudiosScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminAudios">
+      <AdminSubTabs grupo="conteudos" atual="AdminAudios" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <Text style={s.pageTitle}>Áudios de Acolhimento</Text>
         <Text style={s.pageSub}>Áudios exibidos no check-in por emoção.</Text>

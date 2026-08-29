@@ -9,6 +9,7 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo' },
@@ -62,6 +63,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminNotificacoes">
+      <AdminSubTabs grupo="comunicacao" atual="AdminNotificacoes" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
         <Text style={styles.pageTitle}>Notificações</Text>
         <Text style={styles.pageSub}>Publique avisos e mensagens para as usuárias do app.</Text>

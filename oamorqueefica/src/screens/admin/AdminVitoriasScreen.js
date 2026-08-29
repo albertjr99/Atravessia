@@ -11,6 +11,7 @@ import {
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 const VITORIAS_PADRAO = [
   'Saí de casa',
@@ -121,6 +122,7 @@ export default function AdminVitoriasScreen() {
 
   return (
     <AdminLayout currentScreen="AdminVitorias">
+      <AdminSubTabs grupo="jornada" atual="AdminVitorias" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <Text style={s.title}>Pequenas Vitórias</Text>
         <Text style={s.sub}>Gerencie as opções disponíveis para as usuárias registrarem suas conquistas.</Text>

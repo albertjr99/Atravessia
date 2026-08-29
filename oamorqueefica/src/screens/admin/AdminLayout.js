@@ -29,12 +29,16 @@ const NAV_GRUPOS = [
   {
     titulo: 'Conteúdo do app',
     itens: [
-      { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
-      { icon: 'musical-notes', iconOff: 'musical-notes-outline', label: 'Áudios Check-in', screen: 'AdminAudios' },
-      { icon: 'chatbox', iconOff: 'chatbox-outline', label: 'Frases', screen: 'AdminFrases' },
-      { icon: 'compass', iconOff: 'compass-outline', label: 'Travessia', screen: 'AdminTravessia' },
-      { icon: 'map', iconOff: 'map-outline', label: 'Jornadas', screen: 'AdminJornadas' },
-      { icon: 'star', iconOff: 'star-outline', label: 'Vitórias', screen: 'AdminVitorias' },
+      {
+        icon: 'headset', iconOff: 'headset-outline',
+        label: 'Conteúdos', sub: 'Áudios de check-in · Frases',
+        screen: 'AdminConteudos', irmas: ['AdminAudios', 'AdminFrases'],
+      },
+      {
+        icon: 'compass', iconOff: 'compass-outline',
+        label: 'Jornada', sub: 'Travessia · Jornadas · Vitórias',
+        screen: 'AdminTravessia', irmas: ['AdminJornadas', 'AdminVitorias'],
+      },
       { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
     ],
   },
@@ -42,8 +46,11 @@ const NAV_GRUPOS = [
     titulo: 'Pessoas',
     itens: [
       { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
-      { icon: 'megaphone', iconOff: 'megaphone-outline', label: 'Notificações', screen: 'AdminNotificacoes' },
-      { icon: 'chatbubble-ellipses', iconOff: 'chatbubble-ellipses-outline', label: 'Mensagens', screen: 'AdminMensagens' },
+      {
+        icon: 'megaphone', iconOff: 'megaphone-outline',
+        label: 'Comunicação', sub: 'Notificações · Mensagens',
+        screen: 'AdminNotificacoes', irmas: ['AdminMensagens'],
+      },
       { icon: 'bar-chart', iconOff: 'bar-chart-outline', label: 'Relatórios', screen: 'AdminRelatorios' },
     ],
   },
@@ -92,7 +99,10 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
           <View key={grupo.titulo || `g${gi}`} style={gi > 0 && sty.navGrupo}>
             {grupo.titulo && <Text style={sty.navGrupoTitulo}>{grupo.titulo}</Text>}
             {grupo.itens.map(item => {
-              const active = item.screen === currentScreen;
+              // O item continua destacado quando a tela aberta é uma das
+              // sub-abas agrupadas sob ele.
+              const active = item.screen === currentScreen
+                || (item.irmas || []).includes(currentScreen);
               return (
                 <TouchableOpacity
                   key={item.screen}
@@ -106,7 +116,10 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
                     size={17}
                     color={active ? colors.lav5 : colors.tm}
                   />
-                  <Text style={[sty.navLabel, active && sty.navLabelActive]}>{item.label}</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[sty.navLabel, active && sty.navLabelActive]}>{item.label}</Text>
+                    {item.sub && <Text style={sty.navSub} numberOfLines={1}>{item.sub}</Text>}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -265,6 +278,7 @@ const sty = StyleSheet.create({
   },
   navBarActive: { backgroundColor: colors.lav4 },
   navLabel: { fontFamily: fonts.body, fontSize: 14, color: colors.tm },
+  navSub: { fontFamily: fonts.body, fontSize: 9.5, color: colors.tl, marginTop: 1 },
   navLabelActive: { fontFamily: fonts.bodyBold, color: colors.lav5 },
 
   // Logout

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Platform, Image, Dimensions, Alert, Linking,
+  StyleSheet, StatusBar, Image, Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
+import { abrirLink } from '../../utils/abrirLink';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -29,13 +30,10 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleAbrirParceria = (p) => {
-    if (!p.link) return;
+    // Usa o mesmo utilitário da tela de Parcerias: normaliza a URL (acrescenta
+    // https:// quando falta) e abre de forma confiável em web e nativo.
     registrarCliqueParceria(p.id);
-    if (Platform.OS === 'web') {
-      window.open(p.link, '_blank');
-    } else {
-      Linking.openURL(p.link).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
-    }
+    abrirLink(p.link || p.url);
   };
   const saudacao = () => {
     const h = new Date().getHours();
