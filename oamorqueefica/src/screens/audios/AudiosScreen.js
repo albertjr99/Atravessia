@@ -1,13 +1,14 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Linking,
+  StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { abrirLink } from '../../utils/abrirLink';
 
 const TIPO_ICONE = {
   audio: 'headset-outline',
@@ -38,11 +39,22 @@ export default function AudiosScreen({ navigation }) {
       return;
     }
     if (item.tipo === 'documento' || item.tipo === 'link') {
-      Linking.openURL(item.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
+      abrirLink(item.url || item.link);
       return;
     }
+    // O id precisa ser o id real do conteúdo: é ele que o player usa para
+    // favoritar/desfavoritar. Prefixar com "admin-" quebrava esse vínculo.
     navigation.navigate('AudioPlayer', {
-      audio: { id: `admin-${item.id}`, titulo: item.titulo, categoria: item.grupo, plano: item.plano, tipo: item.tipo, url: item.url },
+      audio: {
+        id: item.conteudoId || item.id,
+        titulo: item.titulo,
+        descricao: item.descricao,
+        duracao: item.duracao,
+        categoria: item.grupo || item.categoria,
+        plano: item.plano,
+        tipo: item.tipo,
+        url: item.url,
+      },
     });
   };
 

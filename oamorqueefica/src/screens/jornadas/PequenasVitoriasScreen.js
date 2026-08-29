@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, QuoteText, Card, LavandaBg } from '../../components';
@@ -20,10 +20,13 @@ export default function PequenasVitoriasScreen({ navigation }) {
   const [opcoesFirestore, setOpcoesFirestore] = useState([]);
 
   useEffect(() => {
-    const ref = query(collection(db, 'vitoriasOpcoes'), orderBy('criadoEm', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
+    // Sem orderBy: o Firestore descarta documentos que não tenham o campo
+    // ordenado, fazendo opções válidas sumirem da tela.
+    const unsub = onSnapshot(collection(db, 'vitoriasOpcoes'), (snap) => {
       setOpcoesFirestore(
-        snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(v => v.ativo !== false)
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(v => v.ativo !== false)
+          .sort((a, b) => (a.criadoEm?.toMillis?.() ?? 0) - (b.criadoEm?.toMillis?.() ?? 0))
       );
     }, () => {});
     return unsub;
