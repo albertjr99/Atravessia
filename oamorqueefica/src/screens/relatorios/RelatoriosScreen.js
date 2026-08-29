@@ -231,6 +231,91 @@ const areaStyles = StyleSheet.create({
   total: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, alignSelf: 'flex-end' },
 });
 
+// ── Pequenas Vitórias: ícone + cor por tema da conquista ─────────────────────
+const VIT_ICONES = [
+  { re: /hidrat|água|agua|bebi/i,                     icon: 'water-outline',          cor: '#5B9BD5' },
+  { re: /medit|respir|calma|pausa/i,                  icon: 'flower-outline',         cor: '#8B7AC0' },
+  { re: /caminh|andei|exerc|corri|treino|academia/i,  icon: 'walk-outline',           cor: '#7A9E7E' },
+  { re: /dorm|sono|descans|repous/i,                  icon: 'moon-outline',           cor: '#6C7BA8' },
+  { re: /li |livro|leitur|estud/i,                    icon: 'book-outline',           cor: '#C08A5E' },
+  { re: /gratid|grato|grata|agradec/i,                icon: 'heart-outline',          cor: '#D4A89A' },
+  { re: /amig|encontr|social|convers|visit/i,         icon: 'people-outline',         cor: '#D9A441' },
+  { re: /aliment|comi|refei|cozinh/i,                 icon: 'restaurant-outline',     cor: '#B5893F' },
+  { re: /música|musica|cant|dan[çc]/i,                icon: 'musical-notes-outline',  cor: '#A85FA8' },
+  { re: /sa[íi] de casa|passe|rua|ar livre|natur/i,   icon: 'sunny-outline',          cor: '#E0A33E' },
+  { re: /apoio|rede|terapia|psic[óo]l/i,              icon: 'chatbubbles-outline',    cor: '#5FA8A0' },
+  { re: /jornada|conclu|termin|finaliz/i,             icon: 'compass-outline',        cor: '#7B6BAF' },
+  { re: /banho|cuid|autocuid|arrum/i,                 icon: 'sparkles-outline',       cor: '#C77FA6' },
+  { re: /chor|senti|emo[çc]/i,                        icon: 'rainy-outline',          cor: '#8FA8C4' },
+];
+
+const VIT_FALLBACK_CORES = [
+  colors.lav4, colors.rose, colors.sage, colors.gold, '#5B9BD5', '#C08A5E',
+];
+
+function estiloVitoria(label, idx) {
+  const achou = VIT_ICONES.find(v => v.re.test(label || ''));
+  if (achou) return achou;
+  return { icon: 'star-outline', cor: VIT_FALLBACK_CORES[idx % VIT_FALLBACK_CORES.length] };
+}
+
+// Agrupa as vitórias por rótulo e conta em quantos DIAS distintos cada uma ocorreu,
+// devolvendo as `max` mais frequentes (é isso que o relatório destaca).
+function agruparVitorias(lista, max = 6) {
+  const mapa = new Map();
+  (lista || []).forEach(v => {
+    const label = (v.label || '').trim();
+    if (!label) return;
+    if (!mapa.has(label)) mapa.set(label, new Set());
+    mapa.get(label).add(v.data || v.id);
+  });
+  return [...mapa.entries()]
+    .map(([label, dias]) => ({ label, dias: dias.size }))
+    .sort((a, b) => b.dias - a.dias || a.label.localeCompare(b.label))
+    .slice(0, max)
+    .map((v, i) => ({ ...v, ...estiloVitoria(v.label, i) }));
+}
+
+function VitoriasDestaque({ itens }) {
+  return (
+    <View style={vitStyles.wrap}>
+      {itens.map((v, i) => (
+        <View key={`${v.label}-${i}`} style={vitStyles.item}>
+          <View style={[vitStyles.iconBox, { backgroundColor: v.cor + '1F' }]}>
+            <Ionicons name={v.icon} size={17} color={v.cor} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={vitStyles.label} numberOfLines={2}>{v.label}</Text>
+            <Text style={[vitStyles.dias, { color: v.cor }]}>
+              {v.dias} {v.dias === 1 ? 'dia' : 'dias'}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const vitStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    marginTop: 10, rowGap: 10, columnGap: 8,
+  },
+  item: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    width: '48%',
+    backgroundColor: colors.white, borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: 9, paddingHorizontal: 9,
+  },
+  iconBox: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  label: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, lineHeight: 14 },
+  dias: { fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+});
+
 // ── Cores para emoções no gráfico ─────────────────────────────────────────────
 const EMO_CHART_COLORS = [
   colors.lav4, colors.rose, colors.sage, colors.gold,
@@ -1151,17 +1236,14 @@ export default function RelatoriosScreen({ navigation }) {
                 {vitoriasMes.length > 0 && (
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>3</Text>
-                    <Text style={s.cardTit}>As {Math.min(6, vitoriasMes.length)} maiores pequenas vitórias deste mês</Text>
-                    <View style={s.vitCardsWrap}>
-                      {vitoriasMes.slice(0, 6).map((v, i) => (
-                        <View key={i} style={s.vitCardItem}>
-                          <Ionicons name="star" size={13} color={colors.gold} />
-                          <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    {vitoriasMes.length > 6 && (
-                      <Text style={s.vitMore}>+{vitoriasMes.length - 6} mais conquistas este mês</Text>
+                    <Text style={s.cardTit}>
+                      As {agruparVitorias(vitoriasMes).length} maiores pequenas vitórias que tive neste mês
+                    </Text>
+                    <VitoriasDestaque itens={agruparVitorias(vitoriasMes)} />
+                    {vitoriasMes.length > 0 && (
+                      <Text style={s.vitMore}>
+                        {vitoriasMes.length} conquista{vitoriasMes.length === 1 ? '' : 's'} registrada{vitoriasMes.length === 1 ? '' : 's'} este mês
+                      </Text>
                     )}
                   </View>
                 )}
@@ -1315,17 +1397,14 @@ export default function RelatoriosScreen({ navigation }) {
                 {vitoriasAno.length > 0 && (
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>⭐</Text>
-                    <Text style={s.cardTit}>As {Math.min(6, vitoriasAno.length)} maiores pequenas vitórias do ano</Text>
-                    <View style={s.vitCardsWrap}>
-                      {vitoriasAno.slice(0, 6).map((v, i) => (
-                        <View key={i} style={s.vitCardItem}>
-                          <Ionicons name="star" size={13} color={colors.gold} />
-                          <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    {vitoriasAno.length > 6 && (
-                      <Text style={s.vitMore}>+{vitoriasAno.length - 6} mais conquistas este ano</Text>
+                    <Text style={s.cardTit}>
+                      As {agruparVitorias(vitoriasAno).length} maiores pequenas vitórias que tive neste ano
+                    </Text>
+                    <VitoriasDestaque itens={agruparVitorias(vitoriasAno)} />
+                    {vitoriasAno.length > 0 && (
+                      <Text style={s.vitMore}>
+                        {vitoriasAno.length} conquista{vitoriasAno.length === 1 ? '' : 's'} registrada{vitoriasAno.length === 1 ? '' : 's'} este ano
+                      </Text>
                     )}
                   </View>
                 )}
@@ -1517,17 +1596,14 @@ export default function RelatoriosScreen({ navigation }) {
                     {vitoriasRange.length > 0 && (
                       <View style={s.card}>
                         <Text style={s.sectionLabel}>⭐</Text>
-                        <Text style={s.cardTit}>As {Math.min(6, vitoriasRange.length)} maiores pequenas vitórias do período</Text>
-                        <View style={s.vitCardsWrap}>
-                          {vitoriasRange.slice(0, 6).map((v, i) => (
-                            <View key={i} style={s.vitCardItem}>
-                              <Ionicons name="star" size={13} color={colors.gold} />
-                              <Text style={s.vitCardTxt} numberOfLines={2}>{v.label}</Text>
-                            </View>
-                          ))}
-                        </View>
-                        {vitoriasRange.length > 6 && (
-                          <Text style={s.vitMore}>+{vitoriasRange.length - 6} mais conquistas no período</Text>
+                        <Text style={s.cardTit}>
+                          As {agruparVitorias(vitoriasRange).length} maiores pequenas vitórias do período
+                        </Text>
+                        <VitoriasDestaque itens={agruparVitorias(vitoriasRange)} />
+                        {vitoriasRange.length > 0 && (
+                          <Text style={s.vitMore}>
+                            {vitoriasRange.length} conquista{vitoriasRange.length === 1 ? '' : 's'} registrada{vitoriasRange.length === 1 ? '' : 's'} no período
+                          </Text>
                         )}
                       </View>
                     )}

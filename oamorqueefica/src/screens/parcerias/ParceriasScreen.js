@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Linking, Alert, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { abrirLink } from '../../utils/abrirLink';
 
 const FILTROS = [
   { id: 'todos',           label: 'Todos',                       match: null },
@@ -22,15 +23,10 @@ export default function ParceriasScreen({ navigation }) {
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
 
   const handleAbrirParceria = (p) => {
-    const raw = (p.link || '').trim();
-    if (!raw) return;
-    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    // Aceita tanto `link` (painel web) quanto `url` (cadastros antigos do app).
+    const destino = p.link || p.url;
     registrarCliqueParceria(p.id);
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      Linking.openURL(url).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
-    }
+    abrirLink(destino);
   };
 
   const parceriasExibidas = filtroAtivo === 'todos'

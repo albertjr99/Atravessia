@@ -1,13 +1,14 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Image, Linking,
+  StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { abrirLink } from '../../utils/abrirLink';
 
 const ilustracao = require('../../../assets/images/jornadas_caminho.png');
 
@@ -44,10 +45,7 @@ export default function JornadasScreen({ navigation }) {
               <TouchableOpacity
                 key={item.id}
                 style={styles.travessiaCard}
-                onPress={() => {
-                  if (!item.url) return;
-                  Linking.openURL(item.url).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
-                }}
+                onPress={() => abrirLink(item.url || item.link)}
                 activeOpacity={0.85}
               >
                 <View style={styles.travessiaIcon}>

@@ -187,11 +187,20 @@ export function AppProvider({ children }) {
   const [favoritosIds, setFavoritosIds] = useState([]);
   useSubcolecao(uid, 'favoritos', setFavoritosIds);
 
+  // Um favorito pode apontar tanto para um item da biblioteca (`conteudos`) quanto
+  // para um áudio de acolhimento do check-in (`audiosAcolhimento`). Antes o join
+  // era feito só em `conteudos`, então áudios favoritados sumiam da aba Conteúdos.
   const favoritos = useMemo(() =>
     favoritosIds
-      .map(f => { const c = conteudos.find(c => c.id === f.conteudoId); return c ? { ...f, ...c } : null; })
+      .map(f => {
+        const c = conteudos.find(c => c.id === f.conteudoId);
+        if (c) return { ...f, ...c };
+        const a = audiosAcolhimento.find(a => a.id === f.conteudoId);
+        if (a) return { ...f, ...a, tipo: a.tipo || 'audio', categoria: a.categoria || 'acolhimento' };
+        return null;
+      })
       .filter(Boolean)
-  , [favoritosIds, conteudos]);
+  , [favoritosIds, conteudos, audiosAcolhimento]);
 
   const adicionarFavorito = (conteudo) => {
     if (favoritosIds.some(f => f.conteudoId === conteudo.id)) return;

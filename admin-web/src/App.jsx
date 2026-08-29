@@ -13,14 +13,36 @@ import Vitorias from './Vitorias';
 import Notificacoes from './Notificacoes';
 import Preview from './Preview';
 
-const NAV = [
-  { id: 'dashboard',    icon: '🏠', label: 'Dashboard' },
-  { id: 'travessia',    icon: '🧭', label: 'Travessia' },
-  { id: 'biblioteca',   icon: '📖', label: 'Biblioteca' },
-  { id: 'planos',       icon: '💜', label: 'Planos' },
-  { id: 'usuarias',     icon: '👥', label: 'Usuárias' },
-  { id: 'vitorias',     icon: '⭐', label: 'Vitórias' },
-  { id: 'notificacoes', icon: '🔔', label: 'Notificações' },
+// Sidebar agrupada por finalidade — reduz a poluição visual e deixa claro
+// onde a Carla encontra cada tipo de tarefa.
+const NAV_GRUPOS = [
+  {
+    titulo: 'Visão geral',
+    itens: [
+      { id: 'dashboard', icon: '🏠', label: 'Dashboard' },
+    ],
+  },
+  {
+    titulo: 'Conteúdo do app',
+    itens: [
+      { id: 'biblioteca', icon: '📖', label: 'Biblioteca',  sub: 'Frases · Conteúdos · Áudios · Parcerias' },
+      { id: 'travessia',  icon: '🧭', label: 'Travessia',   sub: 'Links e materiais externos' },
+      { id: 'vitorias',   icon: '⭐', label: 'Vitórias',    sub: 'Opções de pequenas vitórias' },
+    ],
+  },
+  {
+    titulo: 'Pessoas',
+    itens: [
+      { id: 'usuarias',     icon: '👥', label: 'Usuárias',     sub: 'Planos e acessos' },
+      { id: 'notificacoes', icon: '🔔', label: 'Notificações', sub: 'Avisos para as usuárias' },
+    ],
+  },
+  {
+    titulo: 'Configuração',
+    itens: [
+      { id: 'planos', icon: '💜', label: 'Planos', sub: 'Preços, recursos e mensagens' },
+    ],
+  },
 ];
 
 const SCREENS = {
@@ -118,15 +140,37 @@ export default function App() {
           </div>
 
           <nav className="sidebar-nav">
-            {NAV.map(item => (
-              <button
-                key={item.id}
-                className={`nav-item ${screen === item.id ? 'active' : ''}`}
-                onClick={() => navigate(item.id)}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
-              </button>
+            {NAV_GRUPOS.map(grupo => (
+              <div key={grupo.titulo} style={{ marginBottom: 14 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: 0.8,
+                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)',
+                  padding: '0 14px 6px',
+                }}>
+                  {grupo.titulo}
+                </div>
+                {grupo.itens.map(item => (
+                  <button
+                    key={item.id}
+                    className={`nav-item ${screen === item.id ? 'active' : ''}`}
+                    onClick={() => navigate(item.id)}
+                    style={{ alignItems: 'flex-start' }}
+                  >
+                    <span className="nav-icon">{item.icon}</span>
+                    <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, minWidth: 0 }}>
+                      <span className="nav-label">{item.label}</span>
+                      {item.sub && (
+                        <span style={{
+                          fontSize: 10, opacity: 0.55, fontWeight: 400,
+                          lineHeight: 1.3, textAlign: 'left',
+                        }}>
+                          {item.sub}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
 
