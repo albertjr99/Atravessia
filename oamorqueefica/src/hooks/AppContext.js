@@ -152,6 +152,7 @@ export function AppProvider({ children }) {
   // Notificações editoriais publicadas pela administração (Firestore: notificacoesEditoriais)
   const [notificacoesEditoriais, setNotificacoesEditoriais] = useState([]);
   useEffect(() => {
+    if (!uid) { setNotificacoesEditoriais([]); return; }
     const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('criadoEm', 'desc'));
     const unsub = onSnapshot(ref, (snap) => {
       setNotificacoesEditoriais(
@@ -160,7 +161,7 @@ export function AppProvider({ children }) {
       );
     }, () => {});
     return unsub;
-  }, []);
+  }, [uid]);
 
   // Biblioteca de conteúdos (áudios, documentos, links) publicada pela administração
   const [conteudos, setConteudos] = useState([]);
@@ -260,9 +261,12 @@ export function AppProvider({ children }) {
   // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
   const [parcerias, setParcerias] = useState([]);
   useEffect(() => {
-    const ref = query(collection(db, 'parcerias'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setParcerias(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.ativo !== false));
+    const unsub = onSnapshot(collection(db, 'parcerias'), (snap) => {
+      const docs = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => p.ativo !== false);
+      docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
+      setParcerias(docs);
     }, () => {});
     return unsub;
   }, []);

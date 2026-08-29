@@ -22,11 +22,12 @@ export default function ParceriasScreen({ navigation }) {
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
 
   const handleAbrirParceria = (p) => {
-    if (!p.link) return;
-    const url = p.link.startsWith('http') ? p.link : `https://${p.link}`;
+    const raw = (p.link || '').trim();
+    if (!raw) return;
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     registrarCliqueParceria(p.id);
     if (Platform.OS === 'web') {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     } else {
       Linking.openURL(url).catch(() => Alert.alert('', 'Não foi possível abrir o link.'));
     }

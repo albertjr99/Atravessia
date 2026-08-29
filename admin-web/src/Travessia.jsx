@@ -50,7 +50,12 @@ export default function Travessia({ showToast }) {
       }
       showToast(editId ? 'Item atualizado!' : 'Item adicionado!');
       closeModal();
-    } catch { showToast('Erro ao salvar.', 'error'); }
+    } catch (e) {
+      const msg = e?.code === 'permission-denied'
+        ? 'Sem permissão. As regras do Firestore precisam ser implantadas (firebase deploy --only firestore:rules).'
+        : 'Erro ao salvar: ' + (e?.message || '');
+      showToast(msg, 'error');
+    }
     setSaving(false);
   };
 
