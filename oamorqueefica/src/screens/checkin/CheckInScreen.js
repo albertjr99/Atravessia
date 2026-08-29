@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Platform, Image, Linking,
+  StyleSheet, StatusBar, Alert, Platform, Image,
   Animated, Dimensions,
 } from 'react-native';
 
@@ -14,6 +14,7 @@ import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes, audios as audiosEstaticos } from '../../data';
 import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { abrirLink } from '../../utils/abrirLink';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
@@ -142,10 +143,10 @@ export default function CheckInScreen({ navigation }) {
 
   const handleAbrirConteudo = (c) => {
     if (c.tipo === 'documento' || c.tipo === 'link') {
-      Linking.openURL(c.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
+      abrirLink(c.url || c.link);
       return;
     }
-    navigation.navigate('AudioPlayer', { audio: { id: `admin-${c.id}`, titulo: c.titulo, categoria: c.grupo, plano: c.plano, tipo: c.tipo, url: c.url } });
+    navigation.navigate('AudioPlayer', { audio: { id: c.id, titulo: c.titulo, descricao: c.descricao, duracao: c.duracao, categoria: c.grupo, plano: c.plano, tipo: c.tipo, url: c.url } });
   };
 
   if (jaFezCheckinHoje && !salvo) {
@@ -290,7 +291,7 @@ export default function CheckInScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>

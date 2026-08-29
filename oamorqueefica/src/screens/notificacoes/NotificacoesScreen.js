@@ -32,6 +32,7 @@ const DESTINO = {
 
 export default function NotificacoesScreen({ navigation }) {
   const { notificacoes, marcarLida } = useApp();
+  const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const handlePress = (n) => {
     marcarLida(n.id);
@@ -41,13 +42,20 @@ export default function NotificacoesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Notificações</Text>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={styles.topTitle}>Notificações</Text>
+          {naoLidas > 0 && (
+            <Text style={styles.topSub}>
+              {naoLidas === 1 ? '1 não lida' : `${naoLidas} não lidas`}
+            </Text>
+          )}
+        </View>
         <View style={{ width: 32 }} />
       </View>
 
@@ -65,16 +73,26 @@ export default function NotificacoesScreen({ navigation }) {
               onPress={() => handlePress(n)}
               activeOpacity={0.85}
             >
-              <View style={styles.itemIcon}>
-                <Ionicons name={ICONES[n.tipo] || 'notifications-outline'} size={16} color={colors.lav5} />
+              {!n.lida && <View style={styles.acento} />}
+              <View style={[styles.itemIcon, !n.lida && styles.itemIconNaoLido]}>
+                <Ionicons
+                  name={ICONES[n.tipo] || 'notifications-outline'}
+                  size={17}
+                  color={n.lida ? colors.lav4 : '#fff'}
+                />
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.itemTexto}>{n.texto}</Text>
+              <View style={{ flex: 1, gap: 3 }}>
+                {!n.lida && (
+                  <View style={styles.novaTag}>
+                    <Text style={styles.novaTagTxt}>NOVA</Text>
+                  </View>
+                )}
+                <Text style={[styles.itemTexto, !n.lida && styles.itemTextoNaoLido]}>{n.texto}</Text>
                 {DESTINO[n.tipo] && (
                   <Text style={styles.itemAcao}>Toque para acessar</Text>
                 )}
               </View>
-              {!n.lida && <View style={styles.dot} />}
+              <Ionicons name="chevron-forward" size={15} color={colors.tl} />
             </TouchableOpacity>
           ))
         )}
@@ -95,11 +113,31 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, padding: spacing.md,
     ...shadow.soft,
   },
-  itemNaoLido: { backgroundColor: colors.lav1, borderColor: colors.lav2 },
-  itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'white', alignItems: 'center', justifyContent: 'center' },
-  itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 18 },
+  itemNaoLido: {
+    backgroundColor: colors.lav1, borderColor: colors.lav3,
+    paddingLeft: spacing.md + 4,
+    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1, shadowRadius: 9, elevation: 3,
+  },
+  acento: {
+    position: 'absolute', left: 0, top: 10, bottom: 10,
+    width: 3.5, borderRadius: 2, backgroundColor: colors.lav4,
+  },
+  itemIcon: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: 'white',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  itemIconNaoLido: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
+  novaTag: {
+    alignSelf: 'flex-start', backgroundColor: '#C4566B',
+    borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2,
+  },
+  novaTagTxt: { fontFamily: fonts.bodyBold, fontSize: 8.5, color: '#fff', letterSpacing: 0.8 },
+  itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 19 },
+  itemTextoNaoLido: { fontFamily: fonts.bodyBold, color: colors.lav6 },
   itemAcao: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.rose },
+  topSub: { fontFamily: fonts.body, fontSize: 10.5, color: colors.lav5, marginTop: 1 },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
 });

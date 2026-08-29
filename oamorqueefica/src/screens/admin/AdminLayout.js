@@ -152,7 +152,7 @@ export default function AdminLayout({ children, currentScreen }) {
 
   return (
     <SafeAreaView style={sty.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.card} />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       {isWide ? (
         <View style={sty.rootWide}>
           <View style={sty.sidebar}>
