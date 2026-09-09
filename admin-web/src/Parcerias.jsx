@@ -7,15 +7,11 @@ import {
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
 
 const CATEGORIAS = [
-  { id: 'saúde física', label: 'Saúde física' },
-  { id: 'bem-estar', label: 'Bem-estar' },
-  { id: 'ambiente', label: 'Ambiente' },
-  { id: 'espiritualidade', label: 'Espiritualidade' },
-  { id: 'trabalho', label: 'Trabalho' },
-  { id: 'estudos', label: 'Estudos' },
-  { id: 'relacionamentos', label: 'Relacionamentos' },
-  { id: 'família', label: 'Família' },
-  { id: 'outros', label: 'Outros' },
+  { id: 'saude',           label: 'Da saúde física' },
+  { id: 'voce',            label: 'De você e do ambiente em que vive' },
+  { id: 'trabalho',        label: 'Do trabalho e estudos' },
+  { id: 'relacionamentos', label: 'Dos relacionamentos' },
+  { id: 'outros',          label: 'Outros' },
 ];
 
 function novoForm() {

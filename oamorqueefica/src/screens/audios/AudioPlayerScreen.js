@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,12 +22,28 @@ export default function AudioPlayerScreen({ route, navigation }) {
   const { audio } = route.params;
   const {
     liberarConteudo, jaLiberado,
-    isFavorito, adicionarFavorito, removerFavorito,
+    isFavorito, adicionarFavorito, removerFavorito, temAcesso,
   } = useApp();
   const grupo = audio.categoria === 'acolhimento' ? 'acolhimento' : 'complementar';
-  const favoritado = isFavorito(audio.id);
+
+  // Plano gratuito: o conteúdo é visível, mas não reproduz nem pode ser salvo.
+  const planoNecessario = audio.plano ?? 1;
+  const temAcessoAoAudio = temAcesso(planoNecessario);
+  const favoritado = temAcessoAoAudio && isFavorito(audio.id);
+
+  const avisarPlano = () => {
+    Alert.alert(
+      'Disponível em outro plano',
+      'Este conteúdo faz parte de um plano superior. Deseja conhecer os planos?',
+      [
+        { text: 'Agora não', style: 'cancel' },
+        { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
+      ]
+    );
+  };
 
   const toggleFavorito = () => {
+    if (!temAcessoAoAudio) { avisarPlano(); return; }
     favoritado ? removerFavorito(audio.id) : adicionarFavorito(audio);
   };
 
@@ -79,6 +95,7 @@ export default function AudioPlayerScreen({ route, navigation }) {
   };
 
   const handlePlayPause = async () => {
+    if (!temAcessoAoAudio) { avisarPlano(); return; }
     if (!temArquivoReal) { setTocando(p => !p); return; }
     if (isVideo) {
       tocando ? await videoRef.current?.pauseAsync() : await videoRef.current?.playAsync();
@@ -134,17 +151,19 @@ export default function AudioPlayerScreen({ route, navigation }) {
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
         <Text style={styles.topTitle}>{isVideo ? 'Vídeo' : 'Áudio'}</Text>
-        <TouchableOpacity
-          onPress={toggleFavorito}
-          style={styles.favTopBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name={favoritado ? 'heart' : 'heart-outline'}
-            size={22}
-            color={favoritado ? colors.rose : colors.tm}
-          />
-        </TouchableOpacity>
+        {temAcessoAoAudio ? (
+          <TouchableOpacity
+            onPress={toggleFavorito}
+            style={styles.favTopBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={favoritado ? 'heart' : 'heart-outline'}
+              size={22}
+              color={favoritado ? colors.rose : colors.tm}
+            />
+          </TouchableOpacity>
+        ) : <View style={{ width: 36 }} />}
       </View>
 
       <View style={styles.content}>
@@ -245,6 +264,16 @@ export default function AudioPlayerScreen({ route, navigation }) {
           </View>
         )}
 
+        {!temAcessoAoAudio ? (
+          <TouchableOpacity style={styles.bloqBox} onPress={avisarPlano} activeOpacity={0.85}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.lav5} />
+            <Text style={styles.bloqTxt}>
+              A reprodução deste áudio está disponível em outro plano.
+            </Text>
+            <Ionicons name="chevron-forward" size={15} color={colors.lav5} />
+          </TouchableOpacity>
+        ) : (
+        <>
         {/* Favoritar — salva o áudio na aba Conteúdos */}
         <TouchableOpacity
           onPress={toggleFavorito}
@@ -265,6 +294,8 @@ export default function AudioPlayerScreen({ route, navigation }) {
             ? 'Você pode ouvir novamente quando quiser na aba Conteúdos.'
             : 'Toque no coração para guardar este áudio e ouvir de novo na aba Conteúdos.'}
         </Text>
+        </>
+        )}
 
         <View style={{ marginTop: spacing.lg }}>
           <Disclaimer />
@@ -283,6 +314,13 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   favTopBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  bloqBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    marginTop: spacing.lg, paddingVertical: 12, paddingHorizontal: 16,
+    borderRadius: radius.lg, backgroundColor: colors.lav1,
+    borderWidth: 1, borderColor: colors.lav2, maxWidth: 320,
+  },
+  bloqTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.lav6, lineHeight: 17 },
 
   favBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

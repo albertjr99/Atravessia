@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db, isAdminEmail } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import Login from './Login';
 import Dashboard from './Dashboard';
@@ -89,6 +89,25 @@ export default function App() {
         setUser(null);
         showToast('Acesso restrito às administradoras.', 'error');
         return;
+      }
+
+      // Auto-reparo: garante role: 'admin' no Firestore para os e-mails
+      // autorizados. As regras do Firestore exigem esse papel (ou o e-mail) para
+      // escrever; sem ele, uma conta criada fora do fluxo de cadastro entrava no
+      // painel mas não conseguia salvar nada — e o acesso parecia "parar sozinho".
+      if (isAdminEmail(u.email)) {
+        try {
+          const snap = await getDoc(doc(db, 'usuarios', u.uid));
+          if (!snap.exists() || snap.data().role !== 'admin') {
+            await setDoc(doc(db, 'usuarios', u.uid), {
+              nome: snap.data()?.nome || u.displayName || 'Administradora',
+              email: u.email,
+              role: 'admin',
+              acessoTotal: true,
+              atualizadoEm: serverTimestamp(),
+            }, { merge: true });
+          }
+        } catch { /* regras ainda não publicadas — segue pelo e-mail */ }
       }
 
       // Em tempo real, para a foto e o nome refletirem edições no perfil.

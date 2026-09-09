@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, TextInput, Alert, Modal, ScrollView, Switch,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -150,6 +151,10 @@ export default function AdminPlanosCards() {
       )}
 
       <Modal visible={!!editando} animationType="slide" transparent onRequestClose={fechar}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
             <View style={s.modalHeader}>
@@ -159,7 +164,12 @@ export default function AdminPlanosCards() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
               <Text style={s.label}>Nome do plano *</Text>
               <TextInput style={s.input} value={form.nome} onChangeText={t => set('nome', t)} placeholder="Ex: Acolher" placeholderTextColor={colors.tl} />
 
@@ -211,10 +221,11 @@ export default function AdminPlanosCards() {
                   <Text style={s.btnPrimTxt}>{salvando ? 'Salvando...' : 'Salvar'}</Text>
                 </TouchableOpacity>
               </View>
-              <View style={{ height: spacing.xl }} />
+              <View style={{ height: 220 }} />
             </ScrollView>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

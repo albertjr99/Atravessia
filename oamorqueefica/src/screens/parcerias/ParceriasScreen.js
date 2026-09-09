@@ -9,14 +9,19 @@ import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 
+// Estas são as categorias oficiais — o painel administrativo grava exatamente
+// estes ids. A lista `match` existe apenas para reconhecer parcerias cadastradas
+// antes da padronização, cujas categorias eram texto livre.
 const FILTROS = [
-  { id: 'todos',           label: 'Todos',                       match: null },
-  { id: 'saude',           label: 'Da saúde física',             match: ['saúde', 'saude', 'saúde física', 'saude fisica', 'fisio', 'nutrição'] },
-  { id: 'voce',            label: 'De você e do ambiente',       match: ['você', 'voce', 'bem-estar', 'bem estar', 'ambiente', 'casa', 'moradia', 'espiritualidade', 'meditação'] },
-  { id: 'trabalho',        label: 'Do trabalho e estudos',       match: ['trabalho', 'estudos', 'educação', 'educacao', 'carreira', 'curso'] },
-  { id: 'relacionamentos', label: 'Dos relacionamentos',         match: ['relacionamentos', 'relacionamento', 'família', 'familia', 'social'] },
-  { id: 'outros',          label: 'Outros',                      match: ['outros', 'other'] },
+  { id: 'todos',           label: 'Todos',                              match: null },
+  { id: 'saude',           label: 'Da saúde física',                    match: ['saúde', 'saude', 'fisio', 'nutri', 'farmácia', 'farmacia', 'clínica', 'clinica'] },
+  { id: 'voce',            label: 'De você e do ambiente em que vive',  match: ['você', 'voce', 'bem-estar', 'bem estar', 'ambiente', 'casa', 'moradia', 'espiritualidade', 'meditação', 'terapia'] },
+  { id: 'trabalho',        label: 'Do trabalho e estudos',              match: ['trabalho', 'estudos', 'educação', 'educacao', 'carreira', 'curso'] },
+  { id: 'relacionamentos', label: 'Dos relacionamentos',                match: ['relacionamento', 'família', 'familia', 'social'] },
+  { id: 'outros',          label: 'Outros',                             match: ['outros', 'produto'] },
 ];
+
+const rotuloCategoria = (c) => FILTROS.find(f => f.id === c)?.label || c;
 
 export default function ParceriasScreen({ navigation }) {
   const { parcerias, registrarCliqueParceria } = useApp();
@@ -32,10 +37,13 @@ export default function ParceriasScreen({ navigation }) {
   const parceriasExibidas = filtroAtivo === 'todos'
     ? parcerias
     : parcerias.filter(p => {
-        const cats = (p.categorias || []).map(c => c.toLowerCase());
+        const cats = (p.categorias || []).map(c => String(c).toLowerCase());
         const filtro = FILTROS.find(f => f.id === filtroAtivo);
-        if (!filtro?.match) return true;
-        return filtro.match.some(m => cats.some(c => c.includes(m)));
+        if (!filtro) return true;
+        // Casamento direto pelo id (padrão atual)…
+        if (cats.includes(filtro.id)) return true;
+        // …e por palavra-chave, para cadastros anteriores à padronização.
+        return (filtro.match || []).some(m => cats.some(c => c.includes(m)));
       });
 
   return (
@@ -138,7 +146,7 @@ export default function ParceriasScreen({ navigation }) {
                   <View style={s.cardTags}>
                     {(p.categorias || []).slice(0, 3).map(cat => (
                       <View key={cat} style={s.tag}>
-                        <Text style={s.tagTxt}>{cat}</Text>
+                        <Text style={s.tagTxt}>{rotuloCategoria(cat)}</Text>
                       </View>
                     ))}
                   </View>

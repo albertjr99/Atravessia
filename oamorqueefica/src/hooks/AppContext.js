@@ -56,6 +56,23 @@ function ordenarPor(docs, campo, dir = 'asc') {
   });
 }
 
+// As coleções globais (conteudos, parcerias, frases...) exigem usuário autenticado
+// nas regras do Firestore. Se o onSnapshot fosse anexado antes do login concluir,
+// o Firestore recusava a leitura, o listener MORRIA (não há nova tentativa após
+// permission-denied) e a lista ficava vazia para sempre naquela sessão — daí o
+// comportamento de "aparece para uns e não para outros". Por isso toda assinatura
+// global agora espera o uid existir.
+function useColecaoGlobal(uid, nome, aplicar, aoFalhar) {
+  useEffect(() => {
+    if (!uid) return;
+    const unsub = onSnapshot(collection(db, nome), aplicar, (err) => {
+      if (aoFalhar) aoFalhar(err);
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, nome]);
+}
+
 // Sincroniza uma subcoleção usuarios/{uid}/{nome} com um state local.
 function useSubcolecao(uid, nome, setState) {
   useEffect(() => {
@@ -189,21 +206,15 @@ export function AppProvider({ children }) {
 
   // Biblioteca de conteúdos (áudios, documentos, links) publicada pela administração
   const [conteudos, setConteudos] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'conteudos'), (snap) => {
-      setConteudos(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
-    }, () => {});
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'conteudos', (snap) => {
+    setConteudos(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
+  });
 
   // Áudios de acolhimento por emoção — exibidos no check-in
   const [audiosAcolhimento, setAudiosAcolhimento] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'audiosAcolhimento'), (snap) => {
-      setAudiosAcolhimento(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
-    }, () => {});
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'audiosAcolhimento', (snap) => {
+    setAudiosAcolhimento(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
+  });
 
   // Favoritos do usuário: armazena apenas o conteudoId; join com `conteudos` para detalhes
   const [favoritosIds, setFavoritosIds] = useState([]);
@@ -252,16 +263,13 @@ export function AppProvider({ children }) {
 
   // Frases e reflexões — carregadas do Firestore, com fallback no seed local
   const [frases, setFrases] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'frases'), (snap) => {
-      const docs = ordenarPor(
-        snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(f => f.ativa !== false),
-        'criadoEm', 'asc'
-      );
-      setFrases(docs.length > 0 ? docs : FRASES_SEED);
-    }, () => { setFrases(FRASES_SEED); });
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'frases', (snap) => {
+    const docs = ordenarPor(
+      snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(f => f.ativa !== false),
+      'criadoEm', 'asc'
+    );
+    setFrases(docs.length > 0 ? docs : FRASES_SEED);
+  }, () => setFrases(FRASES_SEED));
 
   // Frase do dia — determinística por uid + dia do ano (muda a cada 24h, diferente por usuária)
   const fraseDoDia = useMemo(() => {
@@ -276,44 +284,36 @@ export function AppProvider({ children }) {
   // Mensagens personalizadas dos relatórios (configuradas pela admin)
   const [mensagensRelatorio, setMensagensRelatorio] = useState({});
   useEffect(() => {
+    if (!uid) return;
     const unsub = onSnapshot(doc(db, 'configuracoes', 'mensagensRelatorio'), (snap) => {
       setMensagensRelatorio(snap.exists() ? snap.data() : {});
     }, () => {});
     return unsub;
-  }, []);
+  }, [uid]);
 
   // Jornadas criadas pela admin (Firestore), separadas das estáticas do data/
   const [jornadasAdmin, setJornadasAdmin] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'jornadas'), (snap) => {
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => j.ativa !== false);
-      setJornadasAdmin(ordenarPor(docs, 'ordem', 'asc'));
-    }, () => {});
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'jornadas', (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => j.ativa !== false);
+    setJornadasAdmin(ordenarPor(docs, 'ordem', 'asc'));
+  });
 
   // Itens da seção "Continue a Travessia" — gerenciados pela admin
   const [travessiaItens, setTravessiaItens] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'travessiaItens'), (snap) => {
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false);
-      setTravessiaItens(ordenarPor(docs, 'ordem', 'asc'));
-    }, () => {});
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'travessiaItens', (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false);
+    setTravessiaItens(ordenarPor(docs, 'ordem', 'asc'));
+  });
 
   // Parcerias e benefícios exclusivos publicados pela administração (disponível para todos os planos)
   const [parcerias, setParcerias] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'parcerias'), (snap) => {
-      const docs = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => p.ativo !== false);
-      docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
-      setParcerias(docs);
-    }, () => {});
-    return unsub;
-  }, []);
+  useColecaoGlobal(uid, 'parcerias', (snap) => {
+    const docs = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.ativo !== false);
+    docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
+    setParcerias(docs);
+  });
 
   const registrarCliqueParceria = (id) => {
     updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
