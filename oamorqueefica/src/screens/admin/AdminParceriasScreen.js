@@ -16,7 +16,15 @@ import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
 import AdminLayout from './AdminLayout';
 
-const CATEGORIAS = ['Saúde', 'Bem-estar', 'Terapias', 'Educação', 'Farmácia', 'Clínica', 'Produtos'];
+// Mesmas categorias exibidas ao usuário na tela de Parcerias.
+const CATEGORIAS = [
+  { id: 'saude',           label: 'Da saúde física' },
+  { id: 'voce',            label: 'De você e do ambiente em que vive' },
+  { id: 'trabalho',        label: 'Do trabalho e estudos' },
+  { id: 'relacionamentos', label: 'Dos relacionamentos' },
+  { id: 'outros',          label: 'Outros' },
+];
+const rotuloCategoria = (id) => CATEGORIAS.find(c => c.id === id)?.label || id;
 
 export default function AdminParceriasScreen({ navigation }) {
   const [parcerias, setParcerias] = useState([]);
@@ -227,11 +235,11 @@ export default function AdminParceriasScreen({ navigation }) {
           <View style={s.chipRow}>
             {CATEGORIAS.map(cat => (
               <TouchableOpacity
-                key={cat}
-                style={[s.chip, categoriaSel.includes(cat) && s.chipSel]}
-                onPress={() => toggleCategoria(cat)}
+                key={cat.id}
+                style={[s.chip, categoriaSel.includes(cat.id) && s.chipSel]}
+                onPress={() => toggleCategoria(cat.id)}
               >
-                <Text style={[s.chipText, categoriaSel.includes(cat) && s.chipTextSel]}>{cat}</Text>
+                <Text style={[s.chipText, categoriaSel.includes(cat.id) && s.chipTextSel]}>{cat.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -265,7 +273,7 @@ export default function AdminParceriasScreen({ navigation }) {
               <Text style={s.itemTitulo} numberOfLines={1}>{p.titulo}</Text>
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(p.categorias || []).slice(0, 2).map(cat => (
-                  <Text key={cat} style={s.itemTag}>{cat}</Text>
+                  <Text key={cat} style={s.itemTag}>{rotuloCategoria(cat)}</Text>
                 ))}
                 <View style={s.cliquesTag}>
                   <Ionicons name="stats-chart-outline" size={10} color={colors.lav5} />

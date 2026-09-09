@@ -45,7 +45,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 }
 
 export default function CheckInScreen({ navigation }) {
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
@@ -108,6 +108,18 @@ export default function CheckInScreen({ navigation }) {
 
   const handleOuvirAudio = () => {
     if (!audioRec) return;
+    // Plano gratuito: o áudio é visível, mas não reproduz.
+    if (!temAcesso(1)) {
+      Alert.alert(
+        'Disponível no Plano Acolher',
+        'A reprodução dos áudios de acolhimento faz parte do Plano Acolher. Deseja conhecer os planos?',
+        [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
+        ]
+      );
+      return;
+    }
     if (jaLiberado(audioRec.id) || podeLiberarNovo('acolhimento')) {
       liberarConteudo(audioRec.id, 'acolhimento');
       setAudioLiberado(true);
@@ -125,7 +137,7 @@ export default function CheckInScreen({ navigation }) {
     isFavorito(audio.id) ? removerFavorito(audio.id) : adicionarFavorito(audio);
   };
 
-  const temPlano1 = (usuario?.plano || 0) >= 1;
+  const temPlano1 = temAcesso(1);
 
   // Conteúdos do Firestore vinculados à emoção
   const conteudosSugeridos = useMemo(
@@ -240,42 +252,76 @@ export default function CheckInScreen({ navigation }) {
             </View>
           )}
 
-          {!conteudoExibido && temPlano1 && audioRec && (
-            <View style={s.recCard}>
+          {/* O áudio aparece em qualquer plano. No gratuito ele fica visível mas
+              bloqueado: sem opção de salvar e sem reprodução — ao tocar, explica
+              em que plano o recurso está disponível. */}
+          {!conteudoExibido && audioRec && (
+            <View style={[s.recCard, !temPlano1 && s.recCardBloqueado]}>
               <View style={s.recTagRow}>
                 <Text style={s.recTag}>Acolhimento</Text>
-                <TouchableOpacity
-                  onPress={() => toggleFavAudio(audioRec)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons
-                    name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
-                    size={18}
-                    color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
-                  />
-                </TouchableOpacity>
+                {temPlano1 ? (
+                  <TouchableOpacity
+                    onPress={() => toggleFavAudio(audioRec)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons
+                      name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
+                      size={18}
+                      color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={s.recLockTag}>
+                    <Ionicons name="lock-closed" size={10} color={colors.lav5} />
+                    <Text style={s.recLockTxt}>Plano Acolher</Text>
+                  </View>
+                )}
               </View>
-              {!isFavorito(audioRec.id) && (
+
+              {temPlano1 && !isFavorito(audioRec.id) && (
                 <Text style={s.recFavHint}>Toque no ♡ para salvar em Conteúdos</Text>
               )}
+
               <TouchableOpacity onPress={handleOuvirAudio} activeOpacity={0.85}>
                 <View style={s.recRow}>
                   <View style={s.recThumb}>
-                    <Ionicons name="headset-outline" size={22} color={colors.lav4} />
+                    <Ionicons
+                      name={temPlano1 ? 'headset-outline' : 'lock-closed-outline'}
+                      size={22}
+                      color={temPlano1 ? colors.lav4 : colors.tl}
+                    />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.recTit}>{audioRec.titulo}</Text>
-                    <Text style={s.recSub}>Áudio · {audioRec.duracao}</Text>
+                    <Text style={s.recSub}>
+                      {temPlano1 ? `Áudio · ${audioRec.duracao}` : 'Disponível no Plano Acolher'}
+                    </Text>
                   </View>
-                  <View style={s.playBtn}>
-                    <Ionicons name="play" size={14} color="white" style={{ marginLeft: 2 }} />
+                  <View style={[s.playBtn, !temPlano1 && s.playBtnBloqueado]}>
+                    <Ionicons
+                      name={temPlano1 ? 'play' : 'lock-closed'}
+                      size={14}
+                      color="white"
+                      style={temPlano1 && { marginLeft: 2 }}
+                    />
                   </View>
                 </View>
               </TouchableOpacity>
+
+              {!temPlano1 && (
+                <TouchableOpacity
+                  style={s.recUpgradeLink}
+                  onPress={() => navigation.navigate('Planos')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={s.recUpgradeTxt}>Conhecer o Plano Acolher</Text>
+                  <Ionicons name="arrow-forward" size={12} color={colors.lav5} />
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
-          {!conteudoExibido && !temPlano1 && (
+          {!conteudoExibido && !audioRec && !temPlano1 && (
             <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
               <Ionicons name="headset-outline" size={20} color={colors.lav4} />
               <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
@@ -332,7 +378,7 @@ export default function CheckInScreen({ navigation }) {
         {/* Pergunta sobre onde o sentimento está presente */}
         {emocaoSel && (
           <View style={s.sect}>
-            <Text style={s.sectTitle2}>Onde esse sentimento esteve mais presente?</Text>
+            <Text style={s.sectTitle2}>Onde esse sentimento esteve/está mais presente hoje?</Text>
             <Text style={[s.headerSub, { marginBottom: 10, marginTop: 4 }]}>Opcional — ajuda a personalizar seu acompanhamento.</Text>
             <View style={s.localGrid}>
               {LOCAIS.map(l => {
@@ -353,75 +399,8 @@ export default function CheckInScreen({ navigation }) {
           </View>
         )}
 
-        {/* Conteúdo sugerido (pré-save) */}
-        {(conteudoExibido || audioRec) && (
-          <View style={s.sect}>
-            <View style={s.suggCard}>
-              <View style={s.suggHeader}>
-                <Text style={s.suggTit}>Conteúdo para te acompanhar</Text>
-                {conteudoExibido ? (
-                  <TouchableOpacity
-                    onPress={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons
-                      name={isFavorito(conteudoExibido.id) ? 'heart' : 'heart-outline'}
-                      size={20}
-                      color={isFavorito(conteudoExibido.id) ? '#C06080' : colors.tl}
-                    />
-                  </TouchableOpacity>
-                ) : audioRec ? (
-                  <TouchableOpacity
-                    onPress={() => toggleFavAudio(audioRec)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons
-                      name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
-                      size={20}
-                      color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
-                    />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                onPress={() => conteudoExibido ? handleAbrirConteudo(conteudoExibido) : handleOuvirAudio()}
-                activeOpacity={0.85}
-              >
-                {conteudoExibido ? (
-                  <View style={s.suggRow}>
-                    <View style={s.suggThumb}>
-                      <Ionicons name={TIPO_ICONE[conteudoExibido.tipo] || 'document-outline'} size={20} color={colors.lav5} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.suggTag}>{conteudoExibido.tipo}</Text>
-                      <Text style={s.suggName}>{conteudoExibido.titulo}</Text>
-                    </View>
-                    <View style={s.playBtnLg}>
-                      <Ionicons name="arrow-forward" size={16} color="white" />
-                    </View>
-                  </View>
-                ) : (
-                  <View style={s.suggRow}>
-                    <View style={s.suggThumb}>
-                      <Ionicons name="headset-outline" size={20} color={colors.lav5} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.suggTag}>Áudio · {audioRec.duracao}</Text>
-                      <Text style={s.suggName}>{audioRec.titulo}</Text>
-                    </View>
-                    <View style={s.playBtnLg}>
-                      <Ionicons name="play" size={16} color="white" style={{ marginLeft: 1 }} />
-                    </View>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
-              <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
-              <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* A sugestão de acolhimento e a opção de salvar aparecem somente
+            DEPOIS do check-in ser registrado (bloco acima, em `salvo`). */}
 
         {/* Histórico */}
         <View style={s.sect}>
@@ -530,6 +509,12 @@ const s = StyleSheet.create({
   savedSub: { fontFamily: fonts.quote, fontSize: 16, fontStyle: 'italic', color: colors.tm, marginBottom: 8, textAlign: 'center', lineHeight: 24 },
   savedHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', lineHeight: 18, marginBottom: 8 },
   recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
+  recCardBloqueado: { backgroundColor: colors.card, borderStyle: 'dashed', borderColor: colors.lav3 },
+  recLockTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.lav1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.lav2 },
+  recLockTxt: { fontFamily: fonts.bodyBold, fontSize: 9, color: colors.lav5 },
+  playBtnBloqueado: { backgroundColor: colors.tl },
+  recUpgradeLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  recUpgradeTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
   recTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5 },
   recFavHint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginBottom: 8 },

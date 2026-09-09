@@ -26,8 +26,23 @@ export function AuthProvider({ children }) {
         // onSnapshot (em vez de getDoc único) garante que o plano seja atualizado
         // em tempo real assim que a Cloud Function confirmar o pagamento no Stripe.
         unsubPerfil = onSnapshot(doc(db, 'usuarios', user.uid), (snap) => {
-          setPerfil(snap.exists() ? snap.data() : null);
+          const dados = snap.exists() ? snap.data() : null;
+          setPerfil(dados);
           setCarregando(false);
+
+          // Auto-reparo do acesso administrativo: se o e-mail está na lista de
+          // administradoras mas o documento não tem (ou perdeu) role: 'admin',
+          // grava agora. Sem isso, uma conta criada fora do fluxo de cadastro
+          // ficava sem o papel e o acesso ao painel simplesmente parava.
+          if (isAdminEmail(user.email) && dados?.role !== 'admin') {
+            setDoc(doc(db, 'usuarios', user.uid), {
+              nome: dados?.nome || (user.displayName || 'Administradora'),
+              email: user.email,
+              role: 'admin',
+              acessoTotal: true,
+              atualizadoEm: serverTimestamp(),
+            }, { merge: true }).catch(() => {});
+          }
         }, () => setCarregando(false));
       } else {
         setPerfil(null);
