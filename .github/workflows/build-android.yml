@@ -1,0 +1,54 @@
+name: Build Android (AAB)
+
+# Executado manualmente em Actions → Build Android (AAB) → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Perfil do EAS Build"
+        type: choice
+        default: production
+        options:
+          - production   # .aab — para enviar à Play Store
+          - preview      # .apk — para instalar direto no celular e testar
+
+jobs:
+  build:
+    name: EAS Build (${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: oamorqueefica
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: oamorqueefica/package-lock.json
+
+      - name: Preparar EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Mostrar a versão que será publicada
+        run: |
+          node -e "const a=require('./app.json').expo; \
+            console.log('versão:', a.version, '| versionCode:', a.android.versionCode)"
+
+      - name: Gerar o build
+        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive --wait
+
+      - name: Onde baixar
+        run: |
+          echo "Build concluído. O arquivo fica em https://expo.dev/accounts/_/projects/atravessia/builds"
+          eas build:list --platform android --limit 1 --non-interactive
