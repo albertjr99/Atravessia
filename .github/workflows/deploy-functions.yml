@@ -1,9 +1,18 @@
-name: Deploy Firebase Functions
+name: Deploy Firebase
 
+# As regras e os índices do Firestore nunca eram publicados por aqui: o passo
+# abaixo rodava com --only functions. Toda mudança em firestore.rules só valia
+# se alguém rodasse `firebase deploy` à mão — por isso o painel administrativo
+# via "missing or insufficient permissions" mesmo com a regra certa no repositório.
 on:
   push:
     paths:
       - 'functions/**'
+      - 'oamorqueefica/firestore.rules'
+      - 'oamorqueefica/storage.rules'
+      - 'firestore.indexes.json'
+      - 'firebase.json'
+      - 'admin-web/dist/**'
   workflow_dispatch:
 
 jobs:
@@ -23,8 +32,21 @@ jobs:
         run: npm ci
         working-directory: functions
 
-      - name: Deploy functions
-        run: npx firebase-tools deploy --only functions --token "$FIREBASE_TOKEN" --non-interactive
-        working-directory: functions
+      - name: Conferir credencial
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo "::error::O secret FIREBASE_TOKEN não está definido no repositório."
+            echo "Gere um token com 'npx firebase-tools login:ci' e adicione em"
+            echo "Settings > Secrets and variables > Actions como FIREBASE_TOKEN."
+            exit 1
+          fi
+
+      - name: Deploy
+        run: >
+          npx firebase-tools deploy
+          --only functions,firestore:rules,firestore:indexes,storage,hosting
+          --token "$FIREBASE_TOKEN" --non-interactive
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
