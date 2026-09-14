@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import {
   collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment, where,
 } from 'firebase/firestore';
@@ -199,17 +199,25 @@ export function AppProvider({ children }) {
     return unsub;
   }, [uid]);
 
+  // Coleções cuja leitura foi recusada pelas regras do Firestore. Sem isto, uma
+  // regra não publicada deixava a lista simplesmente vazia, sem nada na tela
+  // distinguir "não há conteúdo" de "não consegui ler".
+  const [colecoesComFalha, setColecoesComFalha] = useState([]);
+  const registrarFalha = useCallback((nome) => {
+    setColecoesComFalha(prev => (prev.includes(nome) ? prev : [...prev, nome]));
+  }, []);
+
   // Biblioteca de conteúdos (áudios, documentos, links) publicada pela administração
   const [conteudos, setConteudos] = useState([]);
   useColecaoGlobal(uid, 'conteudos', (snap) => {
     setConteudos(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
-  });
+  }, () => registrarFalha('conteudos'));
 
   // Áudios de acolhimento por emoção — exibidos no check-in
   const [audiosAcolhimento, setAudiosAcolhimento] = useState([]);
   useColecaoGlobal(uid, 'audiosAcolhimento', (snap) => {
     setAudiosAcolhimento(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
-  });
+  }, () => registrarFalha('audiosAcolhimento'));
 
   // Favoritos do usuário: armazena apenas o conteudoId; join com `conteudos` para detalhes
   const [favoritosIds, setFavoritosIds] = useState([]);
@@ -550,6 +558,7 @@ export function AppProvider({ children }) {
       conteudos,
       audiosAcolhimento,
       favoritos, adicionarFavorito, removerFavorito, isFavorito,
+      colecoesComFalha,
       frases,
       fraseDoDia,
       mensagensRelatorio,

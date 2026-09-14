@@ -24,7 +24,8 @@ const CAT_ICONE = {
 
 export default function FavoritosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { favoritos, removerFavorito, temAcesso } = useApp();
+  const { favoritos, removerFavorito, temAcesso, colecoesComFalha } = useApp();
+  const semBiblioteca = colecoesComFalha?.length > 0;
 
   const handleItem = (item) => {
     if (!temAcesso(item.plano)) {
@@ -72,6 +73,15 @@ export default function FavoritosScreen({ navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {semBiblioteca ? (
+          <View style={s.avisoBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Text style={s.avisoTxt}>
+              Não foi possível carregar a biblioteca de conteúdos agora, então alguns
+              favoritos podem não aparecer. Tente de novo em instantes.
+            </Text>
+          </View>
+        ) : null}
         {favoritos.length === 0 ? (
           <View style={s.emptyWrap}>
             <Ionicons name="heart-outline" size={52} color={colors.lav3} />
@@ -158,6 +168,8 @@ const s = StyleSheet.create({
   desc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   grupo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 2, textTransform: 'capitalize' },
   playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
   emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
   emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
