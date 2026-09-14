@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc, increment,
+  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment, where,
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { registrarPushToken } from '../utils/pushNotifications';
 import { jornadas as jornadasBase } from '../data';
@@ -313,6 +314,51 @@ export function AppProvider({ children }) {
     updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
   };
 
+  // ---- Benefícios com cupom/comissão ("Cuide-se") ----------------------------
+  // O documento em si (vouchers/resgates) é sempre gerado e calculado pela
+  // Cloud Function correspondente — o app nunca escreve valores financeiros
+  // diretamente no Firestore. Aqui só lemos (para exibir) e chamamos as
+  // funções (para agir).
+  const [meusVouchers, setMeusVouchers] = useState([]);
+  useEffect(() => {
+    if (!uid) { setMeusVouchers([]); return; }
+    const ref = query(collection(db, 'vouchers'), where('usuarioId', '==', uid));
+    const unsub = onSnapshot(ref, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (b.geradoEm?.toMillis?.() ?? 0) - (a.geradoEm?.toMillis?.() ?? 0));
+      setMeusVouchers(docs);
+    }, () => {});
+    return unsub;
+  }, [uid]);
+
+  const [meusResgates, setMeusResgates] = useState([]);
+  useEffect(() => {
+    if (!uid) { setMeusResgates([]); return; }
+    const ref = query(collection(db, 'resgates'), where('usuarioId', '==', uid), orderBy('criadoEm', 'desc'));
+    const unsub = onSnapshot(ref, (snap) => {
+      setMeusResgates(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, () => {});
+    return unsub;
+  }, [uid]);
+
+  // Resgates concluídos pelo parceiro que ainda aguardam a usuária confirmar
+  // se o atendimento realmente aconteceu.
+  const resgatesAguardandoConfirmacao = useMemo(
+    () => meusResgates.filter(r => r.status === 'CONCLUIDO'),
+    [meusResgates]
+  );
+
+  const gerarVoucherBeneficio = async (parceriaId) => {
+    const fn = httpsCallable(functions, 'gerarVoucherBeneficio');
+    const { data } = await fn({ parceriaId });
+    return data; // { tokenSeguro, codigoPublico, expiraEm, linkValidacao }
+  };
+
+  const responderConfirmacaoResgate = async (resgateId, confirmar) => {
+    const fn = httpsCallable(functions, 'responderConfirmacaoResgate');
+    await fn({ resgateId, confirmar });
+  };
+
   const adicionarCheckin = (emocao, local = null) => {
     const hoje = hojeStr();
     if (checkins.some(c => c.data === hoje)) return;
@@ -495,6 +541,8 @@ export function AppProvider({ children }) {
       jornadasAdmin,
       travessiaItens,
       parcerias, registrarCliqueParceria,
+      meusVouchers, meusResgates, resgatesAguardandoConfirmacao,
+      gerarVoucherBeneficio, responderConfirmacaoResgate,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje,

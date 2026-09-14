@@ -25,6 +25,7 @@ import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
 import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
 import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
+import AdminBeneficiosScreen from '../screens/admin/AdminBeneficiosScreen';
 import AdminVitoriasScreen from '../screens/admin/AdminVitoriasScreen';
 import AdminPrecosScreen from '../screens/admin/AdminPrecosScreen';
 import AdminJornadasScreen from '../screens/admin/AdminJornadasScreen';
@@ -33,6 +34,8 @@ import AdminFrasesScreen from '../screens/admin/AdminFrasesScreen';
 import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
 import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
+import VoucherScreen from '../screens/parcerias/VoucherScreen';
+import ConfirmarResgateScreen from '../screens/parcerias/ConfirmarResgateScreen';
 import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
 
@@ -65,6 +68,8 @@ function MainStack() {
       <Stack.Screen name="DatasSensiveis" component={DatasSensiveisScreen} />
       <Stack.Screen name="RedeApoio" component={RedeApoioScreen} />
       <Stack.Screen name="Parcerias" component={ParceriasScreen} />
+      <Stack.Screen name="Voucher" component={VoucherScreen} />
+      <Stack.Screen name="ConfirmarResgate" component={ConfirmarResgateScreen} />
       <Stack.Screen name="Favoritos" component={FavoritosScreen} />
       <Stack.Screen name="Jornadas" component={JornadasScreen} />
     </Stack.Navigator>
@@ -81,6 +86,7 @@ function AdminStack() {
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
       <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
+      <Stack.Screen name="AdminBeneficios" component={AdminBeneficiosScreen} />
       <Stack.Screen name="AdminVitorias" component={AdminVitoriasScreen} />
       <Stack.Screen name="AdminPrecos" component={AdminPrecosScreen} />
       <Stack.Screen name="AdminJornadas" component={AdminJornadasScreen} />

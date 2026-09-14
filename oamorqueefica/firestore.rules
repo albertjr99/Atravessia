@@ -101,5 +101,38 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+
+    // ── Módulo de Benefícios/Cupons com comissão ("Cuide-se") ──────────────
+    // O cálculo financeiro (desconto, comissão) só pode acontecer nas Cloud
+    // Functions (functions/index.js), que usam o Admin SDK e ignoram estas
+    // regras. Por isso a escrita direta pelo cliente é sempre negada — mesmo
+    // para a administradora — evitando que qualquer app (inclusive o painel
+    // do parceiro, que nem autentica) grave um valor de comissão manipulado.
+
+    // Voucher gerado pela usuária. Ela só pode LER o seu; a admin lê todos.
+    // O parceiro nunca lê este documento diretamente — só via Cloud Function,
+    // que devolve apenas o necessário para validar (sem dados da usuária).
+    match /vouchers/{docId} {
+      allow read: if isSignedIn() && (resource.data.usuarioId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Registro financeiro de uma utilização confirmada pelo parceiro.
+    match /resgates/{docId} {
+      allow read: if isSignedIn() && (resource.data.usuarioId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Fechamento periódico (settlement) de comissões por parceria.
+    match /fechamentos/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Trilha de auditoria de todo o módulo — somente leitura pela admin.
+    match /auditoriaBeneficios/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

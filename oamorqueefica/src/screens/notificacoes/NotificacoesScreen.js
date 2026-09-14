@@ -17,6 +17,7 @@ const ICONES = {
   vitoria: 'star-outline',
   incentivo: 'heart-outline',
   live: 'videocam-outline',
+  confirmar_resgate: 'gift-outline',
 };
 
 const DESTINO = {
@@ -32,6 +33,9 @@ const DESTINO = {
   // que ainda não tinham destino — o toque não fazia nada.
   novidade: 'Audios',
   lembrete: 'CheckIn',
+  // Gerado pela Cloud Function confirmarAtendimento quando um parceiro
+  // registra o uso de um benefício — leva direto para a tela de confirmação.
+  confirmar_resgate: 'ConfirmarResgate',
 };
 
 export default function NotificacoesScreen({ navigation }) {
@@ -41,7 +45,12 @@ export default function NotificacoesScreen({ navigation }) {
   const handlePress = (n) => {
     marcarLida(n.id);
     const dest = DESTINO[n.tipo];
-    if (dest) navigation.navigate(dest);
+    if (!dest) return;
+    if (n.tipo === 'confirmar_resgate') {
+      navigation.navigate(dest, { resgateId: n.resgateId });
+    } else {
+      navigation.navigate(dest);
+    }
   };
 
   return (
