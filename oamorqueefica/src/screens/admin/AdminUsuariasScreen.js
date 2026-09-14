@@ -36,14 +36,18 @@ export default function AdminUsuariasScreen({ navigation }) {
 
   const fecharPlanoModal = () => setPlanoModal({ vis: false, usuaria: null });
 
+  // Trocar o plano, conceder/remover acesso total ou dar uma cortesia são
+  // ações mutuamente exclusivas — cada uma limpa as demais. Sem isso, uma
+  // cortesia concedida antes ficava "esquecida" no documento e continuava
+  // valendo mesmo depois de o plano ser alterado explicitamente.
   const setPlano = (plano) => {
-    updateDoc(doc(db, 'usuarios', planoModal.usuaria.id), { plano, acessoTotal: false });
+    updateDoc(doc(db, 'usuarios', planoModal.usuaria.id), { plano, acessoTotal: false, cortesia: null });
     fecharPlanoModal();
   };
 
   const toggleAcessoTotal = () => {
     const u = planoModal.usuaria;
-    updateDoc(doc(db, 'usuarios', u.id), { acessoTotal: !(u.acessoTotal === true) });
+    updateDoc(doc(db, 'usuarios', u.id), { acessoTotal: !(u.acessoTotal === true), cortesia: null });
     fecharPlanoModal();
   };
 
@@ -57,7 +61,10 @@ export default function AdminUsuariasScreen({ navigation }) {
     const { usuaria, dias } = cortesiaModal;
     const numDias = parseInt(dias, 10) || 30;
     const expiracao = Timestamp.fromDate(new Date(Date.now() + numDias * 86400000));
-    await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: { ativo: true, expiracao } });
+    // acessoTotal: false explícito — se a usuária já tivesse acesso total
+    // concedido antes, ele tornaria o prazo da cortesia inútil (acesso
+    // permanente independente da data de expiração).
+    await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: { ativo: true, expiracao }, acessoTotal: false });
     setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
   };
 

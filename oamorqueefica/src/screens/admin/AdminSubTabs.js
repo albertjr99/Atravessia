@@ -21,6 +21,10 @@ export const GRUPOS_SUBTABS = {
     { label: 'Notificações', screen: 'AdminNotificacoes' },
     { label: 'Mensagens', screen: 'AdminMensagens' },
   ],
+  parcerias: [
+    { label: 'Parcerias', screen: 'AdminParcerias' },
+    { label: 'Cupons e Comissões', screen: 'AdminBeneficios' },
+  ],
 };
 
 export default function AdminSubTabs({ grupo, atual }) {

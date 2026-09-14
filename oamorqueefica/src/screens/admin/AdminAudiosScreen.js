@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Platform, ActivityIndicator,
+  TextInput, Alert, Platform, ActivityIndicator, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -46,7 +46,7 @@ function novoForm() {
 export default function AdminAudiosScreen({ navigation }) {
   const [audios, setAudios] = useState([]);
   const [filtroEmocao, setFiltroEmocao] = useState('todos');
-  const [mostraForm, setMostraForm] = useState(false);
+  const [mostraModal, setMostraModal] = useState(false);
   const [form, setForm] = useState(novoForm());
   const [salvando, setSalvando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
@@ -131,7 +131,7 @@ export default function AdminAudiosScreen({ navigation }) {
         criadoEm: serverTimestamp(),
       });
       setForm(novoForm());
-      setMostraForm(false);
+      setMostraModal(false);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar.');
     } finally {
@@ -194,8 +194,16 @@ export default function AdminAudiosScreen({ navigation }) {
     <AdminLayout navigation={navigation} currentScreen="AdminAudios">
       <AdminSubTabs grupo="biblioteca" atual="AdminAudios" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        <Text style={s.pageTitle}>Áudios de Acolhimento</Text>
-        <Text style={s.pageSub}>Áudios exibidos no check-in por emoção.</Text>
+        <View style={s.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.pageTitle}>Áudios de Acolhimento</Text>
+            <Text style={s.pageSub}>Áudios exibidos no check-in por emoção.</Text>
+          </View>
+          <TouchableOpacity style={s.addBtn} onPress={() => setMostraModal(true)} activeOpacity={0.85}>
+            <Ionicons name="add" size={16} color="white" />
+            <Text style={s.addBtnTxt}>Novo áudio</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Filtro por emoção */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
@@ -283,18 +291,21 @@ export default function AdminAudiosScreen({ navigation }) {
           ))
         )}
 
-        {/* Botão adicionar */}
-        {!mostraForm && (
-          <Button
-            title="+ Adicionar áudio"
-            onPress={() => setMostraForm(true)}
-            style={{ marginTop: spacing.md }}
-          />
-        )}
+        <View style={{ height: 20 }} />
+      </ScrollView>
 
-        {/* Formulário de adição */}
-        {mostraForm && (
-          <Card style={s.form}>
+      {/* Novo áudio — modal acionado pelo botão no topo, para a gestora não
+          precisar rolar até o fim de uma lista longa para cadastrar um item. */}
+      <Modal
+        visible={mostraModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMostraModal(false)}
+      >
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={s.form}>
             <Text style={s.formTit}>Novo áudio de acolhimento</Text>
 
             <TouchableOpacity
@@ -371,7 +382,7 @@ export default function AdminAudiosScreen({ navigation }) {
             <View style={s.formBtns}>
               <Button
                 title="Cancelar"
-                onPress={() => { setMostraForm(false); setForm(novoForm()); }}
+                onPress={() => { setMostraModal(false); setForm(novoForm()); }}
                 style={{ flex: 1, marginRight: spacing.sm, backgroundColor: colors.lav1 }}
                 textStyle={{ color: colors.lav5 }}
               />
@@ -382,19 +393,32 @@ export default function AdminAudiosScreen({ navigation }) {
                 style={{ flex: 1 }}
               />
             </View>
-          </Card>
-        )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+            </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </AdminLayout>
   );
 }
 
 const s = StyleSheet.create({
   scroll: { padding: spacing.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.md },
+  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
+  addBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.lav4, borderRadius: radius.full,
+    paddingHorizontal: 14, paddingVertical: 9,
+  },
+  addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: spacing.lg, maxHeight: '90%',
+  },
 
   filtroScroll: { marginBottom: spacing.md },
   filtroRow: { flexDirection: 'row', gap: 8, paddingRight: spacing.md },

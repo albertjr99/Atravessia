@@ -4,6 +4,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const Stripe = require('stripe');
+const crypto = require('crypto');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -48,7 +49,12 @@ function proximaOcorrencia(dataStr, hoje) {
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 
-// Preços em centavos (BRL), espelhando src/data/index.js -> planos
+// Preços de referência em centavos (BRL) — usados apenas se o Firestore não
+// tiver um valor válido cadastrado (ver obterPrecoPlanoCentavos/obterPrecoPeriodoCentavos
+// abaixo). Antes estes valores eram usados SEMPRE, ignorando qualquer edição
+// feita pela administração no app ou no painel web: mudar o preço na tela
+// "Preços e Planos" ou no card do plano nunca alterava o valor realmente
+// cobrado no checkout do Stripe.
 const PLANOS = {
   1: { nome: 'Atravessia — Plano Acolher', valor: 2490 },
   2: { nome: 'Atravessia — Plano Compreender', valor: 4990 },
@@ -57,6 +63,36 @@ const PLANOS = {
 
 // Preço por relatório de período (único para todos os planos)
 const PERIODO_PRECO = { valor: 590, label: 'R$ 5,90' };
+
+// Busca o preço atual do plano no Firestore. Prioriza `planos/{id}.preco`
+// (reais — é o documento editado tanto pelo painel web quanto pelo card do
+// plano no app) e, na ausência dele, `configuracoes/precos.plano{id}`
+// (centavos — editado pela tela "Preços e Planos"). Cai no valor fixo acima
+// somente se nenhum dos dois existir ou for inválido.
+async function obterPrecoPlanoCentavos(planoId) {
+  try {
+    const planoSnap = await db.collection('planos').doc(String(planoId)).get();
+    const preco = planoSnap.data()?.preco;
+    if (typeof preco === 'number' && preco > 0) return Math.round(preco * 100);
+  } catch { /* segue para o próximo fallback */ }
+
+  try {
+    const precosSnap = await db.collection('configuracoes').doc('precos').get();
+    const centavos = precosSnap.data()?.[`plano${planoId}`];
+    if (typeof centavos === 'number' && centavos > 0) return centavos;
+  } catch { /* segue para o valor fixo */ }
+
+  return PLANOS[planoId]?.valor ?? null;
+}
+
+async function obterPrecoPeriodoCentavos() {
+  try {
+    const precosSnap = await db.collection('configuracoes').doc('precos').get();
+    const centavos = precosSnap.data()?.periodo;
+    if (typeof centavos === 'number' && centavos > 0) return centavos;
+  } catch { /* segue para o valor fixo */ }
+  return PERIODO_PRECO.valor;
+}
 
 async function getOrCreateCustomer(stripe, uid, userData) {
   if (userData.stripeCustomerId) return userData.stripeCustomerId;
@@ -76,6 +112,9 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   const plano = PLANOS[planoId];
   if (!plano) throw new HttpsError('invalid-argument', 'Plano inválido.');
 
+  const valorAtual = await obterPrecoPlanoCentavos(planoId);
+  if (!valorAtual) throw new HttpsError('failed-precondition', 'Preço do plano não configurado.');
+
   const stripe = Stripe(STRIPE_SECRET_KEY.value());
   const userRef = db.collection('usuarios').doc(uid);
   const userSnap = await userRef.get();
@@ -92,7 +131,7 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
       price_data: {
         currency: 'brl',
         product_data: { name: plano.nome },
-        unit_amount: plano.valor,
+        unit_amount: valorAtual,
         recurring: { interval: 'month' },
       },
       quantity: 1,
@@ -123,6 +162,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
 
   const stripe = Stripe(STRIPE_SECRET_KEY.value());
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
+  const valorAtual = await obterPrecoPeriodoCentavos();
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -132,7 +172,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
       price_data: {
         currency: 'brl',
         product_data: { name: 'Relatório por Período — Atravessia (1 relatório)' },
-        unit_amount: PERIODO_PRECO.valor,
+        unit_amount: valorAtual,
       },
       quantity: 1,
     }],
@@ -464,4 +504,444 @@ exports.notificarRelatorioMensal = onSchedule({ schedule: '0 19 1 * *', timeZone
   }
 
   await enviarPush(mensagensPush);
+});
+
+// ============================================================================
+// MÓDULO DE BENEFÍCIOS / CUPONS COM COMISSÃO ("Cuide-se")
+// ============================================================================
+//
+// Nem toda parceria gera comissão: `parcerias/{id}.tipoBeneficio` distingue
+//   - 'link'  → o comportamento de sempre (leitura livre, sem rastreamento
+//               financeiro, o clique só é contado por estatística).
+//   - 'cupom' → benefício com repasse de comissão para o Travessia. Passa
+//               pelo fluxo completo abaixo: voucher → validação pelo parceiro
+//               → confirmação da usuária → elegibilidade → fechamento →
+//               pagamento. Cada etapa é um evento distinto — gerar o cupom
+//               NUNCA é contabilizado como comissão; só a confirmação da
+//               usuária, depois da janela de contestação, torna o valor
+//               "a receber" de fato.
+//
+// Regra de ouro de segurança: todo cálculo financeiro roda aqui (Admin SDK),
+// nunca no cliente. As coleções vouchers/resgates/fechamentos/auditoriaBeneficios
+// têm `allow write: if false` no firestore.rules — só estas Cloud Functions
+// conseguem gravar nelas.
+
+const ADMIN_EMAILS_BENEFICIOS = ['carla.zambi.psi@gmail.com', 'larissapjaniques@gmail.com'];
+const JANELA_CONTESTACAO_HORAS = 24;
+// Domínio padrão do Firebase Hosting para o projeto — sempre existe, mesmo
+// sem domínio próprio configurado.
+const PARTNER_PORTAL_BASE_URL = 'https://o-amor-que-fica.web.app';
+
+async function exigirAdmin(request) {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Faça login como administradora.');
+  const email = (request.auth.token?.email || '').toLowerCase();
+  if (ADMIN_EMAILS_BENEFICIOS.includes(email)) return uid;
+  const snap = await db.collection('usuarios').doc(uid).get();
+  if (snap.data()?.role === 'admin') return uid;
+  throw new HttpsError('permission-denied', 'Apenas administradoras podem fazer isso.');
+}
+
+function centavos(valorReais) {
+  const n = Number(valorReais);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100);
+}
+const reais = (c) => Math.round(c) / 100;
+
+async function registrarAuditoriaBeneficio(tipo, entidade, entidadeId, dados = {}) {
+  await db.collection('auditoriaBeneficios').add({
+    tipo, entidade, entidadeId,
+    ...dados,
+    dataHora: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+function gerarCodigoPublico() {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O/0/I/1 (evita confusão visual)
+  let s = '';
+  for (let i = 0; i < 6; i++) s += alfabeto[crypto.randomInt(alfabeto.length)];
+  return `TRV-${s}`;
+}
+
+// ---- 1) Usuária gera o voucher ---------------------------------------------
+exports.gerarVoucherBeneficio = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Faça login para gerar um cupom.');
+
+  const parceriaId = String(request.data?.parceriaId || '');
+  if (!parceriaId) throw new HttpsError('invalid-argument', 'Parceria inválida.');
+
+  const parceriaRef = db.collection('parcerias').doc(parceriaId);
+  const parceriaSnap = await parceriaRef.get();
+  if (!parceriaSnap.exists) throw new HttpsError('not-found', 'Parceria não encontrada.');
+  const parceria = parceriaSnap.data();
+
+  if (parceria.ativo === false) throw new HttpsError('failed-precondition', 'Esta parceria não está mais ativa.');
+  if (parceria.tipoBeneficio !== 'cupom') throw new HttpsError('failed-precondition', 'Esta parceria não usa cupom — acesse pelo link do benefício.');
+
+  const beneficio = Number(parceria.percentualBeneficio) || 0;
+  const comissao = Number(parceria.percentualComissao) || 0;
+  const descontoCliente = parceria.percentualDescontoCliente != null
+    ? Number(parceria.percentualDescontoCliente)
+    : Math.max(0, beneficio - comissao);
+  if (beneficio <= 0) throw new HttpsError('failed-precondition', 'Este benefício ainda não tem um percentual configurado.');
+
+  const validadeDias = Number(parceria.validadeDiasVoucher) > 0 ? Number(parceria.validadeDiasVoucher) : 30;
+  const limitePorUsuaria = parceria.limiteUsoPorUsuaria != null ? Number(parceria.limiteUsoPorUsuaria) : null;
+
+  const tokenSeguro = crypto.randomBytes(24).toString('base64url');
+  const voucherRef = db.collection('vouchers').doc(tokenSeguro);
+  const agora = admin.firestore.Timestamp.now();
+  const expiraEm = admin.firestore.Timestamp.fromMillis(agora.toMillis() + validadeDias * 86400000);
+
+  await db.runTransaction(async (tx) => {
+    if (limitePorUsuaria != null) {
+      const existentesSnap = await tx.get(
+        db.collection('vouchers')
+          .where('usuarioId', '==', uid)
+          .where('parceriaId', '==', parceriaId)
+          .where('status', 'not-in', ['CANCELADO', 'EXPIRADO'])
+      );
+      if (existentesSnap.size >= limitePorUsuaria) {
+        throw new HttpsError('resource-exhausted', 'Você já utilizou o limite de cupons deste benefício.');
+      }
+    }
+    tx.set(voucherRef, {
+      codigoPublico: gerarCodigoPublico(),
+      tokenSeguro,
+      usuarioId: uid,
+      parceriaId,
+      parceriaNome: parceria.titulo || '',
+      status: 'GERADO',
+      percentualBeneficio: beneficio,
+      percentualComissao: comissao,
+      percentualDescontoCliente: descontoCliente,
+      baseCalculoComissao: parceria.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
+      geradoEm: agora,
+      expiraEm,
+    });
+  });
+
+  await registrarAuditoriaBeneficio('VOUCHER_CREATED', 'voucher', tokenSeguro, {
+    usuarioId: uid, perfil: 'usuaria', parceriaId,
+  });
+
+  return {
+    tokenSeguro,
+    codigoPublico: (await voucherRef.get()).data().codigoPublico,
+    expiraEm: expiraEm.toMillis(),
+    linkValidacao: `${PARTNER_PORTAL_BASE_URL}/parceiro.html?t=${tokenSeguro}`,
+  };
+});
+
+// ---- 2) Parceiro valida o voucher (sem login — o token é a credencial) -----
+// Chamada pública (parceiro.html não autentica no Firebase); a segurança vem
+// do token ser um segredo de 24 bytes só conhecido por quem vê o QR/link.
+exports.validarVoucher = onCall(async (request) => {
+  const tokenSeguro = String(request.data?.tokenSeguro || '');
+  if (!tokenSeguro) throw new HttpsError('invalid-argument', 'Cupom não informado.');
+
+  const voucherRef = db.collection('vouchers').doc(tokenSeguro);
+
+  const resultado = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(voucherRef);
+    if (!snap.exists) throw new HttpsError('not-found', 'Cupom não encontrado.');
+    const v = snap.data();
+
+    if (v.expiraEm && v.expiraEm.toMillis() < Date.now() && ['GERADO', 'APRESENTADO'].includes(v.status)) {
+      tx.update(voucherRef, { status: 'EXPIRADO' });
+      throw new HttpsError('failed-precondition', 'Este cupom expirou.');
+    }
+    if (v.status === 'VALIDADO') {
+      // Reapresentar o mesmo cupom (ex.: recarregou a página) não é erro.
+    } else if (!['GERADO', 'APRESENTADO'].includes(v.status)) {
+      const mensagens = {
+        CONCLUIDO: 'Este cupom já foi utilizado.',
+        CONFIRMADO_USUARIO: 'Este cupom já foi utilizado.',
+        CONTESTADO: 'Este cupom já foi utilizado.',
+        CANCELADO: 'Este cupom foi cancelado.',
+        EXPIRADO: 'Este cupom expirou.',
+      };
+      throw new HttpsError('failed-precondition', mensagens[v.status] || 'Este cupom não está disponível.');
+    } else {
+      tx.update(voucherRef, { status: 'VALIDADO', validadoEm: admin.firestore.FieldValue.serverTimestamp() });
+    }
+    return v;
+  });
+
+  await registrarAuditoriaBeneficio('VOUCHER_VALIDATED', 'voucher', tokenSeguro, { perfil: 'parceiro' });
+
+  // Só o essencial para o parceiro decidir e informar o valor — nenhum dado
+  // pessoal da usuária é exposto.
+  return {
+    ok: true,
+    parceriaNome: resultado.parceriaNome,
+    percentualBeneficio: resultado.percentualBeneficio,
+    percentualComissao: resultado.percentualComissao,
+    percentualDescontoCliente: resultado.percentualDescontoCliente,
+    baseCalculoComissao: resultado.baseCalculoComissao,
+    codigoPublico: resultado.codigoPublico,
+  };
+});
+
+// ---- 3) Parceiro informa o valor e confirma o atendimento ------------------
+exports.confirmarAtendimento = onCall(async (request) => {
+  const tokenSeguro = String(request.data?.tokenSeguro || '');
+  const valorOriginalCentavos = centavos(request.data?.valorOriginal);
+  if (!tokenSeguro) throw new HttpsError('invalid-argument', 'Cupom não informado.');
+  if (valorOriginalCentavos == null || valorOriginalCentavos <= 0) {
+    throw new HttpsError('invalid-argument', 'Informe o valor do serviço.');
+  }
+
+  const voucherRef = db.collection('vouchers').doc(tokenSeguro);
+  const resgateRef = db.collection('resgates').doc();
+
+  const resultado = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(voucherRef);
+    if (!snap.exists) throw new HttpsError('not-found', 'Cupom não encontrado.');
+    const v = snap.data();
+    if (v.status !== 'VALIDADO') {
+      throw new HttpsError('failed-precondition', 'Valide o cupom antes de confirmar o atendimento.');
+    }
+
+    // Cálculo inteiro em centavos — nunca ponto flutuante para dinheiro.
+    const descontoTotal = Math.round(valorOriginalCentavos * (v.percentualBeneficio / 100));
+    const descontoCliente = Math.round(valorOriginalCentavos * (v.percentualDescontoCliente / 100));
+    const valorFinalCentavos = valorOriginalCentavos - descontoTotal;
+    const baseComissao = v.baseCalculoComissao === 'valor_final' ? valorFinalCentavos : valorOriginalCentavos;
+    const comissaoCentavos = Math.round(baseComissao * (v.percentualComissao / 100));
+
+    const agora = admin.firestore.FieldValue.serverTimestamp();
+
+    tx.set(resgateRef, {
+      voucherId: tokenSeguro,
+      codigoPublico: v.codigoPublico,
+      parceriaId: v.parceriaId,
+      parceriaNome: v.parceriaNome,
+      usuarioId: v.usuarioId,
+      valorOriginalCentavos,
+      valorDescontoCentavos: descontoTotal,
+      valorDescontoClienteCentavos: descontoCliente,
+      valorComissaoCentavos: comissaoCentavos,
+      valorFinalCentavos,
+      baseCalculoComissao: v.baseCalculoComissao,
+      status: 'CONCLUIDO',
+      fechamentoId: null,
+      criadoEm: agora,
+      concluidoEm: agora,
+    });
+    tx.update(voucherRef, { status: 'CONCLUIDO', resgateId: resgateRef.id, concluidoEm: agora });
+
+    return { usuarioId: v.usuarioId, descontoTotal, descontoCliente, comissaoCentavos, valorFinalCentavos };
+  });
+
+  await registrarAuditoriaBeneficio('REDEMPTION_COMPLETED', 'resgate', resgateRef.id, {
+    perfil: 'parceiro', voucherId: tokenSeguro,
+    valorNovo: { valorOriginalCentavos, comissaoCentavos: resultado.comissaoCentavos },
+  });
+
+  // Avisa a usuária pelo canal editorial já existente no app — pede a
+  // confirmação de que o atendimento realmente aconteceu.
+  await db.collection('notificacoesEditoriais').add({
+    usuarioId: resultado.usuarioId,
+    tipo: 'confirmar_resgate',
+    texto: 'Um parceiro registrou o uso do seu benefício. Toque para confirmar se o atendimento aconteceu.',
+    resgateId: resgateRef.id,
+    ativa: true,
+    criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return {
+    ok: true,
+    valorOriginal: reais(valorOriginalCentavos),
+    valorDesconto: reais(resultado.descontoTotal),
+    valorFinal: reais(resultado.valorFinalCentavos),
+    comissao: reais(resultado.comissaoCentavos),
+  };
+});
+
+// ---- 4) Usuária confirma ou contesta ---------------------------------------
+exports.responderConfirmacaoResgate = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Faça login.');
+
+  const resgateId = String(request.data?.resgateId || '');
+  const confirmar = request.data?.confirmar === true;
+  if (!resgateId) throw new HttpsError('invalid-argument', 'Resgate inválido.');
+
+  const resgateRef = db.collection('resgates').doc(resgateId);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(resgateRef);
+    if (!snap.exists) throw new HttpsError('not-found', 'Registro não encontrado.');
+    const r = snap.data();
+    if (r.usuarioId !== uid) throw new HttpsError('permission-denied', 'Este registro não pertence a você.');
+    if (r.status !== 'CONCLUIDO') throw new HttpsError('failed-precondition', 'Este registro já foi respondido.');
+
+    const agora = admin.firestore.FieldValue.serverTimestamp();
+    if (confirmar) {
+      tx.update(resgateRef, { status: 'CONFIRMADO_USUARIO', confirmadoEm: agora });
+      tx.update(db.collection('vouchers').doc(r.voucherId), { status: 'CONFIRMADO_USUARIO', confirmadoEm: agora });
+    } else {
+      tx.update(resgateRef, { status: 'CONTESTADO', contestadoEm: agora });
+      tx.update(db.collection('vouchers').doc(r.voucherId), { status: 'CONTESTADO', contestadoEm: agora });
+    }
+  });
+
+  await registrarAuditoriaBeneficio(confirmar ? 'USER_CONFIRMED' : 'USER_CONTESTED', 'resgate', resgateId, {
+    usuarioId: uid, perfil: 'usuaria',
+  });
+
+  return { ok: true };
+});
+
+// ---- 5) Job periódico: expira vouchers vencidos e libera resgates para
+//         liquidação depois da janela de contestação -----------------------
+exports.processarBeneficiosPendentes = onSchedule({ schedule: 'every 60 minutes', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+
+  const vencidosSnap = await db.collection('vouchers')
+    .where('status', 'in', ['GERADO', 'APRESENTADO', 'VALIDADO'])
+    .where('expiraEm', '<', admin.firestore.Timestamp.fromMillis(agora))
+    .get();
+  for (const doc of vencidosSnap.docs) {
+    await doc.ref.update({ status: 'EXPIRADO' });
+  }
+
+  const limiteJanela = admin.firestore.Timestamp.fromMillis(agora - JANELA_CONTESTACAO_HORAS * 3600000);
+  const elegiveisSnap = await db.collection('resgates')
+    .where('status', '==', 'CONFIRMADO_USUARIO')
+    .where('confirmadoEm', '<', limiteJanela)
+    .get();
+  for (const doc of elegiveisSnap.docs) {
+    await doc.ref.update({ status: 'ELEGIVEL_LIQUIDACAO' });
+  }
+});
+
+// ---- 6) Admin fecha um período de uma parceria (settlement) ----------------
+exports.fecharPeriodoParceria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const parceriaId = String(request.data?.parceriaId || '');
+  if (!parceriaId) throw new HttpsError('invalid-argument', 'Parceria inválida.');
+
+  let query = db.collection('resgates')
+    .where('parceriaId', '==', parceriaId)
+    .where('status', '==', 'ELEGIVEL_LIQUIDACAO');
+
+  const periodoInicioMs = request.data?.periodoInicio ? Date.parse(request.data.periodoInicio) : null;
+  const periodoFimMs = request.data?.periodoFim ? Date.parse(request.data.periodoFim) : null;
+
+  const snap = await query.get();
+  const itens = snap.docs.filter(d => {
+    const t = d.data().concluidoEm?.toMillis?.() ?? 0;
+    if (periodoInicioMs != null && t < periodoInicioMs) return false;
+    if (periodoFimMs != null && t > periodoFimMs) return false;
+    return true;
+  });
+
+  if (itens.length === 0) throw new HttpsError('failed-precondition', 'Não há utilizações elegíveis para fechar neste período.');
+
+  const totais = itens.reduce((acc, d) => {
+    const r = d.data();
+    acc.original += r.valorOriginalCentavos || 0;
+    acc.desconto += r.valorDescontoCentavos || 0;
+    acc.comissao += r.valorComissaoCentavos || 0;
+    return acc;
+  }, { original: 0, desconto: 0, comissao: 0 });
+
+  const fechamentoRef = db.collection('fechamentos').doc();
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  const batch = db.batch();
+  batch.set(fechamentoRef, {
+    parceriaId,
+    periodoInicio: periodoInicioMs ? admin.firestore.Timestamp.fromMillis(periodoInicioMs) : null,
+    periodoFim: periodoFimMs ? admin.firestore.Timestamp.fromMillis(periodoFimMs) : null,
+    totalResgates: itens.length,
+    valorOriginalTotalCentavos: totais.original,
+    valorDescontoTotalCentavos: totais.desconto,
+    valorComissaoTotalCentavos: totais.comissao,
+    status: 'ABERTO',
+    geradoEm: agora,
+    geradoPor: adminUid,
+  });
+  for (const d of itens) {
+    batch.update(d.ref, { status: 'AGUARDANDO_PAGAMENTO', fechamentoId: fechamentoRef.id });
+  }
+  await batch.commit();
+
+  await registrarAuditoriaBeneficio('SETTLEMENT_CREATED', 'fechamento', fechamentoRef.id, {
+    usuarioId: adminUid, perfil: 'admin', parceriaId,
+    valorNovo: { totalResgates: itens.length, comissaoCentavos: totais.comissao },
+  });
+
+  return { fechamentoId: fechamentoRef.id, totalResgates: itens.length, comissao: reais(totais.comissao) };
+});
+
+// ---- 7) Admin registra que o parceiro pagou o fechamento -------------------
+exports.registrarPagamentoFechamento = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const fechamentoId = String(request.data?.fechamentoId || '');
+  if (!fechamentoId) throw new HttpsError('invalid-argument', 'Fechamento inválido.');
+
+  const fechamentoRef = db.collection('fechamentos').doc(fechamentoId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(fechamentoRef);
+    if (!snap.exists) throw new HttpsError('not-found', 'Fechamento não encontrado.');
+    if (snap.data().status === 'PAGO') throw new HttpsError('failed-precondition', 'Este fechamento já está marcado como pago.');
+
+    const agora = admin.firestore.FieldValue.serverTimestamp();
+    tx.update(fechamentoRef, {
+      status: 'PAGO',
+      pagoEm: agora,
+      metodoPagamento: request.data?.metodoPagamento || '',
+      referenciaPagamento: request.data?.referencia || '',
+      observacaoPagamento: request.data?.observacao || '',
+      registradoPor: adminUid,
+    });
+
+    const resgatesSnap = await tx.get(db.collection('resgates').where('fechamentoId', '==', fechamentoId));
+    resgatesSnap.forEach(d => tx.update(d.ref, { status: 'LIQUIDADO', liquidadoEm: agora }));
+  });
+
+  await registrarAuditoriaBeneficio('SETTLEMENT_PAID', 'fechamento', fechamentoId, { usuarioId: adminUid, perfil: 'admin' });
+  return { ok: true };
+});
+
+// ---- 8) Extrato do parceiro (sem login — token de painel próprio) ----------
+exports.consultarExtratoParceiro = onCall(async (request) => {
+  const tokenPainel = String(request.data?.tokenPainel || '');
+  if (!tokenPainel) throw new HttpsError('invalid-argument', 'Token inválido.');
+
+  const parceriaSnap = await db.collection('parcerias').where('tokenPainel', '==', tokenPainel).limit(1).get();
+  if (parceriaSnap.empty) throw new HttpsError('not-found', 'Painel não encontrado.');
+  const parceriaDoc = parceriaSnap.docs[0];
+
+  const resgatesSnap = await db.collection('resgates')
+    .where('parceriaId', '==', parceriaDoc.id)
+    .orderBy('criadoEm', 'desc')
+    .limit(100)
+    .get();
+
+  const itens = resgatesSnap.docs.map(d => {
+    const r = d.data();
+    return {
+      codigoPublico: r.codigoPublico,
+      valorOriginal: reais(r.valorOriginalCentavos || 0),
+      valorFinal: reais(r.valorFinalCentavos || 0),
+      comissao: reais(r.valorComissaoCentavos || 0),
+      status: r.status,
+      data: r.criadoEm?.toMillis?.() || null,
+    };
+  });
+
+  const pendente = itens.filter(i => ['CONCLUIDO', 'CONFIRMADO_USUARIO', 'ELEGIVEL_LIQUIDACAO', 'AGUARDANDO_PAGAMENTO'].includes(i.status));
+  const totalPendente = pendente.reduce((acc, i) => acc + i.comissao, 0);
+
+  return {
+    parceriaNome: parceriaDoc.data().titulo || '',
+    itens,
+    totalComissaoPendente: totalPendente,
+  };
 });

@@ -4,7 +4,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   serverTimestamp, updateDoc,
 } from 'firebase/firestore';
-import { IconClose, IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash } from './Icons';
 
 const CATEGORIAS = [
   { id: 'saude',           label: 'Da saúde física' },
@@ -14,8 +14,32 @@ const CATEGORIAS = [
   { id: 'outros',          label: 'Outros' },
 ];
 
+// Token de leitura do extrato do parceiro — não protege dinheiro (isso é a
+// Cloud Function que faz), só identifica de forma difícil de adivinhar qual
+// parceria consultar. Pode ser regenerado a qualquer momento reeditando.
+function gerarTokenPainel() {
+  return Array.from({ length: 3 }, () => Math.random().toString(36).slice(2, 10)).join('');
+}
+
+function tipoBtnStyle(ativo) {
+  return {
+    flex: 1, textAlign: 'left', cursor: 'pointer', padding: '12px 14px',
+    borderRadius: 10, border: `1.5px solid ${ativo ? 'var(--primary)' : 'var(--border)'}`,
+    background: ativo ? 'var(--primary-lav, #EDE9F5)' : 'var(--card)',
+    color: 'var(--text-dark)', fontFamily: 'inherit',
+  };
+}
+
 function novoForm() {
-  return { titulo: '', descricao: '', link: '', imagemUrl: '', categorias: [], ativo: true };
+  return {
+    titulo: '', descricao: '', link: '', imagemUrl: '', categorias: [], ativo: true,
+    tipoBeneficio: 'link',
+    percentualBeneficio: '10',
+    percentualComissao: '3',
+    baseCalculoComissao: 'valor_original',
+    limiteUsoPorUsuaria: '1',
+    validadeDiasVoucher: '30',
+  };
 }
 
 export default function Parcerias({ showToast }) {
@@ -56,23 +80,49 @@ export default function Parcerias({ showToast }) {
       imagemUrl: item.imagemUrl || '',
       categorias: item.categorias || [],
       ativo: item.ativo !== false,
+      tipoBeneficio: item.tipoBeneficio === 'cupom' ? 'cupom' : 'link',
+      percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
+      percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
+      baseCalculoComissao: item.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
+      limiteUsoPorUsuaria: item.limiteUsoPorUsuaria != null ? String(item.limiteUsoPorUsuaria) : '',
+      validadeDiasVoucher: item.validadeDiasVoucher != null ? String(item.validadeDiasVoucher) : '30',
     });
     setEditId(item.id);
     setShowModal(true);
   };
   const closeModal = () => { setShowModal(false); setEditId(null); setForm(novoForm()); };
 
+  const descontoClienteCalculado = Math.max(
+    0, (parseFloat(form.percentualBeneficio) || 0) - (parseFloat(form.percentualComissao) || 0)
+  );
+
   const salvar = async () => {
     if (!form.titulo.trim()) { showToast('Informe o título.', 'error'); return; }
     if (form.categorias.length === 0) { showToast('Selecione ao menos uma categoria.', 'error'); return; }
+    if (form.tipoBeneficio === 'cupom' && (!form.percentualBeneficio || parseFloat(form.percentualBeneficio) <= 0)) {
+      showToast('Informe o percentual total do benefício para o cupom.', 'error');
+      return;
+    }
     setSaving(true);
     try {
-      const data = { ...form };
+      const { percentualBeneficio, percentualComissao, limiteUsoPorUsuaria, validadeDiasVoucher, ...resto } = form;
+      const data = { ...resto };
+      if (form.tipoBeneficio === 'cupom') {
+        data.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
+        data.percentualComissao = parseFloat(percentualComissao) || 0;
+        data.percentualDescontoCliente = descontoClienteCalculado;
+        data.limiteUsoPorUsuaria = limiteUsoPorUsuaria.trim() ? parseInt(limiteUsoPorUsuaria, 10) : null;
+        data.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
+        // Mantém o token existente ao editar; só gera um novo se nunca teve.
+        if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) {
+          data.tokenPainel = gerarTokenPainel();
+        }
+      }
       if (editId) {
         await updateDoc(doc(db, 'parcerias', editId), data);
         showToast('Parceria atualizada!');
       } else {
-        await addDoc(collection(db, 'parcerias'), { ...data, criadoEm: serverTimestamp() });
+        await addDoc(collection(db, 'parcerias'), { ...data, cliques: 0, criadoEm: serverTimestamp() });
         showToast('Parceria adicionada!');
       }
       closeModal();
@@ -172,7 +222,32 @@ export default function Parcerias({ showToast }) {
                         {CATEGORIAS.find(cat => cat.id === c)?.label || c}
                       </span>
                     ))}
+                    {item.tipoBeneficio === 'cupom' && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                        background: 'rgba(198,164,110,.18)', color: '#8A6A33',
+                      }}>
+                        <IconTag size={10} /> Cupom · {item.percentualComissao || 0}% comissão
+                      </span>
+                    )}
                   </div>
+                )}
+                {item.tipoBeneficio === 'cupom' && item.tokenPainel && (
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/parceiro.html?painel=${item.tokenPainel}`;
+                      navigator.clipboard?.writeText(url);
+                      showToast('Link do painel do parceiro copiado!');
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      marginTop: 6, background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 700, color: 'var(--primary-600)', padding: 0,
+                    }}
+                  >
+                    <IconLink size={11} /> Copiar link do painel do parceiro
+                  </button>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -245,6 +320,93 @@ export default function Parcerias({ showToast }) {
                   ))}
                 </div>
               </div>
+
+              <div className="field-group">
+                <label>Tipo de benefício</label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => set('tipoBeneficio', 'link')}
+                    style={tipoBtnStyle(form.tipoBeneficio === 'link')}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>Link simples</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>
+                      Desconto direto — sem comissão nem rastreamento financeiro.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => set('tipoBeneficio', 'cupom')}
+                    style={tipoBtnStyle(form.tipoBeneficio === 'cupom')}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>Cupom com comissão</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>
+                      Gera voucher; o parceiro confirma o atendimento e o Travessia recebe uma comissão.
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {form.tipoBeneficio === 'cupom' && (
+                <div style={{
+                  background: 'var(--primary-lav, #EDE9F5)', borderRadius: 12,
+                  padding: 14, marginBottom: 16,
+                }}>
+                  <div className="field-row">
+                    <div className="field-group" style={{ marginBottom: 8 }}>
+                      <label>Benefício total (%)</label>
+                      <input type="number" min="0" step="0.5"
+                        value={form.percentualBeneficio}
+                        onChange={e => set('percentualBeneficio', e.target.value)}
+                        placeholder="10" />
+                    </div>
+                    <div className="field-group" style={{ marginBottom: 8 }}>
+                      <label>Comissão Travessia (%)</label>
+                      <input type="number" min="0" step="0.5"
+                        value={form.percentualComissao}
+                        onChange={e => set('percentualComissao', e.target.value)}
+                        placeholder="3" />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 12, color: '#5B3D9E', margin: '0 0 12px' }}>
+                    Desconto que chega à usuária: <strong>{descontoClienteCalculado.toFixed(1)}%</strong>
+                    {'  ·  '}Comissão do Travessia: <strong>{form.percentualComissao || 0}%</strong>
+                  </p>
+
+                  <div className="field-group" style={{ marginBottom: 8 }}>
+                    <label>Base de cálculo da comissão</label>
+                    <div className="tag-group">
+                      <button type="button"
+                        className={`tag ${form.baseCalculoComissao === 'valor_original' ? 'active' : ''}`}
+                        onClick={() => set('baseCalculoComissao', 'valor_original')}>
+                        Valor original
+                      </button>
+                      <button type="button"
+                        className={`tag ${form.baseCalculoComissao === 'valor_final' ? 'active' : ''}`}
+                        onClick={() => set('baseCalculoComissao', 'valor_final')}>
+                        Valor final (com desconto)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="field-row">
+                    <div className="field-group" style={{ marginBottom: 0 }}>
+                      <label>Limite por usuária</label>
+                      <input type="number" min="0"
+                        value={form.limiteUsoPorUsuaria}
+                        onChange={e => set('limiteUsoPorUsuaria', e.target.value)}
+                        placeholder="Vazio = ilimitado" />
+                    </div>
+                    <div className="field-group" style={{ marginBottom: 0 }}>
+                      <label>Validade do cupom (dias)</label>
+                      <input type="number" min="1"
+                        value={form.validadeDiasVoucher}
+                        onChange={e => set('validadeDiasVoucher', e.target.value)}
+                        placeholder="30" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="field-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

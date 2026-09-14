@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
 import AdminLayout from './AdminLayout';
+import AdminSubTabs from './AdminSubTabs';
 
 // Mesmas categorias exibidas ao usuário na tela de Parcerias.
 const CATEGORIAS = [
@@ -26,6 +27,13 @@ const CATEGORIAS = [
 ];
 const rotuloCategoria = (id) => CATEGORIAS.find(c => c.id === id)?.label || id;
 
+// Gera um token de leitura simples para o extrato do parceiro — não precisa
+// ser criptograficamente forte (não protege dinheiro, só um resumo de
+// leitura), mas precisa ser difícil de adivinhar por acaso.
+function gerarTokenPainel() {
+  return Array.from({ length: 3 }, () => Math.random().toString(36).slice(2, 10)).join('');
+}
+
 export default function AdminParceriasScreen({ navigation }) {
   const [parcerias, setParcerias] = useState([]);
   const [titulo, setTitulo] = useState('');
@@ -35,6 +43,18 @@ export default function AdminParceriasScreen({ navigation }) {
   const [categoriaSel, setCategoriaSel] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
+
+  // Nem toda parceria gera comissão — a maioria é só um link/desconto direto.
+  const [tipoBeneficio, setTipoBeneficio] = useState('link');
+  const [percentualBeneficio, setPercentualBeneficio] = useState('10');
+  const [percentualComissao, setPercentualComissao] = useState('3');
+  const [baseCalculoComissao, setBaseCalculoComissao] = useState('valor_original');
+  const [limiteUsoPorUsuaria, setLimiteUsoPorUsuaria] = useState('1');
+  const [validadeDiasVoucher, setValidadeDiasVoucher] = useState('30');
+
+  const descontoClienteCalculado = Math.max(
+    0, (parseFloat(percentualBeneficio) || 0) - (parseFloat(percentualComissao) || 0)
+  );
 
   useEffect(() => {
     const ref = query(collection(db, 'parcerias'), orderBy('criadoEm', 'desc'));
@@ -108,9 +128,13 @@ export default function AdminParceriasScreen({ navigation }) {
       Alert.alert('Atenção', 'Preencha pelo menos o título e o link de destino.');
       return;
     }
+    if (tipoBeneficio === 'cupom' && (!percentualBeneficio || parseFloat(percentualBeneficio) <= 0)) {
+      Alert.alert('Atenção', 'Informe o percentual total do benefício para o cupom.');
+      return;
+    }
     setEnviando(true);
     try {
-      await addDoc(collection(db, 'parcerias'), {
+      const dados = {
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         link: link.trim(),
@@ -118,9 +142,21 @@ export default function AdminParceriasScreen({ navigation }) {
         categorias: categoriaSel,
         ativo: true,
         cliques: 0,
+        tipoBeneficio,
         criadoEm: serverTimestamp(),
-      });
+      };
+      if (tipoBeneficio === 'cupom') {
+        dados.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
+        dados.percentualComissao = parseFloat(percentualComissao) || 0;
+        dados.percentualDescontoCliente = descontoClienteCalculado;
+        dados.baseCalculoComissao = baseCalculoComissao;
+        dados.limiteUsoPorUsuaria = limiteUsoPorUsuaria.trim() ? parseInt(limiteUsoPorUsuaria, 10) : null;
+        dados.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
+        dados.tokenPainel = gerarTokenPainel();
+      }
+      await addDoc(collection(db, 'parcerias'), dados);
       setTitulo(''); setDescricao(''); setLink(''); setImagemUrl(''); setCategoriaSel([]);
+      setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
       Alert.alert('', 'Parceria publicada com sucesso!');
     } catch {
       Alert.alert('Erro', 'Não foi possível publicar a parceria.');
@@ -143,6 +179,7 @@ export default function AdminParceriasScreen({ navigation }) {
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminParcerias">
+      <AdminSubTabs grupo="parcerias" atual="AdminParcerias" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -244,6 +281,92 @@ export default function AdminParceriasScreen({ navigation }) {
             ))}
           </View>
 
+          <Text style={s.formLabel}>Tipo de benefício</Text>
+          <View style={s.tipoRow}>
+            <TouchableOpacity
+              style={[s.tipoOpc, tipoBeneficio === 'link' && s.tipoOpcSel]}
+              onPress={() => setTipoBeneficio('link')}
+            >
+              <Ionicons name="link-outline" size={16} color={tipoBeneficio === 'link' ? colors.lav5 : colors.tm} />
+              <View style={{ flex: 1 }}>
+                <Text style={[s.tipoOpcTit, tipoBeneficio === 'link' && s.tipoOpcTitSel]}>Link simples</Text>
+                <Text style={s.tipoOpcDesc}>Desconto direto — sem comissão nem rastreamento financeiro.</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.tipoOpc, tipoBeneficio === 'cupom' && s.tipoOpcSel]}
+              onPress={() => setTipoBeneficio('cupom')}
+            >
+              <Ionicons name="pricetag-outline" size={16} color={tipoBeneficio === 'cupom' ? colors.lav5 : colors.tm} />
+              <View style={{ flex: 1 }}>
+                <Text style={[s.tipoOpcTit, tipoBeneficio === 'cupom' && s.tipoOpcTitSel]}>Cupom com comissão</Text>
+                <Text style={s.tipoOpcDesc}>Gera voucher, o parceiro confirma o atendimento e o Travessia recebe uma comissão.</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {tipoBeneficio === 'cupom' && (
+            <View style={s.comissaoBox}>
+              <View style={s.linha2}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.formLabel}>Benefício total (%)</Text>
+                  <TextInput
+                    style={s.input} keyboardType="decimal-pad"
+                    value={percentualBeneficio} onChangeText={setPercentualBeneficio}
+                    placeholder="10" placeholderTextColor={colors.tl}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.formLabel}>Comissão Travessia (%)</Text>
+                  <TextInput
+                    style={s.input} keyboardType="decimal-pad"
+                    value={percentualComissao} onChangeText={setPercentualComissao}
+                    placeholder="3" placeholderTextColor={colors.tl}
+                  />
+                </View>
+              </View>
+              <Text style={s.calculoTxt}>
+                Desconto que chega à usuária: <Text style={s.calculoForte}>{descontoClienteCalculado.toFixed(1)}%</Text>
+                {'  '}·{'  '}Comissão do Travessia: <Text style={s.calculoForte}>{percentualComissao || 0}%</Text>
+              </Text>
+
+              <Text style={s.formLabel}>Base de cálculo da comissão</Text>
+              <View style={s.chipRow}>
+                <TouchableOpacity
+                  style={[s.chip, baseCalculoComissao === 'valor_original' && s.chipSel]}
+                  onPress={() => setBaseCalculoComissao('valor_original')}
+                >
+                  <Text style={[s.chipText, baseCalculoComissao === 'valor_original' && s.chipTextSel]}>Valor original</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.chip, baseCalculoComissao === 'valor_final' && s.chipSel]}
+                  onPress={() => setBaseCalculoComissao('valor_final')}
+                >
+                  <Text style={[s.chipText, baseCalculoComissao === 'valor_final' && s.chipTextSel]}>Valor final (com desconto)</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={s.linha2}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.formLabel}>Limite por usuária</Text>
+                  <TextInput
+                    style={s.input} keyboardType="number-pad"
+                    value={limiteUsoPorUsuaria} onChangeText={setLimiteUsoPorUsuaria}
+                    placeholder="Deixe vazio p/ ilimitado" placeholderTextColor={colors.tl}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.formLabel}>Validade do cupom (dias)</Text>
+                  <TextInput
+                    style={s.input} keyboardType="number-pad"
+                    value={validadeDiasVoucher} onChangeText={setValidadeDiasVoucher}
+                    placeholder="30" placeholderTextColor={colors.tl}
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
           <Button
             title={enviando ? 'Publicando...' : 'Publicar parceria no app'}
             onPress={handlePublicar}
@@ -275,12 +398,24 @@ export default function AdminParceriasScreen({ navigation }) {
                 {(p.categorias || []).slice(0, 2).map(cat => (
                   <Text key={cat} style={s.itemTag}>{rotuloCategoria(cat)}</Text>
                 ))}
-                <View style={s.cliquesTag}>
-                  <Ionicons name="stats-chart-outline" size={10} color={colors.lav5} />
-                  <Text style={s.cliquesTagTxt}>{p.cliques || 0} cliques</Text>
-                </View>
+                {p.tipoBeneficio === 'cupom' ? (
+                  <View style={s.cupomTag}>
+                    <Ionicons name="pricetag" size={10} color="#8A6A33" />
+                    <Text style={s.cupomTagTxt}>Cupom · {p.percentualComissao || 0}% comissão</Text>
+                  </View>
+                ) : (
+                  <View style={s.cliquesTag}>
+                    <Ionicons name="stats-chart-outline" size={10} color={colors.lav5} />
+                    <Text style={s.cliquesTagTxt}>{p.cliques || 0} cliques</Text>
+                  </View>
+                )}
               </View>
               <Text style={s.itemLink} numberOfLines={1}>{p.link}</Text>
+              {p.tipoBeneficio === 'cupom' && (
+                <TouchableOpacity onPress={() => navigation.navigate('AdminBeneficios', { parceriaId: p.id })}>
+                  <Text style={s.verComissoesLink}>Ver cupons e comissões →</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <View style={s.itemActions}>
               <Switch
@@ -348,6 +483,25 @@ const s = StyleSheet.create({
   chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
   chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
 
+  tipoRow: { gap: 8, marginBottom: 4 },
+  tipoOpc: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg,
+    padding: spacing.md, backgroundColor: colors.bg,
+  },
+  tipoOpcSel: { borderColor: colors.lav4, backgroundColor: colors.lav1 },
+  tipoOpcTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 2 },
+  tipoOpcTitSel: { color: colors.lav6 },
+  tipoOpcDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, lineHeight: 15 },
+
+  comissaoBox: {
+    backgroundColor: colors.lav1, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2,
+    padding: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm, gap: 4,
+  },
+  linha2: { flexDirection: 'row', gap: spacing.sm },
+  calculoTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, marginBottom: 8, lineHeight: 17 },
+  calculoForte: { fontFamily: fonts.bodyBold },
+
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
   item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
@@ -363,7 +517,13 @@ const s = StyleSheet.create({
     backgroundColor: colors.sage + '22', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
   },
   cliquesTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav5 },
+  cupomTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.gold + '30', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
+  },
+  cupomTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: '#8A6A33' },
   itemLink: { fontFamily: fonts.body, fontSize: 10, color: colors.lav4 },
+  verComissoesLink: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5, marginTop: 2 },
   itemActions: { alignItems: 'center', gap: 2 },
   switchLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
 });

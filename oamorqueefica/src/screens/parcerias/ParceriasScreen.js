@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,10 +24,27 @@ const FILTROS = [
 const rotuloCategoria = (c) => FILTROS.find(f => f.id === c)?.label || c;
 
 export default function ParceriasScreen({ navigation }) {
-  const { parcerias, registrarCliqueParceria } = useApp();
+  const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio } = useApp();
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
+  const [gerando, setGerando] = useState(null); // id da parceria em geração, para desabilitar o card
 
-  const handleAbrirParceria = (p) => {
+  // Parcerias comuns (a maioria) apenas levam a um link/desconto direto — sem
+  // rastreamento financeiro. Só as marcadas como "cupom" pelo painel administrativo
+  // (as que geram comissão para o Travessia) passam pelo fluxo de voucher.
+  const handleAbrirParceria = async (p) => {
+    if (p.tipoBeneficio === 'cupom') {
+      if (gerando) return;
+      setGerando(p.id);
+      try {
+        const voucher = await gerarVoucherBeneficio(p.id);
+        navigation.navigate('Voucher', { ...voucher, parceriaNome: p.titulo });
+      } catch (e) {
+        Alert.alert('', e?.message || 'Não foi possível gerar o cupom agora. Tente novamente.');
+      } finally {
+        setGerando(null);
+      }
+      return;
+    }
     // Aceita tanto `link` (painel web) quanto `url` (cadastros antigos do app).
     const destino = p.link || p.url;
     registrarCliqueParceria(p.id);
@@ -127,40 +144,59 @@ export default function ParceriasScreen({ navigation }) {
             <Text style={s.listaTitle}>
               {filtroAtivo === 'todos' ? 'Parcerias disponíveis' : FILTROS.find(f => f.id === filtroAtivo)?.label}
             </Text>
-            {parceriasExibidas.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={s.card}
-                onPress={() => handleAbrirParceria(p)}
-                activeOpacity={0.85}
-              >
-                {p.imagemUrl ? (
-                  <Image source={{ uri: p.imagemUrl }} style={s.cardImg} resizeMode="cover" />
-                ) : (
-                  <View style={s.cardImgPlaceholder}>
-                    <Ionicons name="gift-outline" size={32} color={colors.lav3} />
-                    <Text style={s.cardImgPlaceholderTxt}>Parceria Atravessia</Text>
+            {parceriasExibidas.map(p => {
+              const ehCupom = p.tipoBeneficio === 'cupom';
+              const carregando = gerando === p.id;
+              return (
+                <TouchableOpacity
+                  key={p.id}
+                  style={s.card}
+                  onPress={() => handleAbrirParceria(p)}
+                  activeOpacity={0.85}
+                  disabled={carregando}
+                >
+                  {p.imagemUrl ? (
+                    <Image source={{ uri: p.imagemUrl }} style={s.cardImg} resizeMode="cover" />
+                  ) : (
+                    <View style={s.cardImgPlaceholder}>
+                      <Ionicons name="gift-outline" size={32} color={colors.lav3} />
+                      <Text style={s.cardImgPlaceholderTxt}>Parceria Atravessia</Text>
+                    </View>
+                  )}
+                  <View style={s.cardBody}>
+                    <View style={s.cardTags}>
+                      {(p.categorias || []).slice(0, 3).map(cat => (
+                        <View key={cat} style={s.tag}>
+                          <Text style={s.tagTxt}>{rotuloCategoria(cat)}</Text>
+                        </View>
+                      ))}
+                      {ehCupom && !!p.percentualBeneficio && (
+                        <View style={[s.tag, s.tagCupom]}>
+                          <Text style={[s.tagTxt, s.tagCupomTxt]}>{p.percentualBeneficio}% de benefício</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={s.cardTitulo}>{p.titulo}</Text>
+                    {p.descricao ? (
+                      <Text style={s.cardDesc} numberOfLines={3}>{p.descricao}</Text>
+                    ) : null}
+                    <View style={s.cardCta}>
+                      {carregando ? (
+                        <>
+                          <ActivityIndicator size="small" color={colors.lav4} />
+                          <Text style={s.cardCtaTxt}>Gerando cupom...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name={ehCupom ? 'pricetag' : 'arrow-forward-circle'} size={16} color={colors.lav4} />
+                          <Text style={s.cardCtaTxt}>{ehCupom ? 'Gerar cupom do benefício' : 'Acessar benefício'}</Text>
+                        </>
+                      )}
+                    </View>
                   </View>
-                )}
-                <View style={s.cardBody}>
-                  <View style={s.cardTags}>
-                    {(p.categorias || []).slice(0, 3).map(cat => (
-                      <View key={cat} style={s.tag}>
-                        <Text style={s.tagTxt}>{rotuloCategoria(cat)}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <Text style={s.cardTitulo}>{p.titulo}</Text>
-                  {p.descricao ? (
-                    <Text style={s.cardDesc} numberOfLines={3}>{p.descricao}</Text>
-                  ) : null}
-                  <View style={s.cardCta}>
-                    <Ionicons name="arrow-forward-circle" size={16} color={colors.lav4} />
-                    <Text style={s.cardCtaTxt}>Acessar benefício</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -257,6 +293,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 3,
   },
   tagTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.lav5 },
+  tagCupom: { backgroundColor: colors.gold + '30' },
+  tagCupomTxt: { fontFamily: fonts.bodyBold, color: '#8A6A33' },
   cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: 5 },
   cardDesc: {
     fontFamily: fonts.body, fontSize: 12, color: colors.tm,

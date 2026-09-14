@@ -1237,7 +1237,7 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>3</Text>
                     <Text style={s.cardTit}>
-                      As {agruparVitorias(vitoriasMes).length} maiores pequenas vitórias que tive neste mês
+                      As {agruparVitorias(vitoriasMes).length} maiores vitórias que tive neste mês
                     </Text>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasMes)} />
                     {vitoriasMes.length > 0 && (
@@ -1398,7 +1398,7 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>⭐</Text>
                     <Text style={s.cardTit}>
-                      As {agruparVitorias(vitoriasAno).length} maiores pequenas vitórias que tive neste ano
+                      As {agruparVitorias(vitoriasAno).length} maiores vitórias que tive neste ano
                     </Text>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasAno)} />
                     {vitoriasAno.length > 0 && (
@@ -1597,7 +1597,7 @@ export default function RelatoriosScreen({ navigation }) {
                       <View style={s.card}>
                         <Text style={s.sectionLabel}>⭐</Text>
                         <Text style={s.cardTit}>
-                          As {agruparVitorias(vitoriasRange).length} maiores pequenas vitórias do período
+                          As {agruparVitorias(vitoriasRange).length} maiores vitórias do período
                         </Text>
                         <VitoriasDestaque itens={agruparVitorias(vitoriasRange)} />
                         {vitoriasRange.length > 0 && (

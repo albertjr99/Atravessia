@@ -40,7 +40,11 @@ const NAV_GRUPOS = [
         label: 'Jornada', sub: 'Travessia · Jornadas · Vitórias',
         screen: 'AdminTravessia', irmas: ['AdminJornadas', 'AdminVitorias'],
       },
-      { icon: 'gift', iconOff: 'gift-outline', label: 'Parcerias', screen: 'AdminParcerias' },
+      {
+        icon: 'gift', iconOff: 'gift-outline',
+        label: 'Parcerias', sub: 'Benefícios · Cupons e comissões',
+        screen: 'AdminParcerias', irmas: ['AdminBeneficios'],
+      },
     ],
   },
   {

@@ -23,9 +23,13 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
     if (!d || d < 1) return;
     setSalvando(true);
     const expiracao = Timestamp.fromDate(new Date(Date.now() + d * 86400000));
+    // NÃO gravar acessoTotal: true aqui — o app concede acesso enquanto
+    // acessoTotal OU a cortesia (dentro do prazo) forem verdadeiros. Como
+    // acessoTotal nunca é desligado sozinho, marcá-lo junto com a cortesia
+    // tornava o acesso permanente e o prazo de expiração nunca fazia efeito.
     await updateDoc(doc(db, 'usuarios', usuaria.id), {
       cortesia: { ativo: true, expiracao },
-      acessoTotal: true,
+      acessoTotal: false,
     });
     setSalvando(false);
     onSalvar();

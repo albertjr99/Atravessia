@@ -3,12 +3,14 @@ import Frases from './Frases';
 import Conteudos from './Conteudos';
 import Audios from './Audios';
 import Parcerias from './Parcerias';
+import Beneficios from './Beneficios';
 
 const TABS = [
-  { id: 'frases',    label: 'Frases',          Componente: Frases },
-  { id: 'conteudos', label: 'Conteúdos',       Componente: Conteudos },
-  { id: 'audios',    label: 'Áudios Check-in', Componente: Audios },
-  { id: 'parcerias', label: 'Parcerias',       Componente: Parcerias },
+  { id: 'frases',     label: 'Frases',              Componente: Frases },
+  { id: 'conteudos',  label: 'Conteúdos',           Componente: Conteudos },
+  { id: 'audios',     label: 'Áudios Check-in',     Componente: Audios },
+  { id: 'parcerias',  label: 'Parcerias',           Componente: Parcerias },
+  { id: 'beneficios', label: 'Cupons e Comissões',  Componente: Beneficios },
 ];
 
 export default function Biblioteca({ showToast }) {

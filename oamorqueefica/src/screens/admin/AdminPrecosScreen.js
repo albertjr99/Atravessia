@@ -112,6 +112,22 @@ export default function AdminPrecosScreen() {
       if (ativarEmDate) payload.ativarEm = ativarEmDate;
 
       await setDoc(doc(db, 'configuracoes', 'precos'), payload, { merge: true });
+
+      // Espelha o valor também em planos/{id}.preco e .precoLabel — é esse
+      // documento que o card do plano e a tela de checkout do app realmente
+      // leem. Sem isso, o preço mudava aqui mas a usuária continuava vendo
+      // (e assinando) pelo valor antigo.
+      for (const [campo, centavos] of Object.entries(novo)) {
+        const info = PLANOS_INFO.find(p => p.campo === campo);
+        if (!info) continue;
+        const reais = centavos / 100;
+        await setDoc(doc(db, 'planos', String(info.id)), {
+          id: info.id,
+          preco: reais,
+          precoLabel: `R$ ${reais.toFixed(2).replace('.', ',')}/mês`,
+        }, { merge: true });
+      }
+
       Alert.alert(
         'Preços salvos',
         ativarEmDate
