@@ -48,7 +48,12 @@ function proximaOcorrencia(dataStr, hoje) {
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 
-// Preços em centavos (BRL), espelhando src/data/index.js -> planos
+// Preços de referência em centavos (BRL) — usados apenas se o Firestore não
+// tiver um valor válido cadastrado (ver obterPrecoPlanoCentavos/obterPrecoPeriodoCentavos
+// abaixo). Antes estes valores eram usados SEMPRE, ignorando qualquer edição
+// feita pela administração no app ou no painel web: mudar o preço na tela
+// "Preços e Planos" ou no card do plano nunca alterava o valor realmente
+// cobrado no checkout do Stripe.
 const PLANOS = {
   1: { nome: 'Atravessia — Plano Acolher', valor: 2490 },
   2: { nome: 'Atravessia — Plano Compreender', valor: 4990 },
@@ -57,6 +62,36 @@ const PLANOS = {
 
 // Preço por relatório de período (único para todos os planos)
 const PERIODO_PRECO = { valor: 590, label: 'R$ 5,90' };
+
+// Busca o preço atual do plano no Firestore. Prioriza `planos/{id}.preco`
+// (reais — é o documento editado tanto pelo painel web quanto pelo card do
+// plano no app) e, na ausência dele, `configuracoes/precos.plano{id}`
+// (centavos — editado pela tela "Preços e Planos"). Cai no valor fixo acima
+// somente se nenhum dos dois existir ou for inválido.
+async function obterPrecoPlanoCentavos(planoId) {
+  try {
+    const planoSnap = await db.collection('planos').doc(String(planoId)).get();
+    const preco = planoSnap.data()?.preco;
+    if (typeof preco === 'number' && preco > 0) return Math.round(preco * 100);
+  } catch { /* segue para o próximo fallback */ }
+
+  try {
+    const precosSnap = await db.collection('configuracoes').doc('precos').get();
+    const centavos = precosSnap.data()?.[`plano${planoId}`];
+    if (typeof centavos === 'number' && centavos > 0) return centavos;
+  } catch { /* segue para o valor fixo */ }
+
+  return PLANOS[planoId]?.valor ?? null;
+}
+
+async function obterPrecoPeriodoCentavos() {
+  try {
+    const precosSnap = await db.collection('configuracoes').doc('precos').get();
+    const centavos = precosSnap.data()?.periodo;
+    if (typeof centavos === 'number' && centavos > 0) return centavos;
+  } catch { /* segue para o valor fixo */ }
+  return PERIODO_PRECO.valor;
+}
 
 async function getOrCreateCustomer(stripe, uid, userData) {
   if (userData.stripeCustomerId) return userData.stripeCustomerId;
@@ -76,6 +111,9 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   const plano = PLANOS[planoId];
   if (!plano) throw new HttpsError('invalid-argument', 'Plano inválido.');
 
+  const valorAtual = await obterPrecoPlanoCentavos(planoId);
+  if (!valorAtual) throw new HttpsError('failed-precondition', 'Preço do plano não configurado.');
+
   const stripe = Stripe(STRIPE_SECRET_KEY.value());
   const userRef = db.collection('usuarios').doc(uid);
   const userSnap = await userRef.get();
@@ -92,7 +130,7 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
       price_data: {
         currency: 'brl',
         product_data: { name: plano.nome },
-        unit_amount: plano.valor,
+        unit_amount: valorAtual,
         recurring: { interval: 'month' },
       },
       quantity: 1,
@@ -123,6 +161,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
 
   const stripe = Stripe(STRIPE_SECRET_KEY.value());
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
+  const valorAtual = await obterPrecoPeriodoCentavos();
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -132,7 +171,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
       price_data: {
         currency: 'brl',
         product_data: { name: 'Relatório por Período — Atravessia (1 relatório)' },
-        unit_amount: PERIODO_PRECO.valor,
+        unit_amount: valorAtual,
       },
       quantity: 1,
     }],

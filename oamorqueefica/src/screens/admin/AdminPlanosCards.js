@@ -50,6 +50,7 @@ function formDe(plano) {
   return {
     nome: plano?.nome || '',
     subtitulo: plano?.subtitulo || '',
+    preco: plano?.preco != null ? String(plano.preco).replace('.', ',') : '',
     precoLabel: plano?.precoLabel || '',
     descricao: plano?.descricao || '',
     mensagem: plano?.mensagem || '',
@@ -83,6 +84,9 @@ export default function AdminPlanosCards() {
 
   const salvar = async () => {
     if (!form.nome.trim()) { Alert.alert('Atenção', 'Informe o nome do plano.'); return; }
+    const precoTexto = form.preco.trim();
+    const preco = precoTexto ? parseFloat(precoTexto.replace(',', '.')) : 0;
+    if (precoTexto && Number.isNaN(preco)) { Alert.alert('Atenção', 'Informe um preço válido, ex: 24,90.'); return; }
     setSalvando(true);
     try {
       // setDoc + merge funciona mesmo se o documento ainda não existir.
@@ -90,6 +94,7 @@ export default function AdminPlanosCards() {
         id: editando.id,
         nome: form.nome.trim(),
         subtitulo: form.subtitulo.trim(),
+        preco,
         precoLabel: form.precoLabel.trim(),
         descricao: form.descricao.trim(),
         mensagem: form.mensagem.trim(),
@@ -98,6 +103,16 @@ export default function AdminPlanosCards() {
         emBreve: form.emBreve,
         atualizadoEm: serverTimestamp(),
       }, { merge: true });
+
+      // Espelha para configuracoes/precos (centavos) — é lá que a Cloud
+      // Function do checkout confere o valor caso planos/{id} não tenha um
+      // preço válido, então mantemos os dois sincronizados nos dois sentidos.
+      if ([1, 2, 3].includes(editando.id) && preco > 0) {
+        await setDoc(doc(db, 'configuracoes', 'precos'), {
+          [`plano${editando.id}`]: Math.round(preco * 100),
+        }, { merge: true });
+      }
+
       Alert.alert('', 'Plano atualizado! A mudança já aparece no app.');
       fechar();
     } catch (e) {
@@ -176,8 +191,22 @@ export default function AdminPlanosCards() {
               <Text style={s.label}>Subtítulo</Text>
               <TextInput style={s.input} value={form.subtitulo} onChangeText={t => set('subtitulo', t)} placeholder="Ex: Mensal" placeholderTextColor={colors.tl} />
 
-              <Text style={s.label}>Rótulo do preço</Text>
-              <TextInput style={s.input} value={form.precoLabel} onChangeText={t => set('precoLabel', t)} placeholder="Ex: R$ 24,90/mês" placeholderTextColor={colors.tl} />
+              <View style={s.fieldRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.label}>Preço (R$)</Text>
+                  <TextInput
+                    style={s.input} value={form.preco} onChangeText={t => set('preco', t)}
+                    placeholder="Ex: 24,90" placeholderTextColor={colors.tl} keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.label}>Rótulo do preço</Text>
+                  <TextInput style={s.input} value={form.precoLabel} onChangeText={t => set('precoLabel', t)} placeholder="Ex: R$ 24,90/mês" placeholderTextColor={colors.tl} />
+                </View>
+              </View>
+              <Text style={s.hint}>
+                O preço numérico é o valor realmente cobrado no checkout. O rótulo é só o texto exibido no card.
+              </Text>
 
               <Text style={s.label}>Descrição curta</Text>
               <TextInput
@@ -272,6 +301,7 @@ const s = StyleSheet.create({
   },
   modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, flex: 1 },
 
+  fieldRow: { flexDirection: 'row', gap: spacing.sm },
   label: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 5, marginTop: spacing.sm },
   input: {
     backgroundColor: colors.card, borderRadius: radius.md,

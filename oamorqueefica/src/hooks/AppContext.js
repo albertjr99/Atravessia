@@ -92,20 +92,16 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (perfil) {
-      const cortesiaAtiva = (() => {
-        if (!perfil.cortesia?.ativo) return false;
-        if (!perfil.cortesia.expiracao) return true;
-        try {
-          const exp = perfil.cortesia.expiracao.toDate ? perfil.cortesia.expiracao.toDate() : new Date(perfil.cortesia.expiracao);
-          return exp > new Date();
-        } catch { return false; }
-      })();
       setUsuarioLocal({
         nome: (perfil.nome || '').split(' ')[0] || 'Você',
         apelido: perfil.apelido || '',
         plano: normalizarPlano(perfil.plano),
         acessoTotal: perfil.acessoTotal === true,
-        cortesiaAtiva,
+        // Guarda o objeto bruto (não um booleano pré-calculado): o prazo da
+        // cortesia precisa ser reavaliado a cada chamada de temAcesso(), não
+        // apenas quando o documento muda — senão o acesso continuaria válido
+        // até a próxima escrita no Firestore, mesmo após vencer o prazo.
+        cortesia: perfil.cortesia || null,
         cadastrado: true,
       });
     }
@@ -189,8 +185,6 @@ export function AppProvider({ children }) {
       }, { merge: true });
     }
   };
-
-  const [lidas, setLidas] = useState({});
 
   // Notificações editoriais publicadas pela administração (Firestore: notificacoesEditoriais)
   const [notificacoesEditoriais, setNotificacoesEditoriais] = useState([]);
@@ -360,7 +354,20 @@ export function AppProvider({ children }) {
     if (uid) deleteDoc(doc(db, 'usuarios', uid, 'redeApoio', String(id))).catch(() => {});
   };
 
-  const temAcesso = (planoNecessario) => usuario.acessoTotal || usuario.cortesiaAtiva || usuario.plano >= planoNecessario;
+  // Avaliado a cada chamada (nunca armazenado), para que o acesso caia
+  // sozinho assim que o prazo vencer, sem depender de uma nova escrita no
+  // Firestore para "perceber" a expiração.
+  const cortesiaAtivaAgora = () => {
+    const c = usuario.cortesia;
+    if (!c?.ativo) return false;
+    if (!c.expiracao) return true;
+    try {
+      const exp = c.expiracao.toDate ? c.expiracao.toDate() : new Date(c.expiracao);
+      return exp > new Date();
+    } catch { return false; }
+  };
+
+  const temAcesso = (planoNecessario) => usuario.acessoTotal || cortesiaAtivaAgora() || usuario.plano >= planoNecessario;
 
   // ---- Regras de liberação diária de conteúdo (Plano 1: 1 áudio de acolhimento/dia; Plano 2+: +1 complementar/dia) ----
   const liberadoHoje = (grupo) => conteudosLiberados.some(c => c.grupo === grupo && c.data === hojeStr());
@@ -382,38 +389,63 @@ export function AppProvider({ children }) {
     return true;
   };
 
-  const marcarLida = (id) => setLidas(prev => ({ ...prev, [id]: true }));
+  // Persistido em usuarios/{uid}/notificacoesLidas — antes "lidas" era um
+  // useState puro em memória, então voltava a {} a cada abertura do app e
+  // TODAS as notificações apareciam de novo como não lidas, mesmo as que a
+  // usuária já tinha visto em uma sessão anterior.
+  const [lidasIds, setLidasIds] = useState(new Set());
+  useEffect(() => {
+    if (!uid) { setLidasIds(new Set()); return; }
+    const unsub = onSnapshot(collection(db, 'usuarios', uid, 'notificacoesLidas'), (snap) => {
+      setLidasIds(new Set(snap.docs.map(d => d.id)));
+    }, () => {});
+    return unsub;
+  }, [uid]);
+
+  const marcarLida = (id) => {
+    setLidasIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
+    if (uid) {
+      setDoc(doc(db, 'usuarios', uid, 'notificacoesLidas', id), { lidaEm: serverTimestamp() }, { merge: true }).catch(() => {});
+    }
+  };
 
   // ---- Notificações dinâmicas (regra automática) + editoriais (painel administrativo) ----
   const notificacoes = useMemo(() => {
     const lista = [];
     const ultimoCheckin = checkins[checkins.length - 1];
 
+    // Os ids dos alertas de inatividade/data sensível/áudio do dia/relatório
+    // mensal incluem a referência do episódio atual (data do último check-in,
+    // ano, dia). Sem isso, marcar como lida uma vez suprimiria o aviso para
+    // sempre — inclusive em uma futura inatividade ou no mês seguinte, que são
+    // ocorrências novas e devem poder ser vistas de novo.
     if (ultimoCheckin) {
       const dias = Math.floor((new Date() - new Date(ultimoCheckin.data)) / 86400000);
+      const episodio = ultimoCheckin.data;
       if (dias >= 14) {
-        lista.push({ id: 'inat-14', tipo: 'inatividade', texto: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.' });
+        lista.push({ id: `inat-14-${episodio}`, tipo: 'inatividade', texto: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.' });
       } else if (dias >= 7) {
-        lista.push({ id: 'inat-7', tipo: 'inatividade', texto: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.' });
+        lista.push({ id: `inat-7-${episodio}`, tipo: 'inatividade', texto: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.' });
       } else if (dias >= 3) {
-        lista.push({ id: 'inat-3', tipo: 'inatividade', texto: 'Sentimos sua falta por aqui. Como você está hoje?' });
+        lista.push({ id: `inat-3-${episodio}`, tipo: 'inatividade', texto: 'Sentimos sua falta por aqui. Como você está hoje?' });
       }
     }
 
+    const anoAtual = new Date().getFullYear();
     datasSensiveis.forEach(d => {
       const dataEvento = proximaOcorrencia(d.data);
       const agora = new Date();
       agora.setHours(0, 0, 0, 0);
       const diff = Math.round((dataEvento - agora) / 86400000);
       if (diff === 0) {
-        lista.push({ id: `data-${d.id}-hoje`, tipo: 'data_sensivel', texto: 'Hoje é uma data significativa. Permita-se sentir o que vier, sem cobranças.' });
+        lista.push({ id: `data-${d.id}-hoje-${anoAtual}`, tipo: 'data_sensivel', texto: 'Hoje é uma data significativa. Permita-se sentir o que vier, sem cobranças.' });
       } else if (diff > 0 && diff <= 3) {
-        lista.push({ id: `data-${d.id}-prox`, tipo: 'data_sensivel', texto: 'Uma data importante está se aproximando. Talvez seja um bom momento para cuidar de você com carinho.' });
+        lista.push({ id: `data-${d.id}-prox-${anoAtual}`, tipo: 'data_sensivel', texto: 'Uma data importante está se aproximando. Talvez seja um bom momento para cuidar de você com carinho.' });
       }
     });
 
     if (temAcesso(1) && !liberadoHoje('acolhimento')) {
-      lista.push({ id: 'novo-audio', tipo: 'conteudo', texto: 'Seu áudio de acolhimento de hoje está disponível.' });
+      lista.push({ id: `novo-audio-${hojeStr()}`, tipo: 'conteudo', texto: 'Seu áudio de acolhimento de hoje está disponível.' });
     }
 
     if (temAcesso(2) && checkins.length > 0 && checkins.length % 7 === 0) {
@@ -421,7 +453,8 @@ export function AppProvider({ children }) {
     }
 
     if (temAcesso(3)) {
-      lista.push({ id: 'relatorio-mensal', tipo: 'relatorio', texto: 'Seu relatório emocional do mês está pronto.' });
+      const agora = new Date();
+      lista.push({ id: `relatorio-mensal-${agora.getFullYear()}-${agora.getMonth()}`, tipo: 'relatorio', texto: 'Seu relatório emocional do mês está pronto.' });
     }
 
     if (vitorias.length > 0) {
@@ -429,10 +462,18 @@ export function AppProvider({ children }) {
       lista.push({ id: `vitoria-${ultima.id}`, tipo: 'vitoria', texto: 'Cada passo importa. Sua conquista foi registrada.' });
     }
 
-    const editoriais = notificacoesEditoriais.map(n => ({ ...n }));
+    // Alvo (todos / plano1 / gratis), definido no painel administrativo do app.
+    const temPlanoPago = usuario.acessoTotal || usuario.plano >= 1;
+    const editoriais = notificacoesEditoriais
+      .filter(n => {
+        if (n.alvo === 'plano1') return temPlanoPago;
+        if (n.alvo === 'gratis') return !temPlanoPago;
+        return true;
+      })
+      .map(n => ({ ...n }));
 
-    return [...lista, ...editoriais].map(n => ({ ...n, lida: !!lidas[n.id] }));
-  }, [checkins, datasSensiveis, conteudosLiberados, vitorias, usuario.plano, notificacoesEditoriais, lidas]);
+    return [...lista, ...editoriais].map(n => ({ ...n, lida: lidasIds.has(n.id) }));
+  }, [checkins, datasSensiveis, conteudosLiberados, vitorias, usuario.plano, usuario.acessoTotal, notificacoesEditoriais, lidasIds]);
 
   return (
     <AppContext.Provider value={{

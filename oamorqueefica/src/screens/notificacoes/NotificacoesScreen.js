@@ -28,6 +28,10 @@ const DESTINO = {
   vitoria: 'Inicio',
   incentivo: 'CheckIn',
   live: 'Audios',
+  // Tipos publicados pelo painel administrativo do app (AdminNotificacoesScreen)
+  // que ainda não tinham destino — o toque não fazia nada.
+  novidade: 'Audios',
+  lembrete: 'CheckIn',
 };
 
 export default function NotificacoesScreen({ navigation }) {
