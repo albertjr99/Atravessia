@@ -8,7 +8,7 @@ import {
 const SCREEN_W = Dimensions.get('window').width;
 const CONFETTI_COLORS = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
 const CONFETTI_COUNT = 20;
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes, audios as audiosEstaticos } from '../../data';
@@ -45,6 +45,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 }
 
 export default function CheckInScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso } = useApp();
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [localSel, setLocalSel] = useState(null);
@@ -163,7 +164,7 @@ export default function CheckInScreen({ navigation }) {
 
   if (jaFezCheckinHoje && !salvo) {
     return (
-      <SafeAreaView style={s.safe}>
+      <SafeAreaView style={s.safe} edges={['left', 'right']}>
         <LavandaBg />
         <View style={s.savedWrap}>
           <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
@@ -181,7 +182,7 @@ export default function CheckInScreen({ navigation }) {
     // POSITIVO: confetti + conteúdos admin vinculados (se houver)
     if (emocaoObj?.positiva) {
       return (
-        <SafeAreaView style={s.safe}>
+        <SafeAreaView style={s.safe} edges={['left', 'right']}>
           <LavandaBg />
           {/* Confetti overlay */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -233,7 +234,7 @@ export default function CheckInScreen({ navigation }) {
 
     // NEGATIVO: mensagem de acolhimento + conteúdos admin + áudio estático (fallback)
     return (
-      <SafeAreaView style={s.safe}>
+      <SafeAreaView style={s.safe} edges={['left', 'right']}>
         <LavandaBg />
         <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
           <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
@@ -336,10 +337,10 @@ export default function CheckInScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

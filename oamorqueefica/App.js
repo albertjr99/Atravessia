@@ -1,15 +1,20 @@
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { Lato_300Light, Lato_400Regular, Lato_700Bold } from '@expo-google-fonts/lato';
 import { PlayfairDisplay_400Regular, PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { CormorantGaramond_400Regular_Italic } from '@expo-google-fonts/cormorant-garamond';
 import { DancingScript_600SemiBold } from '@expo-google-fonts/dancing-script';
 import AppNavigator from './src/navigation/AppNavigator';
+import SplashAnimado from './src/components/SplashAnimado';
 import { AppProvider } from './src/hooks/AppContext';
 import { AuthProvider } from './src/hooks/AuthContext';
-import { colors } from './src/theme';
+
+// Segura o splash nativo até a vinheta animada estar montada, senão pisca um
+// fundo vazio entre os dois.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -21,22 +26,28 @@ export default function App() {
     CormorantGaramond_400Regular_Italic,
     DancingScript_600SemiBold,
   });
+  const [vinhetaTerminou, setVinhetaTerminou] = useState(false);
 
-  if (!fontsLoaded && !fontError) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAF7F4' }}>
-        <ActivityIndicator color="#B8A6C9" size="large" />
-      </View>
-    );
-  }
+  const fontesProntas = fontsLoaded || fontError;
+
+  useEffect(() => {
+    if (fontesProntas) SplashScreen.hideAsync().catch(() => {});
+  }, [fontesProntas]);
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <AppProvider>
-          <AppNavigator />
-        </AppProvider>
-      </AuthProvider>
+      <View style={{ flex: 1, backgroundColor: '#FAF7F3' }}>
+        {fontesProntas && (
+          <AuthProvider>
+            <AppProvider>
+              <AppNavigator />
+            </AppProvider>
+          </AuthProvider>
+        )}
+        {!vinhetaTerminou && (
+          <SplashAnimado pronto={fontesProntas} onFim={() => setVinhetaTerminou(true)} />
+        )}
+      </View>
     </SafeAreaProvider>
   );
 }

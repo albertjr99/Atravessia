@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { ScriptTitle, Card, Button, QuoteText, LavandaBg } from '../../components';
@@ -24,6 +24,7 @@ const motivacoes = [
 ];
 
 export default function SessaoScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [formatoSel, setFormatoSel] = useState('online');
   const [motivacaoSel, setMotiSel] = useState('apoio');
 
@@ -36,12 +37,12 @@ export default function SessaoScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: spacing.sm }}>
             <Ionicons name="arrow-back" size={22} color={colors.td} />
           </TouchableOpacity>

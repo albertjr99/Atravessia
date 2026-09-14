@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, QuoteText, Button, Card, LavandaBg } from '../../components';
@@ -13,6 +13,7 @@ import { useApp } from '../../hooks/AppContext';
 const ilustracao = require('../../../assets/images/memorial_coracao.png');
 
 export default function MemorialScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { memorias, adicionarMemoria } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
   const [novaMemoria, setNovaMemoria] = useState({ titulo: '', conteudo: '' });
@@ -30,10 +31,10 @@ export default function MemorialScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

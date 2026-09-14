@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { useApp } from '../../hooks/AppContext';
 import { db, functions } from '../../services/firebase';
 
 export default function PlanosScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { usuario } = useApp();
   const [sel, setSel] = useState(usuario.plano);
   const [carregando, setCarregando] = useState(false);
@@ -69,10 +70,10 @@ export default function PlanosScreen({ navigation }) {
   const selectedPlan = planosList.find(p => p.id === sel);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

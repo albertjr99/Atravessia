@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, TextInput, Alert, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { Button, Disclaimer, LavandaBg } from '../../components';
@@ -22,6 +22,7 @@ function mensagemErro(code) {
 }
 
 export default function CadastroScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { cadastrar } = useAuth();
   const [form, setForm] = useState({
     nome: '', apelido: '', email: '', telefone: '', cidade: '', senha: '',
@@ -80,15 +81,15 @@ export default function CadastroScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, { paddingBottom: 32 + insets.bottom }]}>
 
-        <View style={styles.heroWrap}>
-          <Image source={headerImg} style={styles.heroImg} resizeMode="cover" />
+        <View style={[styles.heroWrap, { height: 220 + insets.top }]}>
+          <Image source={headerImg} style={[styles.heroImg, { height: 220 + insets.top }]} resizeMode="cover" />
           <View style={styles.heroOverlay} />
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { paddingTop: insets.top }]}>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <Text style={styles.appName}>Atravessia</Text>
             <Text style={styles.tagline}>Crie sua conta gratuita</Text>
@@ -228,7 +229,7 @@ export default function CadastroScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { flexGrow: 1, paddingBottom: 32 },
+  scroll: { flexGrow: 1 },
   heroWrap: { position: 'relative', height: 220 },
   heroImg: { width: '100%', height: 220 },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(58,48,74,0.52)' },

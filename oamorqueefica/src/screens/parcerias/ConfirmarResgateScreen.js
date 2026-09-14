@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
@@ -15,6 +15,7 @@ const centavosParaTexto = (c) => `R$ ${(Number(c || 0) / 100).toFixed(2).replace
 // parceiro. Enquanto ela não responde, o valor fica "aguardando confirmação",
 // nunca contabilizado como receita.
 export default function ConfirmarResgateScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { resgateId } = route.params || {};
   const { meusResgates, responderConfirmacaoResgate } = useApp();
   const [enviando, setEnviando] = useState(false);
@@ -41,10 +42,10 @@ export default function ConfirmarResgateScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

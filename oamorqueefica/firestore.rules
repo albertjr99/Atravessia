@@ -42,6 +42,12 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // Mesmo caso das vitórias: a regra de subcoleção acima não vale para
+    // consultas por grupo de coleção, então os relatórios precisam desta.
+    match /{path=**}/vitorias/{docId} {
+      allow read: if isAdmin();
+    }
+
     // Frases e reflexões do dia — leitura para todas, escrita só admin
     match /frases/{docId} {
       allow read: if isSignedIn();

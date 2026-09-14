@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';
@@ -24,6 +24,7 @@ const FILTROS = [
 const rotuloCategoria = (c) => FILTROS.find(f => f.id === c)?.label || c;
 
 export default function ParceriasScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio } = useApp();
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [gerando, setGerando] = useState(null); // id da parceria em geração, para desabilitar o card
@@ -39,7 +40,15 @@ export default function ParceriasScreen({ navigation }) {
         const voucher = await gerarVoucherBeneficio(p.id);
         navigation.navigate('Voucher', { ...voucher, parceriaNome: p.titulo });
       } catch (e) {
-        Alert.alert('', e?.message || 'Não foi possível gerar o cupom agora. Tente novamente.');
+        // functions/not-found = a Cloud Function não existe no projeto (ainda não
+        // publicada). Sem isto a usuária via só "not found", que não diz nada.
+        const indisponivel = e?.code === 'functions/not-found' || e?.code === 'functions/unavailable';
+        Alert.alert(
+          '',
+          indisponivel
+            ? 'Os cupons ainda não estão disponíveis. Tente novamente mais tarde.'
+            : (e?.message || 'Não foi possível gerar o cupom agora. Tente novamente.')
+        );
       } finally {
         setGerando(null);
       }
@@ -64,11 +73,11 @@ export default function ParceriasScreen({ navigation }) {
       });
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
 
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

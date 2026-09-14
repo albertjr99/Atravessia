@@ -2,7 +2,7 @@ import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Share, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
@@ -35,6 +35,7 @@ function formatarData(ts) {
 // necessidade de recarregar: assim que o parceiro validar ou concluir, a
 // própria tela reflete a mudança.
 export default function VoucherScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { tokenSeguro, codigoPublico, linkValidacao, parceriaNome } = route.params || {};
   const { meusVouchers } = useApp();
 
@@ -49,10 +50,10 @@ export default function VoucherScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

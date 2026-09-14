@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Platform, ActivityIndicator, Modal,
+  TextInput, Alert, Platform, ActivityIndicator, Modal, KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -40,7 +40,27 @@ const PLANOS = [
 const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
 
 function novoForm() {
-  return { titulo: '', descricao: '', duracao: '', plano: 1, emocoes: [], url: '', storagePath: '' };
+  return { titulo: '', duracao: '', plano: 1, emocoes: [], url: '', storagePath: '' };
+}
+
+// Lê a duração real do arquivo enviado, para a gestora não precisar digitá-la.
+// Devolve '' se não for possível medir — o campo é apenas informativo.
+async function medirDuracao(uri) {
+  let som;
+  try {
+    const { sound, status } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false });
+    som = sound;
+    const ms = status?.durationMillis;
+    if (!ms || !isFinite(ms)) return '';
+    const totalSeg = Math.round(ms / 1000);
+    const min = Math.floor(totalSeg / 60);
+    const seg = totalSeg % 60;
+    return min > 0 ? `${min} min${seg ? ` ${seg}s` : ''}` : `${seg}s`;
+  } catch {
+    return '';
+  } finally {
+    try { await som?.unloadAsync(); } catch {}
+  }
 }
 
 export default function AdminAudiosScreen({ navigation }) {
@@ -82,7 +102,8 @@ export default function AdminAudiosScreen({ navigation }) {
           await uploadBytes(fileRef, file);
           const url = await getDownloadURL(fileRef);
           const titulo = file.name.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ').trim();
-          setForm(f => ({ ...f, url, storagePath: path, titulo: f.titulo || titulo }));
+          const duracao = await medirDuracao(url);
+          setForm(f => ({ ...f, url, storagePath: path, titulo: f.titulo || titulo, duracao }));
           Alert.alert('Áudio carregado!', 'Preencha os campos e clique em Salvar.');
         } catch (err) {
           Alert.alert('Erro no upload', err?.message || 'Tente novamente.');
@@ -103,7 +124,9 @@ export default function AdminAudiosScreen({ navigation }) {
         const path = `audiosAcolhimento/${nome}`;
         const url = await uploadToStorage(asset.uri, path, asset.mimeType || 'audio/mpeg');
         const titulo = asset.name.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g, ' ').trim();
-        setForm(f => ({ ...f, url, storagePath: path, titulo: f.titulo || titulo }));
+        // Mede no arquivo local, que já está em cache — mais rápido que baixar de volta.
+        const duracao = await medirDuracao(asset.uri);
+        setForm(f => ({ ...f, url, storagePath: path, titulo: f.titulo || titulo, duracao }));
         Alert.alert('Áudio carregado!', 'Preencha os campos e clique em Salvar.');
       } catch (err) {
         Alert.alert('Erro no upload', err?.message || 'Tente novamente.');
@@ -121,7 +144,6 @@ export default function AdminAudiosScreen({ navigation }) {
     try {
       await addDoc(collection(db, 'audiosAcolhimento'), {
         titulo: form.titulo.trim(),
-        descricao: form.descricao.trim(),
         duracao: form.duracao.trim(),
         plano: form.plano,
         emocoes: form.emocoes,
@@ -302,7 +324,10 @@ export default function AdminAudiosScreen({ navigation }) {
         transparent
         onRequestClose={() => setMostraModal(false)}
       >
-        <View style={s.modalOverlay}>
+        <KeyboardAvoidingView
+          style={s.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={s.modalCard}>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={s.form}>
@@ -332,24 +357,9 @@ export default function AdminAudiosScreen({ navigation }) {
               onChangeText={v => setForm(f => ({ ...f, titulo: v }))}
             />
 
-            <Text style={s.label}>Descrição</Text>
-            <TextInput
-              style={[s.input, { height: 64, textAlignVertical: 'top' }]}
-              placeholder="Breve descrição do áudio..."
-              placeholderTextColor={colors.tl}
-              multiline
-              value={form.descricao}
-              onChangeText={v => setForm(f => ({ ...f, descricao: v }))}
-            />
-
-            <Text style={s.label}>Duração</Text>
-            <TextInput
-              style={s.input}
-              placeholder="Ex: 8 min"
-              placeholderTextColor={colors.tl}
-              value={form.duracao}
-              onChangeText={v => setForm(f => ({ ...f, duracao: v }))}
-            />
+            {form.duracao ? (
+              <Text style={s.duracaoInfo}>Duração detectada: {form.duracao}</Text>
+            ) : null}
 
             <Text style={s.label}>Emoções *</Text>
             <View style={s.emocaoGrid}>
@@ -396,7 +406,7 @@ export default function AdminAudiosScreen({ navigation }) {
             </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </AdminLayout>
   );
@@ -414,6 +424,7 @@ const s = StyleSheet.create({
   },
   addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
 
+  duracaoInfo: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: spacing.sm },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
