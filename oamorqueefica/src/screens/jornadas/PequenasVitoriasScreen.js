@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR, formatDataBR } from '../../utils/date';
 
 export default function PequenasVitoriasScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { vitorias, adicionarVitoria, temAcesso } = useApp();
   const [textoCustom, setTextoCustom] = useState('');
   const [mostraInputCustom, setMostraInputCustom] = useState(false);
@@ -34,7 +35,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
 
   if (!temAcesso(1)) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <LavandaBg />
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
@@ -61,10 +62,10 @@ export default function PequenasVitoriasScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

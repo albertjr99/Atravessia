@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, TextInput, Modal, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { tiposDataSensivel } from '../../data';
@@ -13,13 +13,14 @@ import { formatDataBR } from '../../utils/date';
 const ilustracao = require('../../../assets/images/il_datas_sensiveis.png');
 
 export default function DatasSensiveisScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { datasSensiveis, adicionarDataSensivel, removerDataSensivel, temAcesso } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState({ titulo: tiposDataSensivel[0], data: '' });
 
   if (!temAcesso(2)) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <LavandaBg />
         <View style={styles.lockWrap}>
           <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
@@ -41,10 +42,10 @@ export default function DatasSensiveisScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

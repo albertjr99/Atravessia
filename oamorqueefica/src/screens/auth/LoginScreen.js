@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, TextInput, Alert, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
@@ -30,6 +30,7 @@ function mensagemErro(code) {
 }
 
 export default function LoginScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { entrar, recuperarSenha } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -126,18 +127,18 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 32 + insets.bottom }]}
       >
-        <View style={styles.heroWrap}>
-          <Image source={headerImg} style={styles.heroImg} resizeMode="cover" />
+        <View style={[styles.heroWrap, { height: 240 + insets.top }]}>
+          <Image source={headerImg} style={[styles.heroImg, { height: 240 + insets.top }]} resizeMode="cover" />
           <View style={styles.heroOverlay} />
-          <View style={styles.heroContent}>
+          <View style={[styles.heroContent, { paddingTop: insets.top }]}>
             <Image source={logo} style={styles.logo} resizeMode="contain" />
             <Text style={styles.appName}>Atravessia</Text>
             <Text style={styles.tagline}>Que você se permita sentir, acolher e seguir.</Text>
@@ -216,7 +217,7 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { flexGrow: 1, paddingBottom: 32 },
+  scroll: { flexGrow: 1 },
   heroWrap: { position: 'relative', height: 240 },
   heroImg: { width: '100%', height: 240 },
   heroOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(58,48,74,0.52)' },

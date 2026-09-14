@@ -215,18 +215,31 @@ export function AppProvider({ children }) {
   const [favoritosIds, setFavoritosIds] = useState([]);
   useSubcolecao(uid, 'favoritos', setFavoritosIds);
 
+  // Tolerante aos formatos legados `audio-<id>` e `admin-<id>` para que o coração
+  // reflita o estado real e desfavoritar funcione em favoritos gravados antes das
+  // correções.
+  const mesmoConteudo = (conteudoIdSalvo, id) => {
+    const limpar = (v) => String(v || '').replace(/^(audio|admin)-/, '');
+    return limpar(conteudoIdSalvo) === limpar(id);
+  };
+
   // Um favorito pode apontar tanto para um item da biblioteca (`conteudos`) quanto
   // para um áudio de acolhimento do check-in (`audiosAcolhimento`). Antes o join
   // era feito só em `conteudos`, então áudios favoritados sumiam da aba Conteúdos.
+  //
+  // O favorito também guarda uma cópia dos dados do conteúdo (ver adicionarFavorito).
+  // Sem ela, favoritar um áudio que depois fosse editado ou recadastrado no painel
+  // administrativo — o que troca o id do documento — fazia o favorito desaparecer
+  // silenciosamente da lista da usuária.
   const favoritos = useMemo(() =>
     favoritosIds
       .map(f => {
-        // Favoritos antigos foram gravados como `audio-<id>`; aceita os dois formatos.
-        const idLimpo = String(f.conteudoId || '').replace(/^audio-/, '');
-        const c = conteudos.find(c => c.id === f.conteudoId || c.id === idLimpo);
+        const c = conteudos.find(c => mesmoConteudo(f.conteudoId, c.id));
         if (c) return { ...f, ...c };
-        const a = audiosAcolhimento.find(a => a.id === f.conteudoId || a.id === idLimpo);
+        const a = audiosAcolhimento.find(a => mesmoConteudo(f.conteudoId, a.id));
         if (a) return { ...f, ...a, tipo: a.tipo || 'audio', categoria: a.categoria || 'acolhimento' };
+        // Conteúdo original não encontrado: usa a cópia salva junto do favorito.
+        if (f.titulo) return { ...f, id: f.conteudoId };
         return null;
       })
       .filter(Boolean)
@@ -235,16 +248,18 @@ export function AppProvider({ children }) {
   const adicionarFavorito = (conteudo) => {
     if (!conteudo?.id) return;
     if (favoritosIds.some(f => mesmoConteudo(f.conteudoId, conteudo.id))) return;
-    setFavoritosIds(prev => [...prev, { id: `local_${Date.now()}`, conteudoId: conteudo.id }]);
-    if (uid) addDoc(collection(db, 'usuarios', uid, 'favoritos'), { conteudoId: conteudo.id, criadoEm: serverTimestamp() });
-  };
-
-  // Tolerante ao formato legado `audio-<id>` para que o coração reflita o estado
-  // real e desfavoritar funcione em favoritos gravados antes da correção.
-  const mesmoConteudo = (conteudoIdSalvo, id) => {
-    const a = String(conteudoIdSalvo || '').replace(/^audio-/, '');
-    const b = String(id || '').replace(/^audio-/, '');
-    return a === b;
+    // Cópia dos campos que a tela de favoritos precisa para renderizar o item
+    // mesmo que o conteúdo de origem mude de id ou seja removido.
+    const copia = {
+      titulo: conteudo.titulo || '',
+      descricao: conteudo.descricao || '',
+      tipo: conteudo.tipo || 'audio',
+      url: conteudo.url || conteudo.link || '',
+      plano: conteudo.plano ?? null,
+      grupo: conteudo.grupo || conteudo.categoria || '',
+    };
+    setFavoritosIds(prev => [...prev, { id: `local_${Date.now()}`, conteudoId: conteudo.id, ...copia }]);
+    if (uid) addDoc(collection(db, 'usuarios', uid, 'favoritos'), { conteudoId: conteudo.id, ...copia, criadoEm: serverTimestamp() });
   };
 
   const removerFavorito = (conteudoId) => {

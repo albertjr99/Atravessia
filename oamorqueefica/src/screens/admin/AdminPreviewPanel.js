@@ -94,38 +94,6 @@ const TIPO_ICON = {
   link: 'link-outline',
 };
 
-function ConteudosPreview() {
-  const [itens, setItens] = useState([]);
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, 'conteudos'), orderBy('criadoEm', 'desc'), limit(6)),
-      snap => setItens(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      () => {}
-    );
-    return unsub;
-  }, []);
-
-  return (
-    <View style={pw.section}>
-      <View style={pw.sectionHeader}>
-        <Ionicons name="headset-outline" size={12} color={colors.lav5} />
-        <Text style={pw.sectionTitle}>Conteúdos</Text>
-      </View>
-      {itens.length === 0 && <Text style={pw.empty}>Nenhum conteúdo ainda</Text>}
-      {itens.map(item => (
-        <View key={item.id} style={pw.row}>
-          <View style={pw.rowIcon}>
-            <Ionicons name={TIPO_ICON[item.tipo] || 'document-outline'} size={11} color={colors.lav5} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={pw.rowTitle} numberOfLines={2}>{item.titulo}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function AudiosPreview() {
   const [audios, setAudios] = useState([]);
   useEffect(() => {
@@ -207,7 +175,6 @@ function DefaultPreview() {
 function PreviewContent({ screen }) {
   if (screen === 'AdminTravessia') return <TravessiaPreview />;
   if (screen === 'AdminFrases') return <FrasesPreview />;
-  if (screen === 'AdminConteudos') return <ConteudosPreview />;
   if (screen === 'AdminAudios') return <AudiosPreview />;
   if (screen === 'AdminVitorias') return <VitoriasPreview />;
   return <DefaultPreview />;
@@ -223,7 +190,7 @@ const NAV_TABS = [
 ];
 
 function PhoneFrame({ currentScreen, children }) {
-  const activeTab = currentScreen === 'AdminConteudos' || currentScreen === 'AdminAudios' ? 2
+  const activeTab = currentScreen === 'AdminAudios' ? 2
     : currentScreen === 'AdminTravessia' ? 1 : 0;
 
   return (

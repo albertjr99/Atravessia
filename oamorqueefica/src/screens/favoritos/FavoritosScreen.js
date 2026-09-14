@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
@@ -23,6 +23,7 @@ const CAT_ICONE = {
 };
 
 export default function FavoritosScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { favoritos, removerFavorito, temAcesso } = useApp();
 
   const handleItem = (item) => {
@@ -41,15 +42,28 @@ export default function FavoritosScreen({ navigation }) {
       Linking.openURL(item.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
       return;
     }
-    navigation.navigate('AudioPlayer', { audio: { id: `admin-${item.id}`, titulo: item.titulo, categoria: item.grupo, plano: item.plano, tipo: item.tipo, url: item.url } });
+    // O id precisa ser o id real do conteúdo: é ele que o player usa para
+    // favoritar/desfavoritar. Prefixar com "admin-" criava um favorito órfão,
+    // que nunca mais aparecia nesta lista.
+    navigation.navigate('AudioPlayer', {
+      audio: {
+        id: item.conteudoId || item.id,
+        titulo: item.titulo,
+        descricao: item.descricao,
+        categoria: item.grupo || item.categoria,
+        plano: item.plano,
+        tipo: item.tipo,
+        url: item.url,
+      },
+    });
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
 
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
@@ -16,13 +16,14 @@ const PLANO_LABEL = { 0: 'Grátis', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir'
 const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
 
 export default function JornadasScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { temAcesso, jornadasAdmin, travessiaItens } = useApp();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>

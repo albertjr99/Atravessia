@@ -19,7 +19,6 @@ import DatasSensiveisScreen from '../screens/perfil/DatasSensiveisScreen';
 import RedeApoioScreen from '../screens/perfil/RedeApoioScreen';
 
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
-import AdminConteudosScreen from '../screens/admin/AdminConteudosScreen';
 import AdminNotificacoesScreen from '../screens/admin/AdminNotificacoesScreen';
 import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
@@ -80,7 +79,6 @@ function AdminStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
-      <Stack.Screen name="AdminConteudos" component={AdminConteudosScreen} />
       <Stack.Screen name="AdminNotificacoes" component={AdminNotificacoesScreen} />
       <Stack.Screen name="AdminUsuarias" component={AdminUsuariasScreen} />
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />

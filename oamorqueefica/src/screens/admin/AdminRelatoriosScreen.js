@@ -4,7 +4,7 @@ import {
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, collectionGroup, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -471,6 +471,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
   const [usuarios, setUsuarios] = useState([]);
   const [todosCheckins, setTodosCheckins] = useState([]);
   const [todasVitorias, setTodasVitorias] = useState([]);
+  const [erro, setErro] = useState('');
 
   const carregar = useCallback(async () => {
     setAtualizando(true);
@@ -480,32 +481,25 @@ export default function AdminRelatoriosScreen({ navigation }) {
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(u => u.role !== 'admin');
 
-      let checkins = [];
-      try {
-        const snap = await getDocs(
-          query(collectionGroup(db, 'checkins'), orderBy('criadoEm', 'asc'))
-        );
-        checkins = snap.docs.map(d => ({
-          id: d.id,
-          uid: d.ref.path.split('/')[1],
-          ...d.data(),
-        }));
-      } catch {}
+      // Sem orderBy: uma consulta de collectionGroup com orderBy exige um índice
+      // de escopo COLLECTION_GROUP e falha inteira quando ele não existe — era o
+      // que zerava a tela toda. A ordenação é feita aqui mesmo, em memória.
+      const checkinsSnap = await getDocs(collectionGroup(db, 'checkins'));
+      const checkins = checkinsSnap.docs
+        .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }))
+        .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
 
-      let vitorias = [];
-      try {
-        const snap = await getDocs(collectionGroup(db, 'vitorias'));
-        vitorias = snap.docs.map(d => ({
-          id: d.id,
-          uid: d.ref.path.split('/')[1],
-          ...d.data(),
-        }));
-      } catch {}
+      const vitoriasSnap = await getDocs(collectionGroup(db, 'vitorias'));
+      const vitorias = vitoriasSnap.docs
+        .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }));
 
       setUsuarios(users);
       setTodosCheckins(checkins);
       setTodasVitorias(vitorias);
-    } catch {}
+      setErro('');
+    } catch (e) {
+      setErro(e?.message || 'Não foi possível carregar os dados.');
+    }
     setCarregando(false);
     setAtualizando(false);
   }, []);
@@ -549,6 +543,12 @@ export default function AdminRelatoriosScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={atualizando} onRefresh={carregar} tintColor={colors.lav4} />}
         contentContainerStyle={s.scroll}
       >
+        {erro ? (
+          <View style={s.erroBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Text style={s.erroTxt}>Não foi possível carregar os dados: {erro}</Text>
+          </View>
+        ) : null}
         {aba === 'geral' && (
           <VisaoGeral
             usuarios={usuarios}
@@ -573,6 +573,8 @@ export default function AdminRelatoriosScreen({ navigation }) {
 
 const s = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
+  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: spacing.md },
 
   tabBar: {

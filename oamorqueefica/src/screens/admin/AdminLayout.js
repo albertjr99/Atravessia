@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Platform, Image,
   ScrollView, Dimensions, StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/AuthContext';
@@ -29,7 +29,6 @@ const NAV_GRUPOS = [
   {
     titulo: 'Conteúdo do app',
     itens: [
-      { icon: 'headset', iconOff: 'headset-outline', label: 'Conteúdos', screen: 'AdminConteudos' },
       {
         icon: 'library', iconOff: 'library-outline',
         label: 'Biblioteca', sub: 'Áudios de check-in · Frases',
@@ -145,6 +144,7 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
 }
 
 export default function AdminLayout({ children, currentScreen }) {
+  const insets = useSafeAreaInsets();
   const { perfil, sair } = useAuth();
   const navigation = useNavigation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -155,11 +155,11 @@ export default function AdminLayout({ children, currentScreen }) {
   };
 
   return (
-    <SafeAreaView style={sty.safe}>
+    <SafeAreaView style={sty.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       {isWide ? (
         <View style={sty.rootWide}>
-          <View style={sty.sidebar}>
+          <View style={[sty.sidebar, { paddingTop: insets.top }]}>
             <SidebarContent
               navigate={navigateTo}
               currentScreen={currentScreen}
@@ -167,14 +167,14 @@ export default function AdminLayout({ children, currentScreen }) {
               sair={sair}
             />
           </View>
-          <View style={sty.main}><LavandaBg />{children}</View>
+          <View style={[sty.main, { paddingTop: insets.top }]}><LavandaBg />{children}</View>
           {Platform.OS === 'web' && (
             <AdminPreviewPanel currentScreen={currentScreen} />
           )}
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <View style={sty.mobileHeader}>
+          <View style={[sty.mobileHeader, { paddingTop: insets.top + 14 }]}>
             <TouchableOpacity onPress={() => setDrawerOpen(true)} style={sty.hamburger}>
               <Ionicons name="menu" size={22} color={colors.td} />
             </TouchableOpacity>

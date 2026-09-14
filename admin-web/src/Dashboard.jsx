@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
+
+// Mesma conta de "hoje" usada pelo app ao gravar o check-in (AppContext.hojeStr):
+// data local de São Paulo no formato YYYY-MM-DD.
+const hojeStr = () =>
+  new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
 function timeAgo(ts) {
   if (!ts) return '—';
@@ -24,6 +29,7 @@ export default function Dashboard() {
     frases: 0, conteudos: 0, audios: 0, parcerias: 0,
     vitorias: 0, travessia: 0, notificacoes: 0,
   });
+  const [checkins, setCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [falhas, setFalhas] = useState([]);
@@ -31,7 +37,7 @@ export default function Dashboard() {
   useEffect(() => {
     const unsubs = [];
     let loaded = 0;
-    const totalSubs = 8;
+    const totalSubs = 9;
     const markLoaded = () => { loaded++; if (loaded >= totalSubs) setLoading(false); };
 
     // Usuárias — query without orderBy to avoid index/field dependency; sort client-side
@@ -52,6 +58,17 @@ export default function Dashboard() {
         setError('Sem permissão para listar usuárias. Verifique se seu perfil tem role: "admin" no Firestore.');
         markLoaded();
       }
+    ));
+
+    // Check-ins de todas as usuárias. Sem orderBy: uma consulta de collectionGroup
+    // com orderBy exige índice próprio e falharia inteira, zerando o painel.
+    unsubs.push(onSnapshot(
+      collectionGroup(db, 'checkins'),
+      snap => {
+        setCheckins(snap.docs.map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() })));
+        markLoaded();
+      },
+      () => { setFalhas(f => [...new Set([...f, 'checkins'])]); markLoaded(); }
     ));
 
     // Content counts
@@ -85,6 +102,7 @@ export default function Dashboard() {
   });
 
   const recentUsers = usuariasReais.slice(0, 8);
+  const checkinsHoje = checkins.filter(c => c.data === hojeStr()).length;
 
   if (loading) {
     return (
@@ -126,6 +144,7 @@ export default function Dashboard() {
         {[
           { icon: '', value: usuariasReais.length, label: 'Usuárias' },
           { icon: '', value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
+          { icon: '', value: checkinsHoje, label: 'Check-ins hoje' },
           { icon: '', value: counts.notificacoes, label: 'Notificações' },
         ].map(s => (
           <div key={s.label} className="stat-card">

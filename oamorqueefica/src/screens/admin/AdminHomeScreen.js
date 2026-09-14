@@ -66,7 +66,6 @@ export default function AdminHomeScreen({ navigation }) {
   ];
 
   const atalhos = [
-    { icon: 'headset-outline', label: 'Conteúdos', sub: 'Gerencie áudios e materiais', screen: 'AdminConteudos', color: colors.lav1 },
     { icon: 'musical-notes-outline', label: 'Áudios Check-in', sub: 'Áudios de acolhimento por emoção', screen: 'AdminAudios', color: colors.lav1 },
     { icon: 'megaphone-outline', label: 'Notificações', sub: 'Publique avisos para as usuárias', screen: 'AdminNotificacoes', color: colors.peach + '33' },
     { icon: 'people-outline', label: 'Usuárias', sub: 'Gerencie planos e acessos', screen: 'AdminUsuarias', color: colors.sage + '22' },

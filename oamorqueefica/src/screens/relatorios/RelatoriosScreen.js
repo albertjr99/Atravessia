@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
@@ -929,6 +929,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { checkins, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
@@ -1130,10 +1131,10 @@ export default function RelatoriosScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={s.topBar}>
+      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
