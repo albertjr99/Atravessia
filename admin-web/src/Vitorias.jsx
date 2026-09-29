@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ordenarPor } from './ordenar';
 import { db } from './firebase';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot,
-  orderBy, query, serverTimestamp, updateDoc, writeBatch,
+  collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import { IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
 
@@ -27,9 +27,8 @@ export default function Vitorias({ showToast }) {
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
-    const ref = query(collection(db, 'vitoriasOpcoes'), orderBy('criadoEm', 'asc'));
-    return onSnapshot(ref, snap => {
-      setOpcoes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    return onSnapshot(collection(db, 'vitoriasOpcoes'), snap => {
+      setOpcoes(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'asc'));
       setLoading(false);
     }, () => setLoading(false));
   }, []);

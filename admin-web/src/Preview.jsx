@@ -1,24 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
-import { collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { EMOCOES, ordenarPor } from './emocoes';
 
-function useCollection(col, q) {
+// Lê a coleção inteira (sem orderBy — ele esconderia documentos sem o campo e
+// um erro mataria o listener) e ordena/limita no cliente.
+function useCollection(col, { ordem, direcao = 'asc', max, filtro } = {}) {
   const [data, setData] = useState([]);
+  const [erro, setErro] = useState('');
   useEffect(() => {
-    const ref = q ? query(collection(db, col), ...q) : collection(db, col);
-    return onSnapshot(ref, snap => setData(snap.docs.map(d => ({ id: d.id, ...d.data() }))), () => {});
+    return onSnapshot(collection(db, col), snap => {
+      let docs = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+      if (filtro) docs = docs.filter(filtro);
+      if (ordem) docs = ordenarPor(docs, ordem, direcao);
+      if (max) docs = docs.slice(0, max);
+      setData(docs);
+      setErro('');
+    }, (e) => setErro(e?.message || 'erro ao ler'));
   }, [col]);
-  return data;
+  return [data, erro];
+}
+
+function ErroPrevia({ erro }) {
+  if (!erro) return null;
+  return <div className="pw-empty aln-pw-erro">Não foi possível ler os dados: {erro}</div>;
 }
 
 // ── Bottom nav tabs (matches actual HomeScreen.js) ────────────────────────────
 
 const NAV_TABS = [
-  { label: 'Início',     icon: '⌂',  activeFor: ['dashboard', 'frases', 'travessia', 'notificacoes'] },
-  { label: 'Conteúdos', icon: '🎧', activeFor: ['conteudos', 'audios'] },
+  { label: 'Início',     icon: '⌂',  activeFor: ['dashboard', 'frases', 'travessia', 'notificacoes', 'parcerias', 'beneficios'] },
+  { label: 'Conteúdos', icon: '🎧', activeFor: ['outrosConteudos', 'audios', 'jornadas'] },
   { label: 'Vitórias',  icon: '⭐', activeFor: ['vitorias'] },
-  { label: 'Relatórios',icon: '📊', activeFor: [] },
-  { label: 'Planos',    icon: '💎', activeFor: ['usuarias'] },
+  { label: 'Relatórios',icon: '📊', activeFor: ['relatorios', 'mensagens'] },
+  { label: 'Planos',    icon: '💎', activeFor: ['usuarias', 'precos'] },
 ];
 
 // ── Phone shell ───────────────────────────────────────────────────────────────
@@ -86,12 +101,13 @@ function Empty({ msg }) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 function TravessiaPreview() {
-  const itens = useCollection('travessiaItens', [orderBy('ordem', 'asc'), limit(6)]);
+  const [itens, erro] = useCollection('travessiaItens', { ordem: 'ordem', filtro: i => i.ativo !== false, max: 6 });
   const TIPO_ICON = { link: '🔗', whatsapp: '💬', video: '▶', audio: '🎵' };
 
   return (
     <div className="pw-section">
       <SectionHeader icon="🧭" title="Continue a Travessia" />
+      <ErroPrevia erro={erro} />
       {itens.filter(i => i.ativo !== false).length === 0
         ? <Empty msg="Nenhum item ativo ainda" />
         : itens.filter(i => i.ativo !== false).map(item => (
@@ -108,7 +124,7 @@ function TravessiaPreview() {
 }
 
 function FrasesPreview() {
-  const frases = useCollection('frases', [orderBy('criadoEm', 'desc'), limit(1)]);
+  const [frases] = useCollection('frases', { ordem: 'criadoEm', direcao: 'desc', max: 1 });
   const frase = frases[0];
 
   return (
@@ -139,33 +155,105 @@ function FrasesPreview() {
   );
 }
 
-function ConteudosPreview() {
-  const itens = useCollection('conteudos', [orderBy('criadoEm', 'desc'), limit(6)]);
-  const TIPO_ICON = { audio: '🎧', video: '▶', documento: '📄', link: '🔗' };
+function OutrosConteudosPreview() {
+  const [itens, erro] = useCollection('conteudos', {
+    ordem: 'criadoEm', direcao: 'desc',
+    filtro: i => i.ativo !== false && ['imagem', 'link', 'texto'].includes(i.tipo),
+  });
+  const TIPO_ICON = { imagem: '🖼', link: '🔗', texto: '📝' };
+  const visiveis = itens.slice(0, 6);
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="📚" title="Conteúdos" />
-      {itens.length === 0
-        ? <Empty msg="Nenhum conteúdo ainda" />
-        : itens.filter(i => i.ativo !== false).map(item => (
-          <RowCard
-            key={item.id}
-            icon={TIPO_ICON[item.tipo] || '📄'}
-            title={item.titulo}
-          />
+      <SectionHeader icon="💡" title="Sugestões para você" />
+      <ErroPrevia erro={erro} />
+      {visiveis.length === 0
+        ? <Empty msg="Nenhum conteúdo ativo ainda" />
+        : visiveis.map(item => (
+          item.tipo === 'imagem' && item.url ? (
+            <div key={item.id} className="aln-pw-img-card">
+              <img src={item.url} alt={item.titulo || ''} />
+              <div className="pw-row-title">{item.titulo}</div>
+            </div>
+          ) : (
+            <RowCard
+              key={item.id}
+              icon={TIPO_ICON[item.tipo] || '📄'}
+              title={item.titulo}
+              sub={item.descricao || (item.tipo === 'texto' ? item.texto : '')}
+            />
+          )
         ))
       }
     </div>
   );
 }
 
+function JornadasPreview() {
+  const [jornadas, erro] = useCollection('jornadas', { ordem: 'ordem', filtro: j => j.ativa !== false, max: 6 });
+  const PLANOS = ['Grátis', 'Acolher', 'Compreender', 'Evoluir'];
+
+  return (
+    <div className="pw-section">
+      <SectionHeader icon="🧭" title="Jornadas" />
+      <ErroPrevia erro={erro} />
+      {jornadas.length === 0
+        ? <Empty msg="Nenhuma jornada ativa ainda" />
+        : jornadas.map(j => (
+          <RowCard key={j.id} icon="✦" title={j.titulo} sub={j.descricao || PLANOS[j.plano] || ''} />
+        ))
+      }
+    </div>
+  );
+}
+
+function ParceriasPreview() {
+  const [parcerias, erro] = useCollection('parcerias', { ordem: 'criadoEm', direcao: 'desc', filtro: p => p.ativo !== false, max: 6 });
+
+  return (
+    <div className="pw-section">
+      <SectionHeader icon="🎁" title="Parcerias e benefícios" />
+      <ErroPrevia erro={erro} />
+      {parcerias.length === 0
+        ? <Empty msg="Nenhuma parceria ativa ainda" />
+        : parcerias.map(p => (
+          <RowCard key={p.id} icon="🎁" title={p.titulo} sub={p.descricao} />
+        ))
+      }
+    </div>
+  );
+}
+
+function MensagensPreview() {
+  const [mensagens, setMensagens] = useState({});
+  const [erro, setErro] = useState('');
+  useEffect(() => onSnapshot(
+    doc(db, 'configuracoes', 'mensagensRelatorio'),
+    snap => { setMensagens(snap.exists() ? snap.data() : {}); setErro(''); },
+    e => setErro(e?.message || 'erro ao ler'),
+  ), []);
+  const emo = EMOCOES[0];
+  const padrao = `Atravessando ${emo.nomeRelatorio} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
+
+  return (
+    <div className="pw-section">
+      <SectionHeader icon="📊" title="Relatório do mês" />
+      <ErroPrevia erro={erro} />
+      <div className="pw-reflexao-card">
+        <div className="pw-frase-label">EMOÇÃO PREDOMINANTE · {emo.label.toUpperCase()}</div>
+        <div className="pw-reflexao-texto">{mensagens[emo.id] || padrao}</div>
+      </div>
+    </div>
+  );
+}
+
 function AudiosPreview() {
-  const audios = useCollection('audiosAcolhimento', [orderBy('criadoEm', 'desc'), limit(5)]);
+  const [audios, erro] = useCollection('audiosAcolhimento', { ordem: 'criadoEm', direcao: 'desc', max: 5 });
 
   return (
     <div className="pw-section">
       <SectionHeader icon="🎵" title="Áudios de Acolhimento" />
+      <ErroPrevia erro={erro} />
       {audios.length === 0
         ? <Empty msg="Nenhum áudio ainda" />
         : audios.filter(a => a.ativo !== false).map(item => (
@@ -183,11 +271,12 @@ function AudiosPreview() {
 }
 
 function VitoriasPreview() {
-  const opcoes = useCollection('vitoriasOpcoes', [orderBy('criadoEm', 'asc'), limit(6)]);
+  const [opcoes, erro] = useCollection('vitoriasOpcoes', { ordem: 'criadoEm', max: 6 });
 
   return (
     <div className="pw-section">
       <SectionHeader icon="⭐" title="Pequenas Vitórias" />
+      <ErroPrevia erro={erro} />
       {opcoes.filter(o => o.ativo !== false).length === 0
         ? <Empty msg="Nenhuma vitória cadastrada" />
         : opcoes.filter(o => o.ativo !== false).map(item => (
@@ -202,11 +291,12 @@ function VitoriasPreview() {
 }
 
 function UsuariasPreview() {
-  const usuarios = useCollection('usuarios', [orderBy('criadoEm', 'desc'), limit(5)]);
+  const [usuarios, erro] = useCollection('usuarios', { ordem: 'criadoEm', direcao: 'desc', max: 5, filtro: u => u.role !== 'admin' });
 
   return (
     <div className="pw-section">
       <SectionHeader icon="👥" title="Usuárias" />
+      <ErroPrevia erro={erro} />
       {usuarios.length === 0
         ? <Empty msg="Nenhuma usuária cadastrada" />
         : usuarios.map(u => (
@@ -216,7 +306,7 @@ function UsuariasPreview() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pw-row-title">{u.nome || '(sem nome)'}</div>
-              <div className="pw-row-sub">{u.plano || 'perceber'}</div>
+              <div className="pw-row-sub">{['Perceber', 'Acolher', 'Compreender', 'Evoluir'][u.plano || 0] || 'Perceber'}</div>
             </div>
           </div>
         ))
@@ -226,7 +316,7 @@ function UsuariasPreview() {
 }
 
 function DashboardPreview() {
-  const frases = useCollection('frases', [orderBy('criadoEm', 'desc'), limit(1)]);
+  const [frases] = useCollection('frases', { ordem: 'criadoEm', direcao: 'desc', max: 1 });
   const frase = frases[0];
 
   return (
@@ -273,11 +363,20 @@ function DashboardPreview() {
 }
 
 function NotificacoesPreview() {
-  const notifs = useCollection('notificacoes', [orderBy('enviadoEm', 'desc'), limit(5)]);
+  // As notificações são gravadas uma por usuária; a prévia mostra os textos distintos.
+  const [todas, erro] = useCollection('notificacoesEditoriais', { ordem: 'enviadoEm', direcao: 'desc' });
+  const vistos = new Set();
+  const notifs = todas.filter(n => {
+    const chave = (n.texto || '').trim();
+    if (!chave || vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  }).slice(0, 5);
 
   return (
     <div className="pw-section">
       <SectionHeader icon="🔔" title="Notificações" />
+      <ErroPrevia erro={erro} />
       {notifs.length === 0
         ? <Empty msg="Nenhuma notificação enviada" />
         : notifs.map(n => (
@@ -296,25 +395,37 @@ function NotificacoesPreview() {
 // ── Screen map ────────────────────────────────────────────────────────────────
 
 const SCREEN_MAP = {
-  dashboard:    DashboardPreview,
-  travessia:    TravessiaPreview,
-  frases:       FrasesPreview,
-  conteudos:    ConteudosPreview,
-  audios:       AudiosPreview,
-  vitorias:     VitoriasPreview,
-  usuarias:     UsuariasPreview,
-  notificacoes: NotificacoesPreview,
+  dashboard:       DashboardPreview,
+  audios:          AudiosPreview,
+  frases:          FrasesPreview,
+  outrosConteudos: OutrosConteudosPreview,
+  travessia:       TravessiaPreview,
+  jornadas:        JornadasPreview,
+  vitorias:        VitoriasPreview,
+  parcerias:       ParceriasPreview,
+  beneficios:      ParceriasPreview,
+  usuarias:        UsuariasPreview,
+  notificacoes:    NotificacoesPreview,
+  mensagens:       MensagensPreview,
+  relatorios:      MensagensPreview,
 };
 
 const SCREEN_LABEL = {
-  dashboard:    'Dashboard',
-  travessia:    'Travessia',
-  frases:       'Frases',
-  conteudos:    'Conteúdos',
-  audios:       'Áudios',
-  vitorias:     'Vitórias',
-  usuarias:     'Usuárias',
-  notificacoes: 'Notificações',
+  dashboard:       'Dashboard',
+  audios:          'Áudios Check-in',
+  frases:          'Frases',
+  outrosConteudos: 'Outros conteúdos',
+  travessia:       'Travessia',
+  jornadas:        'Jornadas',
+  vitorias:        'Vitórias',
+  parcerias:       'Parcerias',
+  beneficios:      'Cupons e Comissões',
+  usuarias:        'Usuárias',
+  notificacoes:    'Notificações',
+  mensagens:       'Mensagens',
+  relatorios:      'Relatórios',
+  precos:          'Preços e planos',
+  perfil:          'Meu perfil',
 };
 
 export default function Preview({ currentScreen }) {

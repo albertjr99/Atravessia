@@ -5,19 +5,30 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/fires
 
 import Login from './Login';
 import Dashboard from './Dashboard';
+import Audios from './Audios';
+import Frases from './Frases';
+import OutrosConteudos from './OutrosConteudos';
 import Travessia from './Travessia';
-import Biblioteca from './Biblioteca';
-import Planos from './Planos';
-import Usuarias from './Usuarias';
+import Jornadas from './Jornadas';
 import Vitorias from './Vitorias';
+import Parcerias from './Parcerias';
+import Beneficios from './Beneficios';
+import Usuarias from './Usuarias';
 import Notificacoes from './Notificacoes';
+import Mensagens from './Mensagens';
+import Relatorios from './Relatorios';
+import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Preview from './Preview';
 import {
-  IconDashboard, IconLibrary, IconCompass, IconStar, IconUsers,
-  IconBell, IconTag, IconMenu, IconLogout, IconSpark,
+  IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
+  IconBell, IconChart, IconTag, IconEdit, IconMenu, IconLogout, IconSpark,
 } from './Icons';
+import './alinhamento.css';
 
+// Mesma organização do painel do app (AdminLayout.js → NAV_GRUPOS e
+// AdminSubTabs.js → GRUPOS_SUBTABS). Itens com `abas` reúnem telas irmãs em
+// sub-abas; o estado de navegação guarda sempre a tela (aba) aberta.
 const NAV_GRUPOS = [
   {
     titulo: 'Visão geral',
@@ -28,41 +39,83 @@ const NAV_GRUPOS = [
   {
     titulo: 'Conteúdo do app',
     itens: [
-      { id: 'biblioteca', Icon: IconLibrary, label: 'Biblioteca', sub: 'Frases · Conteúdos · Áudios · Parcerias' },
-      { id: 'travessia',  Icon: IconCompass, label: 'Travessia',  sub: 'Links e materiais externos' },
-      { id: 'vitorias',   Icon: IconStar,    label: 'Vitórias',   sub: 'Opções de pequenas vitórias' },
+      {
+        id: 'biblioteca', Icon: IconLibrary, label: 'Biblioteca',
+        abas: [
+          { id: 'audios', label: 'Áudios Check-in' },
+          { id: 'frases', label: 'Frases' },
+          { id: 'outrosConteudos', label: 'Outros conteúdos' },
+        ],
+      },
+      {
+        id: 'jornada', Icon: IconCompass, label: 'Jornada',
+        abas: [
+          { id: 'travessia', label: 'Travessia' },
+          { id: 'jornadas', label: 'Jornadas' },
+          { id: 'vitorias', label: 'Vitórias' },
+        ],
+      },
+      {
+        id: 'secaoParcerias', Icon: IconGift, label: 'Parcerias',
+        abas: [
+          { id: 'parcerias', label: 'Parcerias' },
+          { id: 'beneficios', label: 'Cupons e Comissões' },
+        ],
+      },
     ],
   },
   {
     titulo: 'Pessoas',
     itens: [
-      { id: 'usuarias',     Icon: IconUsers, label: 'Usuárias',     sub: 'Planos e acessos' },
-      { id: 'notificacoes', Icon: IconBell,  label: 'Notificações', sub: 'Avisos para as usuárias' },
+      { id: 'usuarias', Icon: IconUsers, label: 'Usuárias', sub: 'Planos e acessos' },
+      {
+        id: 'comunicacao', Icon: IconBell, label: 'Comunicação',
+        abas: [
+          { id: 'notificacoes', label: 'Notificações' },
+          { id: 'mensagens', label: 'Mensagens' },
+        ],
+      },
+      { id: 'relatorios', Icon: IconChart, label: 'Relatórios', sub: 'Geral · Emoções · Usuárias · Empresas' },
     ],
   },
   {
     titulo: 'Configuração',
     itens: [
-      { id: 'planos', Icon: IconTag, label: 'Planos', sub: 'Preços, recursos e mensagens' },
+      { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Cards dos planos e valores' },
+      { id: 'perfil', Icon: IconEdit, label: 'Meu perfil', sub: 'Nome e foto' },
     ],
   },
 ];
 
+// Uma entrada por tela (aba). Cada tela recebe { showToast, perfil }.
 const SCREENS = {
-  dashboard:    Dashboard,
-  travessia:    Travessia,
-  biblioteca:   Biblioteca,
-  planos:       Planos,
-  usuarias:     Usuarias,
-  vitorias:     Vitorias,
-  notificacoes: Notificacoes,
-  perfil:       Perfil,
+  dashboard:       Dashboard,
+  audios:          Audios,
+  frases:          Frases,
+  outrosConteudos: OutrosConteudos,
+  travessia:       Travessia,
+  jornadas:        Jornadas,
+  vitorias:        Vitorias,
+  parcerias:       Parcerias,
+  beneficios:      Beneficios,
+  usuarias:        Usuarias,
+  notificacoes:    Notificacoes,
+  mensagens:       Mensagens,
+  relatorios:      Relatorios,
+  precos:          PrecosPlanos,
+  perfil:          Perfil,
 };
+
+const TODOS_ITENS = NAV_GRUPOS.flatMap(g => g.itens);
+const itemDaTela = (tela) =>
+  TODOS_ITENS.find(it => (it.abas ? it.abas.some(a => a.id === tela) : it.id === tela));
 
 export default function App() {
   const [user, setUser] = useState(undefined);
   const [perfil, setPerfil] = useState(null);
   const [screen, setScreen] = useState('dashboard');
+  // Última aba aberta em cada seção, para voltar a ela ao clicar no item.
+  const [ultimaAba, setUltimaAba] = useState({});
   const [toast, setToast] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -123,7 +176,15 @@ export default function App() {
 
   const handleLogout = async () => { await signOut(auth); setUser(null); };
 
-  const navigate = (id) => { setScreen(id); setMobileOpen(false); };
+  const navigate = (id) => {
+    const item = TODOS_ITENS.find(it => it.id === id);
+    let tela = id;
+    if (item?.abas) tela = ultimaAba[item.id] || item.abas[0].id;
+    const dono = itemDaTela(tela);
+    if (dono?.abas) setUltimaAba(prev => ({ ...prev, [dono.id]: tela }));
+    setScreen(tela);
+    setMobileOpen(false);
+  };
 
   if (user === undefined) {
     return (
@@ -137,6 +198,7 @@ export default function App() {
   if (!user) return <Login showToast={showToast} />;
 
   const Screen = SCREENS[screen] || Dashboard;
+  const itemAtual = itemDaTela(screen);
   const nomeCompleto = perfil?.nome || perfil?.email?.split('@')[0] || 'Administradora';
   const primeiroNome = nomeCompleto.split(' ')[0];
   const inicial = primeiroNome.charAt(0).toUpperCase();
@@ -171,16 +233,20 @@ export default function App() {
             {NAV_GRUPOS.map(grupo => (
               <div className="nav-group" key={grupo.titulo}>
                 <div className="nav-group-title">{grupo.titulo}</div>
-                {grupo.itens.map(({ id, Icon, label, sub }) => (
+                {grupo.itens.map(({ id, Icon, label, sub, abas }) => (
                   <button
                     key={id}
-                    className={`nav-item ${screen === id ? 'active' : ''}`}
+                    className={`nav-item ${itemAtual?.id === id ? 'active' : ''}`}
                     onClick={() => navigate(id)}
                   >
                     <span className="nav-icon"><Icon size={17} /></span>
                     <span style={{ minWidth: 0 }}>
                       <span className="nav-label" style={{ display: 'block' }}>{label}</span>
-                      {sub && <span className="nav-sub" style={{ display: 'block' }}>{sub}</span>}
+                      {(sub || abas) && (
+                        <span className="nav-sub" style={{ display: 'block' }}>
+                          {sub || abas.map(a => a.label).join(' · ')}
+                        </span>
+                      )}
                     </span>
                   </button>
                 ))}
@@ -204,7 +270,21 @@ export default function App() {
             <span className="mobile-header-title">Atravessia</span>
           </div>
 
-          <Screen showToast={showToast} perfil={perfil} />
+          {itemAtual?.abas && (
+            <div className="subtabs">
+              {itemAtual.abas.map(a => (
+                <button
+                  key={a.id}
+                  className={`subtab ${screen === a.id ? 'active' : ''}`}
+                  onClick={() => navigate(a.id)}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <Screen key={screen} showToast={showToast} perfil={perfil} />
         </main>
 
         <div className="preview-panel">
