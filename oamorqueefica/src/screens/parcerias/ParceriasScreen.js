@@ -8,6 +8,7 @@ import { colors, fonts, spacing, radius } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+import { situacaoCupom } from '../../utils/cupons';
 
 // Estas são as categorias oficiais — o painel administrativo grava exatamente
 // estes ids. A lista `match` existe apenas para reconhecer parcerias cadastradas
@@ -32,7 +33,8 @@ function descontoDaUsuaria(p) {
 
 export default function ParceriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio } = useApp();
+  const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio, meusVouchers } = useApp();
+  const cuponsEmAberto = (meusVouchers || []).filter(v => ['ativo', 'aguardando'].includes(situacaoCupom(v))).length;
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
   const [gerando, setGerando] = useState(null); // id da parceria em geração, para desabilitar o card
 
@@ -89,10 +91,25 @@ export default function ParceriasScreen({ navigation }) {
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
         <Text style={s.topTitle}>Benefícios e Parcerias</Text>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('MeusCupons')} style={s.backBtn} accessibilityLabel="Meus cupons">
+          <Ionicons name="ticket-outline" size={22} color={colors.lav5} />
+          {cuponsEmAberto > 0 && (
+            <View style={s.badge}><Text style={s.badgeTxt}>{cuponsEmAberto}</Text></View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        {cuponsEmAberto > 0 && (
+          <TouchableOpacity style={s.meusCupons} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.85}>
+            <Ionicons name="ticket-outline" size={18} color={colors.lav5} />
+            <Text style={s.meusCuponsTxt}>
+              {cuponsEmAberto === 1 ? 'Você tem 1 cupom em aberto' : `Você tem ${cuponsEmAberto} cupons em aberto`}
+            </Text>
+            <Text style={s.meusCuponsLink}>Ver</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.lav5} />
+          </TouchableOpacity>
+        )}
 
         {/* Hero */}
         <View style={s.hero}>
@@ -223,6 +240,18 @@ export default function ParceriasScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
+  badge: {
+    position: 'absolute', top: 2, right: 0, minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: colors.peach2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  },
+  badgeTxt: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: 'white' },
+  meusCupons: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginTop: spacing.sm, padding: spacing.md,
+    borderRadius: radius.lg, backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2,
+  },
+  meusCuponsTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
+  meusCuponsLink: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
