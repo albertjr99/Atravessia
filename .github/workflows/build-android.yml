@@ -11,10 +11,18 @@ on:
         options:
           - production   # .aab — para enviar à Play Store
           - preview      # .apk — para instalar direto no celular e testar
+      onde:
+        description: "Onde gerar o build"
+        type: choice
+        default: nuvem-expo
+        options:
+          - nuvem-expo   # servidores da Expo (no plano gratuito há fila de espera)
+          - github       # máquina do próprio GitHub Actions: sem fila da Expo; o arquivo sai em Artifacts
 
 jobs:
   build:
     name: EAS Build (${{ inputs.profile }})
+    if: inputs.onde != 'github'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,3 +60,65 @@ jobs:
         run: |
           echo "Build concluído. O arquivo fica em https://expo.dev/accounts/_/projects/atravessia/builds"
           eas build:list --platform android --limit 1 --non-interactive
+
+  # Mesmo build, mas compilado na máquina do GitHub (eas build --local). Usa as
+  # credenciais guardadas na Expo — inclusive a chave de upload da Play Store —,
+  # então o AAB sai assinado igual ao da nuvem, sem esperar a fila gratuita.
+  build-github:
+    name: Build no GitHub (${{ inputs.profile }})
+    if: inputs.onde == 'github'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: oamorqueefica
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: oamorqueefica/package-lock.json
+
+      - name: Preparar EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Mostrar a versão que será publicada
+        run: |
+          node -e "const a=require('./app.json').expo; \
+            console.log('versão:', a.version, '| versionCode:', a.android.versionCode)"
+
+      - name: Gerar o build
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false
+        run: |
+          EXT=aab; [ "${{ inputs.profile }}" = "preview" ] && EXT=apk
+          VERSAO=$(node -p "require('./app.json').expo.version")
+          eas build --platform android --profile ${{ inputs.profile }} --local --non-interactive \
+            --output "$GITHUB_WORKSPACE/atravessia-$VERSAO.$EXT"
+
+      - name: Guardar o arquivo
+        uses: actions/upload-artifact@v4
+        with:
+          name: atravessia-${{ inputs.profile }}
+          path: |
+            ${{ github.workspace }}/atravessia-*.aab
+            ${{ github.workspace }}/atravessia-*.apk
+          if-no-files-found: error
+          retention-days: 14
