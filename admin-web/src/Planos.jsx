@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import {
-  collection, doc, onSnapshot, orderBy, query,
+  collection, doc, onSnapshot,
   serverTimestamp, setDoc,
 } from 'firebase/firestore';
 import { IconClose, IconSpark } from './Icons';
@@ -71,9 +71,8 @@ export default function Planos({ showToast }) {
   const [semeando, setSemeando] = useState(false);
 
   useEffect(() => {
-    const ref = query(collection(db, 'planos'), orderBy('id', 'asc'));
-    return onSnapshot(ref, snap => {
-      setPlanos(snap.docs.map(d => ({ ...d.data() })).sort((a, b) => a.id - b.id));
+    return onSnapshot(collection(db, 'planos'), snap => {
+      setPlanos(snap.docs.map(d => ({ id: Number(d.id), ...d.data() })).sort((a, b) => a.id - b.id));
       setLoading(false);
     }, () => setLoading(false));
   }, []);

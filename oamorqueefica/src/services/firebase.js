@@ -19,6 +19,10 @@ export const auth = Platform.OS === 'web'
       }
     })();
 
+// Idioma dos e-mails do Firebase Auth (recuperação de senha etc.). Sem isto o
+// Firebase envia o modelo padrão em inglês.
+auth.languageCode = 'pt-BR';
+
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
 export const storage = getStorage(app);

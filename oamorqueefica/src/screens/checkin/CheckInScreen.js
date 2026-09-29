@@ -25,7 +25,7 @@ const LOCAIS = [
   { id: 'relacionamentos', label: 'Relacionamentos', icon: 'people-outline' },
 ];
 
-const TIPO_ICONE = { audio: 'headset-outline', video: 'videocam-outline', documento: 'document-text-outline', link: 'link-outline' };
+const TIPO_ICONE = { audio: 'headset-outline', video: 'videocam-outline', documento: 'document-text-outline', link: 'link-outline', imagem: 'image-outline', texto: 'document-text-outline' };
 
 function ConteudoCard({ c, onPress, isFav, onFav }) {
   return (
@@ -142,7 +142,8 @@ export default function CheckInScreen({ navigation }) {
 
   // Conteúdos do Firestore vinculados à emoção
   const conteudosSugeridos = useMemo(
-    () => emocaoSel ? (conteudos || []).filter(c => (c.emocoes || []).includes(emocaoSel)) : [],
+    // `ativo === false` = desativado no painel; itens antigos sem o campo contam como ativos.
+    () => emocaoSel ? (conteudos || []).filter(c => c.ativo !== false && (c.emocoes || []).includes(emocaoSel)) : [],
     [emocaoSel, conteudos]
   );
 
@@ -155,6 +156,11 @@ export default function CheckInScreen({ navigation }) {
   }, [emocaoSel, conteudosSugeridos]);
 
   const handleAbrirConteudo = (c) => {
+    // Imagem e texto abrem na tela de leitura (que também trata o plano).
+    if (c.tipo === 'imagem' || c.tipo === 'texto') {
+      navigation.navigate('Conteudo', { conteudo: { id: c.id, titulo: c.titulo, descricao: c.descricao, tipo: c.tipo, url: c.url, texto: c.texto, plano: c.plano } });
+      return;
+    }
     if (c.tipo === 'documento' || c.tipo === 'link') {
       abrirLink(c.url || c.link);
       return;

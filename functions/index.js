@@ -10,6 +10,11 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const TIMEZONE = 'America/Sao_Paulo';
+
+// Endereço público do site (Firebase Hosting). Vem do ID do projeto no Firebase,
+// que não pode ser renomeado; para trocar por um endereço com o nome Atravessia
+// (novo site no Hosting ou domínio próprio), basta mudar esta constante.
+const SITE_URL = 'https://o-amor-que-fica.web.app';
 const COOLDOWN_MS = 6 * 60 * 60 * 1000; // não enviar mais de 1 notificação automática a cada 6h
 
 // Envia uma notificação push via Expo Push API para um conjunto de tokens.
@@ -136,8 +141,8 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
       },
       quantity: 1,
     }],
-    success_url: request.data?.successUrl || 'https://oamorquefica.app/checkout-sucesso',
-    cancel_url: request.data?.cancelUrl || 'https://oamorquefica.app/checkout-cancelado',
+    success_url: request.data?.successUrl || `${SITE_URL}/checkout-sucesso.html`,
+    cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
     metadata: { uid, planoId: String(planoId) },
     subscription_data: { metadata: { uid, planoId: String(planoId) } },
     custom_text: {
@@ -176,8 +181,8 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
       },
       quantity: 1,
     }],
-    success_url: request.data?.successUrl || 'https://oamorquefica.app/checkout-sucesso',
-    cancel_url: request.data?.cancelUrl || 'https://oamorquefica.app/checkout-cancelado',
+    success_url: request.data?.successUrl || `${SITE_URL}/checkout-sucesso.html`,
+    cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
     metadata: { uid, tipo: 'periodo_credito' },
     custom_text: {
       submit: { message: 'R$ 5,90 por relatório — use quando quiser.' },
@@ -530,7 +535,7 @@ const ADMIN_EMAILS_BENEFICIOS = ['carla.zambi.psi@gmail.com', 'larissapjaniques@
 const JANELA_CONTESTACAO_HORAS = 24;
 // Domínio padrão do Firebase Hosting para o projeto — sempre existe, mesmo
 // sem domínio próprio configurado.
-const PARTNER_PORTAL_BASE_URL = 'https://o-amor-que-fica.web.app';
+const PARTNER_PORTAL_BASE_URL = SITE_URL;
 
 async function exigirAdmin(request) {
   const uid = request.auth?.uid;
@@ -588,49 +593,39 @@ exports.gerarVoucherBeneficio = onCall(async (request) => {
   if (beneficio <= 0) throw new HttpsError('failed-precondition', 'Este benefício ainda não tem um percentual configurado.');
 
   const validadeDias = Number(parceria.validadeDiasVoucher) > 0 ? Number(parceria.validadeDiasVoucher) : 30;
-  const limitePorUsuaria = parceria.limiteUsoPorUsuaria != null ? Number(parceria.limiteUsoPorUsuaria) : null;
-
+  // Sem limite de cupons por pessoa: a usuária gera quantos precisar. Cada cupom
+  // continua sendo de uso único e com validade própria.
   const tokenSeguro = crypto.randomBytes(24).toString('base64url');
-  const voucherRef = db.collection('vouchers').doc(tokenSeguro);
+  const codigoPublico = gerarCodigoPublico();
   const agora = admin.firestore.Timestamp.now();
   const expiraEm = admin.firestore.Timestamp.fromMillis(agora.toMillis() + validadeDias * 86400000);
 
-  await db.runTransaction(async (tx) => {
-    if (limitePorUsuaria != null) {
-      const existentesSnap = await tx.get(
-        db.collection('vouchers')
-          .where('usuarioId', '==', uid)
-          .where('parceriaId', '==', parceriaId)
-          .where('status', 'not-in', ['CANCELADO', 'EXPIRADO'])
-      );
-      if (existentesSnap.size >= limitePorUsuaria) {
-        throw new HttpsError('resource-exhausted', 'Você já utilizou o limite de cupons deste benefício.');
-      }
-    }
-    tx.set(voucherRef, {
-      codigoPublico: gerarCodigoPublico(),
-      tokenSeguro,
-      usuarioId: uid,
-      parceriaId,
-      parceriaNome: parceria.titulo || '',
-      status: 'GERADO',
-      percentualBeneficio: beneficio,
-      percentualComissao: comissao,
-      percentualDescontoCliente: descontoCliente,
-      baseCalculoComissao: parceria.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
-      geradoEm: agora,
-      expiraEm,
-    });
+  await db.collection('vouchers').doc(tokenSeguro).set({
+    codigoPublico,
+    tokenSeguro,
+    usuarioId: uid,
+    parceriaId,
+    parceriaNome: parceria.titulo || '',
+    status: 'GERADO',
+    percentualBeneficio: beneficio,
+    percentualComissao: comissao,
+    percentualDescontoCliente: descontoCliente,
+    baseCalculoComissao: parceria.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
+    geradoEm: agora,
+    expiraEm,
   });
 
   await registrarAuditoriaBeneficio('VOUCHER_CREATED', 'voucher', tokenSeguro, {
     usuarioId: uid, perfil: 'usuaria', parceriaId,
   });
 
+  // Só o desconto da própria usuária volta ao app — a comissão da Atravessia é
+  // assunto entre a Atravessia e o parceiro.
   return {
     tokenSeguro,
-    codigoPublico: (await voucherRef.get()).data().codigoPublico,
+    codigoPublico,
     expiraEm: expiraEm.toMillis(),
+    percentualDescontoCliente: descontoCliente,
     linkValidacao: `${PARTNER_PORTAL_BASE_URL}/parceiro.html?t=${tokenSeguro}`,
   };
 });
@@ -706,9 +701,13 @@ exports.confirmarAtendimento = onCall(async (request) => {
     }
 
     // Cálculo inteiro em centavos — nunca ponto flutuante para dinheiro.
+    // O benefício total que o parceiro concede se divide em duas partes: o
+    // desconto da cliente e a comissão da Atravessia. A cliente paga o valor
+    // original menos APENAS o desconto dela (serviço de R$ 100 com 10% = 7% + 3%:
+    // a cliente paga R$ 93 e o parceiro repassa R$ 3, ficando com R$ 90).
     const descontoTotal = Math.round(valorOriginalCentavos * (v.percentualBeneficio / 100));
     const descontoCliente = Math.round(valorOriginalCentavos * (v.percentualDescontoCliente / 100));
-    const valorFinalCentavos = valorOriginalCentavos - descontoTotal;
+    const valorFinalCentavos = valorOriginalCentavos - descontoCliente;
     const baseComissao = v.baseCalculoComissao === 'valor_final' ? valorFinalCentavos : valorOriginalCentavos;
     const comissaoCentavos = Math.round(baseComissao * (v.percentualComissao / 100));
 
@@ -755,7 +754,7 @@ exports.confirmarAtendimento = onCall(async (request) => {
   return {
     ok: true,
     valorOriginal: reais(valorOriginalCentavos),
-    valorDesconto: reais(resultado.descontoTotal),
+    valorDesconto: reais(resultado.descontoCliente),
     valorFinal: reais(resultado.valorFinalCentavos),
     comissao: reais(resultado.comissaoCentavos),
   };

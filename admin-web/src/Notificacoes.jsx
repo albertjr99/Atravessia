@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ordenarPor } from './ordenar';
 import { db } from './firebase';
 import {
-  collection, addDoc, getDocs, serverTimestamp, onSnapshot,
-  orderBy, query, doc, updateDoc,
+  collection, addDoc, getDocs, serverTimestamp, onSnapshot, doc, updateDoc,
 } from 'firebase/firestore';
 
 const TIPOS = [
@@ -23,9 +23,10 @@ export default function Notificacoes({ showToast }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('enviadoEm', 'desc'));
-    const unsub1 = onSnapshot(ref, snap => {
-      setEnviadas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // O painel do app e as Cloud Functions gravam só `criadoEm`; ordenar por
+    // `enviadoEm` no Firestore escondia todas essas notificações daqui.
+    const unsub1 = onSnapshot(collection(db, 'notificacoesEditoriais'), snap => {
+      setEnviadas(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), ['enviadoEm', 'criadoEm'], 'desc'));
       setLoading(false);
     }, () => setLoading(false));
 
@@ -157,7 +158,7 @@ export default function Notificacoes({ showToast }) {
                 <tr key={n.id}>
                   <td><span className="badge">{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</span></td>
                   <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.texto}</td>
-                  <td style={{ color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{timeAgo(n.enviadoEm)}</td>
+                  <td style={{ color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{timeAgo(n.enviadoEm || n.criadoEm)}</td>
                   <td>{n.lida ? '' : ''}</td>
                 </tr>
               ))}

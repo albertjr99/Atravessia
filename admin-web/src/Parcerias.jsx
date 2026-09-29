@@ -37,7 +37,6 @@ function novoForm() {
     percentualBeneficio: '10',
     percentualComissao: '3',
     baseCalculoComissao: 'valor_original',
-    limiteUsoPorUsuaria: '1',
     validadeDiasVoucher: '30',
   };
 }
@@ -84,7 +83,6 @@ export default function Parcerias({ showToast }) {
       percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
       percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
       baseCalculoComissao: item.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
-      limiteUsoPorUsuaria: item.limiteUsoPorUsuaria != null ? String(item.limiteUsoPorUsuaria) : '',
       validadeDiasVoucher: item.validadeDiasVoucher != null ? String(item.validadeDiasVoucher) : '30',
     });
     setEditId(item.id);
@@ -105,13 +103,12 @@ export default function Parcerias({ showToast }) {
     }
     setSaving(true);
     try {
-      const { percentualBeneficio, percentualComissao, limiteUsoPorUsuaria, validadeDiasVoucher, ...resto } = form;
+      const { percentualBeneficio, percentualComissao, validadeDiasVoucher, ...resto } = form;
       const data = { ...resto };
       if (form.tipoBeneficio === 'cupom') {
         data.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
         data.percentualComissao = parseFloat(percentualComissao) || 0;
         data.percentualDescontoCliente = descontoClienteCalculado;
-        data.limiteUsoPorUsuaria = limiteUsoPorUsuaria.trim() ? parseInt(limiteUsoPorUsuaria, 10) : null;
         data.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
         // Mantém o token existente ao editar; só gera um novo se nunca teve.
         if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) {
@@ -341,7 +338,7 @@ export default function Parcerias({ showToast }) {
                   >
                     <div style={{ fontWeight: 700, fontSize: 13 }}>Cupom com comissão</div>
                     <div style={{ fontSize: 11, color: 'var(--text-mid)', marginTop: 2 }}>
-                      Gera voucher; o parceiro confirma o atendimento e o Travessia recebe uma comissão.
+                      Gera voucher; o parceiro confirma o atendimento e a Atravessia recebe uma comissão.
                     </div>
                   </button>
                 </div>
@@ -361,7 +358,7 @@ export default function Parcerias({ showToast }) {
                         placeholder="10" />
                     </div>
                     <div className="field-group" style={{ marginBottom: 8 }}>
-                      <label>Comissão Travessia (%)</label>
+                      <label>Comissão Atravessia (%)</label>
                       <input type="number" min="0" step="0.5"
                         value={form.percentualComissao}
                         onChange={e => set('percentualComissao', e.target.value)}
@@ -370,7 +367,7 @@ export default function Parcerias({ showToast }) {
                   </div>
                   <p style={{ fontSize: 12, color: '#5B3D9E', margin: '0 0 12px' }}>
                     Desconto que chega à usuária: <strong>{descontoClienteCalculado.toFixed(1)}%</strong>
-                    {'  ·  '}Comissão do Travessia: <strong>{form.percentualComissao || 0}%</strong>
+                    {'  ·  '}Comissão da Atravessia: <strong>{form.percentualComissao || 0}%</strong>
                   </p>
 
                   <div className="field-group" style={{ marginBottom: 8 }}>
@@ -389,21 +386,13 @@ export default function Parcerias({ showToast }) {
                     </div>
                   </div>
 
-                  <div className="field-row">
-                    <div className="field-group" style={{ marginBottom: 0 }}>
-                      <label>Limite por usuária</label>
-                      <input type="number" min="0"
-                        value={form.limiteUsoPorUsuaria}
-                        onChange={e => set('limiteUsoPorUsuaria', e.target.value)}
-                        placeholder="Vazio = ilimitado" />
-                    </div>
-                    <div className="field-group" style={{ marginBottom: 0 }}>
-                      <label>Validade do cupom (dias)</label>
-                      <input type="number" min="1"
-                        value={form.validadeDiasVoucher}
-                        onChange={e => set('validadeDiasVoucher', e.target.value)}
-                        placeholder="30" />
-                    </div>
+                  <div className="field-group" style={{ marginBottom: 0 }}>
+                    <label>Validade de cada cupom (dias)</label>
+                    <input type="number" min="1"
+                      value={form.validadeDiasVoucher}
+                      onChange={e => set('validadeDiasVoucher', e.target.value)}
+                      placeholder="30" />
+                    <span className="field-hint">A usuária pode gerar quantos cupons quiser; cada um vale para um único atendimento.</span>
                   </div>
                 </div>
               )}

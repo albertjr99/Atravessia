@@ -15,7 +15,20 @@ const TIPO_ICONE = {
   video: 'videocam-outline',
   documento: 'document-text-outline',
   link: 'link-outline',
+  imagem: 'image-outline',
+  texto: 'document-text-outline',
 };
+
+// Ícone do botão de ação à direita do cartão.
+const acaoIconeDe = (tipo) => {
+  if (tipo === 'imagem') return 'image-outline';
+  if (tipo === 'texto') return 'document-text-outline';
+  if (tipo === 'documento' || tipo === 'link') return 'open-outline';
+  return 'play';
+};
+
+// Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
+const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
 
 const CAT_COR = {
   acolhimento: { bg: colors.lav1, color: colors.lav5 },
@@ -37,6 +50,22 @@ export default function AudiosScreen({ navigation }) {
           { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
         ]
       );
+      return;
+    }
+    // Imagem e texto abrem na tela de leitura. O favorito não guarda o `texto`;
+    // a tela busca a versão atual em `conteudos` pelo id.
+    if (item.tipo === 'imagem' || item.tipo === 'texto') {
+      navigation.navigate('Conteudo', {
+        conteudo: {
+          id: item.conteudoId || item.id,
+          titulo: item.titulo,
+          descricao: item.descricao,
+          tipo: item.tipo,
+          url: item.url,
+          texto: item.texto,
+          plano: item.plano,
+        },
+      });
       return;
     }
     if (item.tipo === 'documento' || item.tipo === 'link') {
@@ -101,7 +130,7 @@ export default function AudiosScreen({ navigation }) {
             {favoritos.map(item => {
               const bloqueado = !temAcesso(item.plano);
               const cat = CAT_COR[item.grupo] || CAT_COR.acolhimento;
-              const acaoIcone = item.tipo === 'documento' || item.tipo === 'link' ? 'open-outline' : 'play';
+              const acaoIcone = acaoIconeDe(item.tipo);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -121,7 +150,7 @@ export default function AudiosScreen({ navigation }) {
                     {item.descricao ? (
                       <Text style={s.desc} numberOfLines={1}>{item.descricao}</Text>
                     ) : (
-                      <Text style={s.grupo}>{item.grupo}</Text>
+                      <Text style={s.grupo}>{item.grupo || TIPO_LABEL[item.tipo] || ''}</Text>
                     )}
                   </View>
                   <TouchableOpacity

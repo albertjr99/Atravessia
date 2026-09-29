@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ordenarPor } from './ordenar';
 import { db } from './firebase';
 import {
-  collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc,
-  orderBy, query, serverTimestamp, writeBatch,
+  collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconQuote, IconSpark, IconTrash } from './Icons';
 
@@ -18,9 +18,8 @@ export default function Frases({ showToast }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const ref = query(collection(db, 'frases'), orderBy('criadoEm', 'asc'));
-    return onSnapshot(ref, snap => {
-      setFrases(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    return onSnapshot(collection(db, 'frases'), snap => {
+      setFrases(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'asc'));
       setLoading(false);
     }, () => setLoading(false));
   }, []);

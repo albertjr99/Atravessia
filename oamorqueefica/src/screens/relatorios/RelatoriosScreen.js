@@ -261,6 +261,11 @@ function estiloVitoria(label, idx) {
 
 // Agrupa as vitórias por rótulo e conta em quantos DIAS distintos cada uma ocorreu,
 // devolvendo as `max` mais frequentes (é isso que o relatório destaca).
+// "As 6 maiores vitórias" — com o número real, já que pode haver menos de 6.
+function tituloVitorias(n) {
+  return n === 1 ? 'A maior vitória' : `As ${n} maiores vitórias`;
+}
+
 function agruparVitorias(lista, max = 6) {
   const mapa = new Map();
   (lista || []).forEach(v => {
@@ -1238,7 +1243,7 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>3</Text>
                     <Text style={s.cardTit}>
-                      As {agruparVitorias(vitoriasMes).length} maiores vitórias que tive neste mês
+                      {tituloVitorias(agruparVitorias(vitoriasMes).length)}
                     </Text>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasMes)} />
                     {vitoriasMes.length > 0 && (
@@ -1399,7 +1404,7 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.card}>
                     <Text style={s.sectionLabel}>⭐</Text>
                     <Text style={s.cardTit}>
-                      As {agruparVitorias(vitoriasAno).length} maiores vitórias que tive neste ano
+                      {tituloVitorias(agruparVitorias(vitoriasAno).length)}
                     </Text>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasAno)} />
                     {vitoriasAno.length > 0 && (
@@ -1598,7 +1603,7 @@ export default function RelatoriosScreen({ navigation }) {
                       <View style={s.card}>
                         <Text style={s.sectionLabel}>⭐</Text>
                         <Text style={s.cardTit}>
-                          As {agruparVitorias(vitoriasRange).length} maiores vitórias do período
+                          {tituloVitorias(agruparVitorias(vitoriasRange).length)}
                         </Text>
                         <VitoriasDestaque itens={agruparVitorias(vitoriasRange)} />
                         {vitoriasRange.length > 0 && (

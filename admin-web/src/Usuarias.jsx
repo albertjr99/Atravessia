@@ -1,18 +1,37 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from './firebase';
 import {
-  collection, onSnapshot, orderBy, query, doc, updateDoc, Timestamp,
+  collection, onSnapshot, doc, updateDoc, Timestamp,
 } from 'firebase/firestore';
 import { IconClose, IconSpark } from './Icons';
 
 const PLANO_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
 
-const PLANOS_OPCOES = [
-  { id: 'perceber', label: 'Perceber', desc: 'Plano gratuito — acesso básico', icon: '' },
-  { id: 'acolher', label: 'Acolher', desc: 'R$ 24,90/mês — acesso acolhimento', icon: '' },
-  { id: 'compreender', label: 'Compreender', desc: 'R$ 39,90/mês — acesso completo', icon: '' },
-  { id: 'evoluir', label: 'Evoluir', desc: 'R$ 59,90/mês — experiência total', icon: '' },
-];
+// Ordem = número do plano (planos/0..3 no Firestore).
+const PLANO_IDS = ['perceber', 'acolher', 'compreender', 'evoluir'];
+
+// O app grava o plano como número (0..3) e este painel como texto ('acolher').
+// Os dois formatos convivem no Firestore; aqui tudo vira o id em texto.
+function planoDe(u) {
+  const p = u?.plano;
+  if (typeof p === 'number') return PLANO_IDS[p] || 'perceber';
+  return PLANO_IDS.includes(p) ? p : 'perceber';
+}
+
+// Nome, preço e descrição vêm de planos/{0..3} — os mesmos documentos editados
+// em "Preços e planos". Antes os valores eram fixos aqui e não acompanhavam as
+// alterações feitas pela administração.
+function opcoesDePlano(planosDocs) {
+  return PLANO_IDS.map((id, i) => {
+    const d = planosDocs[String(i)] || {};
+    const preco = d.precoLabel || d.subtitulo || (i === 0 ? 'Gratuito' : '');
+    return {
+      id,
+      label: d.nome || PLANO_LABEL[id],
+      desc: [preco, d.descricao].filter(Boolean).join(' — '),
+    };
+  });
+}
 
 function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
   const [dias, setDias] = useState('30');
@@ -54,7 +73,8 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
   );
 }
 
-function PlanoModal({ usuaria, onClose, showToast }) {
+function PlanoModal({ usuaria, onClose, showToast, planosDocs }) {
+  const opcoes = opcoesDePlano(planosDocs);
   const [showCortesia, setShowCortesia] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -95,20 +115,19 @@ function PlanoModal({ usuaria, onClose, showToast }) {
             <strong>Plano atual:</strong>{' '}
             {hasAcessoTotal ? <span className="badge badge-total" style={{ marginLeft: 4 }}>Acesso Total</span>
               : cortesiaAtiva ? <span className="badge badge-cortesia" style={{ marginLeft: 4 }}>Cortesia até {usuaria.cortesia.expiracao.toDate().toLocaleDateString('pt-BR')}</span>
-              : <span className={`badge badge-${usuaria.plano || 'perceber'}`} style={{ marginLeft: 4 }}>{PLANO_LABEL[usuaria.plano] || 'Perceber'}</span>
+              : <span className={`badge badge-${planoDe(usuaria)}`} style={{ marginLeft: 4 }}>{PLANO_LABEL[planoDe(usuaria)]}</span>
             }
           </div>
 
           <p className="section-label">Alterar plano</p>
           <div className="plan-options">
-            {PLANOS_OPCOES.map(p => (
+            {opcoes.map(p => (
               <button
                 key={p.id}
-                className={`plan-option ${usuaria.plano === p.id && !hasAcessoTotal && !cortesiaAtiva ? 'selected' : ''}`}
+                className={`plan-option ${planoDe(usuaria) === p.id && !hasAcessoTotal && !cortesiaAtiva ? 'selected' : ''}`}
                 onClick={() => setPlano(p.id)}
                 disabled={saving}
               >
-                <span className="plan-option-icon">{p.icon}</span>
                 <div>
                   <div className="plan-option-label">{p.label}</div>
                   <div className="plan-option-desc">{p.desc}</div>
@@ -160,13 +179,26 @@ export default function Usuarias({ showToast }) {
   const [modalUsuaria, setModalUsuaria] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [planosDocs, setPlanosDocs] = useState({});
+  const [erro, setErro] = useState('');
+
   useEffect(() => {
-    const ref = query(collection(db, 'usuarios'), orderBy('criadoEm', 'desc'));
-    return onSnapshot(ref, snap => {
-      setUsuarios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // Sem orderBy('criadoEm'): o Firestore descartava da lista toda usuária sem
+    // esse campo (contas antigas ou criadas fora do cadastro). Ordena aqui.
+    return onSnapshot(collection(db, 'usuarios'), snap => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
+      setUsuarios(docs);
+      setErro('');
       setLoading(false);
-    }, () => setLoading(false));
+    }, (e) => { setErro(e?.message || 'Não foi possível carregar as usuárias.'); setLoading(false); });
   }, []);
+
+  useEffect(() => onSnapshot(collection(db, 'planos'), snap => {
+    const m = {};
+    snap.docs.forEach(d => { m[d.id] = d.data(); });
+    setPlanosDocs(m);
+  }, () => {}), []);
 
   const lista = useMemo(() => {
     return usuarios.filter(u => {
@@ -175,7 +207,7 @@ export default function Usuarias({ showToast }) {
       if (filtroPlano === 'todos') return true;
       if (filtroPlano === 'total') return u.acessoTotal === true;
       if (filtroPlano === 'cortesia') return u.cortesia?.ativo === true;
-      return (u.plano || 'perceber') === filtroPlano;
+      return planoDe(u) === filtroPlano;
     });
   }, [usuarios, busca, filtroPlano]);
 
@@ -183,8 +215,8 @@ export default function Usuarias({ showToast }) {
     if (u.acessoTotal) return <span className="badge badge-total">Acesso Total</span>;
     const cortesiaAtiva = u.cortesia?.ativo === true && u.cortesia?.expiracao?.toDate?.() > new Date();
     if (cortesiaAtiva) return <span className="badge badge-cortesia">Cortesia</span>;
-    const plano = u.plano || 'perceber';
-    return <span className={`badge badge-${plano}`}>{PLANO_LABEL[plano] || plano}</span>;
+    const plano = planoDe(u);
+    return <span className={`badge badge-${plano}`}>{PLANO_LABEL[plano]}</span>;
   }
 
   function timeAgo(ts) {
@@ -198,6 +230,7 @@ export default function Usuarias({ showToast }) {
   }
 
   if (loading) return <div className="loading-state"><div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando...</div>;
+  if (erro) return <div className="empty-state"><p>Não foi possível carregar as usuárias: {erro}</p></div>;
 
   return (
     <div className="screen-content">
@@ -262,6 +295,7 @@ export default function Usuarias({ showToast }) {
           usuaria={modalUsuaria}
           onClose={() => setModalUsuaria(null)}
           showToast={showToast}
+          planosDocs={planosDocs}
         />
       )}
     </div>

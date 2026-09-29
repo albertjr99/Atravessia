@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ordenarPor } from './ordenar';
 import { db } from './firebase';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot,
-  orderBy, query, serverTimestamp, updateDoc,
+  collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTrash } from './Icons';
 
@@ -23,8 +23,9 @@ export default function Travessia({ showToast }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const ref = query(collection(db, 'travessiaItens'), orderBy('ordem', 'asc'));
-    return onSnapshot(ref, snap => setItens(snap.docs.map(d => ({ id: d.id, ...d.data() }))), console.error);
+    return onSnapshot(collection(db, 'travessiaItens'),
+      snap => setItens(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), ['ordem', 'criadoEm'], 'asc')),
+      console.error);
   }, []);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));

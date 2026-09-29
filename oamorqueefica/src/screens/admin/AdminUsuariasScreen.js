@@ -9,8 +9,17 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 
-const PLANO_NOME = { 0: 'Perceber', 1: 'Acolher' };
-const PLANO_COR = { 0: colors.sage, 1: colors.lav5 };
+const PLANO_NOME = { 0: 'Perceber', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
+const PLANO_COR = { 0: colors.sage, 1: colors.lav5, 2: '#7B5EA7', 3: '#C0843F' };
+const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
+
+// O painel web grava o plano como texto ('acolher') e o app como número (0..3);
+// os dois formatos convivem no Firestore. Aqui tudo vira número.
+function planoDe(u) {
+  const p = u?.plano;
+  if (typeof p === 'number') return p;
+  return PLANO_TEXTO[p] ?? 0;
+}
 
 export default function AdminUsuariasScreen({ navigation }) {
   const [usuarias, setUsuarias] = useState([]);
@@ -18,6 +27,15 @@ export default function AdminUsuariasScreen({ navigation }) {
   const [filtroPlano, setFiltroPlano] = useState('todos');
   const [planoModal, setPlanoModal] = useState({ vis: false, usuaria: null });
   const [cortesiaModal, setCortesiaModal] = useState({ vis: false, usuaria: null, dias: '30' });
+  // Nome, preço e descrição de cada plano vêm de planos/{0..3} — os mesmos
+  // documentos editados em "Preços e planos". Antes o preço era fixo aqui.
+  const [planosDocs, setPlanosDocs] = useState({});
+
+  useEffect(() => onSnapshot(collection(db, 'planos'), (snap) => {
+    const m = {};
+    snap.docs.forEach(d => { m[d.id] = d.data(); });
+    setPlanosDocs(m);
+  }, () => {}), []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'usuarios'), (snap) => {
@@ -88,12 +106,12 @@ export default function AdminUsuariasScreen({ navigation }) {
       v => v?.toLowerCase().includes(busca.toLowerCase())
     );
     if (filtroPlano === 'empresa') return matchBusca && u.linkEmpresa === true;
-    const matchPlano = filtroPlano === 'todos' || String(u.plano ?? 0) === filtroPlano;
+    const matchPlano = filtroPlano === 'todos' || String(planoDe(u)) === filtroPlano;
     return matchBusca && matchPlano;
   });
 
-  const totalGratis = usuarias.filter(u => (u.plano ?? 0) === 0).length;
-  const totalPago = usuarias.filter(u => (u.plano ?? 0) === 1).length;
+  const totalGratis = usuarias.filter(u => planoDe(u) === 0).length;
+  const totalPago = usuarias.filter(u => planoDe(u) > 0).length;
   const totalEmpresa = usuarias.filter(u => u.linkEmpresa === true).length;
 
   return (
@@ -138,7 +156,7 @@ export default function AdminUsuariasScreen({ navigation }) {
 
         {/* Filtro por plano */}
         <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
-          {[{ id: 'todos', label: 'Todos' }, { id: '0', label: 'Perceber' }, { id: '1', label: 'Acolher' }, { id: 'empresa', label: 'Empresa' }].map(f => (
+          {[{ id: 'todos', label: 'Todos' }, ...[0, 1, 2, 3].map(n => ({ id: String(n), label: planosDocs[n]?.nome || PLANO_NOME[n] })), { id: 'empresa', label: 'Empresa' }].map(f => (
             <TouchableOpacity key={f.id} style={[styles.chip, filtroPlano === f.id && styles.chipSel]} onPress={() => setFiltroPlano(f.id)}>
               <Text style={[styles.chipText, filtroPlano === f.id && styles.chipTextSel]}>{f.label}</Text>
             </TouchableOpacity>
@@ -146,7 +164,7 @@ export default function AdminUsuariasScreen({ navigation }) {
         </View>
 
         {lista.map(u => {
-          const plano = u.plano ?? 0;
+          const plano = planoDe(u);
           const cor = PLANO_COR[plano] || colors.tl;
           return (
             <Card key={u.id} style={styles.item}>
@@ -186,7 +204,7 @@ export default function AdminUsuariasScreen({ navigation }) {
                 ) : null; })()}
               </View>
               <TouchableOpacity style={[styles.planoBadge, { backgroundColor: cor + '22', borderColor: cor }]} onPress={() => handleAlterarPlano(u)}>
-                <Text style={[styles.planoBadgeText, { color: cor }]}>{PLANO_NOME[plano] || 'Perceber'}</Text>
+                <Text style={[styles.planoBadgeText, { color: cor }]}>{planosDocs[plano]?.nome || PLANO_NOME[plano] || 'Perceber'}</Text>
                 <Ionicons name="chevron-down" size={11} color={cor} />
               </TouchableOpacity>
             </Card>
@@ -208,14 +226,20 @@ export default function AdminUsuariasScreen({ navigation }) {
               {planoModal.usuaria?.apelido || planoModal.usuaria?.nome}
             </Text>
             <View style={styles.planoOpcoesCol}>
-              <TouchableOpacity style={[styles.planoOpcao, (planoModal.usuaria?.plano ?? 0) === 0 && !planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={() => setPlano(0)}>
-                <Ionicons name={(planoModal.usuaria?.plano ?? 0) === 0 && !planoModal.usuaria?.acessoTotal ? 'radio-button-on' : 'radio-button-off'} size={16} color={colors.sage} />
-                <Text style={styles.planoOpcaoText}>Perceber (gratuito)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.planoOpcao, (planoModal.usuaria?.plano ?? 0) === 1 && !planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={() => setPlano(1)}>
-                <Ionicons name={(planoModal.usuaria?.plano ?? 0) === 1 && !planoModal.usuaria?.acessoTotal ? 'radio-button-on' : 'radio-button-off'} size={16} color={colors.lav5} />
-                <Text style={styles.planoOpcaoText}>Acolher (R$24,90)</Text>
-              </TouchableOpacity>
+              {[0, 1, 2, 3].map(n => {
+                const d = planosDocs[n] || {};
+                const sel = planoDe(planoModal.usuaria) === n && !planoModal.usuaria?.acessoTotal;
+                const preco = d.precoLabel || d.subtitulo || (n === 0 ? 'Gratuito' : '');
+                return (
+                  <TouchableOpacity key={n} style={[styles.planoOpcao, sel && styles.planoOpcaoSel]} onPress={() => setPlano(n)}>
+                    <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={16} color={PLANO_COR[n]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.planoOpcaoText}>{d.nome || PLANO_NOME[n]}{preco ? ` · ${preco}` : ''}</Text>
+                      {!!d.descricao && <Text style={styles.planoOpcaoDesc} numberOfLines={2}>{d.descricao}</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
               <TouchableOpacity style={[styles.planoOpcao, planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={toggleAcessoTotal}>
                 <Ionicons name={planoModal.usuaria?.acessoTotal ? 'shield-checkmark' : 'shield-checkmark-outline'} size={16} color={colors.lav5} />
                 <Text style={styles.planoOpcaoText}>
@@ -301,6 +325,7 @@ const styles = StyleSheet.create({
   planoOpcao: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.md },
   planoOpcaoSel: { backgroundColor: colors.lav1 },
   planoOpcaoText: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
+  planoOpcaoDesc: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginTop: 2, lineHeight: 16 },
   diasInput: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 15, color: colors.td, marginBottom: 14 },
   concederBtn: { backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
   concederBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },

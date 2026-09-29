@@ -31,8 +31,8 @@ const NAV_GRUPOS = [
     itens: [
       {
         icon: 'library', iconOff: 'library-outline',
-        label: 'Biblioteca', sub: 'Áudios de check-in · Frases',
-        screen: 'AdminAudios', irmas: ['AdminFrases'],
+        label: 'Biblioteca', sub: 'Áudios de check-in · Frases · Outros conteúdos',
+        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos'],
       },
       {
         icon: 'compass', iconOff: 'compass-outline',
@@ -68,8 +68,12 @@ const NAV_GRUPOS = [
 ];
 
 function SidebarContent({ navigate, currentScreen, perfil, sair }) {
+  // Desde que o app desenha sob as barras do sistema, o rodapé da barra lateral
+  // (com "Encerrar sessão") ficava escondido atrás da barra de navegação do
+  // Android — em tablets ela é alta e o botão aparecia cortado.
+  const insetsBaixo = useSafeAreaInsets().bottom;
   return (
-    <View style={sty.sidebarInner}>
+    <View style={[sty.sidebarInner, { paddingBottom: spacing.lg + insetsBaixo }]}>
       {/* Branding */}
       <View style={sty.brand}>
         <Image source={logo} style={sty.brandLogo} resizeMode="contain" />
@@ -167,7 +171,7 @@ export default function AdminLayout({ children, currentScreen }) {
               sair={sair}
             />
           </View>
-          <View style={[sty.main, { paddingTop: insets.top }]}><LavandaBg />{children}</View>
+          <View style={[sty.main, { paddingTop: insets.top, paddingBottom: insets.bottom }]}><LavandaBg />{children}</View>
           {Platform.OS === 'web' && (
             <AdminPreviewPanel currentScreen={currentScreen} />
           )}
@@ -181,10 +185,10 @@ export default function AdminLayout({ children, currentScreen }) {
             <Image source={logo} style={sty.mobileLogo} resizeMode="contain" />
             <View style={{ width: 38 }} />
           </View>
-          <View style={sty.main}><LavandaBg />{children}</View>
+          <View style={[sty.main, { paddingBottom: insets.bottom }]}><LavandaBg />{children}</View>
           {drawerOpen && (
             <View style={sty.drawerContainer}>
-              <View style={sty.drawer}>
+              <View style={[sty.drawer, { paddingTop: insets.top }]}>
                 <SidebarContent
                   navigate={navigateTo}
                   currentScreen={currentScreen}

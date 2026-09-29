@@ -1,20 +1,34 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, Linking,
+  StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { abrirLink } from '../../utils/abrirLink';
 
 const TIPO_ICONE = {
   audio: 'headset-outline',
   video: 'videocam-outline',
   documento: 'document-text-outline',
   link: 'link-outline',
+  imagem: 'image-outline',
+  texto: 'document-text-outline',
 };
+
+// Ícone do botão de ação à direita do cartão.
+const acaoIconeDe = (tipo) => {
+  if (tipo === 'imagem') return 'image-outline';
+  if (tipo === 'texto') return 'document-text-outline';
+  if (tipo === 'documento' || tipo === 'link') return 'open-outline';
+  return 'play';
+};
+
+// Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
+const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
 
 const CAT_ICONE = {
   acolhimento: { bg: colors.lav1, color: colors.lav5 },
@@ -39,8 +53,24 @@ export default function FavoritosScreen({ navigation }) {
       );
       return;
     }
+    // Imagem e texto abrem na tela de leitura. O favorito não guarda o `texto`;
+    // a tela busca a versão atual em `conteudos` pelo id.
+    if (item.tipo === 'imagem' || item.tipo === 'texto') {
+      navigation.navigate('Conteudo', {
+        conteudo: {
+          id: item.conteudoId || item.id,
+          titulo: item.titulo,
+          descricao: item.descricao,
+          tipo: item.tipo,
+          url: item.url,
+          texto: item.texto,
+          plano: item.plano,
+        },
+      });
+      return;
+    }
     if (item.tipo === 'documento' || item.tipo === 'link') {
-      Linking.openURL(item.url).catch(() => Alert.alert('Erro', 'Não foi possível abrir este link.'));
+      abrirLink(item.url || item.link);
       return;
     }
     // O id precisa ser o id real do conteúdo: é ele que o player usa para
@@ -100,7 +130,7 @@ export default function FavoritosScreen({ navigation }) {
             {favoritos.map(item => {
               const bloqueado = !temAcesso(item.plano);
               const cat = CAT_ICONE[item.grupo] || CAT_ICONE.acolhimento;
-              const acaoIcone = item.tipo === 'documento' || item.tipo === 'link' ? 'open-outline' : 'play';
+              const acaoIcone = acaoIconeDe(item.tipo);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -120,7 +150,7 @@ export default function FavoritosScreen({ navigation }) {
                     {item.descricao ? (
                       <Text style={s.desc} numberOfLines={1}>{item.descricao}</Text>
                     ) : (
-                      <Text style={s.grupo}>{item.grupo}</Text>
+                      <Text style={s.grupo}>{item.grupo || TIPO_LABEL[item.tipo] || ''}</Text>
                     )}
                   </View>
                   <TouchableOpacity

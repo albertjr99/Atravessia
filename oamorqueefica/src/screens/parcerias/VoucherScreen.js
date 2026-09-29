@@ -36,12 +36,13 @@ function formatarData(ts) {
 // própria tela reflete a mudança.
 export default function VoucherScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { tokenSeguro, codigoPublico, linkValidacao, parceriaNome } = route.params || {};
+  const { tokenSeguro, codigoPublico, linkValidacao, parceriaNome, percentualDescontoCliente } = route.params || {};
   const { meusVouchers } = useApp();
 
   const voucher = meusVouchers.find(v => v.id === tokenSeguro || v.tokenSeguro === tokenSeguro);
   const status = voucher?.status || 'GERADO';
   const info = STATUS_INFO[status] || STATUS_INFO.GERADO;
+  const desconto = Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
 
   const compartilhar = () => {
     Share.share({
@@ -63,6 +64,9 @@ export default function VoucherScreen({ route, navigation }) {
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.parceriaNome}>{parceriaNome || voucher?.parceriaNome}</Text>
+        {desconto > 0 && (
+          <Text style={s.descontoTxt}>{desconto}% de desconto para você</Text>
+        )}
 
         <View style={[s.statusChip, { borderColor: info.cor }]}>
           <Ionicons name={info.icon} size={13} color={info.cor} />
@@ -103,6 +107,7 @@ export default function VoucherScreen({ route, navigation }) {
 }
 
 const s = StyleSheet.create({
+  descontoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.sage, textAlign: 'center', marginTop: 4, marginBottom: 2 },
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

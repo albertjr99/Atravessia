@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput,
-  Alert, Platform, Image, Switch,
+  Alert, Platform, Image, Switch, KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -49,7 +49,6 @@ export default function AdminParceriasScreen({ navigation }) {
   const [percentualBeneficio, setPercentualBeneficio] = useState('10');
   const [percentualComissao, setPercentualComissao] = useState('3');
   const [baseCalculoComissao, setBaseCalculoComissao] = useState('valor_original');
-  const [limiteUsoPorUsuaria, setLimiteUsoPorUsuaria] = useState('1');
   const [validadeDiasVoucher, setValidadeDiasVoucher] = useState('30');
 
   const descontoClienteCalculado = Math.max(
@@ -150,7 +149,6 @@ export default function AdminParceriasScreen({ navigation }) {
         dados.percentualComissao = parseFloat(percentualComissao) || 0;
         dados.percentualDescontoCliente = descontoClienteCalculado;
         dados.baseCalculoComissao = baseCalculoComissao;
-        dados.limiteUsoPorUsuaria = limiteUsoPorUsuaria.trim() ? parseInt(limiteUsoPorUsuaria, 10) : null;
         dados.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
         dados.tokenPainel = gerarTokenPainel();
       }
@@ -180,6 +178,7 @@ export default function AdminParceriasScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminParcerias">
       <AdminSubTabs grupo="parcerias" atual="AdminParcerias" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -300,7 +299,7 @@ export default function AdminParceriasScreen({ navigation }) {
               <Ionicons name="pricetag-outline" size={16} color={tipoBeneficio === 'cupom' ? colors.lav5 : colors.tm} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.tipoOpcTit, tipoBeneficio === 'cupom' && s.tipoOpcTitSel]}>Cupom com comissão</Text>
-                <Text style={s.tipoOpcDesc}>Gera voucher, o parceiro confirma o atendimento e o Travessia recebe uma comissão.</Text>
+                <Text style={s.tipoOpcDesc}>Gera voucher, o parceiro confirma o atendimento e a Atravessia recebe uma comissão.</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -317,7 +316,7 @@ export default function AdminParceriasScreen({ navigation }) {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>Comissão Travessia (%)</Text>
+                  <Text style={s.formLabel}>Comissão Atravessia (%)</Text>
                   <TextInput
                     style={s.input} keyboardType="decimal-pad"
                     value={percentualComissao} onChangeText={setPercentualComissao}
@@ -327,7 +326,7 @@ export default function AdminParceriasScreen({ navigation }) {
               </View>
               <Text style={s.calculoTxt}>
                 Desconto que chega à usuária: <Text style={s.calculoForte}>{descontoClienteCalculado.toFixed(1)}%</Text>
-                {'  '}·{'  '}Comissão do Travessia: <Text style={s.calculoForte}>{percentualComissao || 0}%</Text>
+                {'  '}·{'  '}Comissão da Atravessia: <Text style={s.calculoForte}>{percentualComissao || 0}%</Text>
               </Text>
 
               <Text style={s.formLabel}>Base de cálculo da comissão</Text>
@@ -346,24 +345,13 @@ export default function AdminParceriasScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <View style={s.linha2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>Limite por usuária</Text>
-                  <TextInput
-                    style={s.input} keyboardType="number-pad"
-                    value={limiteUsoPorUsuaria} onChangeText={setLimiteUsoPorUsuaria}
-                    placeholder="Deixe vazio p/ ilimitado" placeholderTextColor={colors.tl}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>Validade do cupom (dias)</Text>
-                  <TextInput
-                    style={s.input} keyboardType="number-pad"
-                    value={validadeDiasVoucher} onChangeText={setValidadeDiasVoucher}
-                    placeholder="30" placeholderTextColor={colors.tl}
-                  />
-                </View>
-              </View>
+              <Text style={s.formLabel}>Validade de cada cupom (dias)</Text>
+              <TextInput
+                style={s.input} keyboardType="number-pad"
+                value={validadeDiasVoucher} onChangeText={setValidadeDiasVoucher}
+                placeholder="30" placeholderTextColor={colors.tl}
+              />
+              <Text style={s.hint}>A usuária pode gerar quantos cupons quiser; cada um vale para um único atendimento.</Text>
             </View>
           )}
 
@@ -432,6 +420,7 @@ export default function AdminParceriasScreen({ navigation }) {
           </Card>
         ))}
       </ScrollView>
+      </KeyboardAvoidingView>
     </AdminLayout>
   );
 }

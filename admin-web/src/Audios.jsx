@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ordenarPor } from './ordenar';
 import { db, storage } from './firebase';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot,
-  orderBy, query, serverTimestamp, updateDoc,
+  collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { IconAudio, IconClose, IconEdit, IconEye, IconEyeOff, IconPlay, IconSpark, IconTrash } from './Icons';
@@ -35,9 +35,8 @@ export default function Audios({ showToast }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const ref = query(collection(db, 'audiosAcolhimento'), orderBy('criadoEm', 'desc'));
-    return onSnapshot(ref, snap => {
-      setAudios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    return onSnapshot(collection(db, 'audiosAcolhimento'), snap => {
+      setAudios(ordenarPor(snap.docs.map(d => ({ id: d.id, ...d.data() })), 'criadoEm', 'desc'));
       setLoading(false);
     }, () => setLoading(false));
   }, []);
