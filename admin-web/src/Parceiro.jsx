@@ -8,6 +8,10 @@ import { IconSpark, IconCheck, IconAlert, IconGift } from './Icons';
 // (?painel=<tokenPainel>). A segurança vem do token em si — ver
 // functions/index.js (validarVoucher, confirmarAtendimento, consultarExtratoParceiro).
 
+function reaisTxt(v) {
+  return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 function centavosParaTexto(v) {
   return `R$ ${(Number(v || 0) / 100).toFixed(2).replace('.', ',')}`;
 }
@@ -17,7 +21,7 @@ function Shell({ children }) {
     <div className="login-wrap">
       <div className="login-card" style={{ maxWidth: 460 }}>
         <div className="login-logo"><IconSpark size={22} /></div>
-        <h1 className="login-title">Travessia · Parceiros</h1>
+        <h1 className="login-title">Atravessia · Parceiros</h1>
         <p className="login-sub">Validação de cupons e acompanhamento de comissões</p>
         {children}
       </div>
@@ -56,6 +60,8 @@ function TelaVoucher({ token }) {
     })();
   }, [token]);
 
+  const valorPrevia = Number(String(valor).replace(',', '.')) || 0;
+
   const confirmar = async () => {
     const valorNumero = Number(String(valor).replace(',', '.'));
     if (!valorNumero || valorNumero <= 0) {
@@ -87,14 +93,13 @@ function TelaVoucher({ token }) {
           Atendimento confirmado!
         </p>
         <div className="card" style={{ padding: 16, marginBottom: 10 }}>
-          <Linha label="Valor original" valor={resultado.valorOriginal} />
-          <Linha label="Desconto aplicado" valor={resultado.valorDesconto} />
-          <Linha label="Valor final cobrado" valor={resultado.valorFinal} destaque />
-          <Linha label="Comissão Travessia" valor={resultado.comissao} />
+          <Linha label="Valor do serviço" valor={reaisTxt(resultado.valorOriginal)} />
+          <Linha label="Desconto da cliente" valor={`− ${reaisTxt(resultado.valorDesconto)}`} />
+          <Linha label="Valor a cobrar da cliente" valor={reaisTxt(resultado.valorFinal)} destaque />
         </div>
         <p className="field-hint" style={{ textAlign: 'center' }}>
           Pedimos à cliente que confirme no aplicativo que o atendimento aconteceu.
-          Assim que ela confirmar, este valor entra no seu extrato de comissões.
+          Os valores de comissão ficam no seu extrato de parceiro.
         </p>
       </div>
     );
@@ -107,9 +112,10 @@ function TelaVoucher({ token }) {
       <div className="card" style={{ padding: 16, marginBottom: 18 }}>
         <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 4 }}>{cupom.parceriaNome}</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary-700)' }}>{cupom.codigoPublico}</div>
+        {/* A cliente costuma estar olhando esta tela junto com o parceiro: só o
+            desconto dela aparece aqui. A comissão fica no extrato do parceiro. */}
         <div className="field-hint" style={{ marginTop: 8 }}>
-          Desconto total de {cupom.percentualBeneficio}% — {cupom.percentualDescontoCliente}% para a cliente
-          e {cupom.percentualComissao}% de comissão Travessia.
+          Desconto para a cliente: <strong>{cupom.percentualDescontoCliente}%</strong>
         </div>
       </div>
 
@@ -123,6 +129,11 @@ function TelaVoucher({ token }) {
           onChange={e => setValor(e.target.value)}
         />
         <span className="field-hint">Informe o valor cheio, antes do desconto do cupom.</span>
+        {valorPrevia > 0 && (
+          <span className="field-hint" style={{ color: 'var(--text-dark)' }}>
+            Valor a cobrar da cliente: <strong>{reaisTxt(valorPrevia * (1 - (cupom.percentualDescontoCliente || 0) / 100))}</strong>
+          </span>
+        )}
       </div>
 
       {erro && <p style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{erro}</p>}
@@ -219,7 +230,7 @@ export default function Parceiro() {
   let conteudo;
   if (token) conteudo = <TelaVoucher token={token} />;
   else if (tokenPainel) conteudo = <TelaExtrato tokenPainel={tokenPainel} />;
-  else conteudo = <Erro mensagem="Link inválido. Peça à Travessia um novo link de acesso." />;
+  else conteudo = <Erro mensagem="Link inválido. Peça à Atravessia um novo link de acesso." />;
 
   return <Shell>{conteudo}</Shell>;
 }

@@ -23,6 +23,13 @@ const FILTROS = [
 
 const rotuloCategoria = (c) => FILTROS.find(f => f.id === c)?.label || c;
 
+// A usuária vê só o desconto que ela recebe. O percentual total da parceria
+// inclui a comissão da Atravessia, que é assunto entre a Atravessia e o parceiro.
+function descontoDaUsuaria(p) {
+  if (p.percentualDescontoCliente != null) return Number(p.percentualDescontoCliente) || 0;
+  return Math.max(0, (Number(p.percentualBeneficio) || 0) - (Number(p.percentualComissao) || 0));
+}
+
 export default function ParceriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio } = useApp();
@@ -179,9 +186,9 @@ export default function ParceriasScreen({ navigation }) {
                           <Text style={s.tagTxt}>{rotuloCategoria(cat)}</Text>
                         </View>
                       ))}
-                      {ehCupom && !!p.percentualBeneficio && (
+                      {ehCupom && descontoDaUsuaria(p) > 0 && (
                         <View style={[s.tag, s.tagCupom]}>
-                          <Text style={[s.tagTxt, s.tagCupomTxt]}>{p.percentualBeneficio}% de benefício</Text>
+                          <Text style={[s.tagTxt, s.tagCupomTxt]}>{descontoDaUsuaria(p)}% de desconto</Text>
                         </View>
                       )}
                     </View>

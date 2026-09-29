@@ -479,33 +479,42 @@ export function AppProvider({ children }) {
   };
 
   // ---- Notificações dinâmicas (regra automática) + editoriais (painel administrativo) ----
+  // Cada aviso só aparece enquanto ainda faz sentido. Antes eles se acumulavam:
+  // o convite ao check-in seguia depois do check-in feito, "sua conquista foi
+  // registrada" repetia algo que a própria usuária acabara de fazer, o pedido de
+  // confirmar um atendimento ficava depois de respondido e os avisos do painel
+  // nunca expiravam (um lembrete publicado uma vez aparecia todos os dias).
   const notificacoes = useMemo(() => {
     const lista = [];
-    const ultimoCheckin = checkins[checkins.length - 1];
+    const hoje = hojeStr();
+    const agoraMs = Date.now();
+    const DIA_MS = 86400000;
 
-    // Os ids dos alertas de inatividade/data sensível/áudio do dia/relatório
-    // mensal incluem a referência do episódio atual (data do último check-in,
-    // ano, dia). Sem isso, marcar como lida uma vez suprimiria o aviso para
-    // sempre — inclusive em uma futura inatividade ou no mês seguinte, que são
-    // ocorrências novas e devem poder ser vistas de novo.
-    if (ultimoCheckin) {
-      const dias = Math.floor((new Date() - new Date(ultimoCheckin.data)) / 86400000);
-      const episodio = ultimoCheckin.data;
+    // Maior data, não o último item do array: a lista vem ordenada por criadoEm e
+    // check-ins antigos sem esse campo iam para o fim, fazendo o app achar que o
+    // último check-in era antigo e continuar pedindo check-in já feito.
+    const ultimaDataCheckin = checkins.reduce((max, c) => (c.data && c.data > max ? c.data : max), '');
+    const fezCheckinHoje = ultimaDataCheckin === hoje;
+
+    // Os ids incluem o episódio (data do último check-in, ano, mês) para que um
+    // aviso lido não suprima uma ocorrência futura, que é nova.
+    if (ultimaDataCheckin && !fezCheckinHoje) {
+      const dias = Math.floor((new Date(hoje) - new Date(ultimaDataCheckin)) / DIA_MS);
       if (dias >= 14) {
-        lista.push({ id: `inat-14-${episodio}`, tipo: 'inatividade', texto: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.' });
+        lista.push({ id: `inat-14-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.' });
       } else if (dias >= 7) {
-        lista.push({ id: `inat-7-${episodio}`, tipo: 'inatividade', texto: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.' });
+        lista.push({ id: `inat-7-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.' });
       } else if (dias >= 3) {
-        lista.push({ id: `inat-3-${episodio}`, tipo: 'inatividade', texto: 'Sentimos sua falta por aqui. Como você está hoje?' });
+        lista.push({ id: `inat-3-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Sentimos sua falta por aqui. Como você está hoje?' });
       }
     }
 
     const anoAtual = new Date().getFullYear();
     datasSensiveis.forEach(d => {
       const dataEvento = proximaOcorrencia(d.data);
-      const agora = new Date();
-      agora.setHours(0, 0, 0, 0);
-      const diff = Math.round((dataEvento - agora) / 86400000);
+      const meiaNoite = new Date();
+      meiaNoite.setHours(0, 0, 0, 0);
+      const diff = Math.round((dataEvento - meiaNoite) / DIA_MS);
       if (diff === 0) {
         lista.push({ id: `data-${d.id}-hoje-${anoAtual}`, tipo: 'data_sensivel', texto: 'Hoje é uma data significativa. Permita-se sentir o que vier, sem cobranças.' });
       } else if (diff > 0 && diff <= 3) {
@@ -514,35 +523,51 @@ export function AppProvider({ children }) {
     });
 
     if (temAcesso(1) && !liberadoHoje('acolhimento')) {
-      lista.push({ id: `novo-audio-${hojeStr()}`, tipo: 'conteudo', texto: 'Seu áudio de acolhimento de hoje está disponível.' });
+      lista.push({ id: `novo-audio-${hoje}`, tipo: 'conteudo', texto: 'Seu áudio de acolhimento de hoje está disponível.' });
     }
 
     if (temAcesso(2) && checkins.length > 0 && checkins.length % 7 === 0) {
       lista.push({ id: `feedback-semanal-${checkins.length}`, tipo: 'feedback', texto: 'Sua retrospectiva emocional da semana está pronta.' });
     }
 
-    if (temAcesso(3)) {
-      const agora = new Date();
+    // Só na primeira semana do mês, quando o relatório do mês anterior acaba de
+    // fechar — antes o aviso ficava o mês inteiro.
+    const agora = new Date();
+    if (temAcesso(3) && agora.getDate() <= 7) {
       lista.push({ id: `relatorio-mensal-${agora.getFullYear()}-${agora.getMonth()}`, tipo: 'relatorio', texto: 'Seu relatório emocional do mês está pronto.' });
     }
 
-    if (vitorias.length > 0) {
-      const ultima = vitorias[vitorias.length - 1];
-      lista.push({ id: `vitoria-${ultima.id}`, tipo: 'vitoria', texto: 'Cada passo importa. Sua conquista foi registrada.' });
-    }
+    // Um aviso dinâmico já tocado cumpriu o papel e sai da lista.
+    const dinamicas = lista.filter(n => !lidasIds.has(n.id));
 
-    // Alvo (todos / plano1 / gratis), definido no painel administrativo do app.
+    const idsResgatesPendentes = new Set(resgatesAguardandoConfirmacao.map(r => r.id));
     const temPlanoPago = usuario.acessoTotal || usuario.plano >= 1;
-    const editoriais = notificacoesEditoriais
-      .filter(n => {
-        if (n.alvo === 'plano1') return temPlanoPago;
-        if (n.alvo === 'gratis') return !temPlanoPago;
-        return true;
-      })
-      .map(n => ({ ...n }));
+    const editoriais = notificacoesEditoriais.filter(n => {
+      // Alvo (todos / plano1 / gratis), definido no painel administrativo.
+      if (n.alvo === 'plano1' && !temPlanoPago) return false;
+      if (n.alvo === 'gratis' && temPlanoPago) return false;
 
-    return [...lista, ...editoriais].map(n => ({ ...n, lida: lidasIds.has(n.id) }));
-  }, [checkins, datasSensiveis, conteudosLiberados, vitorias, usuario.plano, usuario.acessoTotal, notificacoesEditoriais, lidasIds]);
+      // Some assim que o atendimento é confirmado ou contestado.
+      if (n.tipo === 'confirmar_resgate') return idsResgatesPendentes.has(n.resgateId);
+
+      const criadoMs = n.criadoEm?.toMillis?.() ?? agoraMs;
+      const idadeDias = (agoraMs - criadoMs) / DIA_MS;
+
+      // Convites ao check-in perdem o sentido quando o check-in do dia foi feito,
+      // e um lembrete vale para o dia em que foi publicado.
+      if (n.tipo === 'lembrete' || n.tipo === 'inatividade') {
+        if (fezCheckinHoje) return false;
+        if (n.tipo === 'lembrete' && idadeDias > 1) return false;
+      }
+
+      // Avisos antigos saem sozinhos: os já lidos depois de 7 dias, os demais
+      // depois de 30.
+      if (lidasIds.has(n.id) ? idadeDias > 7 : idadeDias > 30) return false;
+      return true;
+    });
+
+    return [...dinamicas, ...editoriais].map(n => ({ ...n, lida: lidasIds.has(n.id) }));
+  }, [checkins, datasSensiveis, conteudosLiberados, usuario.plano, usuario.acessoTotal, notificacoesEditoriais, lidasIds, resgatesAguardandoConfirmacao]);
 
   return (
     <AppContext.Provider value={{

@@ -30,7 +30,7 @@ export default function ConfirmarResgateScreen({ route, navigation }) {
       Alert.alert(
         '',
         confirmar
-          ? 'Obrigada por confirmar! Isso ajuda o Travessia a manter as parcerias funcionando bem.'
+          ? 'Obrigada por confirmar! Isso ajuda a Atravessia a manter as parcerias funcionando bem.'
           : 'Registramos que esse atendimento não aconteceu. Vamos verificar com o parceiro.',
       );
       navigation.goBack();
@@ -125,7 +125,7 @@ export default function ConfirmarResgateScreen({ route, navigation }) {
           )}
 
           <Text style={s.rodape}>
-            Sua confirmação ajuda o Travessia a manter parcerias justas com quem
+            Sua confirmação ajuda a Atravessia a manter parcerias justas com quem
             oferece cuidado para você.
           </Text>
         </ScrollView>

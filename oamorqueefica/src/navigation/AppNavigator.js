@@ -32,11 +32,13 @@ import AdminMensagensRelatorioScreen from '../screens/admin/AdminMensagensRelato
 import AdminFrasesScreen from '../screens/admin/AdminFrasesScreen';
 import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
 import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
+import AdminOutrosConteudosScreen from '../screens/admin/AdminOutrosConteudosScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import ConfirmarResgateScreen from '../screens/parcerias/ConfirmarResgateScreen';
 import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
+import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { colors } from '../theme';
@@ -71,6 +73,7 @@ function MainStack() {
       <Stack.Screen name="ConfirmarResgate" component={ConfirmarResgateScreen} />
       <Stack.Screen name="Favoritos" component={FavoritosScreen} />
       <Stack.Screen name="Jornadas" component={JornadasScreen} />
+      <Stack.Screen name="Conteudo" component={ConteudoScreen} />
     </Stack.Navigator>
   );
 }
@@ -92,6 +95,7 @@ function AdminStack() {
       <Stack.Screen name="AdminFrases" component={AdminFrasesScreen} />
       <Stack.Screen name="AdminAudios" component={AdminAudiosScreen} />
       <Stack.Screen name="AdminTravessia" component={AdminTravessiaScreen} />
+      <Stack.Screen name="AdminOutrosConteudos" component={AdminOutrosConteudosScreen} />
     </Stack.Navigator>
   );
 }

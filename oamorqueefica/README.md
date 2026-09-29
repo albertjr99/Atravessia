@@ -1,4 +1,4 @@
-# O Amor Que Fica — App Mobile
+# Atravessia — App Mobile
 
 Aplicativo de acolhimento ao luto para iOS e Android, construído com React Native + Expo.
 
