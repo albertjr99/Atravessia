@@ -61,6 +61,8 @@ export function AuthProvider({ children }) {
       empresa: empresa || '',
       plano: 0,
       role,
+      // Abre a apresentação de primeiro acesso (OnboardingScreen) uma única vez.
+      onboardingPendente: role !== 'admin',
       criadoEm: serverTimestamp(),
     };
     await setDoc(doc(db, 'usuarios', cred.user.uid), perfilNovo);

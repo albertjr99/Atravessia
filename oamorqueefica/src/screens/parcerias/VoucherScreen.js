@@ -8,6 +8,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { situacaoCupom, linkDoCupom } from '../../utils/cupons';
 
 const STATUS_INFO = {
   GERADO: { label: 'Disponível', cor: colors.lav5, icon: 'ellipse-outline' },
@@ -36,12 +37,18 @@ function formatarData(ts) {
 // própria tela reflete a mudança.
 export default function VoucherScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { tokenSeguro, codigoPublico, linkValidacao, parceriaNome, percentualDescontoCliente } = route.params || {};
+  const { tokenSeguro, codigoPublico, parceriaNome, percentualDescontoCliente } = route.params || {};
+  // Aberto a partir de "Meus cupons" o link não vem pronto; é derivado do token.
+  const linkValidacao = route.params?.linkValidacao || (tokenSeguro ? linkDoCupom(tokenSeguro) : '');
   const { meusVouchers } = useApp();
 
   const voucher = meusVouchers.find(v => v.id === tokenSeguro || v.tokenSeguro === tokenSeguro);
-  const status = voucher?.status || 'GERADO';
+  // Um cupom vencido pode seguir como GERADO até o job horário marcá-lo; aqui
+  // ele já aparece como expirado e o QR Code some.
+  const expirado = situacaoCupom(voucher || { status: 'GERADO' }) === 'expirado';
+  const status = expirado ? 'EXPIRADO' : (voucher?.status || 'GERADO');
   const info = STATUS_INFO[status] || STATUS_INFO.GERADO;
+  const podeApresentar = !expirado && ['GERADO', 'APRESENTADO', 'VALIDADO'].includes(status);
   const desconto = Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
 
   const compartilhar = () => {
@@ -74,7 +81,11 @@ export default function VoucherScreen({ route, navigation }) {
         </View>
 
         <View style={s.qrCard}>
-          {Platform.OS !== 'web' && linkValidacao ? (
+          {!podeApresentar ? (
+            <View style={s.qrFallback}>
+              <Ionicons name={info.icon} size={56} color={colors.lav3} />
+            </View>
+          ) : Platform.OS !== 'web' && linkValidacao ? (
             <QRCode value={linkValidacao} size={190} color={colors.td} backgroundColor="white" />
           ) : (
             <View style={s.qrFallback}>
@@ -82,16 +93,40 @@ export default function VoucherScreen({ route, navigation }) {
             </View>
           )}
           <Text style={s.codigo}>{codigoPublico}</Text>
-          <Text style={s.instrucao}>Apresente este código ou o QR Code ao parceiro</Text>
+          <Text style={s.instrucao}>
+            {podeApresentar
+              ? 'Apresente este código ou o QR Code ao parceiro'
+              : expirado
+                ? 'Este cupom venceu. Você pode gerar um novo na parceria sempre que precisar.'
+                : 'Este cupom já foi utilizado.'}
+          </Text>
         </View>
 
-        {!!voucher?.expiraEm && (
+        {podeApresentar && !!voucher?.expiraEm && (
           <Text style={s.validade}>Válido até {formatarData(voucher.expiraEm)}</Text>
         )}
 
-        <TouchableOpacity style={s.shareBtn} onPress={compartilhar} activeOpacity={0.85}>
-          <Ionicons name="share-outline" size={16} color={colors.lav5} />
-          <Text style={s.shareBtnTxt}>Compartilhar link do benefício</Text>
+        {status === 'CONCLUIDO' && !!voucher?.resgateId && (
+          <TouchableOpacity
+            style={[s.shareBtn, s.confirmarBtn]}
+            onPress={() => navigation.navigate('ConfirmarResgate', { resgateId: voucher.resgateId })}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+            <Text style={[s.shareBtnTxt, { color: 'white' }]}>Confirmar o atendimento</Text>
+          </TouchableOpacity>
+        )}
+
+        {podeApresentar && (
+          <TouchableOpacity style={s.shareBtn} onPress={compartilhar} activeOpacity={0.85}>
+            <Ionicons name="share-outline" size={16} color={colors.lav5} />
+            <Text style={s.shareBtnTxt}>Compartilhar link do benefício</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={s.meusBtn} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.7}>
+          <Ionicons name="ticket-outline" size={14} color={colors.lav5} />
+          <Text style={s.meusBtnTxt}>Ver todos os meus cupons</Text>
         </TouchableOpacity>
 
         <View style={s.avisoBox}>
@@ -107,6 +142,9 @@ export default function VoucherScreen({ route, navigation }) {
 }
 
 const s = StyleSheet.create({
+  confirmarBtn: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  meusBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md, paddingVertical: 8 },
+  meusBtnTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lav5, textDecorationLine: 'underline' },
   descontoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.sage, textAlign: 'center', marginTop: 4, marginBottom: 2 },
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {

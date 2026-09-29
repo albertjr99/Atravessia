@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -35,9 +35,11 @@ import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import AdminOutrosConteudosScreen from '../screens/admin/AdminOutrosConteudosScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
+import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
 import ConfirmarResgateScreen from '../screens/parcerias/ConfirmarResgateScreen';
 import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 
 import { useAuth } from '../hooks/AuthContext';
@@ -54,9 +56,10 @@ function AuthStack() {
   );
 }
 
-function MainStack() {
+function MainStack({ rotaInicial = 'MainTabs' }) {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={rotaInicial}>
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="MainTabs" component={HomeScreen} />
       <Stack.Screen name="Inicio" component={HomeScreen} />
       <Stack.Screen name="Audios" component={AudiosScreen} />
@@ -70,6 +73,7 @@ function MainStack() {
       <Stack.Screen name="RedeApoio" component={RedeApoioScreen} />
       <Stack.Screen name="Parcerias" component={ParceriasScreen} />
       <Stack.Screen name="Voucher" component={VoucherScreen} />
+      <Stack.Screen name="MeusCupons" component={MeusCuponsScreen} />
       <Stack.Screen name="ConfirmarResgate" component={ConfirmarResgateScreen} />
       <Stack.Screen name="Favoritos" component={FavoritosScreen} />
       <Stack.Screen name="Jornadas" component={JornadasScreen} />
@@ -109,8 +113,22 @@ const SCREEN_MAP = {
 };
 
 export default function AppNavigator() {
-  const { firebaseUser, isAdmin, carregando } = useAuth();
+  const { firebaseUser, isAdmin, carregando, perfil } = useAuth();
   const navigationRef = useRef(null);
+
+  // Primeiro acesso: o app começa pela apresentação enquanto o perfil tiver
+  // onboardingPendente. No cadastro o perfil pode chegar um instante depois do
+  // login, então a pilha é remontada quando a marca aparece (`key`). Ao terminar,
+  // a marca some mas a chave não muda — senão a navegação feita no fim da
+  // apresentação (ex.: ir direto ao check-in) seria desfeita.
+  const uid = firebaseUser?.uid || null;
+  const [onboardingDoUid, setOnboardingDoUid] = useState(null);
+  const precisaOnboarding = perfil?.onboardingPendente === true;
+  useEffect(() => {
+    if (!uid) setOnboardingDoUid(null);
+    else if (precisaOnboarding) setOnboardingDoUid(uid);
+  }, [uid, precisaOnboarding]);
+  const comecaNoOnboarding = !!uid && (precisaOnboarding || onboardingDoUid === uid);
 
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
@@ -136,7 +154,12 @@ export default function AppNavigator() {
   } else if (isAdmin) {
     content = <AdminStack />;
   } else {
-    content = <MainStack />;
+    content = (
+      <MainStack
+        key={comecaNoOnboarding ? `onboarding-${uid}` : 'app'}
+        rotaInicial={comecaNoOnboarding ? 'Onboarding' : 'MainTabs'}
+      />
+    );
   }
 
   return (
