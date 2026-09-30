@@ -21,6 +21,23 @@ function gerarTokenPainel() {
   return Array.from({ length: 3 }, () => Math.random().toString(36).slice(2, 10)).join('');
 }
 
+// Mesma normalização do app (oamorqueefica/src/utils/abrirLink.js):
+// "www.x.com" → https://, telefone → wa.me, esquemas diretos ficam como estão.
+function normalizarUrl(bruto) {
+  const raw = String(bruto ?? '')
+    .trim()
+    .replace(/^[<"'\s]+/, '')
+    .replace(/[>"'\s]+$/, '');
+  if (!raw) return null;
+  if (/^(https?|mailto|tel|whatsapp|sms):/i.test(raw)) return raw;
+  if (/^[^\s]+\.[a-z]{2,}(\/|$|\?|#)/i.test(raw)) return `https://${raw}`;
+  const digitos = raw.replace(/\D/g, '');
+  if (digitos.length >= 10 && digitos.length <= 15) return `https://wa.me/${digitos}`;
+  return null;
+}
+
+const brl = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
 function tipoBtnStyle(ativo) {
   return {
     flex: 1, textAlign: 'left', cursor: 'pointer', padding: '12px 14px',
@@ -36,7 +53,6 @@ function novoForm() {
     tipoBeneficio: 'link',
     percentualBeneficio: '10',
     percentualComissao: '3',
-    baseCalculoComissao: 'valor_original',
     validadeDiasVoucher: '30',
   };
 }
@@ -49,14 +65,16 @@ export default function Parcerias({ showToast }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('todas');
+  const [erroLista, setErroLista] = useState('');
 
   useEffect(() => {
     return onSnapshot(collection(db, 'parcerias'), snap => {
       const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
       setParcerias(docs);
+      setErroLista('');
       setLoading(false);
-    }, () => setLoading(false));
+    }, (e) => { setErroLista(e?.message || 'Não foi possível carregar as parcerias.'); setLoading(false); });
   }, []);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
@@ -82,7 +100,6 @@ export default function Parcerias({ showToast }) {
       tipoBeneficio: item.tipoBeneficio === 'cupom' ? 'cupom' : 'link',
       percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
       percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
-      baseCalculoComissao: item.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
       validadeDiasVoucher: item.validadeDiasVoucher != null ? String(item.validadeDiasVoucher) : '30',
     });
     setEditId(item.id);
@@ -101,11 +118,20 @@ export default function Parcerias({ showToast }) {
       showToast('Informe o percentual total do benefício para o cupom.', 'error');
       return;
     }
+    // Link de destino é opcional; se preenchido, precisa ser um endereço válido.
+    const linkBruto = form.link.trim();
+    const linkFinal = linkBruto ? normalizarUrl(linkBruto) : '';
+    if (linkBruto && !linkFinal) {
+      showToast('O link de destino não parece um endereço válido. Confira ou deixe em branco.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const { percentualBeneficio, percentualComissao, validadeDiasVoucher, ...resto } = form;
-      const data = { ...resto };
+      const data = { ...resto, link: linkFinal };
       if (form.tipoBeneficio === 'cupom') {
+        // Sempre sobre o valor original — a opção "valor final" foi retirada.
+        data.baseCalculoComissao = 'valor_original';
         data.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
         data.percentualComissao = parseFloat(percentualComissao) || 0;
         data.percentualDescontoCliente = descontoClienteCalculado;
@@ -123,7 +149,7 @@ export default function Parcerias({ showToast }) {
         showToast('Parceria adicionada!');
       }
       closeModal();
-    } catch { showToast('Erro ao salvar.', 'error'); }
+    } catch (e) { showToast(`Erro ao salvar: ${e?.message || 'tente novamente.'}`, 'error'); }
     setSaving(false);
   };
 
@@ -132,11 +158,12 @@ export default function Parcerias({ showToast }) {
     try {
       await deleteDoc(doc(db, 'parcerias', item.id));
       showToast('Parceria excluída.');
-    } catch { showToast('Erro ao excluir.', 'error'); }
+    } catch (e) { showToast(`Erro ao excluir: ${e?.message || 'tente novamente.'}`, 'error'); }
   };
 
   const toggleAtivo = (item) => {
-    updateDoc(doc(db, 'parcerias', item.id), { ativo: item.ativo === false });
+    updateDoc(doc(db, 'parcerias', item.id), { ativo: item.ativo === false })
+      .catch(e => showToast(`Erro ao alterar a parceria: ${e?.message || 'tente novamente.'}`, 'error'));
   };
 
   const lista = filtro === 'todas'
@@ -154,6 +181,10 @@ export default function Parcerias({ showToast }) {
         </div>
         <button className="btn-primary" onClick={openNew}>+ Nova parceria</button>
       </div>
+
+      {erroLista && (
+        <div className="empty-state"><p>Não foi possível carregar as parcerias: {erroLista}</p></div>
+      )}
 
       <div className="filter-row" style={{ flexWrap: 'wrap' }}>
         <button className={`chip ${filtro === 'todas' ? 'chip-active' : ''}`} onClick={() => setFiltro('todas')}>Todas ({parcerias.length})
@@ -203,7 +234,7 @@ export default function Parcerias({ showToast }) {
                   </div>
                 )}
                 {item.link && (
-                  <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`}
+                  <a href={normalizarUrl(item.link) || item.link}
                     target="_blank" rel="noreferrer"
                     style={{ fontSize: 11, color: 'var(--primary)', wordBreak: 'break-all' }}>
                     {item.link}
@@ -284,10 +315,11 @@ export default function Parcerias({ showToast }) {
 
               <div className="field-row">
                 <div className="field-group">
-                  <label>Link / URL</label>
-                  <input type="url" value={form.link}
+                  <label>Link de destino <span className="aln-opcional">(opcional)</span></label>
+                  <input type="text" inputMode="url" value={form.link}
                     onChange={e => set('link', e.target.value)}
                     placeholder="https://..." />
+                  <span className="field-hint">Se preenchido, a usuária é levada a este endereço ao tocar na parceria.</span>
                 </div>
                 <div className="field-group">
                   <label>URL da imagem (capa)</label>
@@ -367,24 +399,18 @@ export default function Parcerias({ showToast }) {
                   </div>
                   <p style={{ fontSize: 12, color: '#5B3D9E', margin: '0 0 12px' }}>
                     Desconto que chega à usuária: <strong>{descontoClienteCalculado.toFixed(1)}%</strong>
-                    {'  ·  '}Comissão da Atravessia: <strong>{form.percentualComissao || 0}%</strong>
+                    {'  ·  '}Comissão da Atravessia: <strong>{form.percentualComissao || 0}% do valor original</strong>
                   </p>
 
-                  <div className="field-group" style={{ marginBottom: 8 }}>
-                    <label>Base de cálculo da comissão</label>
-                    <div className="tag-group">
-                      <button type="button"
-                        className={`tag ${form.baseCalculoComissao === 'valor_original' ? 'active' : ''}`}
-                        onClick={() => set('baseCalculoComissao', 'valor_original')}>
-                        Valor original
-                      </button>
-                      <button type="button"
-                        className={`tag ${form.baseCalculoComissao === 'valor_final' ? 'active' : ''}`}
-                        onClick={() => set('baseCalculoComissao', 'valor_final')}>
-                        Valor final (com desconto)
-                      </button>
-                    </div>
-                  </div>
+                  <p style={{
+                    fontSize: 12, color: '#5B3D9E', lineHeight: 1.55, margin: '0 0 12px',
+                    background: 'var(--surface)', border: '1px solid var(--primary-200)',
+                    borderRadius: 8, padding: '8px 10px',
+                  }}>
+                    A comissão é calculada sobre o valor original do serviço (antes do desconto).
+                    {' '}Ex.: num serviço de {brl(100)}, a usuária paga {brl(Math.max(0, 100 - descontoClienteCalculado))} e
+                    a comissão da Atravessia é {brl(parseFloat(form.percentualComissao) || 0)}.
+                  </p>
 
                   <div className="field-group" style={{ marginBottom: 0 }}>
                     <label>Validade de cada cupom (dias)</label>
