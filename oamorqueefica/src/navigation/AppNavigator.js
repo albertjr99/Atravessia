@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 
 import HomeScreen from '../screens/home/HomeScreen';
@@ -43,7 +45,7 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 
 import { useAuth } from '../hooks/AuthContext';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -113,7 +115,8 @@ const SCREEN_MAP = {
 };
 
 export default function AppNavigator() {
-  const { firebaseUser, isAdmin, carregando, perfil } = useAuth();
+  const { firebaseUser, isAdmin, carregando, perfil, verComoUsuaria, setVerComoUsuaria } = useAuth();
+  const insets = useSafeAreaInsets();
   const navigationRef = useRef(null);
 
   // Primeiro acesso: o app começa pela apresentação enquanto o perfil tiver
@@ -151,7 +154,7 @@ export default function AppNavigator() {
     );
   } else if (!firebaseUser) {
     content = <AuthStack />;
-  } else if (isAdmin) {
+  } else if (isAdmin && !verComoUsuaria) {
     content = <AdminStack />;
   } else {
     content = (
@@ -167,6 +170,16 @@ export default function AppNavigator() {
       <NavigationContainer ref={navigationRef}>
         {content}
       </NavigationContainer>
+      {isAdmin && verComoUsuaria && !carregando && (
+        <TouchableOpacity
+          style={[styles.voltarPainel, { bottom: insets.bottom + 86 }]}
+          onPress={() => setVerComoUsuaria(false)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="shield-checkmark" size={15} color="white" />
+          <Text style={styles.voltarPainelTxt}>Voltar ao painel</Text>
+        </TouchableOpacity>
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -174,4 +187,12 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
+  voltarPainel: {
+    position: 'absolute', right: 14, zIndex: 50,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999,
+    backgroundColor: colors.lav6,
+    shadowColor: '#2E2740', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 8,
+  },
+  voltarPainelTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
 });

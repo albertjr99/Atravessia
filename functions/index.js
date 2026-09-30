@@ -99,6 +99,36 @@ async function obterPrecoPeriodoCentavos() {
   return PERIODO_PRECO.valor;
 }
 
+// As functions de checkout rodavam com a configuração mínima (256 MiB, ~1/6 de
+// vCPU): tanto o "acordar" depois de um tempo parado quanto cada chamada ao
+// Stripe ficavam lentos, e a usuária esperava vários segundos para o
+// pagamento abrir. Com 1 vCPU elas respondem bem mais rápido; o custo só corre
+// enquanto a função está de fato executando.
+const OPCOES_CHECKOUT = { secrets: [STRIPE_SECRET_KEY], memory: '512MiB', cpu: 1 };
+
+let stripeCliente = null;
+function stripeDe() {
+  if (!stripeCliente) stripeCliente = Stripe(STRIPE_SECRET_KEY.value());
+  return stripeCliente;
+}
+
+// O app grava o plano como número (0..3) e o painel web como texto ('acolher').
+const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
+function planoNumero(userData) {
+  const p = userData?.plano;
+  if (typeof p === 'number') return p;
+  return PLANO_TEXTO[p] ?? 0;
+}
+
+function temAcessoPago(userData) {
+  if (userData?.acessoTotal === true) return true;
+  const exp = userData?.cortesia?.expiracao?.toMillis?.();
+  if (userData?.cortesia?.ativo === true && exp && exp > Date.now()) return true;
+  return planoNumero(userData) >= 1;
+}
+
+const reaisTexto = (centavos) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 async function getOrCreateCustomer(stripe, uid, userData) {
   if (userData.stripeCustomerId) return userData.stripeCustomerId;
   const customer = await stripe.customers.create({
@@ -109,7 +139,11 @@ async function getOrCreateCustomer(stripe, uid, userData) {
   return customer.id;
 }
 
-exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (request) => {
+exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
+  // Chamada de aquecimento feita pelo app ao abrir a tela de planos: tira a
+  // function do estado "parado" antes de a usuária tocar em assinar.
+  if (request.data?.aquecer) return { ok: true };
+
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login para assinar um plano.');
 
@@ -117,13 +151,16 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   const plano = PLANOS[planoId];
   if (!plano) throw new HttpsError('invalid-argument', 'Plano inválido.');
 
-  const valorAtual = await obterPrecoPlanoCentavos(planoId);
-  if (!valorAtual) throw new HttpsError('failed-precondition', 'Preço do plano não configurado.');
-
-  const stripe = Stripe(STRIPE_SECRET_KEY.value());
   const userRef = db.collection('usuarios').doc(uid);
-  const userSnap = await userRef.get();
+  const [valorAtual, userSnap] = await Promise.all([obterPrecoPlanoCentavos(planoId), userRef.get()]);
+  if (!valorAtual) throw new HttpsError('failed-precondition', 'Preço do plano não configurado.');
   const userData = userSnap.data() || {};
+
+  if (planoNumero(userData) === planoId && userData.stripeSubscriptionId) {
+    throw new HttpsError('already-exists', 'Você já está neste plano.');
+  }
+
+  const stripe = stripeDe();
 
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
 
@@ -153,21 +190,25 @@ exports.criarSessaoCheckout = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (re
   return { url: session.url };
 });
 
-exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (request) => {
+exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) => {
+  if (request.data?.aquecer) return { ok: true };
+
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login para continuar.');
 
   const userRef = db.collection('usuarios').doc(uid);
-  const userSnap = await userRef.get();
+  const [userSnap, valorAtual] = await Promise.all([userRef.get(), obterPrecoPeriodoCentavos()]);
   const userData = userSnap.data() || {};
 
-  if (!userData.plano || userData.plano < 1) {
+  // Antes comparava `plano < 1` direto: com o plano gravado como texto pelo
+  // painel web a checagem falhava, e quem tinha acesso total ou cortesia era
+  // barrado.
+  if (!temAcessoPago(userData)) {
     throw new HttpsError('failed-precondition', 'Assine um plano primeiro para gerar relatórios por período.');
   }
 
-  const stripe = Stripe(STRIPE_SECRET_KEY.value());
+  const stripe = stripeDe();
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
-  const valorAtual = await obterPrecoPeriodoCentavos();
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -185,14 +226,14 @@ exports.criarCheckoutPeriodoUnlocked = onCall({ secrets: [STRIPE_SECRET_KEY] }, 
     cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
     metadata: { uid, tipo: 'periodo_credito' },
     custom_text: {
-      submit: { message: 'R$ 5,90 por relatório — use quando quiser.' },
+      submit: { message: `${reaisTexto(valorAtual)} por relatório — use quando quiser.` },
     },
   });
 
   return { url: session.url };
 });
 
-exports.cancelarAssinatura = onCall({ secrets: [STRIPE_SECRET_KEY] }, async (request) => {
+exports.cancelarAssinatura = onCall(OPCOES_CHECKOUT, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login.');
 
@@ -610,7 +651,9 @@ exports.gerarVoucherBeneficio = onCall(async (request) => {
     percentualBeneficio: beneficio,
     percentualComissao: comissao,
     percentualDescontoCliente: descontoCliente,
-    baseCalculoComissao: parceria.baseCalculoComissao === 'valor_final' ? 'valor_final' : 'valor_original',
+    // A comissão é sempre sobre o valor original do serviço (decisão da
+    // administração); a opção "valor final" foi retirada do painel.
+    baseCalculoComissao: 'valor_original',
     geradoEm: agora,
     expiraEm,
   });
@@ -708,8 +751,7 @@ exports.confirmarAtendimento = onCall(async (request) => {
     const descontoTotal = Math.round(valorOriginalCentavos * (v.percentualBeneficio / 100));
     const descontoCliente = Math.round(valorOriginalCentavos * (v.percentualDescontoCliente / 100));
     const valorFinalCentavos = valorOriginalCentavos - descontoCliente;
-    const baseComissao = v.baseCalculoComissao === 'valor_final' ? valorFinalCentavos : valorOriginalCentavos;
-    const comissaoCentavos = Math.round(baseComissao * (v.percentualComissao / 100));
+    const comissaoCentavos = Math.round(valorOriginalCentavos * (v.percentualComissao / 100));
 
     const agora = admin.firestore.FieldValue.serverTimestamp();
 
@@ -724,13 +766,15 @@ exports.confirmarAtendimento = onCall(async (request) => {
       valorDescontoClienteCentavos: descontoCliente,
       valorComissaoCentavos: comissaoCentavos,
       valorFinalCentavos,
-      baseCalculoComissao: v.baseCalculoComissao,
+      baseCalculoComissao: 'valor_original',
       status: 'CONCLUIDO',
       fechamentoId: null,
       criadoEm: agora,
       concluidoEm: agora,
     });
-    tx.update(voucherRef, { status: 'CONCLUIDO', resgateId: resgateRef.id, concluidoEm: agora });
+    // O cupom se encerra aqui: expira no ato e não pode ser apresentado de
+    // novo — para um novo atendimento, a usuária gera outro cupom.
+    tx.update(voucherRef, { status: 'CONCLUIDO', resgateId: resgateRef.id, concluidoEm: agora, expiraEm: agora });
 
     return { usuarioId: v.usuarioId, descontoTotal, descontoCliente, comissaoCentavos, valorFinalCentavos };
   });

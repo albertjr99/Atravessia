@@ -72,6 +72,7 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
   // (com "Encerrar sessão") ficava escondido atrás da barra de navegação do
   // Android — em tablets ela é alta e o botão aparecia cortado.
   const insetsBaixo = useSafeAreaInsets().bottom;
+  const { setVerComoUsuaria } = useAuth();
   return (
     <View style={[sty.sidebarInner, { paddingBottom: spacing.lg + insetsBaixo }]}>
       {/* Branding */}
@@ -134,6 +135,13 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
           </View>
         ))}
       </ScrollView>
+
+      {/* Abre o app como uma usuária comum, sem sair da conta; o botão
+          flutuante "Voltar ao painel" traz de volta. */}
+      <TouchableOpacity style={sty.verUsuariaBtn} onPress={() => setVerComoUsuaria(true)} activeOpacity={0.8}>
+        <Ionicons name="phone-portrait-outline" size={16} color={colors.lav5} />
+        <Text style={sty.verUsuariaTxt}>Ver como usuária</Text>
+      </TouchableOpacity>
 
       {/* Logout */}
       <TouchableOpacity
@@ -291,6 +299,13 @@ const sty = StyleSheet.create({
   navLabelActive: { fontFamily: fonts.bodyBold, color: colors.lav5 },
 
   // Logout
+  verUsuariaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.md, marginTop: spacing.sm,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderRadius: radius.md, backgroundColor: colors.lav1,
+  },
+  verUsuariaTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     margin: spacing.md, marginTop: 4,
