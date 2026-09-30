@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Image, Dimensions,
+  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -12,6 +13,10 @@ import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
 import { abrirLink } from '../../utils/abrirLink';
+import { situacaoCupom } from '../../utils/cupons';
+import { hojeStrBR } from '../../utils/date';
+import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
+import DiarioDoDia from '../../components/DiarioDoDia';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -21,14 +26,54 @@ const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { usuario, notificacoes, checkins, parcerias, registrarCliqueParceria, fraseDoDia } = useApp();
-  const { sair } = useAuth();
+  const {
+    usuario, notificacoes, checkins, parcerias, registrarCliqueParceria, fraseDoDia, meusVouchers,
+  } = useApp();
+  const { sair, firebaseUser, perfil } = useAuth();
+  const [menuAberto, setMenuAberto] = useState(false);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
+  // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.
+  const cuponsPendentes = (meusVouchers || []).filter(v => {
+    const sit = situacaoCupom(v);
+    return sit === 'ativo' || sit === 'aguardando';
+  }).length;
+
+  const uid = firebaseUser?.uid;
+  const jaFezCheckinHoje = checkins.some(c => c.data === hojeStrBR());
+
+  // Lembrete diário: os avisos são agendados para os próximos dias e refeitos
+  // sempre que a tela inicial volta ao foco ou um check-in é registrado — assim
+  // o lembrete de hoje some quando o check-in já foi feito.
+  const reagendarLembretes = useCallback(() => {
+    if (!uid) return;
+    carregarPreferencia(uid, perfil?.lembreteCheckin)
+      .then(pref => (pref.ativo ? agendarLembretes(pref, jaFezCheckinHoje) : null))
+      .catch(e => console.warn('[Lembrete] reagendar:', e?.message));
+  }, [uid, perfil?.lembreteCheckin, jaFezCheckinHoje]);
+  useFocusEffect(reagendarLembretes);
+  // A tela inicial fica montada por baixo das outras: quando o check-in de hoje
+  // chega (mesmo com ela seguindo para outra tela), o lembrete de hoje é retirado.
+  useEffect(() => {
+    if (jaFezCheckinHoje) reagendarLembretes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jaFezCheckinHoje]);
 
   const handleSair = () => {
     confirmar('Sair da conta', 'Deseja encerrar a sessão e trocar de conta?', sair, 'Sair');
   };
+
+  const irDoMenu = (acao) => {
+    setMenuAberto(false);
+    acao();
+  };
+  const itensMenu = [
+    { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
+    { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', acao: () => navigation.navigate('Onboarding', { revisita: true }) },
+    { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', acao: () => navigation.navigate('MeusCupons') },
+    { icone: 'heart-outline', rotulo: 'Favoritos', sub: 'O que você guardou com carinho', acao: () => navigation.navigate('Favoritos') },
+    { icone: 'log-out-outline', rotulo: 'Sair da conta', acao: handleSair, sair: true },
+  ];
 
   const handleAbrirParceria = (p) => {
     // Usa o mesmo utilitário da tela de Parcerias: normaliza a URL (acrescenta
@@ -64,9 +109,26 @@ export default function HomeScreen({ navigation }) {
               </View>
             )}
           </TouchableOpacity>
-          {/* Sair / trocar conta */}
-          <TouchableOpacity style={[s.logoutBtn, { top: 16 + insets.top }]} onPress={handleSair}>
-            <Ionicons name="log-out-outline" size={18} color="#9b86bd" />
+          {/* Meus cupons, ao lado do sino */}
+          <TouchableOpacity
+            style={[s.cupomBtn, { top: 16 + insets.top }]}
+            onPress={() => navigation.navigate('MeusCupons')}
+            accessibilityLabel="Meus cupons"
+          >
+            <Ionicons name={cuponsPendentes > 0 ? 'ticket' : 'ticket-outline'} size={18} color="#9b86bd" />
+            {cuponsPendentes > 0 && (
+              <View style={[s.bellBadge, s.cupomBadge]}>
+                <Text style={s.bellBadgeTxt}>{cuponsPendentes > 9 ? '9+' : cuponsPendentes}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {/* Menu: lembrete, tour, favoritos, sair */}
+          <TouchableOpacity
+            style={[s.menuBtn, { top: 16 + insets.top }]}
+            onPress={() => setMenuAberto(true)}
+            accessibilityLabel="Menu"
+          >
+            <Ionicons name="menu-outline" size={20} color="#9b86bd" />
           </TouchableOpacity>
           {/* Logo + nome do app */}
           <View style={s.headerBottom}>
@@ -104,6 +166,9 @@ export default function HomeScreen({ navigation }) {
               <Ionicons name="chevron-forward" size={18} color={colors.lav5} />
             </TouchableOpacity>
           )}
+
+          {/* ===== SEU DIA (sequência sugerida, opcional) ===== */}
+          <DiarioDoDia navigation={navigation} />
 
           {/* ===== FRASE DO DIA ===== */}
           {fraseDoDia && (
@@ -251,6 +316,31 @@ export default function HomeScreen({ navigation }) {
 
       </ScrollView>
 
+      {/* ===== MENU ===== */}
+      <Modal visible={menuAberto} transparent animationType="fade" onRequestClose={() => setMenuAberto(false)}>
+        <Pressable style={s.menuFundo} onPress={() => setMenuAberto(false)}>
+          <Pressable style={[s.menuCaixa, { marginTop: insets.top + 64 }]} onPress={() => {}}>
+            {itensMenu.map((item, i) => (
+              <TouchableOpacity
+                key={item.rotulo}
+                style={[s.menuItem, i > 0 && s.menuItemBorda]}
+                onPress={() => irDoMenu(item.acao)}
+                activeOpacity={0.7}
+              >
+                <View style={[s.menuIcone, item.sair && s.menuIconeSair]}>
+                  <Ionicons name={item.icone} size={18} color={item.sair ? '#A0525E' : colors.lav5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.menuRotulo, item.sair && { color: '#A0525E' }]}>{item.rotulo}</Text>
+                  {!!item.sub && <Text style={s.menuSub}>{item.sub}</Text>}
+                </View>
+                {!item.sair && <Ionicons name="chevron-forward" size={16} color={colors.tl} />}
+              </TouchableOpacity>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ===== BOTTOM NAV ===== */}
       <View style={[s.bnav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         {[
@@ -326,12 +416,34 @@ const s = StyleSheet.create({
   notifBannerSub: {
     fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#76737A', marginTop: 2,
   },
-  logoutBtn: {
+  cupomBtn: {
     position: 'absolute', right: 64, top: 16,
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,253,249,0.8)',
     alignItems: 'center', justifyContent: 'center',
   },
+  cupomBadge: { backgroundColor: '#7A9E7E' },
+  menuBtn: {
+    position: 'absolute', left: 16, top: 16,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,253,249,0.8)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.28)', paddingHorizontal: 16, alignItems: 'flex-start' },
+  menuCaixa: {
+    width: '100%', maxWidth: 340, backgroundColor: '#FFFDF9', borderRadius: 20,
+    paddingVertical: 6, paddingHorizontal: 6,
+    shadowColor: '#2E2740', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+  },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 10 },
+  menuItemBorda: { borderTopWidth: 1, borderTopColor: 'rgba(230,221,210,0.7)' },
+  menuIcone: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.lav1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuIconeSair: { backgroundColor: '#F7E8EA' },
+  menuRotulo: { fontFamily: 'Lato_700Bold', fontSize: 14, color: '#4a4453' },
+  menuSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#8c8597', marginTop: 1 },
   headerLogo: { width: 44, height: 44, marginBottom: 2, borderRadius: 10 },
   headerBottom: {
     position: 'absolute', bottom: 10, left: 0, right: 0,

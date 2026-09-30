@@ -43,6 +43,7 @@ import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
+import LembreteScreen from '../screens/perfil/LembreteScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { colors, fonts } from '../theme';
@@ -80,6 +81,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Favoritos" component={FavoritosScreen} />
       <Stack.Screen name="Jornadas" component={JornadasScreen} />
       <Stack.Screen name="Conteudo" component={ConteudoScreen} />
+      <Stack.Screen name="Lembrete" component={LembreteScreen} />
     </Stack.Navigator>
   );
 }

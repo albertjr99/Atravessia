@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { db } from './firebase';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { IconAlert, IconChart, IconClose, IconStar, IconUsers, IconSpark } from './Icons';
 import { EMOCOES, emocaoPorId, nDiasAtras, formatDataBR } from './emocoes';
+import { calcularMetricasFunil, planoNumero } from './metricasFunil';
 
 // Porte de oamorqueefica/src/screens/admin/AdminRelatoriosScreen.js
-// Abas: Geral · Emoções · Usuárias · Empresas. Mesmos cálculos do app.
+// Abas: Geral · Funil · Emoções · Usuárias · Empresas. Mesmos cálculos do app.
 
 const PLANO_LABELS = ['Perceber', 'Acolher', 'Compreender', 'Evoluir'];
 const PLANO_CORES = ['#7A9E7E', '#8B7AC0', '#7B5EA7', '#C0843F'];
@@ -106,6 +107,127 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
           })}
         </div>
       </div>
+    </>
+  );
+}
+
+// ─── Aba: Funil e retenção ────────────────────────────────────────
+const FUNIL_CORES = [COR.lav3, COR.lav4, '#7B5EA7', COR.sage];
+
+function Indicador({ valor, rotulo, detalhe, cor }) {
+  return (
+    <div className="aln-ind">
+      <div className="aln-ind-val" style={cor ? { color: cor } : undefined}>{valor}</div>
+      <div className="aln-ind-lbl">{rotulo}</div>
+      {detalhe && <div className="aln-ind-det">{detalhe}</div>}
+    </div>
+  );
+}
+
+function AbaFunil({ usuarios, todosCheckins }) {
+  const [periodo, setPeriodo] = useState('30');
+  const m = useMemo(
+    () => calcularMetricasFunil({ usuarios, checkins: todosCheckins, periodo }),
+    [usuarios, todosCheckins, periodo],
+  );
+  const total = m.etapas[0].qtd;
+  const txt = (v) => (v == null ? '—' : `${v}%`);
+  const plural = (n, um, varios) => (n === 1 ? um : varios);
+
+  return (
+    <>
+      <div className="filter-row">
+        {[{ v: '30', l: 'Cadastros · 30 dias' }, { v: '90', l: '90 dias' }, { v: 'all', l: 'Tudo' }].map(p => (
+          <button key={p.v} className={`chip ${periodo === p.v ? 'chip-active' : ''}`} onClick={() => setPeriodo(p.v)}>{p.l}</button>
+        ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 className="card-title">Funil</h3>
+        <p className="aln-funil-intro">
+          O caminho de quem se cadastrou no período: se fez o primeiro check-in, se voltou e se assinou um plano.
+        </p>
+        {total === 0 ? (
+          <p className="aln-vazio">Nenhum cadastro neste período.</p>
+        ) : m.etapas.map((e, i) => {
+          const destaque = m.maiorQueda?.id === e.id;
+          return (
+            <div key={e.id} className="aln-funil-etapa">
+              {i > 0 && (
+                <div className={`aln-funil-passagem ${destaque ? 'destaque' : ''}`}>
+                  ↓ {txt(e.pctAnterior)} seguiram{e.perda > 0 ? ` · ${e.perda} ficaram pelo caminho` : ''}
+                </div>
+              )}
+              <div className="aln-funil-linha">
+                <div className="aln-funil-nome">
+                  <strong>{e.titulo}</strong>
+                  <span>{e.descricao}</span>
+                </div>
+                <span className="aln-funil-qtd">{e.qtd}</span>
+                <span className="aln-funil-pct">{txt(e.pctTotal)}</span>
+              </div>
+              <div className="aln-funil-trilho">
+                <div style={{ width: `${Math.max(e.pctTotal || 0, e.qtd > 0 ? 2 : 0)}%`, background: FUNIL_CORES[i] }} />
+              </div>
+            </div>
+          );
+        })}
+        {m.maiorQueda && (
+          <div className="aln-erro" style={{ marginTop: 14, marginBottom: 0 }}>
+            <IconAlert size={16} />
+            <span>Maior perda: de “{m.maiorQueda.de}” para “{m.maiorQueda.para}” — só {m.maiorQueda.pctAnterior}% seguiram.</span>
+          </div>
+        )}
+      </div>
+
+      <div className="aln-rel-grid">
+        <div className="card">
+          <h3 className="card-title">Retenção</h3>
+          <div className="aln-ind-row">
+            <Indicador
+              valor={txt(m.retencaoD7.pct)}
+              rotulo="Retenção D7"
+              detalhe={`${m.retencaoD7.retidas} de ${m.retencaoD7.elegiveis} voltaram 7+ dias após o cadastro`}
+              cor={COR.lav5}
+            />
+            <Indicador
+              valor={txt(m.retencaoD30.pct)}
+              rotulo="Retenção D30"
+              detalhe={`${m.retencaoD30.retidas} de ${m.retencaoD30.elegiveis} voltaram 30+ dias após o cadastro`}
+              cor={COR.lav5}
+            />
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="card-title">Atividade e conversão</h3>
+          <div className="aln-ind-row">
+            <Indicador valor={m.ativas7} rotulo="Ativas · 7 dias" detalhe="check-in na última semana" />
+            <Indicador valor={m.ativas30} rotulo="Ativas · 30 dias" detalhe="check-in no último mês" />
+          </div>
+          <div className="aln-ind-row" style={{ marginTop: 8 }}>
+            <Indicador
+              valor={String(m.mediaCheckinsAtiva30).replace('.', ',')}
+              rotulo="Check-ins por ativa"
+              detalhe="média dos últimos 30 dias"
+            />
+            <Indicador
+              valor={txt(m.conversaoPago)}
+              rotulo="Grátis → pago"
+              detalhe={m.conversaoPagoEntreQueVoltaram != null
+                ? `${m.conversaoPagoEntreQueVoltaram}% entre as que voltaram`
+                : 'dos cadastros do período'}
+              cor={COR.sageFg}
+            />
+          </div>
+        </div>
+      </div>
+
+      <p className="aln-funil-nota">
+        {m.totalPagantes} {plural(m.totalPagantes, 'usuária', 'usuárias')} em plano pago hoje.
+        {m.semCusto > 0 ? ` ${m.semCusto} com acesso total ou cortesia ficam fora do funil, para não distorcer a conversão.` : ''}
+        {m.semDataCadastro > 0 ? ` ${m.semDataCadastro} ${plural(m.semDataCadastro, 'conta antiga sem data de cadastro só aparece', 'contas antigas sem data de cadastro só aparecem')} em “Tudo”.` : ''}
+      </p>
     </>
   );
 }
@@ -440,6 +562,7 @@ function AbaEmpresas({ usuarios }) {
 // ─── Principal ────────────────────────────────────────────────────
 const ABAS = [
   { id: 'geral', label: 'Geral' },
+  { id: 'funil', label: 'Funil e retenção' },
   { id: 'emocoes', label: 'Emoções' },
   { id: 'usuarios', label: 'Usuárias' },
   { id: 'empresas', label: 'Empresas' },
@@ -458,9 +581,11 @@ export default function Relatorios() {
     setAtualizando(true);
     try {
       const usersSnap = await getDocs(collection(db, 'usuarios'));
+      // O plano pode estar como número (app) ou texto (painel web).
       const users = usersSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(u => u.role !== 'admin');
+        .filter(u => u.role !== 'admin')
+        .map(u => ({ ...u, plano: planoNumero(u.plano) }));
 
       // Sem orderBy: collectionGroup com orderBy exige índice próprio e falha
       // inteira quando ele não existe. Ordena em memória.
@@ -517,6 +642,7 @@ export default function Relatorios() {
         )}
 
         {aba === 'geral' && <VisaoGeral usuarios={usuarios} todosCheckins={todosCheckins} todasVitorias={todasVitorias} />}
+        {aba === 'funil' && <AbaFunil usuarios={usuarios} todosCheckins={todosCheckins} />}
         {aba === 'emocoes' && <AbaEmocoes todosCheckins={todosCheckins} />}
         {aba === 'usuarios' && <AbaUsuarios usuarios={usuarios} todosCheckins={todosCheckins} todasVitorias={todasVitorias} />}
         {aba === 'empresas' && <AbaEmpresas usuarios={usuarios} />}
