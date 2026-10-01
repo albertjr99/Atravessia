@@ -18,17 +18,16 @@ function planoDe(u) {
   return PLANO_IDS.includes(p) ? p : 'perceber';
 }
 
-// Nome, preço e descrição vêm de planos/{0..3} — os mesmos documentos editados
-// em "Preços e planos". Antes os valores eram fixos aqui e não acompanhavam as
-// alterações feitas pela administração.
+// Nome e descrição vêm de planos/{0..3} — os mesmos documentos editados em
+// "Preços e planos". Nesta aba NÃO se mostra preço nenhum (precoLabel e
+// subtitulo são ignorados de propósito).
 function opcoesDePlano(planosDocs) {
   return PLANO_IDS.map((id, i) => {
     const d = planosDocs[String(i)] || {};
-    const preco = d.precoLabel || d.subtitulo || (i === 0 ? 'Gratuito' : '');
     return {
       id,
       label: d.nome || PLANO_LABEL[id],
-      desc: [preco, d.descricao].filter(Boolean).join(' — '),
+      desc: d.descricao || '',
     };
   });
 }
@@ -36,20 +35,28 @@ function opcoesDePlano(planosDocs) {
 function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
   const [dias, setDias] = useState('30');
   const [salvando, setSalvando] = useState(false);
+  const [erroCortesia, setErroCortesia] = useState('');
 
   const aplicar = async () => {
     const d = parseInt(dias, 10);
     if (!d || d < 1) return;
     setSalvando(true);
+    setErroCortesia('');
     const expiracao = Timestamp.fromDate(new Date(Date.now() + d * 86400000));
     // NÃO gravar acessoTotal: true aqui — o app concede acesso enquanto
     // acessoTotal OU a cortesia (dentro do prazo) forem verdadeiros. Como
     // acessoTotal nunca é desligado sozinho, marcá-lo junto com a cortesia
     // tornava o acesso permanente e o prazo de expiração nunca fazia efeito.
-    await updateDoc(doc(db, 'usuarios', usuaria.id), {
-      cortesia: { ativo: true, expiracao },
-      acessoTotal: false,
-    });
+    try {
+      await updateDoc(doc(db, 'usuarios', usuaria.id), {
+        cortesia: { ativo: true, expiracao },
+        acessoTotal: false,
+      });
+    } catch (e) {
+      setErroCortesia(`Não foi possível aplicar a cortesia: ${e?.message || 'tente novamente.'}`);
+      setSalvando(false);
+      return;
+    }
     setSalvando(false);
     onSalvar();
   };
@@ -69,6 +76,7 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
         </button>
         <button className="btn-ghost" onClick={onCancelar}>Cancelar</button>
       </div>
+      {erroCortesia && <p style={{ fontSize: 12, color: 'var(--danger)', margin: '10px 0 0' }}>{erroCortesia}</p>}
     </div>
   );
 }
@@ -81,24 +89,32 @@ function PlanoModal({ usuaria, onClose, showToast, planosDocs }) {
   const hasAcessoTotal = usuaria.acessoTotal === true;
   const cortesiaAtiva = usuaria.cortesia?.ativo === true && usuaria.cortesia?.expiracao?.toDate?.() > new Date();
 
+  const falhou = (e) => showToast(`Não foi possível salvar: ${e?.message || 'tente novamente.'}`, 'error');
+
   const setPlano = async (plano) => {
     setSaving(true);
-    await updateDoc(doc(db, 'usuarios', usuaria.id), { plano, acessoTotal: false, cortesia: null });
-    showToast(`Plano alterado para ${PLANO_LABEL[plano] || plano}.`);
+    try {
+      await updateDoc(doc(db, 'usuarios', usuaria.id), { plano, acessoTotal: false, cortesia: null });
+    } catch (e) { falhou(e); setSaving(false); return; }
+    showToast(`Plano alterado para ${opcoes.find(o => o.id === plano)?.label || PLANO_LABEL[plano] || plano}.`);
     setSaving(false);
     onClose();
   };
 
   const toggleAcessoTotal = async () => {
     setSaving(true);
-    await updateDoc(doc(db, 'usuarios', usuaria.id), { acessoTotal: !hasAcessoTotal, cortesia: null });
+    try {
+      await updateDoc(doc(db, 'usuarios', usuaria.id), { acessoTotal: !hasAcessoTotal, cortesia: null });
+    } catch (e) { falhou(e); setSaving(false); return; }
     showToast(hasAcessoTotal ? 'Acesso total removido.' : 'Acesso total concedido!');
     setSaving(false);
     onClose();
   };
 
   const removerCortesia = async () => {
-    await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: null, acessoTotal: false });
+    try {
+      await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: null, acessoTotal: false });
+    } catch (e) { falhou(e); return; }
     showToast('Cortesia removida.');
     onClose();
   };
@@ -130,7 +146,7 @@ function PlanoModal({ usuaria, onClose, showToast, planosDocs }) {
               >
                 <div>
                   <div className="plan-option-label">{p.label}</div>
-                  <div className="plan-option-desc">{p.desc}</div>
+                  {p.desc && <div className="plan-option-desc">{p.desc}</div>}
                 </div>
               </button>
             ))}
@@ -194,11 +210,13 @@ export default function Usuarias({ showToast }) {
     }, (e) => { setErro(e?.message || 'Não foi possível carregar as usuárias.'); setLoading(false); });
   }, []);
 
+  const [erroPlanos, setErroPlanos] = useState('');
   useEffect(() => onSnapshot(collection(db, 'planos'), snap => {
     const m = {};
     snap.docs.forEach(d => { m[d.id] = d.data(); });
     setPlanosDocs(m);
-  }, () => {}), []);
+    setErroPlanos('');
+  }, (e) => setErroPlanos(e?.message || 'erro desconhecido')), []);
 
   const lista = useMemo(() => {
     return usuarios.filter(u => {
@@ -240,6 +258,12 @@ export default function Usuarias({ showToast }) {
           <p className="screen-sub">Gerencie planos e acessos das {usuarios.length} usuária(s) cadastradas.</p>
         </div>
       </div>
+
+      {erroPlanos && (
+        <p style={{ fontSize: 12, color: 'var(--danger)', margin: '0 0 12px' }}>
+          Não foi possível carregar os nomes dos planos ({erroPlanos}); usando os nomes padrão.
+        </p>
+      )}
 
       <div className="search-bar">
         <span></span>

@@ -10,6 +10,7 @@ import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { formatDataBR } from '../../utils/date';
+import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
 
 function nDiasAtras(n) {
   const d = new Date();
@@ -122,6 +123,137 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
           })}
         </View>
       </View>
+    </View>
+  );
+}
+
+// ─── Tab: Funil e retenção ────────────────────────────────────────
+const FUNIL_CORES = [colors.lav3, colors.lav4, '#7B5EA7', colors.sage];
+
+function IndicadorCard({ valor, rotulo, detalhe, cor = colors.td }) {
+  return (
+    <View style={s.indCard}>
+      <Text style={[s.indVal, { color: cor }]}>{valor}</Text>
+      <Text style={s.indLbl}>{rotulo}</Text>
+      {!!detalhe && <Text style={s.indDet}>{detalhe}</Text>}
+    </View>
+  );
+}
+
+function AbaFunil({ usuarios, todosCheckins }) {
+  const [periodo, setPeriodo] = useState('30');
+  const m = React.useMemo(
+    () => calcularMetricasFunil({ usuarios, checkins: todosCheckins, periodo }),
+    [usuarios, todosCheckins, periodo],
+  );
+  const total = m.etapas[0].qtd;
+  const txt = (v) => (v == null ? '—' : `${v}%`);
+
+  return (
+    <View>
+      <Text style={s.pageTitle}>Funil e retenção</Text>
+      <Text style={s.funilIntro}>
+        Acompanha o caminho de quem se cadastrou no período: se fez o primeiro check-in, se voltou e se assinou um plano.
+      </Text>
+
+      <View style={s.periodRow}>
+        {[{ v: '30', l: 'Cadastros · 30 dias' }, { v: '90', l: '90 dias' }, { v: 'all', l: 'Tudo' }].map(p => (
+          <TouchableOpacity
+            key={p.v}
+            style={[s.periodBtn, periodo === p.v && s.periodBtnSel]}
+            onPress={() => setPeriodo(p.v)}
+          >
+            <Text style={[s.periodTxt, periodo === p.v && s.periodTxtSel]}>{p.l}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Funil</Text>
+        {total === 0 ? (
+          <Text style={s.emptyTxt}>Nenhum cadastro neste período.</Text>
+        ) : m.etapas.map((e, i) => {
+          const destaque = m.maiorQueda?.id === e.id;
+          return (
+            <View key={e.id} style={s.funilEtapa}>
+              {i > 0 && (
+                <View style={s.funilPassagem}>
+                  <Ionicons name="arrow-down" size={11} color={destaque ? colors.roseFg : colors.tl} />
+                  <Text style={[s.funilPassagemTxt, destaque && s.funilPassagemDestaque]}>
+                    {txt(e.pctAnterior)} seguiram{e.perda > 0 ? ` · ${e.perda} ficaram pelo caminho` : ''}
+                  </Text>
+                </View>
+              )}
+              <View style={s.funilLinha}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.funilTit}>{e.titulo}</Text>
+                  <Text style={s.funilDesc}>{e.descricao}</Text>
+                </View>
+                <Text style={s.funilQtd}>{e.qtd}</Text>
+                <Text style={s.funilPct}>{txt(e.pctTotal)}</Text>
+              </View>
+              <View style={s.funilTrilho}>
+                <View style={[s.funilBarra, { width: `${Math.max(e.pctTotal || 0, e.qtd > 0 ? 3 : 0)}%`, backgroundColor: FUNIL_CORES[i] }]} />
+              </View>
+            </View>
+          );
+        })}
+        {m.maiorQueda && (
+          <View style={s.funilAlerta}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Text style={s.funilAlertaTxt}>
+              Maior perda: de "{m.maiorQueda.de}" para "{m.maiorQueda.para}" — só {m.maiorQueda.pctAnterior}% seguiram.
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Retenção</Text>
+        <View style={s.indRow}>
+          <IndicadorCard
+            valor={txt(m.retencaoD7.pct)}
+            rotulo="Retenção D7"
+            detalhe={`${m.retencaoD7.retidas} de ${m.retencaoD7.elegiveis} voltaram 7+ dias após o cadastro`}
+            cor={colors.lav5}
+          />
+          <IndicadorCard
+            valor={txt(m.retencaoD30.pct)}
+            rotulo="Retenção D30"
+            detalhe={`${m.retencaoD30.retidas} de ${m.retencaoD30.elegiveis} voltaram 30+ dias após o cadastro`}
+            cor={colors.lav5}
+          />
+        </View>
+      </View>
+
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Atividade e conversão</Text>
+        <View style={s.indRow}>
+          <IndicadorCard valor={m.ativas7} rotulo="Ativas · 7 dias" detalhe="com check-in na última semana" />
+          <IndicadorCard valor={m.ativas30} rotulo="Ativas · 30 dias" detalhe="com check-in no último mês" />
+        </View>
+        <View style={[s.indRow, { marginTop: 8 }]}>
+          <IndicadorCard
+            valor={String(m.mediaCheckinsAtiva30).replace('.', ',')}
+            rotulo="Check-ins por ativa"
+            detalhe="média dos últimos 30 dias"
+          />
+          <IndicadorCard
+            valor={txt(m.conversaoPago)}
+            rotulo="Grátis → pago"
+            detalhe={m.conversaoPagoEntreQueVoltaram != null
+              ? `${m.conversaoPagoEntreQueVoltaram}% entre as que voltaram`
+              : 'dos cadastros do período'}
+            cor={colors.sageFg}
+          />
+        </View>
+      </View>
+
+      <Text style={s.funilNota}>
+        {m.totalPagantes} usuária{m.totalPagantes !== 1 ? 's' : ''} em plano pago hoje.
+        {m.semCusto > 0 ? ` ${m.semCusto} com acesso total ou cortesia ficam fora do funil, para não distorcer a conversão.` : ''}
+        {m.semDataCadastro > 0 ? ` ${m.semDataCadastro} conta${m.semDataCadastro !== 1 ? 's' : ''} antiga${m.semDataCadastro !== 1 ? 's' : ''} sem data de cadastro só aparece${m.semDataCadastro !== 1 ? 'm' : ''} em "Tudo".` : ''}
+      </Text>
     </View>
   );
 }
@@ -477,9 +609,11 @@ export default function AdminRelatoriosScreen({ navigation }) {
     setAtualizando(true);
     try {
       const usersSnap = await getDocs(collection(db, 'usuarios'));
+      // O plano pode estar como número (app) ou texto (painel web).
       const users = usersSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(u => u.role !== 'admin');
+        .filter(u => u.role !== 'admin')
+        .map(u => ({ ...u, plano: planoNumero(u.plano) }));
 
       // Sem orderBy: uma consulta de collectionGroup com orderBy exige um índice
       // de escopo COLLECTION_GROUP e falha inteira quando ele não existe — era o
@@ -522,6 +656,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
       <View style={s.tabBar}>
         {[
           { id: 'geral', label: 'Geral', icon: 'stats-chart' },
+          { id: 'funil', label: 'Funil', icon: 'funnel' },
           { id: 'emocoes', label: 'Emoções', icon: 'heart' },
           { id: 'usuarios', label: 'Usuárias', icon: 'people' },
           { id: 'empresas', label: 'Empresas', icon: 'business' },
@@ -556,6 +691,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
             todasVitorias={todasVitorias}
           />
         )}
+        {aba === 'funil' && <AbaFunil usuarios={usuarios} todosCheckins={todosCheckins} />}
         {aba === 'emocoes' && <AbaEmocoes todosCheckins={todosCheckins} />}
         {aba === 'usuarios' && (
           <AbaUsuarios
@@ -576,6 +712,33 @@ const s = StyleSheet.create({
   erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
   erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: spacing.md },
+
+  funilIntro: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18, marginTop: -6, marginBottom: spacing.md },
+  funilEtapa: { marginBottom: 4 },
+  funilPassagem: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingLeft: 2 },
+  funilPassagemTxt: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl },
+  funilPassagemDestaque: { fontFamily: fonts.bodyBold, color: colors.roseFg },
+  funilLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 5 },
+  funilTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+  funilDesc: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl },
+  funilQtd: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, minWidth: 34, textAlign: 'right' },
+  funilPct: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, minWidth: 38, textAlign: 'right' },
+  funilTrilho: { height: 12, borderRadius: 6, backgroundColor: colors.border, overflow: 'hidden' },
+  funilBarra: { height: '100%', borderRadius: 6 },
+  funilAlerta: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: spacing.md,
+    backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm,
+  },
+  funilAlertaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
+  funilNota: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 16, marginBottom: spacing.md },
+  indRow: { flexDirection: 'row', gap: 8 },
+  indCard: {
+    flex: 1, backgroundColor: colors.bg, borderRadius: radius.md,
+    padding: 10, alignItems: 'center', gap: 2,
+  },
+  indVal: { fontFamily: fonts.bodyBold, fontSize: 22 },
+  indLbl: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, textAlign: 'center' },
+  indDet: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', lineHeight: 14 },
 
   tabBar: {
     flexDirection: 'row',

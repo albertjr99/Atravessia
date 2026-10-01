@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
@@ -27,15 +27,17 @@ export default function AdminUsuariasScreen({ navigation }) {
   const [filtroPlano, setFiltroPlano] = useState('todos');
   const [planoModal, setPlanoModal] = useState({ vis: false, usuaria: null });
   const [cortesiaModal, setCortesiaModal] = useState({ vis: false, usuaria: null, dias: '30' });
-  // Nome, preço e descrição de cada plano vêm de planos/{0..3} — os mesmos
-  // documentos editados em "Preços e planos". Antes o preço era fixo aqui.
+  // Nome e descrição de cada plano vêm de planos/{0..3} — os mesmos documentos
+  // editados em "Preços e planos". Nesta aba NÃO se mostra preço nenhum
+  // (precoLabel/subtitulo são ignorados de propósito).
   const [planosDocs, setPlanosDocs] = useState({});
+  const [erro, setErro] = useState('');
 
   useEffect(() => onSnapshot(collection(db, 'planos'), (snap) => {
     const m = {};
     snap.docs.forEach(d => { m[d.id] = d.data(); });
     setPlanosDocs(m);
-  }, () => {}), []);
+  }, (e) => setErro(`Não foi possível carregar os nomes dos planos: ${e?.message || 'erro desconhecido'}`)), []);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'usuarios'), (snap) => {
@@ -44,9 +46,11 @@ export default function AdminUsuariasScreen({ navigation }) {
         .filter(u => u.role !== 'admin')
         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
       setUsuarias(todos);
-    });
+    }, (e) => setErro(`Não foi possível carregar as usuárias: ${e?.message || 'erro desconhecido'}`));
     return unsub;
   }, []);
+
+  const avisarErro = (e) => Alert.alert('Erro', `Não foi possível salvar a alteração.${e?.message ? `\n${e.message}` : ''}`);
 
   const handleAlterarPlano = (usuaria) => {
     setPlanoModal({ vis: true, usuaria });
@@ -59,13 +63,13 @@ export default function AdminUsuariasScreen({ navigation }) {
   // cortesia concedida antes ficava "esquecida" no documento e continuava
   // valendo mesmo depois de o plano ser alterado explicitamente.
   const setPlano = (plano) => {
-    updateDoc(doc(db, 'usuarios', planoModal.usuaria.id), { plano, acessoTotal: false, cortesia: null });
+    updateDoc(doc(db, 'usuarios', planoModal.usuaria.id), { plano, acessoTotal: false, cortesia: null }).catch(avisarErro);
     fecharPlanoModal();
   };
 
   const toggleAcessoTotal = () => {
     const u = planoModal.usuaria;
-    updateDoc(doc(db, 'usuarios', u.id), { acessoTotal: !(u.acessoTotal === true), cortesia: null });
+    updateDoc(doc(db, 'usuarios', u.id), { acessoTotal: !(u.acessoTotal === true), cortesia: null }).catch(avisarErro);
     fecharPlanoModal();
   };
 
@@ -82,12 +86,16 @@ export default function AdminUsuariasScreen({ navigation }) {
     // acessoTotal: false explícito — se a usuária já tivesse acesso total
     // concedido antes, ele tornaria o prazo da cortesia inútil (acesso
     // permanente independente da data de expiração).
-    await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: { ativo: true, expiracao }, acessoTotal: false });
+    try {
+      await updateDoc(doc(db, 'usuarios', usuaria.id), { cortesia: { ativo: true, expiracao }, acessoTotal: false });
+    } catch (e) { avisarErro(e); return; }
     setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
   };
 
   const revogarCortesia = async () => {
-    await updateDoc(doc(db, 'usuarios', cortesiaModal.usuaria.id), { cortesia: { ativo: false } });
+    try {
+      await updateDoc(doc(db, 'usuarios', cortesiaModal.usuaria.id), { cortesia: { ativo: false } });
+    } catch (e) { avisarErro(e); return; }
     setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
   };
 
@@ -119,6 +127,13 @@ export default function AdminUsuariasScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
         <Text style={styles.pageTitle}>Usuárias</Text>
         <Text style={styles.pageSub}>Gerencie planos e acessos das usuárias cadastradas.</Text>
+
+        {!!erro && (
+          <View style={styles.erroBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Text style={styles.erroTxt}>{erro}</Text>
+          </View>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -229,12 +244,11 @@ export default function AdminUsuariasScreen({ navigation }) {
               {[0, 1, 2, 3].map(n => {
                 const d = planosDocs[n] || {};
                 const sel = planoDe(planoModal.usuaria) === n && !planoModal.usuaria?.acessoTotal;
-                const preco = d.precoLabel || d.subtitulo || (n === 0 ? 'Gratuito' : '');
                 return (
                   <TouchableOpacity key={n} style={[styles.planoOpcao, sel && styles.planoOpcaoSel]} onPress={() => setPlano(n)}>
                     <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={16} color={PLANO_COR[n]} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.planoOpcaoText}>{d.nome || PLANO_NOME[n]}{preco ? ` · ${preco}` : ''}</Text>
+                      <Text style={styles.planoOpcaoText}>{d.nome || PLANO_NOME[n]}</Text>
                       {!!d.descricao && <Text style={styles.planoOpcaoDesc} numberOfLines={2}>{d.descricao}</Text>}
                     </View>
                   </TouchableOpacity>
@@ -316,6 +330,8 @@ const styles = StyleSheet.create({
   empresaText: { fontFamily: fonts.body, fontSize: 10, color: colors.gold },
   planoBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: radius.full, borderWidth: 1.5, paddingVertical: 5, paddingHorizontal: 9, marginTop: 2 },
   planoBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11 },
+  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', marginTop: spacing.xl },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   cortesiaBox: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg, width: '100%', maxWidth: 360 },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, TextInput, Alert, Image,
+  StyleSheet, StatusBar, TextInput, Alert, Image, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,31 @@ const logo = require('../../../assets/images/travessia_logo.png');
 const BIOMETRIC_EMAIL_KEY = 'biometric_email';
 const BIOMETRIC_PASS_KEY = 'biometric_pass';
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
+
+// Descobre quais biometrias o aparelho (celular ou tablet) oferece, para o botão
+// dizer "rosto", "digital" ou os dois. No Android, alguns aparelhos têm
+// desbloqueio facial só para a tela de bloqueio (sem a segurança exigida para
+// apps); nesses, o sistema oferece apenas a digital — isso é do aparelho.
+function descreverBiometria(tipos = []) {
+  const AuthenticationType = LocalAuthentication.AuthenticationType || {};
+  const face = tipos.includes(AuthenticationType.FACIAL_RECOGNITION);
+  const digital = tipos.includes(AuthenticationType.FINGERPRINT);
+  const iris = tipos.includes(AuthenticationType.IRIS);
+  if (face && !digital) {
+    return Platform.OS === 'ios'
+      ? { rotulo: 'Entrar com Face ID', nome: 'Face ID', icone: 'scan-outline' }
+      : { rotulo: 'Entrar com reconhecimento facial', nome: 'reconhecimento facial', icone: 'scan-outline' };
+  }
+  if (digital && !face && !iris) {
+    return Platform.OS === 'ios'
+      ? { rotulo: 'Entrar com Touch ID', nome: 'Touch ID', icone: 'finger-print-outline' }
+      : { rotulo: 'Entrar com digital', nome: 'digital', icone: 'finger-print-outline' };
+  }
+  if (face || iris) {
+    return { rotulo: 'Entrar com rosto ou digital', nome: 'rosto ou digital', icone: 'scan-outline' };
+  }
+  return { rotulo: 'Entrar com biometria', nome: 'biometria', icone: 'finger-print-outline' };
+}
 
 function mensagemErro(code) {
   switch (code) {
@@ -39,6 +64,7 @@ export default function LoginScreen({ navigation }) {
   const [erro, setErro] = useState('');
   const [biometricDisponivel, setBiometricDisponivel] = useState(false);
   const [biometricAtivado, setBiometricAtivado] = useState(false);
+  const [biometria, setBiometria] = useState(descreverBiometria());
 
   useEffect(() => {
     (async () => {
@@ -46,13 +72,17 @@ export default function LoginScreen({ navigation }) {
         const compativel = await LocalAuthentication.hasHardwareAsync();
         const cadastrado = await LocalAuthentication.isEnrolledAsync();
         const ativado = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+        const tipos = await LocalAuthentication.supportedAuthenticationTypesAsync().catch(() => []);
+        setBiometria(descreverBiometria(tipos));
         setBiometricDisponivel(compativel && cadastrado);
         setBiometricAtivado(ativado === 'true');
         if (compativel && cadastrado && ativado === 'true') {
           const emailSalvo = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
           if (emailSalvo) setEmail(emailSalvo);
         }
-      } catch {}
+      } catch (e) {
+        console.warn('[Login] biometria indisponível:', e?.message);
+      }
     })();
   }, []);
 
@@ -64,8 +94,8 @@ export default function LoginScreen({ navigation }) {
       await entrar(email.trim(), senha);
       if (biometricDisponivel && !biometricAtivado) {
         Alert.alert(
-          'Ativar biometria?',
-          'Deseja usar digital ou face ID para entrar mais rápido nas próximas vezes?',
+          'Entrar mais rápido?',
+          `Deseja usar ${biometria.nome} para entrar nas próximas vezes?`,
           [
             { text: 'Não agora', style: 'cancel' },
             {
@@ -95,6 +125,9 @@ export default function LoginScreen({ navigation }) {
         promptMessage: 'Confirme sua identidade',
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar senha',
+        // 'weak' aceita também o reconhecimento facial dos aparelhos Android
+        // (classe 2), além da digital. No iPhone/iPad, vale o Face ID ou Touch ID.
+        biometricsSecurityLevel: 'weak',
       });
       if (!resultado.success) return;
       const emailSalvo = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
@@ -193,8 +226,8 @@ export default function LoginScreen({ navigation }) {
 
           {biometricDisponivel && biometricAtivado && (
             <TouchableOpacity style={styles.biometricBtn} onPress={handleBiometria} activeOpacity={0.8}>
-              <Ionicons name="finger-print-outline" size={22} color={colors.lav5} />
-              <Text style={styles.biometricText}>Entrar com biometria</Text>
+              <Ionicons name={biometria.icone} size={22} color={colors.lav5} />
+              <Text style={styles.biometricText}>{biometria.rotulo}</Text>
             </TouchableOpacity>
           )}
 

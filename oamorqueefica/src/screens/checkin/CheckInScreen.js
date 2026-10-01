@@ -15,6 +15,7 @@ import { emocoes, audios as audiosEstaticos } from '../../data';
 import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+import { ProximoPasso } from '../../components/DiarioDoDia';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
@@ -178,6 +179,8 @@ export default function CheckInScreen({ navigation }) {
           </View>
           <Text style={s.savedTit}>Check-in já registrado 💜</Text>
           <Text style={s.savedSub}>Você já registrou seu check-in hoje. Volte amanhã para continuar seu acompanhamento emocional.</Text>
+          {/* Sugestão opcional do próximo passo do dia (some com "Agora não"). */}
+          <ProximoPasso navigation={navigation} depoisDe="checkin" />
           <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
         </View>
       </SafeAreaView>
@@ -232,6 +235,7 @@ export default function CheckInScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             )}
+            <ProximoPasso navigation={navigation} depoisDe="checkin" />
             <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
           </ScrollView>
         </SafeAreaView>
@@ -335,6 +339,8 @@ export default function CheckInScreen({ navigation }) {
               <Ionicons name="chevron-forward" size={16} color={colors.lav4} />
             </TouchableOpacity>
           )}
+
+          <ProximoPasso navigation={navigation} depoisDe="checkin" />
 
           <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
         </ScrollView>
@@ -510,7 +516,8 @@ const s = StyleSheet.create({
   histDotHoje: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.lav4, borderWidth: 2, borderColor: colors.lav5 },
   histLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
   playBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
-  savedWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  // flexGrow (e não flex) para o conteúdo continuar rolável quando passa da altura da tela.
+  savedWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
   celebCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   savedTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginBottom: 8, textAlign: 'center' },
   savedSub: { fontFamily: fonts.quote, fontSize: 16, fontStyle: 'italic', color: colors.tm, marginBottom: 8, textAlign: 'center', lineHeight: 24 },

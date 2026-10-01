@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
@@ -7,8 +7,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { httpsCallable } from 'firebase/functions';
-import { doc, updateDoc, increment } from 'firebase/firestore';
-import * as WebBrowser from 'expo-web-browser';
+import { doc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
+import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -144,16 +144,42 @@ function checkinsByDate(checkins) {
   return map;
 }
 
+// DD/MM/AAAA -> AAAA-MM-DD (o formato gravado nos check-ins); null se inválida.
+function paraIso(dataBr) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dataBr || '');
+  if (!m) return null;
+  const [, d, mes, ano] = m;
+  const dt = new Date(Number(ano), Number(mes) - 1, Number(d));
+  if (dt.getDate() !== Number(d) || dt.getMonth() !== Number(mes) - 1) return null;
+  return `${ano}-${mes}-${d}`;
+}
+
+// Compara as datas como texto AAAA-MM-DD. Antes convertia com new Date(), que
+// lê a data como meia-noite UTC (21h do dia anterior em Brasília): o período
+// ficava deslocado em um dia — perdia o primeiro dia e incluía o seguinte ao fim.
 function calcRange(checkins, inicio, fim) {
-  const [diI, meI, anoI] = inicio.split('/').map(Number);
-  const [diF, meF, anoF] = fim.split('/').map(Number);
-  const dStart = new Date(anoI, meI - 1, diI);
-  const dEnd = new Date(anoF, meF - 1, diF, 23, 59, 59);
-  if (isNaN(dStart) || isNaN(dEnd) || dStart > dEnd) return [];
+  const ini = paraIso(inicio);
+  const f = paraIso(fim);
+  if (!ini || !f || ini > f) return [];
   return checkins.filter(c => {
-    const d = new Date(c.data);
-    return d >= dStart && d <= dEnd;
+    const d = String(c.data || '').slice(0, 10);
+    return d >= ini && d <= f;
   });
+}
+
+// Situação do período digitado, para só liberar a compra de um relatório que
+// de fato terá conteúdo.
+function avaliarPeriodo(checkins, inicio, fim) {
+  const ini = paraIso(inicio);
+  const f = paraIso(fim);
+  if (!ini || !f) return { ok: false, motivo: 'Defina as datas de início e fim acima para liberar a compra.' };
+  if (ini > f) return { ok: false, motivo: 'A data de início precisa ser anterior à data de fim.' };
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  if (ini > hoje) return { ok: false, motivo: 'O período escolhido ainda não começou.' };
+  const lista = calcRange(checkins, inicio, fim);
+  if (!lista.length) return { ok: false, motivo: 'Não há check-ins nesse período. Escolha outras datas para o seu relatório.' };
+  const dias = new Set(lista.map(c => String(c.data).slice(0, 10))).size;
+  return { ok: true, total: lista.length, dias };
 }
 
 function diasComRegistro(checkins, year, month) {
@@ -941,6 +967,14 @@ export default function RelatoriosScreen({ navigation }) {
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
   const [comprando, setComprando] = useState(false);
+  // Preço do relatório por período definido pela administração
+  // (configuracoes/precos.periodo, em centavos). Antes o valor era fixo na tela.
+  const [precoPeriodo, setPrecoPeriodo] = useState(590);
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'precos'), snap => {
+    const c = snap.data()?.periodo;
+    if (typeof c === 'number' && c > 0) setPrecoPeriodo(c);
+  }, () => {}), []);
+  const precoPeriodoTxt = (precoPeriodo / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const [rangeInicio, setRangeInicio] = useState('');
   const [rangeFim, setRangeFim] = useState('');
   const [rangeData, setRangeData] = useState(null);
@@ -1037,14 +1071,20 @@ export default function RelatoriosScreen({ navigation }) {
     return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4, 8)}`;
   };
 
+  const periodo = useMemo(
+    () => avaliarPeriodo(checkins, rangeInicio, rangeFim),
+    [checkins, rangeInicio, rangeFim]
+  );
+
   const handleDesbloquear = async () => {
+    if (!periodo.ok) { Alert.alert('Defina o período', periodo.motivo); return; }
     setComprando(true);
     try {
       const criarCheckout = httpsCallable(functions, 'criarCheckoutPeriodoUnlocked');
       const { data } = await criarCheckout({});
-      await WebBrowser.openBrowserAsync(data.url);
+      await abrirPagamento(data.url);
     } catch (e) {
-      Alert.alert('Não foi possível abrir o checkout', e.message || 'Tente novamente em alguns instantes.');
+      Alert.alert('Não foi possível abrir o pagamento', mensagemErroPagamento(e));
     } finally {
       setComprando(false);
     }
@@ -1475,7 +1515,8 @@ export default function RelatoriosScreen({ navigation }) {
                 </View>
                 <Text style={s.lockedAnnualTit}>Relatório por Período</Text>
                 <Text style={s.lockedAnnualDesc}>
-                  Adquira um crédito para gerar o relatório do período selecionado acima.
+                  Primeiro defina o período acima. Com as datas escolhidas, você adquire um crédito
+                  e gera o relatório desse intervalo.
                 </Text>
 
                 {!temAcesso(1) ? (
@@ -1489,17 +1530,29 @@ export default function RelatoriosScreen({ navigation }) {
                   <View style={s.stripeWrap}>
                     <View style={s.stripePriceCard}>
                       <Ionicons name="calendar-outline" size={28} color={colors.lav4} />
-                      <Text style={[s.stripePriceTxt, { color: colors.lav4 }]}>R$ 5,90</Text>
+                      <Text style={[s.stripePriceTxt, { color: colors.lav4 }]}>{precoPeriodoTxt}</Text>
                       <Text style={s.stripePriceSub}>por relatório gerado</Text>
                     </View>
+                    <View style={[s.periodoStatus, periodo.ok ? s.periodoStatusOk : null]}>
+                      <Ionicons
+                        name={periodo.ok ? 'checkmark-circle' : 'information-circle-outline'}
+                        size={16}
+                        color={periodo.ok ? colors.sage : colors.lav5}
+                      />
+                      <Text style={[s.periodoStatusTxt, periodo.ok && { color: colors.sageFg }]}>
+                        {periodo.ok
+                          ? `${periodo.total} check-in${periodo.total === 1 ? '' : 's'} em ${periodo.dias} dia${periodo.dias === 1 ? '' : 's'} nesse período — pronto para gerar.`
+                          : periodo.motivo}
+                      </Text>
+                    </View>
                     <TouchableOpacity
-                      style={[s.stripeBtn, { backgroundColor: colors.lav4 }, comprando && { opacity: 0.6 }]}
+                      style={[s.stripeBtn, { backgroundColor: colors.lav4 }, (comprando || !periodo.ok) && { opacity: 0.45 }]}
                       onPress={handleDesbloquear}
-                      disabled={comprando}
+                      disabled={comprando || !periodo.ok}
                     >
                       <Ionicons name="card-outline" size={16} color="white" />
                       <Text style={s.stripeBtnTxt}>
-                        {comprando ? 'Abrindo checkout...' : 'Obter 1 relatório por R$ 5,90'}
+                        {comprando ? 'Abrindo pagamento...' : `Obter 1 relatório por ${precoPeriodoTxt}`}
                       </Text>
                     </TouchableOpacity>
                     <Text style={s.stripeHint}>
@@ -1789,6 +1842,12 @@ const s = StyleSheet.create({
   },
   stripePriceTxt: { fontFamily: fonts.bodyBold, fontSize: 32, letterSpacing: 0.5 },
   stripePriceSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
+  periodoStatus: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
+    padding: 10, borderRadius: radius.md, backgroundColor: colors.lav1, marginBottom: 10,
+  },
+  periodoStatusOk: { backgroundColor: '#EEF5EF' },
+  periodoStatusTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.lav6, lineHeight: 17 },
   stripeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderRadius: radius.full, paddingVertical: 14,

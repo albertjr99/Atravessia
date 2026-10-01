@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Share, Platform,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +41,8 @@ export default function VoucherScreen({ route, navigation }) {
   const { tokenSeguro, codigoPublico, parceriaNome, percentualDescontoCliente } = route.params || {};
   // Aberto a partir de "Meus cupons" o link não vem pronto; é derivado do token.
   const linkValidacao = route.params?.linkValidacao || (tokenSeguro ? linkDoCupom(tokenSeguro) : '');
-  const { meusVouchers } = useApp();
+  const { meusVouchers, gerarVoucherBeneficio } = useApp();
+  const [gerandoNovo, setGerandoNovo] = useState(false);
 
   const voucher = meusVouchers.find(v => v.id === tokenSeguro || v.tokenSeguro === tokenSeguro);
   // Um cupom vencido pode seguir como GERADO até o job horário marcá-lo; aqui
@@ -50,6 +52,23 @@ export default function VoucherScreen({ route, navigation }) {
   const info = STATUS_INFO[status] || STATUS_INFO.GERADO;
   const podeApresentar = !expirado && ['GERADO', 'APRESENTADO', 'VALIDADO'].includes(status);
   const desconto = Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
+
+  // Cupom usado ou vencido não volta a valer: para um novo atendimento, ela
+  // gera outro cupom da mesma parceria, aqui mesmo.
+  const parceriaId = voucher?.parceriaId;
+  const podeGerarNovo = !!parceriaId && !podeApresentar && status !== 'CONCLUIDO';
+  const gerarNovo = async () => {
+    if (gerandoNovo) return;
+    setGerandoNovo(true);
+    try {
+      const novo = await gerarVoucherBeneficio(parceriaId);
+      navigation.replace('Voucher', { ...novo, parceriaNome: parceriaNome || voucher?.parceriaNome });
+    } catch (e) {
+      Alert.alert('', e?.message || 'Não foi possível gerar um novo cupom agora. Tente novamente.');
+    } finally {
+      setGerandoNovo(false);
+    }
+  };
 
   const compartilhar = () => {
     Share.share({
@@ -97,8 +116,10 @@ export default function VoucherScreen({ route, navigation }) {
             {podeApresentar
               ? 'Apresente este código ou o QR Code ao parceiro'
               : expirado
-                ? 'Este cupom venceu. Você pode gerar um novo na parceria sempre que precisar.'
-                : 'Este cupom já foi utilizado.'}
+                ? 'Este cupom venceu. Você pode gerar um novo sempre que precisar.'
+                : status === 'CONCLUIDO'
+                  ? 'Confirme o atendimento para concluir o uso deste cupom.'
+                  : 'Este cupom já foi utilizado e não vale mais. Para um novo atendimento, gere outro cupom.'}
           </Text>
         </View>
 
@@ -114,6 +135,22 @@ export default function VoucherScreen({ route, navigation }) {
           >
             <Ionicons name="checkmark-circle-outline" size={16} color="white" />
             <Text style={[s.shareBtnTxt, { color: 'white' }]}>Confirmar o atendimento</Text>
+          </TouchableOpacity>
+        )}
+
+        {podeGerarNovo && (
+          <TouchableOpacity
+            style={[s.shareBtn, s.confirmarBtn]}
+            onPress={gerarNovo}
+            disabled={gerandoNovo}
+            activeOpacity={0.85}
+          >
+            {gerandoNovo
+              ? <ActivityIndicator size="small" color="white" />
+              : <Ionicons name="add-circle-outline" size={16} color="white" />}
+            <Text style={[s.shareBtnTxt, { color: 'white' }]}>
+              {gerandoNovo ? 'Gerando...' : 'Gerar um novo cupom'}
+            </Text>
           </TouchableOpacity>
         )}
 

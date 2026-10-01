@@ -72,7 +72,11 @@ export function AuthProvider({ children }) {
 
   const entrar = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 
-  const sair = () => firebaseSignOut(auth);
+  // Administradora navegando no app como uma usuária comum ("Ver como usuária").
+  // Só muda a pilha de telas exibida — a conta continua sendo a mesma.
+  const [verComoUsuaria, setVerComoUsuaria] = useState(false);
+
+  const sair = () => { setVerComoUsuaria(false); return firebaseSignOut(auth); };
 
   const recuperarSenha = (email) => sendPasswordResetEmail(auth, email);
 
@@ -87,6 +91,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       firebaseUser, perfil, carregando, isAdmin,
+      verComoUsuaria, setVerComoUsuaria,
       cadastrar, entrar, sair, recuperarSenha, atualizarPerfil,
     }}>
       {children}

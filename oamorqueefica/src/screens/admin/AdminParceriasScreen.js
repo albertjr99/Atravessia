@@ -5,8 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, orderBy,
-  query, serverTimestamp, updateDoc,
+  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
@@ -14,6 +13,7 @@ import { Card, Button } from '../../components';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
+import { normalizarUrl } from '../../utils/abrirLink';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -48,18 +48,31 @@ export default function AdminParceriasScreen({ navigation }) {
   const [tipoBeneficio, setTipoBeneficio] = useState('link');
   const [percentualBeneficio, setPercentualBeneficio] = useState('10');
   const [percentualComissao, setPercentualComissao] = useState('3');
-  const [baseCalculoComissao, setBaseCalculoComissao] = useState('valor_original');
+  // A comissão é sempre calculada sobre o valor original do serviço (antes do
+  // desconto). A opção "valor final" foi retirada — o backend também só aceita
+  // 'valor_original'.
   const [validadeDiasVoucher, setValidadeDiasVoucher] = useState('30');
 
   const descontoClienteCalculado = Math.max(
     0, (parseFloat(percentualBeneficio) || 0) - (parseFloat(percentualComissao) || 0)
   );
 
+  // Exemplo em reais para a prévia: sempre sobre um serviço de R$ 100,00.
+  const exemploComissao = parseFloat(percentualComissao) || 0;
+  const exemploPaga = Math.max(0, 100 - descontoClienteCalculado);
+  const brl = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+
+  const [erroLista, setErroLista] = useState('');
+
   useEffect(() => {
-    const ref = query(collection(db, 'parcerias'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setParcerias(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    // Sem orderBy: o Firestore descartaria parcerias sem `criadoEm` e um
+    // listener com erro para de vez. Ordena aqui, no cliente.
+    const unsub = onSnapshot(collection(db, 'parcerias'), (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
+      setParcerias(docs);
+      setErroLista('');
+    }, (e) => setErroLista(e?.message || 'Não foi possível carregar as parcerias.'));
     return unsub;
   }, []);
 
@@ -123,8 +136,15 @@ export default function AdminParceriasScreen({ navigation }) {
   };
 
   const handlePublicar = async () => {
-    if (!titulo.trim() || !link.trim()) {
-      Alert.alert('Atenção', 'Preencha pelo menos o título e o link de destino.');
+    if (!titulo.trim()) {
+      Alert.alert('Atenção', 'Preencha pelo menos o título.');
+      return;
+    }
+    // O link é opcional; quando preenchido, é normalizado (https://, wa.me…).
+    const linkBruto = link.trim();
+    const linkFinal = linkBruto ? normalizarUrl(linkBruto) : '';
+    if (linkBruto && !linkFinal) {
+      Alert.alert('Atenção', 'O link de destino não parece um endereço válido. Confira ou deixe o campo em branco.');
       return;
     }
     if (tipoBeneficio === 'cupom' && (!percentualBeneficio || parseFloat(percentualBeneficio) <= 0)) {
@@ -136,7 +156,7 @@ export default function AdminParceriasScreen({ navigation }) {
       const dados = {
         titulo: titulo.trim(),
         descricao: descricao.trim(),
-        link: link.trim(),
+        link: linkFinal,
         imagemUrl: imagemUrl.trim(),
         categorias: categoriaSel,
         ativo: true,
@@ -148,7 +168,7 @@ export default function AdminParceriasScreen({ navigation }) {
         dados.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
         dados.percentualComissao = parseFloat(percentualComissao) || 0;
         dados.percentualDescontoCliente = descontoClienteCalculado;
-        dados.baseCalculoComissao = baseCalculoComissao;
+        dados.baseCalculoComissao = 'valor_original';
         dados.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
         dados.tokenPainel = gerarTokenPainel();
       }
@@ -156,20 +176,23 @@ export default function AdminParceriasScreen({ navigation }) {
       setTitulo(''); setDescricao(''); setLink(''); setImagemUrl(''); setCategoriaSel([]);
       setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
       Alert.alert('', 'Parceria publicada com sucesso!');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível publicar a parceria.');
+    } catch (e) {
+      Alert.alert('Erro', `Não foi possível publicar a parceria.${e?.message ? `\n${e.message}` : ''}`);
     } finally {
       setEnviando(false);
     }
   };
 
   const handleToggleAtivo = (p) => {
-    updateDoc(doc(db, 'parcerias', p.id), { ativo: !p.ativo }).catch(() => {});
+    updateDoc(doc(db, 'parcerias', p.id), { ativo: p.ativo === false })
+      .catch((e) => Alert.alert('Erro', `Não foi possível alterar a parceria.${e?.message ? `\n${e.message}` : ''}`));
   };
 
   const handleRemover = (id) => {
     confirmar('Remover parceria', 'Tem certeza que deseja remover esta parceria?',
-      () => deleteDoc(doc(db, 'parcerias', id)), 'Remover');
+      () => deleteDoc(doc(db, 'parcerias', id))
+        .catch((e) => Alert.alert('Erro', `Não foi possível remover a parceria.${e?.message ? `\n${e.message}` : ''}`)),
+      'Remover');
   };
 
   const ativas = parcerias.filter(p => p.ativo !== false).length;
@@ -231,7 +254,7 @@ export default function AdminParceriasScreen({ navigation }) {
             onChangeText={setDescricao}
           />
 
-          <Text style={s.formLabel}>Link de destino <Text style={s.required}>*</Text></Text>
+          <Text style={s.formLabel}>Link de destino <Text style={s.optional}>(opcional)</Text></Text>
           <TextInput
             style={s.input}
             placeholder="https://..."
@@ -240,7 +263,7 @@ export default function AdminParceriasScreen({ navigation }) {
             value={link}
             onChangeText={setLink}
           />
-          <Text style={s.hint}>Para onde o usuário será redirecionado ao clicar no banner.</Text>
+          <Text style={s.hint}>Se preenchido, a usuária é levada a este endereço ao tocar na parceria.</Text>
 
           <Text style={s.formLabel}>Banner / imagem da parceria</Text>
           <TouchableOpacity
@@ -326,23 +349,15 @@ export default function AdminParceriasScreen({ navigation }) {
               </View>
               <Text style={s.calculoTxt}>
                 Desconto que chega à usuária: <Text style={s.calculoForte}>{descontoClienteCalculado.toFixed(1)}%</Text>
-                {'  '}·{'  '}Comissão da Atravessia: <Text style={s.calculoForte}>{percentualComissao || 0}%</Text>
+                {'  '}·{'  '}Comissão da Atravessia: <Text style={s.calculoForte}>{percentualComissao || 0}% do valor original</Text>
               </Text>
 
-              <Text style={s.formLabel}>Base de cálculo da comissão</Text>
-              <View style={s.chipRow}>
-                <TouchableOpacity
-                  style={[s.chip, baseCalculoComissao === 'valor_original' && s.chipSel]}
-                  onPress={() => setBaseCalculoComissao('valor_original')}
-                >
-                  <Text style={[s.chipText, baseCalculoComissao === 'valor_original' && s.chipTextSel]}>Valor original</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.chip, baseCalculoComissao === 'valor_final' && s.chipSel]}
-                  onPress={() => setBaseCalculoComissao('valor_final')}
-                >
-                  <Text style={[s.chipText, baseCalculoComissao === 'valor_final' && s.chipTextSel]}>Valor final (com desconto)</Text>
-                </TouchableOpacity>
+              <View style={s.infoBase}>
+                <Ionicons name="information-circle-outline" size={15} color={colors.lav5} />
+                <Text style={s.infoBaseTxt}>
+                  A comissão é calculada sobre o valor original do serviço (antes do desconto).
+                  {' '}Ex.: num serviço de {brl(100)}, a usuária paga {brl(exemploPaga)} e a comissão da Atravessia é {brl(exemploComissao)}.
+                </Text>
               </View>
 
               <Text style={s.formLabel}>Validade de cada cupom (dias)</Text>
@@ -367,7 +382,14 @@ export default function AdminParceriasScreen({ navigation }) {
           Publicadas ({parcerias.length}) · {ativas} ativas
         </Text>
 
-        {parcerias.length === 0 && (
+        {!!erroLista && (
+          <View style={s.erroBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Text style={s.erroTxt}>Não foi possível carregar as parcerias: {erroLista}</Text>
+          </View>
+        )}
+
+        {parcerias.length === 0 && !erroLista && (
           <Text style={s.emptyText}>Nenhuma parceria publicada ainda.</Text>
         )}
 
@@ -398,7 +420,9 @@ export default function AdminParceriasScreen({ navigation }) {
                   </View>
                 )}
               </View>
-              <Text style={s.itemLink} numberOfLines={1}>{p.link}</Text>
+              {p.link
+                ? <Text style={s.itemLink} numberOfLines={1}>{p.link}</Text>
+                : <Text style={[s.itemLink, { color: colors.tl }]}>Sem link de destino</Text>}
               {p.tipoBeneficio === 'cupom' && (
                 <TouchableOpacity onPress={() => navigation.navigate('AdminBeneficios', { parceriaId: p.id })}>
                   <Text style={s.verComissoesLink}>Ver cupons e comissões →</Text>
@@ -490,6 +514,17 @@ const s = StyleSheet.create({
   linha2: { flexDirection: 'row', gap: spacing.sm },
   calculoTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, marginBottom: 8, lineHeight: 17 },
   calculoForte: { fontFamily: fonts.bodyBold },
+  infoBase: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    backgroundColor: colors.card, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.lav2, padding: spacing.sm, marginBottom: 4,
+  },
+  infoBaseTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, lineHeight: 17 },
+  erroBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE',
+    borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md,
+  },
+  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
 
   sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
