@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment, where,
+  collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment, where,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../services/firebase';
@@ -14,8 +14,12 @@ const AppContext = createContext();
 const hojeStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
 const PLANO_MAP = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
+// O plano pode estar gravado como número (app), texto (painel web: 'acolher')
+// ou número em texto ('1'). Tudo vira número de 0 a 3.
 const normalizarPlano = (p) => {
   if (typeof p === 'number') return p;
+  const n = Number(p);
+  if (p !== '' && p != null && Number.isFinite(n)) return n;
   return PLANO_MAP[String(p || '').toLowerCase()] ?? 0;
 };
 
@@ -400,6 +404,27 @@ export function AppProvider({ children }) {
     if (uid) addDoc(collection(db, 'usuarios', uid, 'vitorias'), { ...vitoria, data: hojeStr(), criadoEm: serverTimestamp() });
   };
 
+  // Desfaz um toque por engano: só vale para vitórias de hoje — os dias
+  // anteriores ficam preservados no histórico.
+  const removerVitoria = async (vitoria) => {
+    if (!vitoria || String(vitoria.data || '').slice(0, 10) !== hojeStr()) return false;
+    setVitorias(prev => prev.filter(v => v.id !== vitoria.id));
+    // Um registro recém-criado tem id provisório (número) até o Firestore
+    // devolver o documento; nesse caso remove pelo rótulo do dia.
+    if (!uid) return true;
+    if (typeof vitoria.id === 'string') {
+      await deleteDoc(doc(db, 'usuarios', uid, 'vitorias', vitoria.id));
+      return true;
+    }
+    const snap = await getDocs(query(
+      collection(db, 'usuarios', uid, 'vitorias'),
+      where('data', '==', hojeStr()),
+      where('label', '==', vitoria.label),
+    ));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    return true;
+  };
+
   const adicionarCarta = (carta) => {
     setCartasEscritas(prev => [...prev, { ...carta, id: Date.now(), data: hojeStr() }]);
     if (uid) addDoc(collection(db, 'usuarios', uid, 'cartas'), { ...carta, data: hojeStr(), criadoEm: serverTimestamp() });
@@ -574,7 +599,7 @@ export function AppProvider({ children }) {
       usuario, setUsuario,
       checkins, adicionarCheckin,
       memorias, adicionarMemoria,
-      vitorias, adicionarVitoria,
+      vitorias, adicionarVitoria, removerVitoria,
       cartasEscritas, adicionarCarta,
       datasSensiveis, adicionarDataSensivel, removerDataSensivel,
       redeApoio, adicionarContatoRede, removerContatoRede,
@@ -594,7 +619,7 @@ export function AppProvider({ children }) {
       gerarVoucherBeneficio, responderConfirmacaoResgate,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
-      podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje,
+      podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje, conteudosLiberados,
     }}>
       {children}
     </AppContext.Provider>

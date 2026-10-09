@@ -12,7 +12,7 @@ import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
-import { abrirLink } from '../../utils/abrirLink';
+import { urlDeImagem } from '../../utils/imagemUrl';
 import { situacaoCupom } from '../../utils/cupons';
 import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
@@ -27,7 +27,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
-    usuario, notificacoes, checkins, parcerias, registrarCliqueParceria, fraseDoDia, meusVouchers,
+    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers,
   } = useApp();
   const { sair, firebaseUser, perfil } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
@@ -75,12 +75,10 @@ export default function HomeScreen({ navigation }) {
     { icone: 'log-out-outline', rotulo: 'Sair da conta', acao: handleSair, sair: true },
   ];
 
-  const handleAbrirParceria = (p) => {
-    // Usa o mesmo utilitário da tela de Parcerias: normaliza a URL (acrescenta
-    // https:// quando falta) e abre de forma confiável em web e nativo.
-    registrarCliqueParceria(p.id);
-    abrirLink(p.link || p.url);
-  };
+  // Na tela inicial o cartão só leva ao Experimente a vida: lá o cupom ou o
+  // link são acionados pelo botão de cada parceria (antes qualquer toque aqui
+  // abria o link, até de parcerias de cupom).
+  const handleAbrirParceria = () => navigation.navigate('Parcerias');
   const saudacao = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Bom dia';
@@ -282,7 +280,7 @@ export default function HomeScreen({ navigation }) {
                       activeOpacity={0.85}
                     >
                       {p.imagemUrl ? (
-                        <Image source={{ uri: p.imagemUrl }} style={s.parceriaImg} resizeMode="cover" />
+                        <Image source={{ uri: urlDeImagem(p.imagemUrl) }} style={s.parceriaImg} resizeMode="cover" />
                       ) : (
                         <View style={[s.parceriaImg, s.parceriaImgPlaceholder]}>
                           <Ionicons name="gift-outline" size={22} color={colors.lav4} />

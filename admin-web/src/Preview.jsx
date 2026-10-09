@@ -290,6 +290,14 @@ function VitoriasPreview() {
   );
 }
 
+const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
+function planoNumero(p) {
+  if (typeof p === 'number') return p;
+  const n = Number(p);
+  if (p !== '' && p != null && Number.isFinite(n)) return n;
+  return PLANO_TEXTO[String(p || '').toLowerCase()] ?? 0;
+}
+
 function UsuariasPreview() {
   const [usuarios, erro] = useCollection('usuarios', { ordem: 'criadoEm', direcao: 'desc', max: 5, filtro: u => u.role !== 'admin' });
 
@@ -306,7 +314,7 @@ function UsuariasPreview() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pw-row-title">{u.nome || '(sem nome)'}</div>
-              <div className="pw-row-sub">{['Perceber', 'Acolher', 'Compreender', 'Evoluir'][u.plano || 0] || 'Perceber'}</div>
+              <div className="pw-row-sub">{['Perceber', 'Acolher', 'Compreender', 'Evoluir'][planoNumero(u.plano)] || 'Perceber'}</div>
             </div>
           </div>
         ))

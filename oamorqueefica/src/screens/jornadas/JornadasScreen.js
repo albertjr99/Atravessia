@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
@@ -9,15 +9,35 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+import {
+  useVideoApresentacao, BotaoApresentacao, ModalVideoApresentacao, VIDEOS,
+} from '../../components/VideoApresentacao';
 
 const ilustracao = require('../../../assets/images/jornadas_caminho.png');
 
-const PLANO_LABEL = { 0: 'Grátis', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
+const PLANO_LABEL = { 0: 'Perceber', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
 const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
+const PLANO_TEXTO = { perceber: 0, gratis: 0, acolher: 1, compreender: 2, evoluir: 3 };
+
+// O plano pode vir como número (app) ou texto (painel web, ex.: 'acolher').
+function planoNumero(p) {
+  if (typeof p === 'number') return p;
+  const n = Number(p);
+  if (p !== '' && p != null && Number.isFinite(n)) return n;
+  return PLANO_TEXTO[String(p || '').toLowerCase()] ?? 0;
+}
 
 export default function JornadasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { temAcesso, jornadasAdmin, travessiaItens } = useApp();
+  const { temAcesso, jornadasAdmin, travessiaItens, usuario } = useApp();
+  const meuPlano = PLANO_LABEL[usuario?.plano] || 'Perceber';
+
+  // Vídeo de apresentação: abre sozinho na primeira visita.
+  const { video, abrirAutomatico, marcarVisto } = useVideoApresentacao('jornadas');
+  const [verVideo, setVerVideo] = useState(false);
+  useEffect(() => {
+    if (abrirAutomatico) { setVerVideo(true); marcarVisto(); }
+  }, [abrirAutomatico, marcarVisto]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
@@ -38,6 +58,9 @@ export default function JornadasScreen({ navigation }) {
           </View>
           <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
         </View>
+        {!!video && (
+          <BotaoApresentacao onPress={() => setVerVideo(true)} style={styles.botaoVideo} />
+        )}
 
         {/* Itens da Travessia — gerenciados pela admin */}
         {travessiaItens.length > 0 && (
@@ -66,15 +89,16 @@ export default function JornadasScreen({ navigation }) {
         {jornadasAdmin.length > 0 && (
           <View style={styles.lista}>
             {jornadasAdmin.map(j => {
-              const acesso = temAcesso(j.plano);
-              const cor = PLANO_COR[j.plano] ?? colors.lav4;
+              const planoJornada = planoNumero(j.plano);
+              const acesso = temAcesso(planoJornada);
+              const cor = PLANO_COR[planoJornada] ?? colors.lav4;
               return (
                 <TouchableOpacity
                   key={j.id}
                   style={[styles.jornadaCard, !acesso && styles.cardBloqueado]}
                   onPress={() => {
                     if (!acesso) {
-                      Alert.alert(j.titulo, `Disponível no plano ${PLANO_LABEL[j.plano]}.`, [
+                      Alert.alert(j.titulo, `Esta jornada faz parte do plano ${PLANO_LABEL[planoJornada]}. Seu plano atual é o ${meuPlano}.`, [
                         { text: 'Agora não', style: 'cancel' },
                         { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
                       ]);
@@ -91,7 +115,8 @@ export default function JornadasScreen({ navigation }) {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.jornadaTitulo}>{j.titulo}</Text>
                       {j.descricao ? <Text style={styles.jornadaDesc}>{j.descricao}</Text> : null}
-                      {!acesso && <Text style={[styles.planoLabel, { color: cor }]}>Plano {PLANO_LABEL[j.plano]}</Text>}
+                      {/* Antes aparecia só "PLANO EVOLUIR", que parecia ser o plano dela. */}
+                      {!acesso && <Text style={[styles.planoLabel, { color: cor }]}>Disponível no plano {PLANO_LABEL[planoJornada]}</Text>}
                     </View>
                     <Ionicons name={acesso ? 'chevron-forward' : 'lock-closed'} size={16} color={acesso ? colors.lav4 : colors.tl} />
                   </View>
@@ -103,6 +128,13 @@ export default function JornadasScreen({ navigation }) {
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+
+      <ModalVideoApresentacao
+        visivel={verVideo}
+        onFechar={() => setVerVideo(false)}
+        video={video}
+        tituloPadrao={VIDEOS.jornadas.titulo}
+      />
     </SafeAreaView>
   );
 }
@@ -112,18 +144,19 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
-  sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
+  sub: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, marginTop: 4 },
   headerIlustracao: { width: 64, height: 64 },
   lista: { paddingHorizontal: spacing.lg, gap: 12 },
+  botaoVideo: { marginLeft: spacing.lg, marginBottom: spacing.md },
   jornadaCard: {
     backgroundColor: colors.card, borderRadius: radius.xl,
     padding: spacing.md, borderWidth: 1, borderColor: colors.border,
     ...shadow.soft,
   },
   cardBloqueado: { opacity: 0.7 },
-  jornadaHeader: { flexDirection: 'row', gap: 12, marginBottom: spacing.md, alignItems: 'flex-start' },
-  jornadaTitulo: { fontFamily: fonts.script, fontSize: 16, color: colors.lav6, marginBottom: 3 },
-  jornadaDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, lineHeight: 16 },
+  jornadaHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  jornadaTitulo: { fontFamily: fonts.bodyBold, fontSize: 17, lineHeight: 23, color: colors.lav6, marginBottom: 4 },
+  jornadaDesc: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, lineHeight: 22 },
   jornadaProgress: { gap: 5 },
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between' },
   progressText: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
@@ -137,7 +170,7 @@ const styles = StyleSheet.create({
   vitoriaTitulo: { fontFamily: fonts.script, fontSize: 16, color: colors.lav6 },
   vitoriaSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   jornadaIcone: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  planoLabel: { fontFamily: fonts.bodyBold, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
+  planoLabel: { fontFamily: fonts.bodyBold, fontSize: 13, marginTop: 6 },
   sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
   travessiaCard: {
     backgroundColor: colors.card, borderRadius: radius.xl,
@@ -146,6 +179,6 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   travessiaIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  travessiaTitulo: { fontFamily: fonts.script, fontSize: 16, color: colors.lav6 },
-  travessiaSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
+  travessiaTitulo: { fontFamily: fonts.bodyBold, fontSize: 17, lineHeight: 23, color: colors.lav6 },
+  travessiaSub: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, marginTop: 4, lineHeight: 22 },
 });

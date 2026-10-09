@@ -32,7 +32,7 @@ const NAV_GRUPOS = [
       {
         icon: 'library', iconOff: 'library-outline',
         label: 'Biblioteca', sub: 'Áudios de check-in · Frases · Outros conteúdos',
-        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos'],
+        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos', 'AdminVideos'],
       },
       {
         icon: 'compass', iconOff: 'compass-outline',

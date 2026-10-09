@@ -1,17 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, TextInput, Alert, ActivityIndicator,
+  StyleSheet, TextInput, Alert, ActivityIndicator, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   collection, addDoc, updateDoc, deleteDoc, doc,
-  onSnapshot, orderBy, query, serverTimestamp,
+  onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import { ICONES_VITORIA, iconeDaVitoria } from '../../data/iconesVitoria';
+
+function SeletorIcone({ valor, onChange }) {
+  const atual = iconeDaVitoria({ icone: valor }, true);
+  return (
+    <View style={s.icones}>
+      {ICONES_VITORIA.map(ic => {
+        const sel = atual === ic.id;
+        return (
+          <TouchableOpacity
+            key={ic.id}
+            style={[s.iconeBtn, sel && s.iconeBtnSel]}
+            onPress={() => onChange(ic.id)}
+            accessibilityLabel={ic.nome}
+          >
+            <Ionicons name={`${ic.id}-outline`} size={19} color={sel ? colors.lav5 : colors.tm} />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
 
 const VITORIAS_PADRAO = [
   'Saí de casa',
@@ -31,15 +53,33 @@ export default function AdminVitoriasScreen() {
   const [carregando, setCarregando] = useState(true);
   const [novoLabel, setNovoLabel] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [novoIcone, setNovoIcone] = useState('star');
+  const [trocandoIcone, setTrocandoIcone] = useState(null); // opção cujo ícone está sendo trocado
 
   useEffect(() => {
-    const ref = query(collection(db, 'vitoriasOpcoes'), orderBy('criadoEm', 'asc'));
-    const unsub = onSnapshot(ref, (snap) => {
-      setOpcoes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // Sem orderBy: opções sem `criadoEm` sumiriam da lista. Ordena aqui.
+    const unsub = onSnapshot(collection(db, 'vitoriasOpcoes'), (snap) => {
+      setOpcoes(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.criadoEm?.toMillis?.() ?? 0) - (b.criadoEm?.toMillis?.() ?? 0)));
       setCarregando(false);
-    }, () => setCarregando(false));
+    }, (e) => {
+      setCarregando(false);
+      Alert.alert('Erro', `Não foi possível carregar as vitórias.${e?.message ? `\n${e.message}` : ''}`);
+    });
     return unsub;
   }, []);
+
+  const salvarIcone = async (icone) => {
+    const item = trocandoIcone;
+    setTrocandoIcone(null);
+    if (!item) return;
+    try {
+      await updateDoc(doc(db, 'vitoriasOpcoes', item.id), { icone });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível trocar o ícone.');
+    }
+  };
 
   const handleAdicionar = async () => {
     const label = novoLabel.trim();
@@ -48,10 +88,12 @@ export default function AdminVitoriasScreen() {
     try {
       await addDoc(collection(db, 'vitoriasOpcoes'), {
         label,
+        icone: novoIcone,
         ativo: true,
         criadoEm: serverTimestamp(),
       });
       setNovoLabel('');
+      setNovoIcone('star');
     } catch {
       Alert.alert('Erro', 'Não foi possível adicionar a vitória.');
     } finally {
@@ -85,7 +127,7 @@ export default function AdminVitoriasScreen() {
             setSalvando(true);
             try {
               for (const label of faltando) {
-                await addDoc(collection(db, 'vitoriasOpcoes'), { label, ativo: true, criadoEm: serverTimestamp() });
+                await addDoc(collection(db, 'vitoriasOpcoes'), { label, icone: 'star', ativo: true, criadoEm: serverTimestamp() });
               }
               Alert.alert('Pronto', `${faltando.length} opção(ões) adicionada(s).`);
             } catch {
@@ -150,6 +192,8 @@ export default function AdminVitoriasScreen() {
                 : <Ionicons name="add" size={20} color="white" />}
             </TouchableOpacity>
           </View>
+          <Text style={s.iconeLabel}>Ícone</Text>
+          <SeletorIcone valor={novoIcone} onChange={setNovoIcone} />
         </View>
 
         {/* Lista */}
@@ -173,6 +217,9 @@ export default function AdminVitoriasScreen() {
                     color={item.ativo ? colors.sage : colors.tl}
                   />
                 </TouchableOpacity>
+                <TouchableOpacity style={s.itemIcone} onPress={() => setTrocandoIcone(item)} accessibilityLabel="Trocar ícone">
+                  <Ionicons name={iconeDaVitoria(item)} size={17} color={colors.lav5} />
+                </TouchableOpacity>
                 <Text style={[s.itemLabel, !item.ativo && s.itemLabelOff]}>{item.label}</Text>
                 <TouchableOpacity onPress={() => handleExcluir(item)} style={s.delBtn}>
                   <Ionicons name="trash-outline" size={16} color={colors.rose} />
@@ -187,8 +234,17 @@ export default function AdminVitoriasScreen() {
           <Text style={s.padraoTxt}>Restaurar opções padrão</Text>
         </TouchableOpacity>
 
+        <Modal visible={!!trocandoIcone} transparent animationType="fade" onRequestClose={() => setTrocandoIcone(null)}>
+          <Pressable style={s.modalFundo} onPress={() => setTrocandoIcone(null)}>
+            <Pressable style={s.modalCaixa} onPress={() => {}}>
+              <Text style={s.addTitle}>Ícone de “{trocandoIcone?.label}”</Text>
+              <SeletorIcone valor={trocandoIcone?.icone} onChange={salvarIcone} />
+            </Pressable>
+          </Pressable>
+        </Modal>
+
         <Text style={s.hint}>
-          Vitórias desativadas não aparecem para as usuárias, mas os registros anteriores são mantidos.
+          Toque no ícone de uma vitória para trocá-lo. Vitórias desativadas não aparecem para as usuárias, mas os registros anteriores são mantidos.
         </Text>
       </ScrollView>
     </AdminLayout>
@@ -196,6 +252,19 @@ export default function AdminVitoriasScreen() {
 }
 
 const s = StyleSheet.create({
+  icones: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  iconeBtn: {
+    width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center',
+  },
+  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
+  iconeLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginTop: spacing.md },
+  itemIcone: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav1,
+    alignItems: 'center', justifyContent: 'center', marginRight: 8,
+  },
+  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
   scroll: { padding: spacing.lg, paddingBottom: 48 },
   title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },

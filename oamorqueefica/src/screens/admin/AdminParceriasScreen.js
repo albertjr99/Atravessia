@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput,
-  Alert, Platform, Image, Switch, KeyboardAvoidingView,
+  Alert, Platform, Image, Switch, KeyboardAvoidingView, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -14,6 +14,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
 import { normalizarUrl } from '../../utils/abrirLink';
+import { UFS, nomeDoEstado, formatarCidade, rotuloLocal } from '../../utils/localizacao';
+import { urlDeImagem, idDoDrive } from '../../utils/imagemUrl';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -41,6 +43,13 @@ export default function AdminParceriasScreen({ navigation }) {
   const [link, setLink] = useState('');
   const [imagemUrl, setImagemUrl] = useState('');
   const [categoriaSel, setCategoriaSel] = useState([]);
+  const [estado, setEstado] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [atendimentoOnline, setAtendimentoOnline] = useState(false);
+  const [escolhendoEstado, setEscolhendoEstado] = useState(false);
+  const [alturaDescricao, setAlturaDescricao] = useState(120);
+  // Parceria em edição (null = cadastro novo).
+  const [editId, setEditId] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [uploadando, setUploadando] = useState(false);
 
@@ -63,6 +72,7 @@ export default function AdminParceriasScreen({ navigation }) {
   const brl = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   const [erroLista, setErroLista] = useState('');
+  const rolagem = useRef(null);
 
   useEffect(() => {
     // Sem orderBy: o Firestore descartaria parcerias sem `criadoEm` e um
@@ -135,9 +145,38 @@ export default function AdminParceriasScreen({ navigation }) {
     );
   };
 
+  const limparFormulario = () => {
+    setEditId(null);
+    setTitulo(''); setDescricao(''); setLink(''); setImagemUrl(''); setCategoriaSel([]);
+    setEstado(''); setCidade(''); setAtendimentoOnline(false);
+    setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
+    setValidadeDiasVoucher('30');
+  };
+
+  const editar = (p) => {
+    setEditId(p.id);
+    setTitulo(p.titulo || '');
+    setDescricao(p.descricao || '');
+    setLink(p.link || p.url || '');
+    setImagemUrl(p.imagemUrl || '');
+    setCategoriaSel(p.categorias || []);
+    setEstado(p.estado || '');
+    setCidade(p.cidade || '');
+    setAtendimentoOnline(p.atendimentoOnline === true);
+    setTipoBeneficio(p.tipoBeneficio === 'cupom' ? 'cupom' : 'link');
+    setPercentualBeneficio(p.percentualBeneficio != null ? String(p.percentualBeneficio) : '10');
+    setPercentualComissao(p.percentualComissao != null ? String(p.percentualComissao) : '3');
+    setValidadeDiasVoucher(p.validadeDiasVoucher != null ? String(p.validadeDiasVoucher) : '30');
+    rolagem.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const handlePublicar = async () => {
     if (!titulo.trim()) {
       Alert.alert('Atenção', 'Preencha pelo menos o título.');
+      return;
+    }
+    if (cidade.trim() && !estado) {
+      Alert.alert('Atenção', 'Escolha o estado da cidade informada.');
       return;
     }
     // O link é opcional; quando preenchido, é normalizado (https://, wa.me…).
@@ -157,12 +196,13 @@ export default function AdminParceriasScreen({ navigation }) {
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         link: linkFinal,
-        imagemUrl: imagemUrl.trim(),
+        // Link de compartilhamento do Google Drive vira o endereço da imagem.
+        imagemUrl: urlDeImagem(imagemUrl),
         categorias: categoriaSel,
-        ativo: true,
-        cliques: 0,
+        estado,
+        cidade: formatarCidade(cidade),
+        atendimentoOnline,
         tipoBeneficio,
-        criadoEm: serverTimestamp(),
       };
       if (tipoBeneficio === 'cupom') {
         dados.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
@@ -170,12 +210,17 @@ export default function AdminParceriasScreen({ navigation }) {
         dados.percentualDescontoCliente = descontoClienteCalculado;
         dados.baseCalculoComissao = 'valor_original';
         dados.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
-        dados.tokenPainel = gerarTokenPainel();
+        // Ao editar, mantém o token do painel do parceiro.
+        if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) dados.tokenPainel = gerarTokenPainel();
       }
-      await addDoc(collection(db, 'parcerias'), dados);
-      setTitulo(''); setDescricao(''); setLink(''); setImagemUrl(''); setCategoriaSel([]);
-      setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
-      Alert.alert('', 'Parceria publicada com sucesso!');
+      if (editId) {
+        await updateDoc(doc(db, 'parcerias', editId), dados);
+        Alert.alert('', 'Parceria atualizada!');
+      } else {
+        await addDoc(collection(db, 'parcerias'), { ...dados, ativo: true, cliques: 0, criadoEm: serverTimestamp() });
+        Alert.alert('', 'Parceria publicada com sucesso!');
+      }
+      limparFormulario();
     } catch (e) {
       Alert.alert('Erro', `Não foi possível publicar a parceria.${e?.message ? `\n${e.message}` : ''}`);
     } finally {
@@ -203,6 +248,7 @@ export default function AdminParceriasScreen({ navigation }) {
       <AdminSubTabs grupo="parcerias" atual="AdminParcerias" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
+        ref={rolagem}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={s.scroll}
@@ -233,7 +279,14 @@ export default function AdminParceriasScreen({ navigation }) {
 
         {/* ── Formulário ── */}
         <Card style={{ marginBottom: spacing.lg }}>
-          <Text style={s.cardTitle}>Nova parceria / benefício</Text>
+          <View style={s.formTopo}>
+            <Text style={[s.cardTitle, { flex: 1, marginBottom: 0 }]}>{editId ? 'Editar parceria' : 'Nova parceria / benefício'}</Text>
+            {editId && (
+              <TouchableOpacity onPress={limparFormulario} style={s.cancelarEdicao}>
+                <Text style={s.cancelarEdicaoTxt}>Cancelar edição</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <Text style={s.formLabel}>Título <Text style={s.required}>*</Text></Text>
           <TextInput
@@ -245,13 +298,16 @@ export default function AdminParceriasScreen({ navigation }) {
           />
 
           <Text style={s.formLabel}>Descrição <Text style={s.optional}>(opcional)</Text></Text>
+          {/* Cresce com o texto: quem digita vê tudo, como a usuária vê no app. */}
           <TextInput
-            style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
+            style={[s.input, { height: alturaDescricao, textAlignVertical: 'top', lineHeight: 20 }]}
             placeholder="Descreva o benefício ou como utilizá-lo..."
             placeholderTextColor={colors.tl}
             multiline
+            scrollEnabled={false}
             value={descricao}
             onChangeText={setDescricao}
+            onContentSizeChange={e => setAlturaDescricao(Math.max(120, Math.ceil(e.nativeEvent.contentSize.height) + 24))}
           />
 
           <Text style={s.formLabel}>Link de destino <Text style={s.optional}>(opcional)</Text></Text>
@@ -277,18 +333,54 @@ export default function AdminParceriasScreen({ navigation }) {
             </Text>
             <Text style={s.uploadHint}>PNG, JPG — Tamanho sugerido: 800×400 px</Text>
           </TouchableOpacity>
-          <Text style={s.orText}>— ou cole um link de imagem —</Text>
+          <Text style={s.orText}>— ou cole um link de imagem (também do Google Drive) —</Text>
           <TextInput
             style={s.input}
-            placeholder="https://..."
+            placeholder="https://... ou link do Google Drive"
             placeholderTextColor={colors.tl}
             autoCapitalize="none"
             value={imagemUrl}
             onChangeText={setImagemUrl}
           />
-          {imagemUrl ? (
-            <Image source={{ uri: imagemUrl }} style={s.previewImg} resizeMode="cover" />
+          {idDoDrive(imagemUrl) ? (
+            <Text style={s.hint}>Link do Google Drive reconhecido. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link".</Text>
           ) : null}
+          {imagemUrl ? (
+            <Image source={{ uri: urlDeImagem(imagemUrl) }} style={s.previewImg} resizeMode="contain" />
+          ) : null}
+
+          <Text style={s.formLabel}>Onde atende</Text>
+          <Text style={s.hint}>Usado no filtro de localização do app. Deixe em branco se o atendimento for só on-line.</Text>
+          <View style={s.linha2}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.miniLabel}>Estado</Text>
+              <TouchableOpacity style={[s.input, s.seletor]} onPress={() => setEscolhendoEstado(true)}>
+                <Text style={[s.seletorTxt, !estado && { color: colors.tl }]} numberOfLines={1}>
+                  {estado ? `${nomeDoEstado(estado)} (${estado})` : 'Escolher'}
+                </Text>
+                <Ionicons name="chevron-down" size={15} color={colors.tm} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.miniLabel}>Cidade</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Ex.: Vitória"
+                placeholderTextColor={colors.tl}
+                value={cidade}
+                onChangeText={setCidade}
+              />
+            </View>
+          </View>
+          <View style={s.onlineLinha}>
+            <Switch
+              value={atendimentoOnline}
+              onValueChange={setAtendimentoOnline}
+              trackColor={{ false: colors.border, true: colors.lav3 }}
+              thumbColor={atendimentoOnline ? colors.lav4 : colors.tl}
+            />
+            <Text style={s.onlineTxt}>Oferece atendimento on-line</Text>
+          </View>
 
           <Text style={s.formLabel}>Categorias</Text>
           <View style={s.chipRow}>
@@ -371,7 +463,7 @@ export default function AdminParceriasScreen({ navigation }) {
           )}
 
           <Button
-            title={enviando ? 'Publicando...' : 'Publicar parceria no app'}
+            title={enviando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Publicar parceria no app'}
             onPress={handlePublicar}
             style={{ marginTop: spacing.md }}
           />
@@ -396,7 +488,7 @@ export default function AdminParceriasScreen({ navigation }) {
         {parcerias.map(p => (
           <Card key={p.id} style={s.item}>
             {p.imagemUrl ? (
-              <Image source={{ uri: p.imagemUrl }} style={s.itemThumb} resizeMode="cover" />
+              <Image source={{ uri: urlDeImagem(p.imagemUrl) }} style={s.itemThumb} resizeMode="cover" />
             ) : (
               <View style={[s.itemThumb, s.itemThumbPlaceholder]}>
                 <Ionicons name="image-outline" size={20} color={colors.tl} />
@@ -420,6 +512,7 @@ export default function AdminParceriasScreen({ navigation }) {
                   </View>
                 )}
               </View>
+              {!!rotuloLocal(p) && <Text style={s.itemLocal}>{rotuloLocal(p)}</Text>}
               {p.link
                 ? <Text style={s.itemLink} numberOfLines={1}>{p.link}</Text>
                 : <Text style={[s.itemLink, { color: colors.tl }]}>Sem link de destino</Text>}
@@ -437,6 +530,9 @@ export default function AdminParceriasScreen({ navigation }) {
                 thumbColor={p.ativo !== false ? colors.lav4 : colors.tl}
               />
               <Text style={s.switchLbl}>{p.ativo !== false ? 'Ativa' : 'Oculta'}</Text>
+              <TouchableOpacity onPress={() => editar(p)} style={{ padding: 4, marginTop: 4 }} accessibilityLabel="Editar">
+                <Ionicons name="create-outline" size={18} color={colors.lav5} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => handleRemover(p.id)} style={{ padding: 4, marginTop: 4 }}>
                 <Ionicons name="trash-outline" size={17} color={colors.peach2} />
               </TouchableOpacity>
@@ -445,11 +541,43 @@ export default function AdminParceriasScreen({ navigation }) {
         ))}
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={escolhendoEstado} transparent animationType="fade" onRequestClose={() => setEscolhendoEstado(false)}>
+        <Pressable style={s.modalFundo} onPress={() => setEscolhendoEstado(false)}>
+          <Pressable style={s.modalCaixa} onPress={() => {}}>
+            <Text style={s.cardTitle}>Estado</Text>
+            <ScrollView style={{ maxHeight: 420 }}>
+              <TouchableOpacity style={s.ufItem} onPress={() => { setEstado(''); setEscolhendoEstado(false); }}>
+                <Text style={[s.ufTxt, { color: colors.tl }]}>Sem estado (só on-line)</Text>
+              </TouchableOpacity>
+              {UFS.map(e => (
+                <TouchableOpacity key={e.uf} style={s.ufItem} onPress={() => { setEstado(e.uf); setEscolhendoEstado(false); }}>
+                  <Text style={[s.ufTxt, estado === e.uf && { color: colors.lav5, fontFamily: fonts.bodyBold }]}>{e.nome} ({e.uf})</Text>
+                  {estado === e.uf && <Ionicons name="checkmark" size={16} color={colors.lav5} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </AdminLayout>
   );
 }
 
 const s = StyleSheet.create({
+  formTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  cancelarEdicao: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.full, backgroundColor: colors.lav1 },
+  cancelarEdicaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
+  miniLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginBottom: 4, marginTop: 6 },
+  seletor: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  seletorTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  onlineLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: spacing.sm },
+  onlineTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  itemLocal: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
+  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
+  ufItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.border },
+  ufTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 20 },

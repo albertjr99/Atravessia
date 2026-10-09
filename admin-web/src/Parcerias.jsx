@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { db } from './firebase';
 import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash } from './Icons';
+import { UFS, formatarCidade, rotuloLocal, urlDeImagem, idDoDrive } from './parceriaUtils';
+
+// Caixa de texto que cresce com o conteúdo: quem digita vê o texto inteiro,
+// como a usuária vê no app (antes ficava preso em 3 linhas).
+function TextoAutoAjustavel({ value, onChange, ...props }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight + 2, 120)}px`;
+  }, [value]);
+  return <textarea ref={ref} value={value} onChange={onChange} style={{ resize: 'vertical', overflow: 'hidden', lineHeight: 1.55 }} {...props} />;
+}
 
 const CATEGORIAS = [
   { id: 'saude',           label: 'Da saúde física' },
@@ -50,6 +64,7 @@ function tipoBtnStyle(ativo) {
 function novoForm() {
   return {
     titulo: '', descricao: '', link: '', imagemUrl: '', categorias: [], ativo: true,
+    estado: '', cidade: '', atendimentoOnline: false,
     tipoBeneficio: 'link',
     percentualBeneficio: '10',
     percentualComissao: '3',
@@ -97,6 +112,9 @@ export default function Parcerias({ showToast }) {
       imagemUrl: item.imagemUrl || '',
       categorias: item.categorias || [],
       ativo: item.ativo !== false,
+      estado: item.estado || '',
+      cidade: item.cidade || '',
+      atendimentoOnline: item.atendimentoOnline === true,
       tipoBeneficio: item.tipoBeneficio === 'cupom' ? 'cupom' : 'link',
       percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
       percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
@@ -125,10 +143,22 @@ export default function Parcerias({ showToast }) {
       showToast('O link de destino não parece um endereço válido. Confira ou deixe em branco.', 'error');
       return;
     }
+    if (form.cidade.trim() && !form.estado) {
+      showToast('Escolha o estado da cidade informada.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const { percentualBeneficio, percentualComissao, validadeDiasVoucher, ...resto } = form;
-      const data = { ...resto, link: linkFinal };
+      const data = {
+        ...resto,
+        link: linkFinal,
+        // Link do Google Drive vira o endereço direto da imagem.
+        imagemUrl: urlDeImagem(form.imagemUrl),
+        estado: form.estado || '',
+        cidade: formatarCidade(form.cidade),
+        atendimentoOnline: form.atendimentoOnline === true,
+      };
       if (form.tipoBeneficio === 'cupom') {
         // Sempre sobre o valor original — a opção "valor final" foi retirada.
         data.baseCalculoComissao = 'valor_original';
@@ -213,7 +243,7 @@ export default function Parcerias({ showToast }) {
               borderLeft: item.ativo === false ? '3px solid var(--border)' : '3px solid var(--primary)',
             }}>
               {item.imagemUrl ? (
-                <img src={item.imagemUrl} alt={item.titulo}
+                <img src={urlDeImagem(item.imagemUrl)} alt={item.titulo}
                   style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
               ) : (
                 <div style={{
@@ -232,6 +262,9 @@ export default function Parcerias({ showToast }) {
                   <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 6, lineHeight: 1.5 }}>
                     {item.descricao}
                   </div>
+                )}
+                {rotuloLocal(item) && (
+                  <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 4 }}>{rotuloLocal(item)}</div>
                 )}
                 {item.link && (
                   <a href={normalizarUrl(item.link) || item.link}
@@ -308,9 +341,10 @@ export default function Parcerias({ showToast }) {
 
               <div className="field-group">
                 <label>Descrição</label>
-                <textarea value={form.descricao}
+                <TextoAutoAjustavel value={form.descricao}
                   onChange={e => set('descricao', e.target.value)}
-                  placeholder="Descreva o benefício oferecido..." rows={3} />
+                  placeholder="Descreva o benefício oferecido..." />
+                <span className="field-hint">O texto aparece inteiro para a usuária, com as quebras de linha que você fizer.</span>
               </div>
 
               <div className="field-row">
@@ -322,19 +356,51 @@ export default function Parcerias({ showToast }) {
                   <span className="field-hint">Se preenchido, a usuária é levada a este endereço ao tocar na parceria.</span>
                 </div>
                 <div className="field-group">
-                  <label>URL da imagem (capa)</label>
+                  <label>Imagem / logotipo (link)</label>
                   <input type="url" value={form.imagemUrl}
                     onChange={e => set('imagemUrl', e.target.value)}
-                    placeholder="https://..." />
+                    placeholder="https://... ou link do Google Drive" />
+                  <span className="field-hint">
+                    {idDoDrive(form.imagemUrl)
+                      ? 'Link do Google Drive reconhecido. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link".'
+                      : 'Aceita link direto da imagem ou link de compartilhamento do Google Drive.'}
+                  </span>
                 </div>
               </div>
 
               {form.imagemUrl && (
                 <div style={{ marginBottom: 12 }}>
-                  <img src={form.imagemUrl} alt="preview"
-                    style={{ height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                  <img src={urlDeImagem(form.imagemUrl)} alt="Prévia da imagem"
+                    style={{ height: 80, maxWidth: 220, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1px solid var(--border)' }}
+                    onError={e => { e.currentTarget.style.opacity = 0.25; }} />
                 </div>
               )}
+
+              <div className="field-group">
+                <label>Onde atende</label>
+                <span className="field-hint">Usado no filtro de localização do aplicativo. Deixe estado e cidade em branco se o atendimento for só on-line.</span>
+                <div className="field-row" style={{ marginTop: 8 }}>
+                  <div className="field-group" style={{ marginBottom: 8 }}>
+                    <label>Estado</label>
+                    <select value={form.estado} onChange={e => set('estado', e.target.value)}>
+                      <option value="">— Sem estado —</option>
+                      {UFS.map(e => <option key={e.uf} value={e.uf}>{e.nome} ({e.uf})</option>)}
+                    </select>
+                  </div>
+                  <div className="field-group" style={{ marginBottom: 8 }}>
+                    <label>Cidade</label>
+                    <input type="text" value={form.cidade}
+                      onChange={e => set('cidade', e.target.value)}
+                      placeholder="Ex.: Vitória" />
+                  </div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form.atendimentoOnline}
+                    onChange={e => set('atendimentoOnline', e.target.checked)}
+                    style={{ width: 16, height: 16 }} />
+                  Oferece atendimento on-line
+                </label>
+              </div>
 
               <div className="field-group">
                 <label>Categorias *</label>

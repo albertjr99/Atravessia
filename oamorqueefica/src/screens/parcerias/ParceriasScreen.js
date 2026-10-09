@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
+  Modal, Pressable, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +10,11 @@ import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { situacaoCupom } from '../../utils/cupons';
+import { nomeDoEstado, chaveCidade, rotuloLocal } from '../../utils/localizacao';
+import { urlDeImagem } from '../../utils/imagemUrl';
+import {
+  useVideoApresentacao, BotaoApresentacao, ModalVideoApresentacao, VIDEOS,
+} from '../../components/VideoApresentacao';
 
 // Estas são as categorias oficiais — o painel administrativo grava exatamente
 // estes ids. A lista `match` existe apenas para reconhecer parcerias cadastradas
@@ -31,17 +37,131 @@ function descontoDaUsuaria(p) {
   return Math.max(0, (Number(p.percentualBeneficio) || 0) - (Number(p.percentualComissao) || 0));
 }
 
+function casaArea(p, filtroId) {
+  if (filtroId === 'todos') return true;
+  const cats = (p.categorias || []).map(c => String(c).toLowerCase());
+  const filtro = FILTROS.find(f => f.id === filtroId);
+  if (!filtro) return true;
+  // Casamento direto pelo id (padrão atual)…
+  if (cats.includes(filtro.id)) return true;
+  // …e por palavra-chave, para cadastros anteriores à padronização.
+  return (filtro.match || []).some(m => cats.some(c => c.includes(m)));
+}
+
+// Onde: 'todos' | 'online' | { estado, cidade } (cidade = chave sem acento, ou '').
+function casaLocal(p, onde) {
+  if (onde === 'todos') return true;
+  if (onde === 'online') return p.atendimentoOnline === true;
+  // Num estado/cidade também entram as parcerias com atendimento on-line,
+  // que atendem de qualquer lugar.
+  if (p.atendimentoOnline === true) return true;
+  if (p.estado !== onde.estado) return false;
+  return !onde.cidade || chaveCidade(p.cidade) === onde.cidade;
+}
+
+// Descrições longas mostram duas linhas e "ver mais" (o texto inteiro aparece
+// no próprio cartão, sem sair da tela).
+const DESCRICAO_LONGA = 90;
+
+function CartaoParceria({ p, carregando, onAcao, compacto }) {
+  const [aberto, setAberto] = useState(false);
+  const [erroImg, setErroImg] = useState(false);
+  const ehCupom = p.tipoBeneficio === 'cupom';
+  const destino = p.link || p.url;
+  const temAcao = ehCupom || !!destino;
+  const desconto = ehCupom ? descontoDaUsuaria(p) : 0;
+  const descricao = String(p.descricao || '').trim();
+  const longa = descricao.length > DESCRICAO_LONGA || descricao.includes('\n');
+  const local = rotuloLocal(p);
+  const imagem = urlDeImagem(p.imagemUrl);
+
+  // O cartão em si não é tocável: só o botão gera o cupom ou abre o link.
+  return (
+    <View style={[s.card, compacto && s.cardGrade]}>
+      <View style={s.cardLinha}>
+        {imagem && !erroImg ? (
+          <Image source={{ uri: imagem }} style={s.logo} resizeMode="contain" onError={() => setErroImg(true)} />
+        ) : (
+          <View style={[s.logo, s.logoVazio]}>
+            <Ionicons name="gift-outline" size={24} color={colors.lav3} />
+          </View>
+        )}
+        <View style={s.cardCorpo}>
+          <Text style={s.cardTitulo} numberOfLines={2}>{p.titulo}</Text>
+          <View style={s.metaLinha}>
+            {(p.categorias || []).length > 0 && (
+              <Text style={s.meta} numberOfLines={1}>{rotuloCategoria(p.categorias[0])}</Text>
+            )}
+            {!!local && (
+              <View style={s.localTag}>
+                <Ionicons name={p.atendimentoOnline && !p.estado ? 'globe-outline' : 'location-outline'} size={11} color={colors.lav5} />
+                <Text style={s.localTxt} numberOfLines={1}>{local}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {!!descricao && (
+        <View>
+          <Text style={s.cardDesc} numberOfLines={aberto || !longa ? undefined : 2}>{descricao}</Text>
+          {longa && (
+            <TouchableOpacity onPress={() => setAberto(a => !a)} hitSlop={8} style={s.verMais}>
+              <Text style={s.verMaisTxt}>{aberto ? 'ver menos' : 'ver mais'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      <View style={s.cardRodape}>
+        {desconto > 0 ? (
+          <View style={s.tagCupom}>
+            <Ionicons name="pricetag" size={11} color="#8A6A33" />
+            <Text style={s.tagCupomTxt}>{desconto}% de desconto</Text>
+          </View>
+        ) : <View />}
+        {temAcao ? (
+          <TouchableOpacity
+            style={[s.botao, carregando && { opacity: 0.7 }]}
+            onPress={onAcao}
+            disabled={carregando}
+            activeOpacity={0.85}
+          >
+            {carregando
+              ? <ActivityIndicator size="small" color="white" />
+              : <Ionicons name={ehCupom ? 'ticket-outline' : 'open-outline'} size={14} color="white" />}
+            <Text style={s.botaoTxt}>{carregando ? 'Gerando...' : ehCupom ? 'Gerar cupom' : 'Acessar'}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export default function ParceriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio, meusVouchers } = useApp();
   const cuponsEmAberto = (meusVouchers || []).filter(v => ['ativo', 'aguardando'].includes(situacaoCupom(v))).length;
   const [filtroAtivo, setFiltroAtivo] = useState('todos');
-  const [gerando, setGerando] = useState(null); // id da parceria em geração, para desabilitar o card
+  const [onde, setOnde] = useState('todos');
+  const [escolhendo, setEscolhendo] = useState(null); // 'estado' | 'cidade' | null
+  const [gerando, setGerando] = useState(null); // id da parceria em geração
+
+  // Vídeo de apresentação: abre sozinho na primeira visita.
+  const { video, abrirAutomatico, marcarVisto } = useVideoApresentacao('parcerias');
+  const [verVideo, setVerVideo] = useState(false);
+  useEffect(() => {
+    if (abrirAutomatico) { setVerVideo(true); marcarVisto(); }
+  }, [abrirAutomatico, marcarVisto]);
+
+  // Em tablets os cartões ficam lado a lado.
+  const colunas = width >= 1000 ? 3 : width >= 680 ? 2 : 1;
 
   // Parcerias comuns (a maioria) apenas levam a um link/desconto direto — sem
   // rastreamento financeiro. Só as marcadas como "cupom" pelo painel administrativo
   // (as que geram comissão para o Travessia) passam pelo fluxo de voucher.
-  const handleAbrirParceria = async (p) => {
+  const handleAcao = async (p) => {
     if (p.tipoBeneficio === 'cupom') {
       if (gerando) return;
       setGerando(p.id);
@@ -64,22 +184,54 @@ export default function ParceriasScreen({ navigation }) {
       return;
     }
     // Aceita tanto `link` (painel web) quanto `url` (cadastros antigos do app).
-    const destino = p.link || p.url;
     registrarCliqueParceria(p.id);
-    abrirLink(destino);
+    abrirLink(p.link || p.url);
   };
 
-  const parceriasExibidas = filtroAtivo === 'todos'
-    ? parcerias
-    : parcerias.filter(p => {
-        const cats = (p.categorias || []).map(c => String(c).toLowerCase());
-        const filtro = FILTROS.find(f => f.id === filtroAtivo);
-        if (!filtro) return true;
-        // Casamento direto pelo id (padrão atual)…
-        if (cats.includes(filtro.id)) return true;
-        // …e por palavra-chave, para cadastros anteriores à padronização.
-        return (filtro.match || []).some(m => cats.some(c => c.includes(m)));
-      });
+  // Estados e cidades que têm parcerias, para o filtro "Onde".
+  const estadosComParceria = useMemo(() => {
+    const m = new Map();
+    parcerias.forEach(p => { if (p.estado) m.set(p.estado, (m.get(p.estado) || 0) + 1); });
+    return [...m.entries()].map(([uf, qtd]) => ({ uf, nome: nomeDoEstado(uf), qtd }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [parcerias]);
+  const temOnline = parcerias.some(p => p.atendimentoOnline === true);
+
+  const estadoSel = typeof onde === 'object' ? onde.estado : null;
+  const cidadesDoEstado = useMemo(() => {
+    if (!estadoSel) return [];
+    const m = new Map();
+    parcerias.forEach(p => {
+      if (p.estado !== estadoSel || !p.cidade) return;
+      const k = chaveCidade(p.cidade);
+      const atual = m.get(k);
+      m.set(k, { chave: k, nome: atual?.nome || p.cidade, qtd: (atual?.qtd || 0) + 1 });
+    });
+    return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [parcerias, estadoSel]);
+  const cidadeSel = typeof onde === 'object' && onde.cidade
+    ? cidadesDoEstado.find(c => c.chave === onde.cidade)?.nome || ''
+    : '';
+
+  const parceriasExibidas = parcerias.filter(p => casaArea(p, filtroAtivo) && casaLocal(p, onde));
+  const filtrosLocalAtivos = estadosComParceria.length > 0 || temOnline;
+
+  const renderCartoes = () => {
+    if (colunas === 1) {
+      return parceriasExibidas.map(p => (
+        <CartaoParceria key={p.id} p={p} carregando={gerando === p.id} onAcao={() => handleAcao(p)} />
+      ));
+    }
+    return (
+      <View style={s.grade}>
+        {parceriasExibidas.map(p => (
+          <View key={p.id} style={{ width: `${100 / colunas}%`, padding: 5 }}>
+            <CartaoParceria p={p} carregando={gerando === p.id} onAcao={() => handleAcao(p)} compacto />
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
@@ -99,7 +251,7 @@ export default function ParceriasScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}>
         {cuponsEmAberto > 0 && (
           <TouchableOpacity style={s.meusCupons} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.85}>
             <Ionicons name="ticket-outline" size={18} color={colors.lav5} />
@@ -113,49 +265,75 @@ export default function ParceriasScreen({ navigation }) {
 
         {/* Hero */}
         <View style={s.hero}>
-          <View style={s.heroIcon}>
-            <Ionicons name="gift-outline" size={28} color={colors.lav5} />
-          </View>
-          <Text style={s.heroTitle}>Aqui você encontra descontos{'\n'}exclusivos para cuidar:</Text>
+          <Text style={s.heroTitle}>Descontos exclusivos para cuidar de você</Text>
           <Text style={s.heroSub}>
-            Você é o autor da sua história e a Atravessia caminha com você.{'\n'}
-            Experimente a vida — descubra novos parceiros, benefícios e descontos para cuidar de você e viver melhor o hoje.
+            Você é o autor da sua história e a Atravessia caminha com você. Experimente a vida — descubra parceiros e benefícios para viver melhor o hoje.
           </Text>
+          {!!video && <BotaoApresentacao onPress={() => setVerVideo(true)} style={{ alignSelf: 'center', marginTop: 4 }} />}
         </View>
 
-        {/* Filtros */}
-        <View style={s.filtrosWrap}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
-            {FILTROS.map(f => (
-              <TouchableOpacity
-                key={f.id}
-                style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
-                onPress={() => setFiltroAtivo(f.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Benefícios ilustrativos */}
-        <View style={s.beneficiosRow}>
-          {[
-            { icon: 'pricetag-outline', label: 'Descontos\nexclusivos' },
-            { icon: 'ticket-outline', label: 'Cupons pelo\naplicativo' },
-            { icon: 'heart-outline', label: 'Parcerias que\nfazem bem' },
-          ].map(b => (
-            <View key={b.label} style={s.beneficioItem}>
-              <View style={s.beneficioIcon}>
-                <Ionicons name={b.icon} size={20} color={colors.lav4} />
-              </View>
-              <Text style={s.beneficioLbl}>{b.label}</Text>
-            </View>
+        {/* Filtro: área da vida */}
+        <Text style={s.filtroRotulo}>Área da vida</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
+          {FILTROS.map(f => (
+            <TouchableOpacity
+              key={f.id}
+              style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
+              onPress={() => setFiltroAtivo(f.id)}
+              activeOpacity={0.75}
+            >
+              <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>{f.label}</Text>
+            </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
+
+        {/* Filtro: onde */}
+        {filtrosLocalAtivos && (
+          <>
+            <Text style={s.filtroRotulo}>Onde</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
+              <TouchableOpacity
+                style={[s.filtroChip, onde === 'todos' && s.filtroChipAtivo]}
+                onPress={() => setOnde('todos')}
+              >
+                <Text style={[s.filtroChipTxt, onde === 'todos' && s.filtroChipTxtAtivo]}>Todos os lugares</Text>
+              </TouchableOpacity>
+              {temOnline && (
+                <TouchableOpacity
+                  style={[s.filtroChip, s.filtroChipIcone, onde === 'online' && s.filtroChipAtivo]}
+                  onPress={() => setOnde('online')}
+                >
+                  <Ionicons name="globe-outline" size={13} color={onde === 'online' ? 'white' : colors.lav5} />
+                  <Text style={[s.filtroChipTxt, onde === 'online' && s.filtroChipTxtAtivo]}>Atendimento on-line</Text>
+                </TouchableOpacity>
+              )}
+              {estadosComParceria.length > 0 && (
+                <TouchableOpacity
+                  style={[s.filtroChip, s.filtroChipIcone, estadoSel && s.filtroChipAtivo]}
+                  onPress={() => setEscolhendo('estado')}
+                >
+                  <Ionicons name="location-outline" size={13} color={estadoSel ? 'white' : colors.lav5} />
+                  <Text style={[s.filtroChipTxt, estadoSel && s.filtroChipTxtAtivo]}>
+                    {estadoSel ? nomeDoEstado(estadoSel) : 'Estado'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={12} color={estadoSel ? 'white' : colors.tm} />
+                </TouchableOpacity>
+              )}
+              {estadoSel && cidadesDoEstado.length > 0 && (
+                <TouchableOpacity
+                  style={[s.filtroChip, s.filtroChipIcone, !!cidadeSel && s.filtroChipAtivo]}
+                  onPress={() => setEscolhendo('cidade')}
+                >
+                  <Text style={[s.filtroChipTxt, !!cidadeSel && s.filtroChipTxtAtivo]}>{cidadeSel || 'Cidade'}</Text>
+                  <Ionicons name="chevron-down" size={12} color={cidadeSel ? 'white' : colors.tm} />
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+            {estadoSel && temOnline && (
+              <Text style={s.notaFiltro}>Também aparecem as parcerias com atendimento on-line.</Text>
+            )}
+          </>
+        )}
 
         {/* Lista de parcerias */}
         {parcerias.length === 0 ? (
@@ -170,71 +348,60 @@ export default function ParceriasScreen({ navigation }) {
           <View style={s.emptyBox}>
             <Ionicons name="search-outline" size={36} color={colors.lav3} />
             <Text style={s.emptyTit}>Sem parcerias aqui</Text>
-            <Text style={s.emptySub}>Nenhuma parceria nesta categoria ainda. Tente outro filtro.</Text>
+            <Text style={s.emptySub}>Nenhuma parceria com esses filtros ainda. Tente outra área ou outro lugar.</Text>
           </View>
         ) : (
           <View style={s.lista}>
             <Text style={s.listaTitle}>
-              {filtroAtivo === 'todos' ? 'Parcerias disponíveis' : FILTROS.find(f => f.id === filtroAtivo)?.label}
+              {parceriasExibidas.length === 1 ? '1 parceria' : `${parceriasExibidas.length} parcerias`}
             </Text>
-            {parceriasExibidas.map(p => {
-              const ehCupom = p.tipoBeneficio === 'cupom';
-              const carregando = gerando === p.id;
-              return (
-                <TouchableOpacity
-                  key={p.id}
-                  style={s.card}
-                  onPress={() => handleAbrirParceria(p)}
-                  activeOpacity={0.85}
-                  disabled={carregando}
-                >
-                  {p.imagemUrl ? (
-                    <Image source={{ uri: p.imagemUrl }} style={s.cardImg} resizeMode="cover" />
-                  ) : (
-                    <View style={s.cardImgPlaceholder}>
-                      <Ionicons name="gift-outline" size={32} color={colors.lav3} />
-                      <Text style={s.cardImgPlaceholderTxt}>Parceria Atravessia</Text>
-                    </View>
-                  )}
-                  <View style={s.cardBody}>
-                    <View style={s.cardTags}>
-                      {(p.categorias || []).slice(0, 3).map(cat => (
-                        <View key={cat} style={s.tag}>
-                          <Text style={s.tagTxt}>{rotuloCategoria(cat)}</Text>
-                        </View>
-                      ))}
-                      {ehCupom && descontoDaUsuaria(p) > 0 && (
-                        <View style={[s.tag, s.tagCupom]}>
-                          <Text style={[s.tagTxt, s.tagCupomTxt]}>{descontoDaUsuaria(p)}% de desconto</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={s.cardTitulo}>{p.titulo}</Text>
-                    {p.descricao ? (
-                      <Text style={s.cardDesc} numberOfLines={3}>{p.descricao}</Text>
-                    ) : null}
-                    <View style={s.cardCta}>
-                      {carregando ? (
-                        <>
-                          <ActivityIndicator size="small" color={colors.lav4} />
-                          <Text style={s.cardCtaTxt}>Gerando cupom...</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Ionicons name={ehCupom ? 'pricetag' : 'arrow-forward-circle'} size={16} color={colors.lav4} />
-                          <Text style={s.cardCtaTxt}>{ehCupom ? 'Gerar cupom do benefício' : 'Acessar benefício'}</Text>
-                        </>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {renderCartoes()}
           </View>
         )}
-
-        <View style={{ height: spacing.xxl }} />
       </ScrollView>
+
+      {/* Escolha de estado / cidade */}
+      <Modal visible={!!escolhendo} transparent animationType="fade" onRequestClose={() => setEscolhendo(null)}>
+        <Pressable style={s.modalFundo} onPress={() => setEscolhendo(null)}>
+          <Pressable style={s.modalCaixa} onPress={() => {}}>
+            <Text style={s.modalTit}>{escolhendo === 'cidade' ? `Cidades — ${nomeDoEstado(estadoSel)}` : 'Estado'}</Text>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {escolhendo === 'estado' ? (
+                <>
+                  <TouchableOpacity style={s.opcao} onPress={() => { setOnde('todos'); setEscolhendo(null); }}>
+                    <Text style={s.opcaoTxt}>Todos os lugares</Text>
+                  </TouchableOpacity>
+                  {estadosComParceria.map(e => (
+                    <TouchableOpacity key={e.uf} style={s.opcao} onPress={() => { setOnde({ estado: e.uf, cidade: '' }); setEscolhendo(null); }}>
+                      <Text style={[s.opcaoTxt, estadoSel === e.uf && s.opcaoSel]}>{e.nome}</Text>
+                      <Text style={s.opcaoQtd}>{e.qtd}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity style={s.opcao} onPress={() => { setOnde({ estado: estadoSel, cidade: '' }); setEscolhendo(null); }}>
+                    <Text style={[s.opcaoTxt, !cidadeSel && s.opcaoSel]}>Todas as cidades</Text>
+                  </TouchableOpacity>
+                  {cidadesDoEstado.map(c => (
+                    <TouchableOpacity key={c.chave} style={s.opcao} onPress={() => { setOnde({ estado: estadoSel, cidade: c.chave }); setEscolhendo(null); }}>
+                      <Text style={[s.opcaoTxt, cidadeSel === c.nome && s.opcaoSel]}>{c.nome}</Text>
+                      <Text style={s.opcaoQtd}>{c.qtd}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <ModalVideoApresentacao
+        visivel={verVideo}
+        onFechar={() => setVerVideo(false)}
+        video={video}
+        tituloPadrao={VIDEOS.parcerias.titulo}
+      />
     </SafeAreaView>
   );
 }
@@ -260,94 +427,74 @@ const s = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
 
-  hero: {
-    alignItems: 'center', paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md, paddingBottom: spacing.lg,
+  hero: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: 6 },
+  heroTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td, textAlign: 'center', lineHeight: 25 },
+  heroSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 19 },
+
+  filtroRotulo: {
+    fontFamily: fonts.bodyBold, fontSize: 11, color: colors.tl, letterSpacing: 0.6, textTransform: 'uppercase',
+    paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: 4,
   },
-  heroIcon: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 14, borderWidth: 1, borderColor: colors.lav2,
-  },
-  heroTitle: {
-    fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td,
-    textAlign: 'center', lineHeight: 28, marginBottom: 10,
-  },
-  heroSub: {
-    fontFamily: fonts.body, fontSize: 13, color: colors.tm,
-    textAlign: 'center', lineHeight: 20, marginBottom: 8,
-  },
-  filtrosWrap: { marginBottom: spacing.sm },
   filtrosRow: { paddingHorizontal: spacing.lg, gap: 8, paddingVertical: 4 },
   filtroChip: {
     backgroundColor: colors.card, borderRadius: radius.full,
     paddingHorizontal: 14, paddingVertical: 7,
     borderWidth: 1.5, borderColor: colors.border,
   },
+  filtroChipIcone: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   filtroChipAtivo: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
   filtroChipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.td },
   filtroChipTxtAtivo: { fontFamily: fonts.bodyBold, color: 'white' },
-
-  beneficiosRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    paddingVertical: spacing.md, paddingHorizontal: spacing.sm,
-    backgroundColor: colors.card, borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  beneficioItem: { alignItems: 'center', gap: 8, flex: 1 },
-  beneficioIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: colors.lav2,
-  },
-  beneficioLbl: {
-    fontFamily: fonts.body, fontSize: 10, color: colors.td,
-    textAlign: 'center', lineHeight: 15,
-  },
+  notaFiltro: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, paddingHorizontal: spacing.lg, marginTop: 2 },
 
   emptyBox: { alignItems: 'center', padding: spacing.xxl, gap: 10 },
   emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
-  emptySub: {
-    fontFamily: fonts.body, fontSize: 13, color: colors.tm,
-    textAlign: 'center', lineHeight: 20,
-  },
+  emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20 },
 
-  lista: { paddingHorizontal: spacing.lg },
-  listaTitle: {
-    fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td,
-    marginBottom: spacing.md,
-  },
+  lista: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
+  listaTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tm, marginBottom: spacing.sm },
+  grade: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 },
+
   card: {
-    backgroundColor: colors.card, borderRadius: 18,
+    backgroundColor: colors.card, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden', marginBottom: 14,
-    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07, shadowRadius: 12, elevation: 3,
+    padding: 12, marginBottom: 10, gap: 8,
+    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  cardImg: { width: '100%', height: 150 },
-  cardImgPlaceholder: {
-    width: '100%', height: 110,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', gap: 8,
+  cardGrade: { marginBottom: 0, flex: 1 },
+  cardLinha: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  logo: { width: 56, height: 56, borderRadius: 12, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border },
+  logoVazio: { backgroundColor: colors.lav1, borderColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
+  cardCorpo: { flex: 1, minWidth: 0, gap: 4 },
+  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: colors.td },
+  metaLinha: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  meta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.lav5, maxWidth: '100%' },
+  localTag: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%' },
+  localTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, flexShrink: 1 },
+  cardDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, lineHeight: 19 },
+  verMais: { alignSelf: 'flex-start', marginTop: 2 },
+  verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
+  cardRodape: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  tagCupom: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.gold + '30', borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4,
   },
-  cardImgPlaceholderTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.lav4 },
-  cardBody: { padding: spacing.md },
-  cardTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  tag: {
-    backgroundColor: colors.lav1, borderRadius: radius.full,
-    paddingHorizontal: 8, paddingVertical: 3,
-  },
-  tagTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.lav5 },
-  tagCupom: { backgroundColor: colors.gold + '30' },
-  tagCupomTxt: { fontFamily: fonts.bodyBold, color: '#8A6A33' },
-  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: 5 },
-  cardDesc: {
-    fontFamily: fonts.body, fontSize: 12, color: colors.tm,
-    lineHeight: 18, marginBottom: 12,
-  },
-  cardCta: {
+  tagCupomTxt: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: '#8A6A33' },
+  botao: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border,
+    backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14,
   },
-  cardCtaTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav4 },
+  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
+
+  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
+  modalTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: spacing.sm },
+  opcao: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  opcaoTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
+  opcaoSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  opcaoQtd: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
 });

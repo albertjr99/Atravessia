@@ -15,7 +15,10 @@ const PLANO_IDS = ['perceber', 'acolher', 'compreender', 'evoluir'];
 function planoDe(u) {
   const p = u?.plano;
   if (typeof p === 'number') return PLANO_IDS[p] || 'perceber';
-  return PLANO_IDS.includes(p) ? p : 'perceber';
+  const n = Number(p);
+  if (p !== '' && p != null && Number.isFinite(n)) return PLANO_IDS[n] || 'perceber';
+  const texto = String(p || '').toLowerCase();
+  return PLANO_IDS.includes(texto) ? texto : 'perceber';
 }
 
 // Nome e descrição vêm de planos/{0..3} — os mesmos documentos editados em
