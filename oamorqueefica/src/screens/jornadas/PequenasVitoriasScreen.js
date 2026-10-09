@@ -13,6 +13,8 @@ import { ScriptTitle, QuoteText, LavandaBg } from '../../components';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR } from '../../utils/date';
+import { confirmar } from '../../utils/confirm';
+import { iconeDaVitoria } from '../../data/iconesVitoria';
 
 // Quantas opções prontas aparecem antes do "Ver mais".
 const OPCOES_VISIVEIS = 8;
@@ -80,7 +82,7 @@ function organizarHistorico(vitorias, hoje) {
 
 export default function PequenasVitoriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { vitorias, adicionarVitoria, temAcesso } = useApp();
+  const { vitorias, adicionarVitoria, removerVitoria, temAcesso } = useApp();
   const [textoCustom, setTextoCustom] = useState('');
   const [mostraInputCustom, setMostraInputCustom] = useState(false);
   const [opcoesFirestore, setOpcoesFirestore] = useState([]);
@@ -132,6 +134,19 @@ export default function PequenasVitoriasScreen({ navigation }) {
     setRegistrouAgora(true);
   };
 
+  // Toque por engano: a vitória de hoje pode ser desfeita. Dias anteriores
+  // ficam como estão.
+  const pedirRemocao = (label) => {
+    const registro = [...vitorias].reverse().find(v => diaDe(v.data) === hoje && v.label === label);
+    if (!registro) return;
+    confirmar(
+      'Desfazer esta vitória?',
+      `“${label}” sai do registro de hoje. Você pode marcar de novo quando quiser.`,
+      () => removerVitoria(registro).catch(e => console.warn('[PequenasVitorias] remover:', e?.message)),
+      'Desfazer',
+    );
+  };
+
   const handleAdicionarCustom = () => {
     registrar(textoCustom.trim());
     setTextoCustom('');
@@ -155,12 +170,18 @@ export default function PequenasVitoriasScreen({ navigation }) {
         <Text style={styles.diaQtd}>{itens.length === 1 ? '1 vitória' : `${itens.length} vitórias`}</Text>
       </View>
       <View style={styles.diaItens}>
-        {itens.map(v => (
+        {itens.map(v => (dia === hoje ? (
+          <TouchableOpacity key={v.id} style={styles.diaItem} onPress={() => pedirRemocao(v.label)} activeOpacity={0.8}>
+            <Ionicons name="star" size={11} color={colors.gold} />
+            <Text style={styles.diaItemTxt}>{v.label}</Text>
+            <Ionicons name="close" size={12} color={colors.tl} />
+          </TouchableOpacity>
+        ) : (
           <View key={v.id} style={styles.diaItem}>
             <Ionicons name="star" size={11} color={colors.gold} />
             <Text style={styles.diaItemTxt}>{v.label}</Text>
           </View>
-        ))}
+        )))}
       </View>
     </View>
   );
@@ -219,12 +240,12 @@ export default function PequenasVitoriasScreen({ navigation }) {
                   <TouchableOpacity
                     key={v.id}
                     style={[styles.chip, jaRegistrada && styles.chipFeito]}
-                    onPress={() => registrar(v.label)}
-                    disabled={jaRegistrada}
+                    onPress={() => (jaRegistrada ? pedirRemocao(v.label) : registrar(v.label))}
                     activeOpacity={0.85}
+                    accessibilityHint={jaRegistrada ? 'Toque para desfazer' : undefined}
                   >
                     <Ionicons
-                      name={jaRegistrada ? 'checkmark-circle' : 'add-circle-outline'}
+                      name={jaRegistrada ? 'checkmark-circle' : iconeDaVitoria(v)}
                       size={15}
                       color={jaRegistrada ? colors.sageFg : colors.lav5}
                     />
@@ -238,12 +259,15 @@ export default function PequenasVitoriasScreen({ navigation }) {
                 );
               })}
               {personalizadasHoje.map(l => (
-                <View key={`p-${l}`} style={[styles.chip, styles.chipFeito]}>
+                <TouchableOpacity key={`p-${l}`} style={[styles.chip, styles.chipFeito]} onPress={() => pedirRemocao(l)} activeOpacity={0.85}>
                   <Ionicons name="checkmark-circle" size={15} color={colors.sageFg} />
                   <Text style={[styles.chipText, styles.chipTextFeito]} numberOfLines={2}>{l}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
+            {registradosHoje.length > 0 && (
+              <Text style={styles.dicaDesfazer}>Marcou por engano? Toque na vitória de hoje para desfazer.</Text>
+            )}
 
             {ocultas > 0 || verTodasOpcoes ? (
               <TouchableOpacity style={styles.verMais} onPress={() => setVerTodasOpcoes(v => !v)}>
@@ -368,6 +392,7 @@ const styles = StyleSheet.create({
   chipText: { flexShrink: 1, fontFamily: fonts.body, fontSize: 12, color: colors.td },
   chipTextFeito: { color: colors.sageFg, fontFamily: fonts.bodyBold },
 
+  dicaDesfazer: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, marginTop: 8 },
   verMais: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 8, marginTop: 4 },
   verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
 

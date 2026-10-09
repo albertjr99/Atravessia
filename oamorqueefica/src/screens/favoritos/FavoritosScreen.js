@@ -55,7 +55,10 @@ export default function FavoritosScreen({ navigation }) {
     }
     // Imagem e texto abrem na tela de leitura. O favorito não guarda o `texto`;
     // a tela busca a versão atual em `conteudos` pelo id.
-    if (item.tipo === 'imagem' || item.tipo === 'texto') {
+    // Link com descrição (ex.: a história de uma música) também abre na tela
+    // de leitura, para o texto aparecer inteiro; o link abre pelo botão.
+    const linkComTexto = item.tipo === 'link' && !!String(item.descricao || '').trim();
+    if (item.tipo === 'imagem' || item.tipo === 'texto' || linkComTexto) {
       navigation.navigate('Conteudo', {
         conteudo: {
           id: item.conteudoId || item.id,

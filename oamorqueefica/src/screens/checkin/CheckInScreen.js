@@ -16,6 +16,8 @@ import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { ProximoPasso } from '../../components/DiarioDoDia';
+import { useAuth } from '../../hooks/AuthContext';
+import { carregarHistoricoSugestoes, registrarSugestoes, escolherSugestao } from '../../utils/sugestoes';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
@@ -36,7 +38,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.cTit} numberOfLines={2}>{c.titulo}</Text>
-        {c.descricao ? <Text style={s.cDesc} numberOfLines={1}>{c.descricao}</Text> : null}
+        {c.descricao ? <Text style={s.cDesc} numberOfLines={2}>{c.descricao}</Text> : null}
       </View>
       <TouchableOpacity onPress={onFav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={18} color={isFav ? '#C06080' : colors.tl} />
@@ -47,7 +49,17 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 
 export default function CheckInScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso } = useApp();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso, conteudosLiberados } = useApp();
+  const { firebaseUser } = useAuth();
+  const uid = firebaseUser?.uid;
+  // Histórico das sugestões já mostradas, para não repetir o mesmo conteúdo
+  // em dias seguidos.
+  const [historicoSug, setHistoricoSug] = useState([]);
+  useEffect(() => {
+    let vivo = true;
+    carregarHistoricoSugestoes(uid).then(h => { if (vivo) setHistoricoSug(h); });
+    return () => { vivo = false; };
+  }, [uid]);
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
@@ -85,8 +97,11 @@ export default function CheckInScreen({ navigation }) {
     ? audiosAcolhimento.filter(a => a.ativo !== false)
     : audiosEstaticos;
 
-  // Índice aleatório fixado por sessão para evitar repetição entre check-ins consecutivos
-  const randomIdxRef = useRef({});
+  // Áudios já liberados em dias anteriores, do mais antigo ao mais recente.
+  const audiosJaOuvidos = useMemo(() => (conteudosLiberados || [])
+    .filter(c => c.grupo === 'acolhimento' && c.data !== hojeStr)
+    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')))
+    .map(c => c.id), [conteudosLiberados, hojeStr]);
 
   const audioRec = useMemo(() => {
     if (!emocaoSel || !emocaoObj || emocaoObj.positiva) return null;
@@ -94,13 +109,10 @@ export default function CheckInScreen({ navigation }) {
       (a.emocoes || []).includes(emocaoSel) && (a.plano || 0) <= 1
     );
     const pool = candidatos.length > 0 ? candidatos : fonteAudios.filter(a => (a.emocoes || []).includes(emocaoSel));
-    if (pool.length === 0) return null;
-    const key = `audio_${emocaoSel}`;
-    if (randomIdxRef.current[key] === undefined) {
-      randomIdxRef.current[key] = Math.floor(Math.random() * pool.length);
-    }
-    return pool[randomIdxRef.current[key] % pool.length];
-  }, [emocaoSel, emocaoObj, fonteAudios]);
+    return escolherSugestao(pool, {
+      historico: historicoSug, tipo: 'audio', emocao: emocaoSel, hoje: hojeStr, vistosExtras: audiosJaOuvidos,
+    });
+  }, [emocaoSel, emocaoObj, fonteAudios, historicoSug, hojeStr, audiosJaOuvidos]);
 
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
@@ -150,15 +162,28 @@ export default function CheckInScreen({ navigation }) {
 
   const conteudoExibido = useMemo(() => {
     if (!emocaoSel || conteudosSugeridos.length === 0) return null;
-    if (randomIdxRef.current[emocaoSel] === undefined) {
-      randomIdxRef.current[emocaoSel] = Math.floor(Math.random() * conteudosSugeridos.length);
-    }
-    return conteudosSugeridos[randomIdxRef.current[emocaoSel] % conteudosSugeridos.length];
-  }, [emocaoSel, conteudosSugeridos]);
+    return escolherSugestao(conteudosSugeridos, {
+      historico: historicoSug, tipo: 'conteudo', emocao: emocaoSel, hoje: hojeStr,
+    });
+  }, [emocaoSel, conteudosSugeridos, historicoSug, hojeStr]);
+
+  // Ao registrar o check-in, guarda o que foi sugerido hoje: amanhã a escolha
+  // evita estes itens.
+  useEffect(() => {
+    if (!salvo || !emocaoSel) return;
+    registrarSugestoes(uid, [
+      audioRec && { id: audioRec.id, tipo: 'audio', emocao: emocaoSel, data: hojeStr },
+      conteudoExibido && { id: conteudoExibido.id, tipo: 'conteudo', emocao: emocaoSel, data: hojeStr },
+    ]).then(h => { if (h) setHistoricoSug(h); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salvo]);
 
   const handleAbrirConteudo = (c) => {
     // Imagem e texto abrem na tela de leitura (que também trata o plano).
-    if (c.tipo === 'imagem' || c.tipo === 'texto') {
+    // Link com descrição (ex.: a história de uma música) também abre na tela
+    // de leitura, para o texto aparecer inteiro; o link abre pelo botão.
+    const linkComTexto = c.tipo === 'link' && !!String(c.descricao || '').trim();
+    if (c.tipo === 'imagem' || c.tipo === 'texto' || linkComTexto) {
       navigation.navigate('Conteudo', { conteudo: { id: c.id, titulo: c.titulo, descricao: c.descricao, tipo: c.tipo, url: c.url, texto: c.texto, plano: c.plano } });
       return;
     }

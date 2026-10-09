@@ -9,12 +9,14 @@ import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+import TextoComLinks from '../../components/TextoComLinks';
 
-// Tela de leitura dos "Outros conteúdos" do tipo imagem e texto.
+// Tela de leitura dos "Outros conteúdos" (imagem, texto e link com descrição).
 // Recebe o item por params (vindo do check-in, da aba Conteúdos ou dos
 // Favoritos). A cópia guardada no favorito não inclui o `texto`, então os
 // dados atuais são sempre buscados em `conteudos` pelo id.
 const limparId = (v) => String(v || '').replace(/^(audio|admin)-/, '');
+const hostDe = (url) => String(url).replace(/^[a-z]+:\/\//i, '').replace(/^www\./i, '').split(/[/?#]/)[0];
 
 export default function ConteudoScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -110,15 +112,21 @@ export default function ConteudoScreen({ route, navigation }) {
           <View style={s.imagemCarregando}><ActivityIndicator color={colors.lav4} /></View>
         );
       }
-      return <Text style={s.texto} selectable>{item.texto}</Text>;
+      return <TextoComLinks style={s.texto} selectable>{item.texto}</TextoComLinks>;
     }
 
-    // Outros tipos não deveriam chegar aqui; oferece abrir o endereço.
-    return item.url ? (
-      <TouchableOpacity style={s.lockBtn} onPress={() => abrirLink(item.url)} activeOpacity={0.85}>
-        <Text style={s.lockBtnTxt}>Abrir conteúdo</Text>
-        <Ionicons name="open-outline" size={14} color="white" />
-      </TouchableOpacity>
+    // Link (e documentos antigos): a descrição inteira aparece acima e o
+    // endereço abre só pelo botão.
+    const endereco = item.url || item.link;
+    return endereco ? (
+      <View style={s.linkCard}>
+        <View style={s.linkIcone}><Ionicons name="link-outline" size={20} color={colors.lav5} /></View>
+        <Text style={s.linkHost} numberOfLines={1}>{hostDe(endereco)}</Text>
+        <TouchableOpacity style={s.lockBtn} onPress={() => abrirLink(endereco)} activeOpacity={0.85}>
+          <Text style={s.lockBtnTxt}>Abrir o link</Text>
+          <Ionicons name="open-outline" size={14} color="white" />
+        </TouchableOpacity>
+      </View>
     ) : (
       <Text style={s.indisponivel}>Este conteúdo não está disponível.</Text>
     );
@@ -134,7 +142,7 @@ export default function ConteudoScreen({ route, navigation }) {
           <Ionicons name="chevron-back" size={24} color={colors.td} />
         </TouchableOpacity>
         <Text style={s.topTitle} numberOfLines={1}>
-          {item.tipo === 'imagem' ? 'Imagem' : item.tipo === 'texto' ? 'Leitura' : 'Conteúdo'}
+          {item.tipo === 'imagem' ? 'Imagem' : item.tipo === 'texto' ? 'Leitura' : item.tipo === 'link' ? 'Link' : 'Conteúdo'}
         </Text>
         <TouchableOpacity
           onPress={toggleFavorito}
@@ -156,7 +164,7 @@ export default function ConteudoScreen({ route, navigation }) {
       >
         <View style={s.coluna}>
           <Text style={s.titulo}>{item.titulo}</Text>
-          {item.descricao ? <Text style={s.descricao}>{item.descricao}</Text> : null}
+          {item.descricao ? <TextoComLinks style={s.descricao} selectable>{item.descricao}</TextoComLinks> : null}
           <View style={s.divisor} />
           {renderCorpo()}
         </View>
@@ -188,6 +196,12 @@ const s = StyleSheet.create({
   imagem: { width: '100%' },
   imagemCarregando: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
   indisponivel: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.tm, textAlign: 'center', paddingVertical: spacing.xl },
+  linkCard: {
+    alignItems: 'center', gap: 8, backgroundColor: colors.card,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...shadow.card,
+  },
+  linkIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  linkHost: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, maxWidth: '100%' },
   lockCard: {
     alignItems: 'center', gap: 10, backgroundColor: colors.card,
     borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2, borderStyle: 'dashed',

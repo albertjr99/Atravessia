@@ -5,6 +5,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, writeBatch,
 } from 'firebase/firestore';
 import { IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
+import { ICONES_VITORIA, iconeVitoria } from './iconesVitoria';
 
 const VITORIAS_PADRAO = [
   'Saí de casa', 'Consegui dormir', 'Encontrei amigos',
@@ -13,17 +14,50 @@ const VITORIAS_PADRAO = [
   'Pratiquei respiração',
 ];
 
-const EMOJIS = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+// Ícone desenhado com máscara para seguir a cor do painel (o SVG é preto).
+function IconeVitoria({ id, size = 20, cor = 'var(--primary)' }) {
+  const { url, nome } = iconeVitoria(id);
+  return (
+    <span
+      role="img"
+      aria-label={nome}
+      style={{
+        display: 'inline-block', width: size, height: size, flexShrink: 0, backgroundColor: cor,
+        WebkitMask: `url(${url}) center / contain no-repeat`, mask: `url(${url}) center / contain no-repeat`,
+      }}
+    />
+  );
+}
+
+// Grade de ícones para escolher; os mesmos aparecem para a usuária no app.
+function SeletorIcone({ valor, onChange }) {
+  const atual = iconeVitoria(valor).id;
+  return (
+    <div className="aln-icones">
+      {ICONES_VITORIA.map(ic => (
+        <button
+          key={ic.id}
+          type="button"
+          title={ic.nome}
+          className={`aln-icone-btn ${atual === ic.id ? 'sel' : ''}`}
+          onClick={() => onChange(ic.id)}
+        >
+          <IconeVitoria id={ic.id} size={20} cor={atual === ic.id ? 'var(--primary)' : 'var(--text-mid)'} />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function Vitorias({ showToast }) {
   const [opcoes, setOpcoes] = useState([]);
   const [novoLabel, setNovoLabel] = useState('');
-  const [novoEmoji, setNovoEmoji] = useState('');
+  const [novoIcone, setNovoIcone] = useState('star');
   const [salvando, setSalvando] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState(null);
   const [editLabel, setEditLabel] = useState('');
-  const [editEmoji, setEditEmoji] = useState('');
+  const [editIcone, setEditIcone] = useState('star');
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
@@ -39,10 +73,10 @@ export default function Vitorias({ showToast }) {
     setSalvando(true);
     try {
       await addDoc(collection(db, 'vitoriasOpcoes'), {
-        label, emoji: novoEmoji || '', ativo: true, criadoEm: serverTimestamp(),
+        label, icone: novoIcone, ativo: true, criadoEm: serverTimestamp(),
       });
       setNovoLabel('');
-      setNovoEmoji('');
+      setNovoIcone('star');
       showToast('Vitória adicionada!');
     } catch { showToast('Erro ao adicionar.', 'error'); }
     setSalvando(false);
@@ -51,14 +85,16 @@ export default function Vitorias({ showToast }) {
   const startEdit = (item) => {
     setEditId(item.id);
     setEditLabel(item.label || '');
-    setEditEmoji(item.emoji || '');
+    setEditIcone(iconeVitoria(item.icone).id);
   };
 
   const saveEdit = async () => {
     if (!editLabel.trim()) return;
-    await updateDoc(doc(db, 'vitoriasOpcoes', editId), { label: editLabel.trim(), emoji: editEmoji });
-    setEditId(null);
-    showToast('Atualizado!');
+    try {
+      await updateDoc(doc(db, 'vitoriasOpcoes', editId), { label: editLabel.trim(), icone: editIcone });
+      setEditId(null);
+      showToast('Atualizado!');
+    } catch (e) { showToast(`Erro ao salvar: ${e?.message || 'tente novamente.'}`, 'error'); }
   };
 
   const cancelEdit = () => setEditId(null);
@@ -80,7 +116,7 @@ export default function Vitorias({ showToast }) {
       const batch = writeBatch(db);
       VITORIAS_PADRAO.forEach(label => {
         const ref = doc(collection(db, 'vitoriasOpcoes'));
-        batch.set(ref, { label, emoji: '', ativo: true, criadoEm: serverTimestamp() });
+        batch.set(ref, { label, icone: 'star', ativo: true, criadoEm: serverTimestamp() });
       });
       await batch.commit();
       showToast(`${VITORIAS_PADRAO.length} vitórias importadas!`);
@@ -115,15 +151,14 @@ export default function Vitorias({ showToast }) {
               onKeyDown={e => e.key === 'Enter' && handleAdicionar()}
             />
           </div>
-          <div className="field-group" style={{ marginBottom: 0, width: 120 }}>
-            <label>Emoji</label>
-            <select value={novoEmoji} onChange={e => setNovoEmoji(e.target.value)} style={{ fontSize: 18 }}>
-              {EMOJIS.map(em => <option key={em} value={em}>{em}</option>)}
-            </select>
-          </div>
           <button className="btn-primary" onClick={handleAdicionar} disabled={salvando || !novoLabel.trim()}>
-            {salvando ? '' : '+ Adicionar'}
+            {salvando ? 'Adicionando...' : '+ Adicionar'}
           </button>
+        </div>
+        <div className="field-group" style={{ marginTop: 14, marginBottom: 0 }}>
+          <label>Ícone</label>
+          <SeletorIcone valor={novoIcone} onChange={setNovoIcone} />
+          <span className="field-hint">Aparece ao lado da vitória no aplicativo.</span>
         </div>
       </div>
 
@@ -138,10 +173,8 @@ export default function Vitorias({ showToast }) {
           {opcoes.map(item => (
             <div key={item.id} className={`vitoria-item ${item.ativo === false ? 'inactive' : ''}`}>
               {editId === item.id ? (
-                <>
-                  <select value={editEmoji} onChange={e => setEditEmoji(e.target.value)} style={{ fontSize: 20, border: '1px solid var(--border)', borderRadius: 6, padding: '4px 6px' }}>
-                    {EMOJIS.map(em => <option key={em} value={em}>{em}</option>)}
-                  </select>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
                     style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--primary-mid)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
                     value={editLabel}
@@ -151,11 +184,13 @@ export default function Vitorias({ showToast }) {
                   />
                   <button className="btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={saveEdit}> Salvar</button>
                   <button className="btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }} onClick={cancelEdit}>Cancelar</button>
-                </>
+                  </div>
+                  <SeletorIcone valor={editIcone} onChange={setEditIcone} />
+                </div>
               ) : (
                 <>
                   <div className="vitoria-label">
-                    <span className="vitoria-emoji">{item.emoji || ''}</span>
+                    <IconeVitoria id={item.icone} size={18} />
                     <span>{item.label}</span>
                     {item.ativo === false && <span className="badge badge-inactive" style={{ marginLeft: 8 }}>Inativo</span>}
                   </div>

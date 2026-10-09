@@ -239,3 +239,16 @@ a.list-card-url:hover { color: var(--primary-600); text-decoration: underline; }
 .aln-ind-val { font-size: 24px; font-weight: 700; color: var(--text-dark); }
 .aln-ind-lbl { font-size: 12px; font-weight: 700; color: var(--text-dark); margin-top: 2px; }
 .aln-ind-det { font-size: 11px; color: var(--text-light); margin-top: 3px; line-height: 1.4; }
+
+/* ── Seletor de ícones (Pequenas Vitórias) ───────────────────── */
+.aln-icones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.aln-icone-btn {
+  width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card, #fff); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.aln-icone-btn:hover { border-color: var(--primary-200); }
+.aln-icone-btn.sel { border-color: var(--primary); background: var(--primary-lav, #EDE9F5); }
+
+/* ── Barra de envio (vídeos) ─────────────────────────────────── */
+.aln-progresso { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.aln-progresso > div { height: 100%; background: var(--primary); transition: width .2s ease; }

@@ -35,6 +35,7 @@ import AdminFrasesScreen from '../screens/admin/AdminFrasesScreen';
 import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
 import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import AdminOutrosConteudosScreen from '../screens/admin/AdminOutrosConteudosScreen';
+import AdminVideosScreen from '../screens/admin/AdminVideosScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
@@ -104,6 +105,7 @@ function AdminStack() {
       <Stack.Screen name="AdminAudios" component={AdminAudiosScreen} />
       <Stack.Screen name="AdminTravessia" component={AdminTravessiaScreen} />
       <Stack.Screen name="AdminOutrosConteudos" component={AdminOutrosConteudosScreen} />
+      <Stack.Screen name="AdminVideos" component={AdminVideosScreen} />
     </Stack.Navigator>
   );
 }

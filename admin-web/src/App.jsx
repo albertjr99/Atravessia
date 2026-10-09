@@ -8,6 +8,7 @@ import Dashboard from './Dashboard';
 import Audios from './Audios';
 import Frases from './Frases';
 import OutrosConteudos from './OutrosConteudos';
+import Videos from './Videos';
 import Travessia from './Travessia';
 import Jornadas from './Jornadas';
 import Vitorias from './Vitorias';
@@ -45,6 +46,7 @@ const NAV_GRUPOS = [
           { id: 'audios', label: 'Áudios Check-in' },
           { id: 'frases', label: 'Frases' },
           { id: 'outrosConteudos', label: 'Outros conteúdos' },
+          { id: 'videos', label: 'Vídeos' },
         ],
       },
       {
@@ -93,6 +95,7 @@ const SCREENS = {
   audios:          Audios,
   frases:          Frases,
   outrosConteudos: OutrosConteudos,
+  videos:          Videos,
   travessia:       Travessia,
   jornadas:        Jornadas,
   vitorias:        Vitorias,

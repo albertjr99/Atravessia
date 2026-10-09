@@ -18,7 +18,9 @@ const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
 function planoDe(u) {
   const p = u?.plano;
   if (typeof p === 'number') return p;
-  return PLANO_TEXTO[p] ?? 0;
+  const n = Number(p);
+  if (p !== '' && p != null && Number.isFinite(n)) return n;
+  return PLANO_TEXTO[String(p || '').toLowerCase()] ?? 0;
 }
 
 export default function AdminUsuariasScreen({ navigation }) {

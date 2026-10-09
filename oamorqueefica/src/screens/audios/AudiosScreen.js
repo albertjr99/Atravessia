@@ -54,7 +54,10 @@ export default function AudiosScreen({ navigation }) {
     }
     // Imagem e texto abrem na tela de leitura. O favorito não guarda o `texto`;
     // a tela busca a versão atual em `conteudos` pelo id.
-    if (item.tipo === 'imagem' || item.tipo === 'texto') {
+    // Link com descrição (ex.: a história de uma música) também abre na tela
+    // de leitura, para o texto aparecer inteiro; o link abre pelo botão.
+    const linkComTexto = item.tipo === 'link' && !!String(item.descricao || '').trim();
+    if (item.tipo === 'imagem' || item.tipo === 'texto' || linkComTexto) {
       navigation.navigate('Conteudo', {
         conteudo: {
           id: item.conteudoId || item.id,
@@ -148,7 +151,7 @@ export default function AudiosScreen({ navigation }) {
                   <View style={s.info}>
                     <Text style={s.titulo}>{item.titulo}</Text>
                     {item.descricao ? (
-                      <Text style={s.desc} numberOfLines={1}>{item.descricao}</Text>
+                      <Text style={s.desc} numberOfLines={2}>{item.descricao}</Text>
                     ) : (
                       <Text style={s.grupo}>{item.grupo || TIPO_LABEL[item.tipo] || ''}</Text>
                     )}
