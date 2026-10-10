@@ -9,11 +9,14 @@ import Audios from './Audios';
 import Frases from './Frases';
 import OutrosConteudos from './OutrosConteudos';
 import Videos from './Videos';
+import AtravessIA from './AtravessIA';
 import Travessia from './Travessia';
 import Jornadas from './Jornadas';
 import Vitorias from './Vitorias';
 import Parcerias from './Parcerias';
 import Beneficios from './Beneficios';
+import Cashback from './Cashback';
+import Indicacoes from './Indicacoes';
 import Usuarias from './Usuarias';
 import Notificacoes from './Notificacoes';
 import Mensagens from './Mensagens';
@@ -35,6 +38,7 @@ const NAV_GRUPOS = [
     titulo: 'Visão geral',
     itens: [
       { id: 'dashboard', Icon: IconDashboard, label: 'Dashboard' },
+      { id: 'atravessia', Icon: IconSpark, label: 'AtravessIA', sub: 'Leitura dos dados · Assistente' },
     ],
   },
   {
@@ -62,6 +66,8 @@ const NAV_GRUPOS = [
         abas: [
           { id: 'parcerias', label: 'Parcerias' },
           { id: 'beneficios', label: 'Cupons e Comissões' },
+          { id: 'cashback', label: 'Cashback' },
+          { id: 'indicacoes', label: 'Indicações Amazon' },
         ],
       },
     ],
@@ -92,6 +98,7 @@ const NAV_GRUPOS = [
 // Uma entrada por tela (aba). Cada tela recebe { showToast, perfil }.
 const SCREENS = {
   dashboard:       Dashboard,
+  atravessia:      AtravessIA,
   audios:          Audios,
   frases:          Frases,
   outrosConteudos: OutrosConteudos,
@@ -101,6 +108,8 @@ const SCREENS = {
   vitorias:        Vitorias,
   parcerias:       Parcerias,
   beneficios:      Beneficios,
+  cashback:        Cashback,
+  indicacoes:      Indicacoes,
   usuarias:        Usuarias,
   notificacoes:    Notificacoes,
   mensagens:       Mensagens,

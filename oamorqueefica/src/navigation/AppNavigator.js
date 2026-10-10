@@ -36,6 +36,9 @@ import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
 import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import AdminOutrosConteudosScreen from '../screens/admin/AdminOutrosConteudosScreen';
 import AdminVideosScreen from '../screens/admin/AdminVideosScreen';
+import AdminAtravessIAScreen from '../screens/admin/AdminAtravessIAScreen';
+import AdminIndicacoesScreen from '../screens/admin/AdminIndicacoesScreen';
+import AdminCashbackScreen from '../screens/admin/AdminCashbackScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
@@ -51,6 +54,8 @@ import AtravessIAScreen from '../screens/atravessia/AtravessIAScreen';
 import ConversaIAScreen from '../screens/atravessia/ConversaIAScreen';
 import DiarioGuiadoScreen from '../screens/atravessia/DiarioGuiadoScreen';
 import CartaMesScreen from '../screens/atravessia/CartaMesScreen';
+import CashbackScreen from '../screens/cashback/CashbackScreen';
+import IndicacoesScreen from '../screens/indicacoes/IndicacoesScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { useTema } from '../hooks/TemaContext';
@@ -96,6 +101,8 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="ConversaIA" component={ConversaIAScreen} />
       <Stack.Screen name="DiarioGuiado" component={DiarioGuiadoScreen} />
       <Stack.Screen name="CartaMes" component={CartaMesScreen} />
+      <Stack.Screen name="Cashback" component={CashbackScreen} />
+      <Stack.Screen name="Indicacoes" component={IndicacoesScreen} />
     </Stack.Navigator>
   );
 }
@@ -119,6 +126,9 @@ function AdminStack() {
       <Stack.Screen name="AdminTravessia" component={AdminTravessiaScreen} />
       <Stack.Screen name="AdminOutrosConteudos" component={AdminOutrosConteudosScreen} />
       <Stack.Screen name="AdminVideos" component={AdminVideosScreen} />
+      <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />
+      <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
+      <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />
     </Stack.Navigator>
   );
 }

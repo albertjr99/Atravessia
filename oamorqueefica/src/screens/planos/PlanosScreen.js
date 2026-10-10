@@ -16,6 +16,7 @@ import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
 import { db, functions } from '../../services/firebase';
+import UsarCashback from '../cashback/UsarCashback';
 
 export default function PlanosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -25,6 +26,7 @@ export default function PlanosScreen({ navigation }) {
   const [carregando, setCarregando] = useState(false);
   const [demorando, setDemorando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [usarCashback, setUsarCashback] = useState(false);
 
   // Situação de acesso da usuária, para a tela dizer com clareza em que plano
   // ela está e não oferecer a compra do que ela já tem.
@@ -56,7 +58,7 @@ export default function PlanosScreen({ navigation }) {
     const aviso = setTimeout(() => setDemorando(true), 8000);
     try {
       const criarSessaoCheckout = httpsCallable(functions, 'criarSessaoCheckout');
-      const { data } = await criarSessaoCheckout({ planoId });
+      const { data } = await criarSessaoCheckout({ planoId, usarCashback });
       await abrirPagamento(data.url);
       // O plano é atualizado automaticamente quando o pagamento é confirmado
       // (webhook do Stripe grava em usuarios/{uid}.plano e o app escuta em tempo real).
@@ -229,11 +231,14 @@ export default function PlanosScreen({ navigation }) {
               <Button title="Voltar" onPress={() => navigation.goBack()} variant="ghost" />
             )
           ) : (
+            <>
+            <UsarCashback ativo={usarCashback} onChange={setUsarCashback} />
             <Button
               title={carregando ? 'Abrindo pagamento...' : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
               onPress={() => assinarPlano(sel)}
               disabled={carregando}
             />
+            </>
           )}
           <Text style={styles.cancelInfo}>Pagamento seguro pelo Stripe. Cancele quando quiser.</Text>
         </View>

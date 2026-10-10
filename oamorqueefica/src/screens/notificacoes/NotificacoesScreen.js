@@ -36,6 +36,8 @@ const DESTINO = {
   // Gerado pela Cloud Function confirmarAtendimento quando um parceiro
   // registra o uso de um benefício — leva direto para a tela de confirmação.
   confirmar_resgate: 'ConfirmarResgate',
+  // Gerado pelas Cloud Functions do cashback (crédito recebido / a vencer).
+  cashback: 'Cashback',
 };
 
 export default function NotificacoesScreen({ navigation }) {

@@ -18,6 +18,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
 import { functions, db } from '../../services/firebase';
 import { LOGO_RELATORIO } from '../../utils/logoRelatorio';
+import UsarCashback from '../cashback/UsarCashback';
 
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -996,6 +997,7 @@ export default function RelatoriosScreen({ navigation }) {
   const [tab, setTab] = useState('mensal');
   const [exportando, setExportando] = useState(false);
   const [comprando, setComprando] = useState(false);
+  const [usarCashback, setUsarCashback] = useState(false);
   // Preço do relatório por período definido pela administração
   // (configuracoes/precos.periodo, em centavos). Antes o valor era fixo na tela.
   const [precoPeriodo, setPrecoPeriodo] = useState(590);
@@ -1110,7 +1112,7 @@ export default function RelatoriosScreen({ navigation }) {
     setComprando(true);
     try {
       const criarCheckout = httpsCallable(functions, 'criarCheckoutPeriodoUnlocked');
-      const { data } = await criarCheckout({});
+      const { data } = await criarCheckout({ usarCashback });
       await abrirPagamento(data.url);
     } catch (e) {
       Alert.alert('Não foi possível abrir o pagamento', mensagemErroPagamento(e));
@@ -1574,6 +1576,7 @@ export default function RelatoriosScreen({ navigation }) {
                           : periodo.motivo}
                       </Text>
                     </View>
+                    <UsarCashback ativo={usarCashback} onChange={setUsarCashback} />
                     <TouchableOpacity
                       style={[s.stripeBtn, { backgroundColor: colors.lav4 }, (comprando || !periodo.ok) && { opacity: 0.45 }]}
                       onPress={handleDesbloquear}

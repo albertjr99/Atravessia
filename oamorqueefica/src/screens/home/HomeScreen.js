@@ -18,6 +18,7 @@ import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
 import DiarioDoDia from '../../components/DiarioDoDia';
 import { escolherEnviarFoto } from '../../utils/fotoPerfil';
+import { brl } from '../cashback/CashbackScreen';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 
@@ -30,7 +31,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
-    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers,
+    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes,
   } = useApp();
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
@@ -101,6 +102,7 @@ export default function HomeScreen({ navigation }) {
 
   const itensMenu = [
     { icone: 'sparkles-outline', rotulo: 'AtravessIA', sub: 'Conversa, diário guiado e carta do mês', acao: () => navigation.navigate('AtravessIA') },
+    { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', acao: () => navigation.navigate('Cashback') },
     { icone: 'image-outline', rotulo: 'Foto do perfil', sub: perfil?.photoURL ? 'Trocar ou remover sua foto' : 'Personalize sua área com uma foto', acao: tocarFoto },
     { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
     { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
@@ -199,6 +201,15 @@ export default function HomeScreen({ navigation }) {
               <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
             </View>
           </View>
+
+          {/* Cashback disponível */}
+          {cashback?.saldoCentavos > 0 && (
+            <TouchableOpacity style={s.cashbackAviso} onPress={() => navigation.navigate('Cashback')} activeOpacity={0.85}>
+              <Ionicons name="wallet-outline" size={17} color={colors.sageFg} />
+              <Text style={s.cashbackTxt}>Você tem <Text style={s.cashbackValor}>{brl(cashback.saldoCentavos)}</Text> de cashback</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.sageFg} />
+            </TouchableOpacity>
+          )}
 
           {/* Aviso de notificações não lidas */}
           {naoLidas > 0 && (
@@ -323,6 +334,19 @@ export default function HomeScreen({ navigation }) {
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
               </View>
             </TouchableOpacity>
+
+            {indicacoes?.length > 0 && (
+              <TouchableOpacity style={s.indicacoesBtn} onPress={() => navigation.navigate('Indicacoes')} activeOpacity={0.88}>
+                <View style={s.indicacoesIcone}>
+                  <Ionicons name="book-outline" size={21} color={colors.lav5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.indicacoesTit}>Indicações Atravessia</Text>
+                  <Text style={s.indicacoesSub}>Livros e cuidados escolhidos com carinho</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.tl} />
+              </TouchableOpacity>
+            )}
 
             {temProdutos && (
               <TouchableOpacity style={s.produtosBtn} onPress={() => navigation.navigate('Produtos')} activeOpacity={0.88}>
@@ -656,6 +680,22 @@ const s = criarEstilos(() => ({
   iaIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   iaTit: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#fff' },
   iaSub: { fontFamily: 'Lato_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+
+  // Cashback e Indicações
+  cashbackAviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16,
+    backgroundColor: colors.sageFundo, borderRadius: 14, paddingVertical: 11, paddingHorizontal: 14,
+  },
+  cashbackTxt: { flex: 1, fontFamily: 'Lato_400Regular', fontSize: 13.5, color: colors.sageFg },
+  cashbackValor: { fontFamily: 'Lato_700Bold' },
+  indicacoesBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10,
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18,
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaSuave,
+  },
+  indicacoesIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  indicacoesTit: { fontFamily: 'Lato_700Bold', fontSize: 15, color: colors.titulo },
+  indicacoesSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.texto2, marginTop: 2 },
 
   // Produtos Atravessia
   produtosBtn: {
