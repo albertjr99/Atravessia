@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, ActivityIndicator,
-  Platform, useWindowDimensions,
+  Platform, useWindowDimensions, Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -56,7 +56,14 @@ async function enviarVideo(chave) {
   return { url, storagePath: caminho };
 }
 
-function CartaoVideo({ info, dados }) {
+// Campo de texto que, ao ser tocado, pede para a tela rolar até ele — assim o
+// teclado não cobre o que está sendo digitado.
+function Campo({ aoFocar, ...props }) {
+  const ref = useRef(null);
+  return <TextInput ref={ref} {...props} onFocus={(e) => { aoFocar?.(ref); props.onFocus?.(e); }} />;
+}
+
+function CartaoVideo({ info, dados, aoFocar }) {
   const { width } = useWindowDimensions();
   const [titulo, setTitulo] = useState(dados?.titulo || info.tituloPadrao);
   const [enviando, setEnviando] = useState(false);
@@ -133,7 +140,8 @@ function CartaoVideo({ info, dados }) {
       )}
 
       <Text style={s.label}>Título exibido no app</Text>
-      <TextInput
+      <Campo
+        aoFocar={aoFocar}
         style={s.input}
         value={titulo}
         onChangeText={setTitulo}
@@ -143,12 +151,12 @@ function CartaoVideo({ info, dados }) {
       {info.loja && (
         <View style={s.loja}>
           <Text style={s.label}>Texto da tela</Text>
-          <TextInput style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]} multiline value={descricao} onChangeText={setDescricao}
+          <Campo aoFocar={aoFocar} style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]} multiline value={descricao} onChangeText={setDescricao}
             placeholder="Canecas, cadernos e outros carinhos com a marca da Atravessia..." placeholderTextColor={colors.tl} />
           <Text style={s.label}>Link para comprar (WhatsApp, Instagram ou loja)</Text>
-          <TextInput style={s.input} value={link} onChangeText={setLink} autoCapitalize="none" placeholder="https://..." placeholderTextColor={colors.tl} />
+          <Campo aoFocar={aoFocar} style={s.input} value={link} onChangeText={setLink} autoCapitalize="none" placeholder="https://..." placeholderTextColor={colors.tl} />
           <Text style={s.label}>Texto do botão</Text>
-          <TextInput style={s.input} value={textoBotao} onChangeText={setTextoBotao} placeholder="Quero meus produtos" placeholderTextColor={colors.tl} />
+          <Campo aoFocar={aoFocar} style={s.input} value={textoBotao} onChangeText={setTextoBotao} placeholder="Quero meus produtos" placeholderTextColor={colors.tl} />
           <TouchableOpacity style={[s.btnSec, { alignSelf: 'flex-start', marginTop: 4 }]} onPress={salvarLoja}>
             <Text style={s.btnSecTxt}>Salvar informações</Text>
           </TouchableOpacity>
@@ -176,6 +184,31 @@ function CartaoVideo({ info, dados }) {
 }
 
 export default function AdminVideosScreen() {
+  // Teclado: a tela ganha espaço extra embaixo enquanto ele está aberto e rola
+  // até o campo tocado, deixando-o visível acima do teclado.
+  const rolagem = useRef(null);
+  const conteudo = useRef(null);
+  const [alturaTeclado, setAlturaTeclado] = useState(0);
+  useEffect(() => {
+    const mostrar = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setAlturaTeclado(e?.endCoordinates?.height || 0));
+    const esconder = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setAlturaTeclado(0));
+    return () => { mostrar.remove(); esconder.remove(); };
+  }, []);
+  const rolarAte = (campoRef) => {
+    // Espera o teclado abrir para calcular a posição.
+    setTimeout(() => {
+      const campo = campoRef?.current;
+      if (!campo || !conteudo.current || !rolagem.current) return;
+      campo.measureLayout(
+        conteudo.current,
+        (_x, y) => rolagem.current?.scrollTo({ y: Math.max(0, y - 110), animated: true }),
+        () => {},
+      );
+    }, Platform.OS === 'ios' ? 50 : 300);
+  };
+
   const [config, setConfig] = useState({});
   const [erro, setErro] = useState('');
 
@@ -187,14 +220,22 @@ export default function AdminVideosScreen() {
   return (
     <AdminLayout currentScreen="AdminVideos">
       <AdminSubTabs grupo="biblioteca" atual="AdminVideos" />
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={rolagem}
+        contentContainerStyle={[s.scroll, { paddingBottom: 48 + alturaTeclado }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View ref={conteudo}>
         <Text style={s.title}>Vídeos de apresentação</Text>
         <Text style={s.sub}>
           Os vídeos de apresentação tocam sozinhos na primeira vez que a usuária abre a tela; depois ficam no botão “Assistir à apresentação”. O de Produtos fica na tela própria, com o link de compra.
           Para vídeos grandes, prefira enviar pelo painel web.
         </Text>
         {!!erro && <Text style={s.erro}>Não foi possível carregar: {erro}</Text>}
-        {VIDEOS.map(v => <CartaoVideo key={v.chave} info={v} dados={config[v.chave]} />)}
+        {VIDEOS.map(v => <CartaoVideo key={v.chave} info={v} dados={config[v.chave]} aoFocar={rolarAte} />)}
+        </View>
       </ScrollView>
     </AdminLayout>
   );

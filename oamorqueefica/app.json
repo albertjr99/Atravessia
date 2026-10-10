@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atravessia",
     "slug": "atravessia",
-    "version": "1.11.0",
+    "version": "1.11.1",
     "sdkVersion": "54.0.0",
     "newArchEnabled": true,
     "orientation": "portrait",
@@ -23,7 +23,7 @@
         "backgroundColor": "#FAF7F3"
       },
       "package": "com.atravessia",
-      "versionCode": 20,
+      "versionCode": 21,
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO",
