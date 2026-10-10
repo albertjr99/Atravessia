@@ -8,12 +8,13 @@ const ilustracao = require('../../../assets/images/il_broto.png');
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { ScriptTitle, QuoteText, LavandaBg } from '../../components';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR } from '../../utils/date';
 import { confirmar } from '../../utils/confirm';
+import { vibrarLeve, vibrarSucesso } from '../../utils/vibrar';
 import { iconeDaVitoria } from '../../data/iconesVitoria';
 
 // Quantas opções prontas aparecem antes do "Ver mais".
@@ -131,6 +132,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
   const registrar = (label) => {
     if (!label || registradosHoje.includes(label)) return;
     adicionarVitoria({ label });
+    vibrarSucesso();
     setRegistrouAgora(true);
   };
 
@@ -142,7 +144,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
     confirmar(
       'Desfazer esta vitória?',
       `“${label}” sai do registro de hoje. Você pode marcar de novo quando quiser.`,
-      () => removerVitoria(registro).catch(e => console.warn('[PequenasVitorias] remover:', e?.message)),
+      () => { vibrarLeve(); return removerVitoria(registro).catch(e => console.warn('[PequenasVitorias] remover:', e?.message)); },
       'Desfazer',
     );
   };
@@ -188,7 +190,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -355,10 +357,10 @@ export default function PequenasVitoriasScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   coluna: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: spacing.lg },
 
@@ -457,4 +459,4 @@ const styles = StyleSheet.create({
   lockSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
   lockBtn: { marginTop: spacing.md, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 10 },
   lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
-});
+}));

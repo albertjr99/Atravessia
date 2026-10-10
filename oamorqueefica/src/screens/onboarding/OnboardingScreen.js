@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg, ScriptTitle } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
@@ -107,7 +107,7 @@ export default function OnboardingScreen({ navigation, route }) {
 
   return (
     <View style={s.raiz}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
       <View style={[s.topo, { paddingTop: insets.top + 8 }]}>
@@ -193,7 +193,7 @@ export default function OnboardingScreen({ navigation, route }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   raiz: { flex: 1, backgroundColor: colors.bg },
   topo: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -246,4 +246,4 @@ const s = StyleSheet.create({
   btnPrincipalTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   btnSecundario: { paddingVertical: 12, marginTop: 4 },
   btnSecundarioTxt: { fontFamily: fonts.body, fontSize: 13.5, color: colors.lav5, textDecorationLine: 'underline' },
-});
+}));

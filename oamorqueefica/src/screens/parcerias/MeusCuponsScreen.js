@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import {
@@ -92,7 +92,7 @@ export default function MeusCuponsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -162,13 +162,13 @@ export default function MeusCuponsScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   scroll: { paddingHorizontal: spacing.lg },
 
@@ -201,4 +201,4 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.lav3, backgroundColor: colors.lav1,
   },
   vazioBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
-});
+}));

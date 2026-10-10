@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Button, Disclaimer, LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
@@ -227,7 +227,7 @@ export default function CadastroScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { flexGrow: 1 },
   heroWrap: { position: 'relative', height: 220 },
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12,
     color: colors.roseFg,
-    backgroundColor: '#FFF0EE',
+    backgroundColor: colors.erroFundo,
     borderRadius: radius.sm,
     padding: spacing.sm,
     marginBottom: spacing.sm,
@@ -291,4 +291,4 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
   checkText: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
   checkLink: { color: colors.lav5, textDecorationLine: 'underline' },
-});
+}));

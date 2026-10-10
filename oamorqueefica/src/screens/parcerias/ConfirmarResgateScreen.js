@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -43,7 +43,7 @@ export default function ConfirmarResgateScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -134,13 +134,13 @@ export default function ConfirmarResgateScreen({ route, navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, alignItems: 'center' },
@@ -192,4 +192,4 @@ const s = StyleSheet.create({
     fontFamily: fonts.body, fontSize: 11, color: colors.tl,
     textAlign: 'center', marginTop: spacing.lg, lineHeight: 16, maxWidth: 280,
   },
-});
+}));

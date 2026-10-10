@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -134,7 +134,7 @@ export default function ConteudoScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
@@ -173,14 +173,14 @@ export default function ConteudoScreen({ route, navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
     borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   scroll: { padding: spacing.lg },
   // Em tablet a linha de leitura não fica longa demais.
@@ -215,4 +215,4 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 10, marginTop: 6,
   },
   lockBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
-});
+}));

@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { ScriptTitle, ProgressBar, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -41,7 +41,7 @@ export default function JornadaDetalheScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -93,10 +93,10 @@ export default function JornadaDetalheScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   desc: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 6, lineHeight: 18 },
@@ -112,4 +112,4 @@ const styles = StyleSheet.create({
   itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
   itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   itemTipo: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textTransform: 'capitalize', marginTop: 1 },
-});
+}));

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { ScriptTitle, Card, Button, QuoteText, LavandaBg } from '../../components';
 
 const travessiaLogo = require('../../../assets/images/travessia_logo.png');
@@ -38,7 +38,7 @@ export default function SessaoScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false}>
 
@@ -117,7 +117,7 @@ export default function SessaoScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   headerTop: { flexDirection: 'row', alignItems: 'center' },
@@ -151,4 +151,4 @@ const styles = StyleSheet.create({
   motiText: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
   semComp: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', marginTop: spacing.sm },
   disclaimer: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', marginTop: 4, lineHeight: 14 },
-});
+}));

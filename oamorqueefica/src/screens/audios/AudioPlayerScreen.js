@@ -5,7 +5,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, Video, ResizeMode } from 'expo-av';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Disclaimer, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -145,7 +145,7 @@ export default function AudioPlayerScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -306,15 +306,15 @@ export default function AudioPlayerScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  favTopBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  favTopBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   bloqBox: {
     flexDirection: 'row', alignItems: 'center', gap: 9,
     marginTop: spacing.lg, paddingVertical: 12, paddingHorizontal: 16,
@@ -415,4 +415,4 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.lav2,
   },
   speedText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5 },
-});
+}));

@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
@@ -46,9 +46,11 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 import LembreteScreen from '../screens/perfil/LembreteScreen';
 import ProdutosScreen from '../screens/produtos/ProdutosScreen';
+import AparenciaScreen from '../screens/perfil/AparenciaScreen';
 
 import { useAuth } from '../hooks/AuthContext';
-import { colors, fonts } from '../theme';
+import { useTema } from '../hooks/TemaContext';
+import { colors, fonts, criarEstilos } from '../theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +87,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Conteudo" component={ConteudoScreen} />
       <Stack.Screen name="Lembrete" component={LembreteScreen} />
       <Stack.Screen name="Produtos" component={ProdutosScreen} />
+      <Stack.Screen name="Aparencia" component={AparenciaScreen} />
     </Stack.Navigator>
   );
 }
@@ -124,6 +127,17 @@ export default function AppNavigator() {
   const { firebaseUser, isAdmin, carregando, perfil, verComoUsuaria, setVerComoUsuaria } = useAuth();
   const insets = useSafeAreaInsets();
   const navigationRef = useRef(null);
+  const { versao, escuro, setModoAdmin } = useTema();
+  // Ao trocar o tema as telas são redesenhadas (key), voltando para onde
+  // a usuária estava (estado de navegação guardado).
+  const estadoNav = useRef(undefined);
+  const modoAdmin = !!firebaseUser && isAdmin && !verComoUsuaria;
+  useEffect(() => { setModoAdmin(modoAdmin); }, [modoAdmin, setModoAdmin]);
+  const temaNav = useMemo(() => {
+    const base = escuro ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: colors.bg, card: colors.card, border: colors.border, text: colors.td, primary: colors.lav4 } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versao, escuro]);
 
   // Primeiro acesso: o app começa pela apresentação enquanto o perfil tiver
   // onboardingPendente. No cadastro o perfil pode chegar um instante depois do
@@ -173,7 +187,13 @@ export default function AppNavigator() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer
+        key={`tema-${versao}`}
+        ref={navigationRef}
+        theme={temaNav}
+        initialState={estadoNav.current}
+        onStateChange={(s) => { estadoNav.current = s; }}
+      >
         {content}
       </NavigationContainer>
       {isAdmin && verComoUsuaria && !carregando && (
@@ -190,7 +210,7 @@ export default function AppNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   root: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   voltarPainel: {
@@ -201,4 +221,4 @@ const styles = StyleSheet.create({
     shadowColor: '#2E2740', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 8,
   },
   voltarPainelTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
-});
+}));

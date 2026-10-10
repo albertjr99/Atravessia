@@ -6,17 +6,18 @@ import {
 } from 'react-native';
 
 const SCREEN_W = Dimensions.get('window').width;
-const CONFETTI_COLORS = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
+const CONFETTI_COLORS = [colors.lav4, '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
 const CONFETTI_COUNT = 20;
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes, audios as audiosEstaticos } from '../../data';
 import { Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useAuth } from '../../hooks/AuthContext';
+import { vibrarLeve, vibrarSucesso } from '../../utils/vibrar';
 import {
   carregarHistoricoSugestoes, registrarSugestoes, escolherSugestao, camadasPorEmocao, historicoParaPerfil,
 } from '../../utils/sugestoes';
@@ -131,6 +132,7 @@ export default function CheckInScreen({ navigation }) {
   const handleSalvar = () => {
     if (!emocaoSel) { Alert.alert('', 'Selecione como você está.'); return; }
     adicionarCheckin(emocaoSel, localSel);
+    vibrarSucesso();
     setSalvo(true);
   };
 
@@ -435,7 +437,7 @@ export default function CheckInScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -463,7 +465,7 @@ export default function CheckInScreen({ navigation }) {
             return (
               <TouchableOpacity key={e.id}
                 style={[s.emoCard, selected && { borderColor: e.color, backgroundColor: e.bg + '40' }]}
-                onPress={() => setEmocaoSel(e.id)} activeOpacity={0.8}>
+                onPress={() => { vibrarLeve(); setEmocaoSel(e.id); }} activeOpacity={0.8}>
                 <View style={[s.emoIcon, { backgroundColor: e.bg }]}>
                   <Ionicons name={`${e.icon}-outline`} size={24} color={e.color} />
                 </View>
@@ -539,14 +541,14 @@ export default function CheckInScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
     borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   headerBox: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   headerIlustracao: { width: 72, height: 72, marginLeft: 8, flexShrink: 0 },
@@ -558,17 +560,17 @@ const s = StyleSheet.create({
   },
   emoCard: {
     width: '22%', minWidth: 74,
-    backgroundColor: 'white', borderRadius: 16,
+    backgroundColor: colors.card, borderRadius: 16,
     paddingVertical: 10, alignItems: 'center', gap: 6,
-    borderWidth: 1.5, borderColor: '#E8E0F0',
+    borderWidth: 1.5, borderColor: colors.lav1,
   },
   emoIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   emoName: { fontFamily: fonts.body, fontSize: 11, color: colors.td, textAlign: 'center' },
   sect: { paddingHorizontal: spacing.lg, marginTop: 14 },
   sectTitle2: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   suggCard: {
-    backgroundColor: 'white', borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: '#E8E0F0',
+    backgroundColor: colors.card, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: colors.lav1,
     boxShadow: '0px 2px 10px rgba(184,166,201,0.12)',
   },
   suggMsg: { fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic', color: colors.tm, lineHeight: 20 },
@@ -588,8 +590,8 @@ const s = StyleSheet.create({
   histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   histLink: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
   histCard: {
-    backgroundColor: 'white', borderRadius: 16, padding: 14, paddingBottom: 10,
-    borderWidth: 1, borderColor: '#E8E0F0', position: 'relative',
+    backgroundColor: colors.card, borderRadius: 16, padding: 14, paddingBottom: 10,
+    borderWidth: 1, borderColor: colors.lav1, position: 'relative',
   },
   histLine: {
     position: 'absolute', left: 24, right: 24, top: 22,
@@ -630,7 +632,7 @@ const s = StyleSheet.create({
   localGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   localCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'white', borderRadius: 12, borderWidth: 1.5, borderColor: '#E8E0F0',
+    backgroundColor: colors.card, borderRadius: 12, borderWidth: 1.5, borderColor: colors.lav1,
     paddingVertical: 10, paddingHorizontal: 12, width: '48%',
   },
   localLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
@@ -640,4 +642,4 @@ const s = StyleSheet.create({
   cThumb: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
   cDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-});
+}));

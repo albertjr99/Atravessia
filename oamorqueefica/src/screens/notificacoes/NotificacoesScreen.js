@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -56,7 +56,7 @@ export default function NotificacoesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -115,10 +115,10 @@ export default function NotificacoesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   lista: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.xxl },
   item: {
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     width: 3.5, borderRadius: 2, backgroundColor: colors.lav4,
   },
   itemIcon: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: 'white',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     borderWidth: 1, borderColor: colors.border,
   },
@@ -154,4 +154,4 @@ const styles = StyleSheet.create({
   topSub: { fontFamily: fonts.body, fontSize: 10.5, color: colors.lav5, marginTop: 1 },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
-});
+}));

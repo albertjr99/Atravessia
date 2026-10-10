@@ -11,7 +11,7 @@ import { doc, updateDoc, increment, onSnapshot } from 'firebase/firestore';
 import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
@@ -104,11 +104,11 @@ function CalendarGrid({ year, month, checkinsByDate, onDayPress }) {
   );
 }
 
-const cs = StyleSheet.create({
+const cs = criarEstilos(() => ({
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 4 },
   dayLabel: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 9, color: colors.lav4 },
   dayNum: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
-});
+}));
 
 // ── Helpers de dados ──────────────────────────────────────────────────────────
 function getEmoObj(id) { return emocoes.find(e => e.id === id); }
@@ -245,7 +245,7 @@ function AreaDonutCard({ area }) {
   );
 }
 
-const areaStyles = StyleSheet.create({
+const areaStyles = criarEstilos(() => ({
   card: { width: 155, backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center', gap: 6 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
   name: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, flex: 1 },
@@ -256,7 +256,7 @@ const areaStyles = StyleSheet.create({
   emoPct: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.tm },
   empty: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', paddingVertical: 4 },
   total: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, alignSelf: 'flex-end' },
-});
+}));
 
 // ── Pequenas Vitórias: ícone + cor por tema da conquista ─────────────────────
 const VIT_ICONES = [
@@ -328,7 +328,7 @@ function VitoriasDestaque({ itens }) {
   );
 }
 
-const vitStyles = StyleSheet.create({
+const vitStyles = criarEstilos(() => ({
   wrap: {
     flexDirection: 'row', flexWrap: 'wrap',
     marginTop: 10, rowGap: 10, columnGap: 8,
@@ -346,7 +346,7 @@ const vitStyles = StyleSheet.create({
   },
   label: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, lineHeight: 14 },
   dias: { fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
-});
+}));
 
 // ── Cores para emoções no gráfico ─────────────────────────────────────────────
 const EMO_CHART_COLORS = [
@@ -1206,7 +1206,7 @@ export default function RelatoriosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -1744,12 +1744,12 @@ export default function RelatoriosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  exportBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.lav1 },
+  exportBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.lav1 },
 
   tabRow: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: colors.lav1, borderRadius: radius.full, padding: 4 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: radius.full, gap: 4 },
@@ -1875,7 +1875,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
     padding: 10, borderRadius: radius.md, backgroundColor: colors.lav1, marginBottom: 10,
   },
-  periodoStatusOk: { backgroundColor: '#EEF5EF' },
+  periodoStatusOk: { backgroundColor: colors.sageFundo },
   periodoStatusTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.lav6, lineHeight: 17 },
   stripeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -1892,7 +1892,7 @@ const s = StyleSheet.create({
   vitCardItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, width: '47%', backgroundColor: colors.bg, borderRadius: 10, padding: 8, borderWidth: 1, borderColor: colors.border },
   vitCardTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11, color: colors.td, lineHeight: 15 },
   calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
-  calNavBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  calNavBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 },
@@ -1902,4 +1902,4 @@ const s = StyleSheet.create({
   modalEmo: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
   modalCloseBtn: { marginTop: 8, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24, backgroundColor: colors.lav1, borderRadius: radius.full },
   modalCloseTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
-});
+}));

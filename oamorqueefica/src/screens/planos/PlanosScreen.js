@@ -9,7 +9,7 @@ const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { planos as planosPadrao } from '../../data';
 import { ScriptTitle, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
@@ -103,7 +103,7 @@ export default function PlanosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -258,10 +258,10 @@ export default function PlanosScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
   headerIlustracao: { width: 80, height: 80, marginLeft: 8 },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
@@ -313,10 +313,10 @@ const styles = StyleSheet.create({
   seuPlanoTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: 'white' },
   infoAcao: {
     flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md,
-    borderRadius: radius.lg, backgroundColor: '#EEF5EF', borderWidth: 1, borderColor: '#D5E6D8',
+    borderRadius: radius.lg, backgroundColor: colors.sageFundo, borderWidth: 1, borderColor: colors.escuro ? '#35503B' : '#D5E6D8',
   },
   infoAcaoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.sageFg, lineHeight: 18 },
-  esperaFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  esperaFundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   esperaCard: { width: '100%', maxWidth: 340, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', gap: 10 },
   esperaTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, textAlign: 'center' },
   esperaSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, textAlign: 'center', lineHeight: 18 },
@@ -329,4 +329,4 @@ const styles = StyleSheet.create({
   emBreveCard: { flex: 1, alignItems: 'center', gap: 6, padding: spacing.md, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, opacity: 0.7 },
   emBreveNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tl },
   emBreveSub: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
-});
+}));

@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const ilustracao = require('../../../assets/images/il_rede_apoio.png');
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { vinculosRedeApoio } from '../../data';
 import { Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
@@ -42,7 +42,7 @@ export default function RedeApoioScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -126,10 +126,10 @@ export default function RedeApoioScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   lista: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   intro: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18, marginBottom: spacing.lg },
@@ -154,4 +154,4 @@ const styles = StyleSheet.create({
   lockSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
   lockBtn: { marginTop: spacing.md, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 10 },
   lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
-});
+}));

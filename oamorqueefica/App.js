@@ -11,6 +11,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 import SplashAnimado from './src/components/SplashAnimado';
 import { AppProvider } from './src/hooks/AppContext';
 import { AuthProvider } from './src/hooks/AuthContext';
+import { TemaProvider, useTema } from './src/hooks/TemaContext';
+import { colors } from './src/theme';
 
 // Segura o splash nativo até a vinheta animada estar montada, senão pisca um
 // fundo vazio entre os dois.
@@ -36,7 +38,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: '#FAF7F3' }}>
+      <TemaProvider>
+        <Raiz>
         {fontesProntas && (
           <AuthProvider>
             <AppProvider>
@@ -47,7 +50,14 @@ export default function App() {
         {!vinhetaTerminou && (
           <SplashAnimado pronto={fontesProntas} onFim={() => setVinhetaTerminou(true)} />
         )}
-      </View>
+        </Raiz>
+      </TemaProvider>
     </SafeAreaProvider>
   );
+}
+
+// Fundo da raiz no tema atual (claro ou noturno).
+function Raiz({ children }) {
+  useTema();
+  return <View style={{ flex: 1, backgroundColor: colors.bg }}>{children}</View>;
 }
