@@ -17,7 +17,9 @@ import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useAuth } from '../../hooks/AuthContext';
-import { carregarHistoricoSugestoes, registrarSugestoes, escolherSugestao } from '../../utils/sugestoes';
+import {
+  carregarHistoricoSugestoes, registrarSugestoes, escolherSugestao, camadasPorEmocao, historicoParaPerfil,
+} from '../../utils/sugestoes';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
@@ -47,19 +49,32 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
   );
 }
 
+const totalCamadas = (camadas) => (camadas || []).reduce((n, l) => n + (l?.length || 0), 0);
+
 export default function CheckInScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso, conteudosLiberados } = useApp();
-  const { firebaseUser } = useAuth();
+  const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso, conteudosLiberados, liberadoHoje } = useApp();
+  const liberadoHojeAcolhimento = liberadoHoje?.('acolhimento') === true;
+  const { firebaseUser, perfil, atualizarPerfil } = useAuth();
   const uid = firebaseUser?.uid;
   // Histórico das sugestões já mostradas, para não repetir o mesmo conteúdo
   // em dias seguidos.
   const [historicoSug, setHistoricoSug] = useState([]);
   useEffect(() => {
     let vivo = true;
-    carregarHistoricoSugestoes(uid).then(h => { if (vivo) setHistoricoSug(h); });
+    carregarHistoricoSugestoes(uid, perfil?.sugestoesRecentes).then(h => { if (vivo) setHistoricoSug(h); });
     return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
+
+  // Guarda as sugestões mostradas (no aparelho e no perfil) e atualiza a tela.
+  const guardarSugestoes = async (entradas) => {
+    const h = await registrarSugestoes(uid, historicoSug, entradas);
+    if (!h) return;
+    setHistoricoSug(h);
+    atualizarPerfil?.({ sugestoesRecentes: historicoParaPerfil(h) })
+      .catch(e => console.warn('[Sugestões] perfil:', e?.message));
+  };
   const [emocaoSel, setEmocaoSel] = useState(null);
   const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
@@ -105,11 +120,10 @@ export default function CheckInScreen({ navigation }) {
 
   const audioRec = useMemo(() => {
     if (!emocaoSel || !emocaoObj || emocaoObj.positiva) return null;
-    const candidatos = fonteAudios.filter(a =>
-      (a.emocoes || []).includes(emocaoSel) && (a.plano || 0) <= 1
-    );
-    const pool = candidatos.length > 0 ? candidatos : fonteAudios.filter(a => (a.emocoes || []).includes(emocaoSel));
-    return escolherSugestao(pool, {
+    // Todos os áudios que ela pode ouvir (ou que o Plano Acolher libera), da
+    // própria emoção e, se forem poucos, de emoções próximas.
+    const acessiveis = fonteAudios.filter(a => (a.plano || 0) <= 1 || temAcesso(a.plano || 0));
+    return escolherSugestao(camadasPorEmocao(acessiveis, emocaoSel), {
       historico: historicoSug, tipo: 'audio', emocao: emocaoSel, hoje: hojeStr, vistosExtras: audiosJaOuvidos,
     });
   }, [emocaoSel, emocaoObj, fonteAudios, historicoSug, hojeStr, audiosJaOuvidos]);
@@ -159,22 +173,44 @@ export default function CheckInScreen({ navigation }) {
     () => emocaoSel ? (conteudos || []).filter(c => c.ativo !== false && (c.emocoes || []).includes(emocaoSel)) : [],
     [emocaoSel, conteudos]
   );
+  // Camadas: conteúdos da emoção e, se forem poucos, de emoções próximas.
+  const camadasConteudo = useMemo(
+    () => emocaoSel ? camadasPorEmocao((conteudos || []).filter(c => c.ativo !== false), emocaoSel) : [[]],
+    [emocaoSel, conteudos]
+  );
 
   const conteudoExibido = useMemo(() => {
-    if (!emocaoSel || conteudosSugeridos.length === 0) return null;
-    return escolherSugestao(conteudosSugeridos, {
+    if (!emocaoSel || totalCamadas(camadasConteudo) === 0) return null;
+    return escolherSugestao(camadasConteudo, {
       historico: historicoSug, tipo: 'conteudo', emocao: emocaoSel, hoje: hojeStr,
     });
-  }, [emocaoSel, conteudosSugeridos, historicoSug, hojeStr]);
+  }, [emocaoSel, conteudosSugeridos, camadasConteudo, historicoSug, hojeStr]);
+
+  // "Ver outra sugestão": troca pelo próximo item ainda não visto.
+  const trocarSugestao = (tipo) => {
+    const ehAudio = tipo === 'audio';
+    const acessiveis = fonteAudios.filter(a => (a.plano || 0) <= 1 || temAcesso(a.plano || 0));
+    const camadas = ehAudio ? camadasPorEmocao(acessiveis, emocaoSel) : camadasConteudo;
+    const novo = escolherSugestao(camadas, {
+      historico: historicoSug, tipo, emocao: emocaoSel, hoje: hojeStr, trocar: true,
+      vistosExtras: ehAudio ? audiosJaOuvidos : [],
+    });
+    if (novo) guardarSugestoes([{ id: novo.id, tipo, emocao: emocaoSel, data: hojeStr }]);
+  };
+  const totalOpcoes = (camadas) => new Set(camadas.flat().map(i => i.id)).size;
+  const podeTrocarConteudo = totalOpcoes(camadasConteudo) > 1;
+  const podeTrocarAudio = emocaoSel ? totalOpcoes(camadasPorEmocao(
+    fonteAudios.filter(a => (a.plano || 0) <= 1 || temAcesso(a.plano || 0)), emocaoSel,
+  )) > 1 : false;
 
   // Ao registrar o check-in, guarda o que foi sugerido hoje: amanhã a escolha
   // evita estes itens.
   useEffect(() => {
     if (!salvo || !emocaoSel) return;
-    registrarSugestoes(uid, [
+    guardarSugestoes([
       audioRec && { id: audioRec.id, tipo: 'audio', emocao: emocaoSel, data: hojeStr },
       conteudoExibido && { id: conteudoExibido.id, tipo: 'conteudo', emocao: emocaoSel, data: hojeStr },
-    ]).then(h => { if (h) setHistoricoSug(h); });
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [salvo]);
 
@@ -254,10 +290,18 @@ export default function CheckInScreen({ navigation }) {
               <View style={s.sugestaoBloco}>
                 <Text style={s.sugestaoTit}>Conteúdo para você</Text>
                 <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
-                <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
-                  <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
-                  <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
-                </TouchableOpacity>
+                <View style={s.sugestaoAcoes}>
+                  {podeTrocarConteudo && (
+                    <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
+                      <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                      <Text style={s.verConteudosLinkTxt}>Ver outra sugestão</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
+                    <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
+                    <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             <ProximoPasso navigation={navigation} depoisDe="checkin" />
@@ -281,17 +325,26 @@ export default function CheckInScreen({ navigation }) {
             <View style={s.sugestaoBloco}>
               <Text style={s.sugestaoTit}>Conteúdo para você agora</Text>
               <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
-              <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
-                <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
-                <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
-              </TouchableOpacity>
+              <View style={s.sugestaoAcoes}>
+                {podeTrocarConteudo && (
+                  <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
+                    <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                    <Text style={s.verConteudosLinkTxt}>Ver outra sugestão</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
+                  <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
+                  <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
-          {/* O áudio aparece em qualquer plano. No gratuito ele fica visível mas
-              bloqueado: sem opção de salvar e sem reprodução — ao tocar, explica
-              em que plano o recurso está disponível. */}
-          {!conteudoExibido && audioRec && (
+          {/* O áudio aparece em qualquer plano (agora também junto com o
+              conteúdo). No gratuito ele fica visível mas bloqueado: sem opção de
+              salvar e sem reprodução — ao tocar, explica em que plano o recurso
+              está disponível. */}
+          {audioRec && (
             <View style={[s.recCard, !temPlano1 && s.recCardBloqueado]}>
               <View style={s.recTagRow}>
                 <Text style={s.recTag}>Acolhimento</Text>
@@ -343,6 +396,13 @@ export default function CheckInScreen({ navigation }) {
                   </View>
                 </View>
               </TouchableOpacity>
+
+              {temPlano1 && podeTrocarAudio && !audioLiberado && !liberadoHojeAcolhimento && (
+                <TouchableOpacity style={s.trocarAudio} onPress={() => trocarSugestao('audio')}>
+                  <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                  <Text style={s.verConteudosLinkTxt}>Ver outro áudio</Text>
+                </TouchableOpacity>
+              )}
 
               {!temPlano1 && (
                 <TouchableOpacity
@@ -563,6 +623,8 @@ const s = StyleSheet.create({
   recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
   upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
+  sugestaoAcoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
+  trocarAudio: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 10 },
   verConteudosLink: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: 8 },
   verConteudosLinkTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.lav4 },
   localGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -28,6 +28,10 @@ const rotuloVelocidade = (v) => `${String(v).replace('.', ',')}×`;
 export default function PlayerVideo({ url, titulo, autoPlay = true, onTerminar, largura, maxAltura, style }) {
   const player = useVideoPlayer(url ? { uri: url, metadata: { title: titulo } } : null, (p) => {
     p.timeUpdateEventInterval = 0.25;
+    // No Android a correção de tom vem desligada (apesar da documentação dizer
+    // o contrário): ao acelerar, a voz ficava aguda. Com ela ligada, só a
+    // velocidade muda.
+    p.preservesPitch = true;
     p.loop = false;
     if (autoPlay) p.play();
   });
@@ -107,6 +111,7 @@ export default function PlayerVideo({ url, titulo, autoPlay = true, onTerminar, 
     setTerminou(false);
   };
   const escolherVelocidade = (v) => {
+    player.preservesPitch = true;
     player.playbackRate = v;
     setMenuVelocidade(false);
   };

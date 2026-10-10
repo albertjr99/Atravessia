@@ -22,6 +22,13 @@ const VIDEOS = [
     tituloPadrao: 'Conheça o Experimente a vida',
     desc: 'Aparece na tela "Experimente a vida" (Benefícios e Parcerias).',
   },
+  {
+    chave: 'produtos',
+    nome: 'Produtos Atravessia',
+    tituloPadrao: 'Leve a Atravessia com você',
+    desc: 'Tela "Produtos Atravessia" (cartão na tela inicial). Este vídeo não abre sozinho: a usuária assiste quando quiser. O cartão aparece no app assim que houver vídeo ou link de compra.',
+    loja: true,
+  },
 ];
 
 const MAX_MB = 500;
@@ -29,6 +36,23 @@ const MAX_MB = 500;
 function CartaoVideo({ info, dados, showToast }) {
   const [titulo, setTitulo] = useState(dados?.titulo || info.tituloPadrao);
   const [progresso, setProgresso] = useState(null);
+  const [loja, setLoja] = useState({ descricao: dados?.descricao || '', link: dados?.link || '', textoBotao: dados?.textoBotao || '' });
+  useEffect(() => {
+    setLoja({ descricao: dados?.descricao || '', link: dados?.link || '', textoBotao: dados?.textoBotao || '' });
+  }, [dados?.descricao, dados?.link, dados?.textoBotao]);
+
+  const salvarLoja = async () => {
+    try {
+      await salvar({
+        descricao: loja.descricao.trim(),
+        link: loja.link.trim(),
+        textoBotao: loja.textoBotao.trim(),
+        titulo: titulo.trim() || info.tituloPadrao,
+        ativo: dados?.ativo !== false,
+      });
+      showToast('Informações salvas.');
+    } catch (e) { showToast(`Erro ao salvar: ${e?.message || ''}`, 'error'); }
+  };
   const tarefa = useRef(null);
   const inputRef = useRef(null);
 
@@ -114,6 +138,29 @@ function CartaoVideo({ info, dados, showToast }) {
         <label>Título exibido no app</label>
         <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} onBlur={salvarTitulo} />
       </div>
+
+      {info.loja && (
+        <div style={{ background: 'var(--primary-lav, #EDE9F5)', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <div className="field-group">
+            <label>Texto da tela</label>
+            <textarea rows={4} value={loja.descricao} onChange={e => setLoja(l => ({ ...l, descricao: e.target.value }))}
+              placeholder="Canecas, cadernos e outros carinhos com a marca da Atravessia..." />
+          </div>
+          <div className="field-row">
+            <div className="field-group">
+              <label>Link para comprar</label>
+              <input type="text" value={loja.link} onChange={e => setLoja(l => ({ ...l, link: e.target.value }))}
+                placeholder="WhatsApp, Instagram ou loja (https://...)" />
+            </div>
+            <div className="field-group">
+              <label>Texto do botão</label>
+              <input type="text" value={loja.textoBotao} onChange={e => setLoja(l => ({ ...l, textoBotao: e.target.value }))}
+                placeholder="Quero meus produtos" />
+            </div>
+          </div>
+          <button className="btn-secondary" onClick={salvarLoja}>Salvar informações</button>
+        </div>
+      )}
 
       {progresso != null ? (
         <div>

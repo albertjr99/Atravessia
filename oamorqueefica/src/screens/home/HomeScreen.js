@@ -17,6 +17,8 @@ import { situacaoCupom } from '../../utils/cupons';
 import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
 import DiarioDoDia from '../../components/DiarioDoDia';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -31,6 +33,12 @@ export default function HomeScreen({ navigation }) {
   } = useApp();
   const { sair, firebaseUser, perfil } = useAuth();
   const [menuAberto, setMenuAberto] = useState(false);
+  // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo ou o link.
+  const [temProdutos, setTemProdutos] = useState(false);
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'videos'), (snap) => {
+    const p = snap.exists() ? snap.data()?.produtos : null;
+    setTemProdutos(!!p && p.ativo !== false && !!(p.url || p.link));
+  }, (e) => console.warn('[Home] produtos:', e?.message)), []);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
   // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.
@@ -256,6 +264,21 @@ export default function HomeScreen({ navigation }) {
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.75)" />
               </View>
             </TouchableOpacity>
+
+            {temProdutos && (
+              <TouchableOpacity style={s.produtosBtn} onPress={() => navigation.navigate('Produtos')} activeOpacity={0.88}>
+                <View style={s.produtosIcone}>
+                  <Ionicons name="bag-handle-outline" size={21} color="#8A6A33" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.produtosTit}>Produtos Atravessia</Text>
+                  <Text style={s.produtosSub}>Canecas, cadernos e mais com a nossa marca</Text>
+                </View>
+                <View style={s.produtosPlay}>
+                  <Ionicons name="play" size={12} color="white" style={{ marginLeft: 2 }} />
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* ===== PARCERIAS ===== */}
@@ -553,6 +576,23 @@ const s = StyleSheet.create({
   },
   vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#fff' },
   vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+
+  // Produtos Atravessia
+  produtosBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10,
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18,
+    backgroundColor: '#FBF4E8', borderWidth: 1, borderColor: '#EBD9B8',
+  },
+  produtosIcone: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3E4C6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  produtosTit: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#6B5326' },
+  produtosSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#8A7550', marginTop: 2 },
+  produtosPlay: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#C9A35F',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   // Check-in btn
   checkinBtn: {
