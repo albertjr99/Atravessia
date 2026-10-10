@@ -551,7 +551,7 @@ const s = criarEstilos(() => ({
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   headerBox: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
-  headerIlustracao: { width: 72, height: 72, marginLeft: 8, flexShrink: 0 },
+  headerIlustracao: { width: 72, height: 72, marginLeft: 8, flexShrink: 0, borderRadius: 16 },
   headerQ: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, marginBottom: 6 },
   headerSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 19 },
   emoGrid: {

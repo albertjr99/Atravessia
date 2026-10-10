@@ -263,7 +263,7 @@ const styles = criarEstilos(() => ({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
-  headerIlustracao: { width: 80, height: 80, marginLeft: 8 },
+  headerIlustracao: { width: 80, height: 80, marginLeft: 8, borderRadius: 16 },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
   planCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.md,

@@ -60,6 +60,7 @@ const CLARO = {
   texto2: '#8c8597',        // textos de apoio
   lilasIcone: '#9b86bd',    // ícones e links lilás
   botao: '#9b86bd',         // fundo de botão com texto branco
+  botaoForte: '#7B6BAF',    // fundo de botão principal com texto branco
   lilasTexto: '#6b5b88',    // texto lilás sobre fundo lilás claro
   lavVeu: 'rgba(235,227,243,0.5)',
   bordaSuave: 'rgba(230,221,210,0.7)',
@@ -103,7 +104,7 @@ const ESCURO = {
   lav1: '#2E2840',
   lav2: '#3E3654',
   lav3: '#8E7FC2',
-  lav4: '#8A78CC',
+  lav4: '#8270C4',
   lav5: '#B6A7EC',
   lav6: '#DCD2F7',
   peach: '#5A3F37',
@@ -111,7 +112,8 @@ const ESCURO = {
   titulo: '#EEE9F6',
   texto2: '#ADA6BB',
   lilasIcone: '#BBAAE6',
-  botao: '#7E6CC0',
+  botao: '#7562B8',
+  botaoForte: '#6C5AB5',
   lilasTexto: '#D3C8F0',
   lavVeu: 'rgba(62,52,86,0.55)',
   bordaSuave: 'rgba(78,68,98,0.85)',

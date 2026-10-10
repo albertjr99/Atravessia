@@ -179,7 +179,7 @@ export default function VoucherScreen({ route, navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  confirmarBtn: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  confirmarBtn: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
   meusBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md, paddingVertical: 8 },
   meusBtnTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lav5, textDecorationLine: 'underline' },
   descontoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.sage, textAlign: 'center', marginTop: 4, marginBottom: 2 },
@@ -212,12 +212,13 @@ const s = criarEstilos(() => ({
   },
   qrFallback: {
     width: 190, height: 190, borderRadius: radius.md,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F1EDF8', alignItems: 'center', justifyContent: 'center',
   },
   codigo: {
-    fontFamily: fonts.bodyBold, fontSize: 22, letterSpacing: 2, color: colors.lav6, marginTop: 6,
+    fontFamily: fonts.bodyBold, fontSize: 22, letterSpacing: 2, color: '#4A4B4A', marginTop: 6,
   },
-  instrucao: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
+  // O cartão do QR Code é sempre branco (leitura pelo parceiro): textos escuros fixos.
+  instrucao: { fontFamily: fonts.body, fontSize: 12, color: '#76737A', textAlign: 'center' },
 
   validade: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, marginTop: spacing.md },
 

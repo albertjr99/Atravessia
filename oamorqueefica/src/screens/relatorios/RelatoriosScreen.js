@@ -246,7 +246,7 @@ function AreaDonutCard({ area }) {
 }
 
 const areaStyles = criarEstilos(() => ({
-  card: { width: 155, backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center', gap: 6 },
+  card: { width: 155, backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center', gap: 6 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
   name: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, flex: 1 },
   breakdown: { alignSelf: 'stretch', gap: 3 },
@@ -336,7 +336,7 @@ const vitStyles = criarEstilos(() => ({
   item: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     width: '48%',
-    backgroundColor: colors.white, borderRadius: 12,
+    backgroundColor: colors.card, borderRadius: 12,
     borderWidth: 1, borderColor: colors.border,
     paddingVertical: 9, paddingHorizontal: 9,
   },
@@ -1753,7 +1753,7 @@ const s = criarEstilos(() => ({
 
   tabRow: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: colors.lav1, borderRadius: radius.full, padding: 4 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: radius.full, gap: 4 },
-  tabSel: { backgroundColor: colors.white },
+  tabSel: { backgroundColor: colors.card },
   tabTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
   tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav4 },
 
@@ -1766,7 +1766,7 @@ const s = criarEstilos(() => ({
 
   card: {
     marginHorizontal: spacing.lg, marginBottom: spacing.md,
-    backgroundColor: colors.white, borderRadius: radius.lg,
+    backgroundColor: colors.card, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, padding: spacing.md,
   },
   vitRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
@@ -1817,7 +1817,7 @@ const s = criarEstilos(() => ({
   emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.white },
 
   tilesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  tile: { flex: 1, minWidth: '45%', alignItems: 'center', backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, gap: 4 },
+  tile: { flex: 1, minWidth: '45%', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, gap: 4 },
   tileNum: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav4 },
   tileLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl, textAlign: 'center' },
 
@@ -1896,7 +1896,7 @@ const s = criarEstilos(() => ({
   calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  modalCard: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 320, gap: 8 },
+  modalCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 320, gap: 8 },
   modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
   modalRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   modalEmo: { fontFamily: fonts.body, fontSize: 14, color: colors.td },

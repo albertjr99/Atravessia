@@ -99,7 +99,7 @@ const s = criarEstilos(() => ({
   texto: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.tm, textAlign: 'center' },
   botao: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 15,
+    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 15,
   },
   botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   emBreve: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, textAlign: 'center' },

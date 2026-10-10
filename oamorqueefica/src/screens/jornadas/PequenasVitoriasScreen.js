@@ -365,7 +365,7 @@ const styles = criarEstilos(() => ({
   coluna: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: spacing.lg },
 
   header: { paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
-  headerIlustracao: { width: 72, height: 72, marginLeft: 8 },
+  headerIlustracao: { width: 72, height: 72, marginLeft: 8, borderRadius: 16 },
 
   resumo: {
     flexDirection: 'row', backgroundColor: colors.lav1, borderRadius: radius.xl,

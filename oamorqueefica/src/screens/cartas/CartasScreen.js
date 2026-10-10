@@ -145,7 +145,7 @@ const styles = criarEstilos(() => ({
   lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
   fab: {
     position: 'absolute', right: spacing.lg, bottom: spacing.lg,
-    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.lav5,
+    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.botaoForte,
     alignItems: 'center', justifyContent: 'center', ...shadow.soft,
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(74,63,85,0.35)', justifyContent: 'flex-end' },

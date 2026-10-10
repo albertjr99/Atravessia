@@ -241,7 +241,7 @@ const s = criarEstilos(() => ({
   carregando: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg },
 
-  ilustracao: { width: '100%', height: 130, marginTop: spacing.sm, marginBottom: spacing.md },
+  ilustracao: { width: 130, height: 130, alignSelf: 'center', borderRadius: 20, marginTop: spacing.sm, marginBottom: spacing.md },
   intro: { fontFamily: fonts.body, fontSize: 13.5, color: colors.tm, lineHeight: 20, textAlign: 'center', marginBottom: spacing.lg },
 
   cartao: {
@@ -270,7 +270,7 @@ const s = criarEstilos(() => ({
     flexGrow: 1, flexBasis: '45%', alignItems: 'center', paddingVertical: 10,
     borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.bg,
   },
-  chipAtivo: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  chipAtivo: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
   chipHora: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.lav6 },
   chipRot: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
   chipTxtAtivo: { color: 'white' },
@@ -292,7 +292,7 @@ const s = criarEstilos(() => ({
   avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 18 },
   avisoBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14, marginTop: spacing.sm,
+    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14, marginTop: spacing.sm,
   },
   avisoBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
 }));

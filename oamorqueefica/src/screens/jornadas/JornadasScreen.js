@@ -145,7 +145,7 @@ const styles = criarEstilos(() => ({
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   sub: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, marginTop: 4 },
-  headerIlustracao: { width: 64, height: 64 },
+  headerIlustracao: { width: 64, height: 64, borderRadius: 16 },
   lista: { paddingHorizontal: spacing.lg, gap: 12 },
   botaoVideo: { marginLeft: spacing.lg, marginBottom: spacing.md },
   jornadaCard: {

@@ -206,7 +206,7 @@ const s = criarEstilos(() => ({
     flexGrow: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
-  imagem: { width: '100%', marginBottom: spacing.lg },
+  imagem: { width: '100%', maxWidth: 320, alignSelf: 'center', borderRadius: 24, marginBottom: spacing.lg },
   boasVindas: {
     fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5,
     letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
@@ -237,11 +237,11 @@ const s = criarEstilos(() => ({
   rodape: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, alignItems: 'center' },
   pontos: { flexDirection: 'row', gap: 7, marginBottom: spacing.lg },
   ponto: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.lav2 },
-  pontoAtivo: { width: 22, backgroundColor: colors.lav5 },
+  pontoAtivo: { width: 22, backgroundColor: colors.botaoForte },
   btnPrincipal: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     width: '100%', maxWidth: 420, paddingVertical: 15, borderRadius: radius.full,
-    backgroundColor: colors.lav5,
+    backgroundColor: colors.botaoForte,
   },
   btnPrincipalTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   btnSecundario: { paddingVertical: 12, marginTop: 4 },

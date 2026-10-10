@@ -146,7 +146,7 @@ const styles = criarEstilos(() => ({
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  headerIlustracao: { width: 64, height: 64 },
+  headerIlustracao: { width: 64, height: 64, borderRadius: 16 },
   introCard: { marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.rosa || '#D8B4B6', borderRadius: radius.full, paddingVertical: 10, marginTop: spacing.md },
   addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },

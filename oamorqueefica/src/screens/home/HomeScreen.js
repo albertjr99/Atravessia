@@ -246,7 +246,7 @@ export default function HomeScreen({ navigation }) {
                   <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
                     <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
                   </View>
-                  <Text style={s.emoLbl} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>{e.label}</Text>
+                  <Text style={s.emoLbl} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{e.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
