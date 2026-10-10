@@ -77,9 +77,10 @@ export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diar
   }
   if (vt.length) {
     const freq = {};
-    vt.forEach(v => { freq[v.label] = (freq[v.label] || 0) + 1; });
+    vt.forEach(v => { const l = v.label || v.texto; if (l) freq[l] = (freq[l] || 0) + 1; });
     const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([l]) => `"${l}"`);
-    p.push(`Você registrou ${vt.length} ${vt.length === 1 ? 'pequena vitória' : 'pequenas vitórias'}, como ${top.join(', ')}. Elas contam, e muito.`);
+    const qtd = `${vt.length} ${vt.length === 1 ? 'pequena vitória' : 'pequenas vitórias'}`;
+    p.push(top.length ? `Você registrou ${qtd}, como ${top.join(', ')}. Elas contam, e muito.` : `Você registrou ${qtd}. Elas contam, e muito.`);
   }
   if (dr.length) {
     p.push(`E escreveu no diário ${dr.length} ${dr.length === 1 ? 'vez' : 'vezes'}. Colocar o que sente em palavras é uma forma corajosa de atravessar.`);

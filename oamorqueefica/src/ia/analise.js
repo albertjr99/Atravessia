@@ -81,7 +81,7 @@ const RISCO = [
 
 const SAUDACAO = ['oi', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'hey', 'opa', 'e ai'];
 const DESPEDIDA = ['tchau', 'ate logo', 'ate mais', 'boa noite tchau', 'vou dormir', 'ate amanha', 'obrigada por hoje', 'obrigado por hoje'];
-const PEDIDO = ['o que eu faco', 'o que fazer', 'me ajuda', 'preciso de ajuda', 'como faco', 'como lidar', 'como passar', 'como superar', 'alguma dica', 'sugest'];
+const PEDIDO = ['o que eu faco', 'o que faco', 'o que fazer', 'o que posso fazer', 'o que eu posso fazer', 'o que eu poderia', 'o que voce sugere', 'o que voce acha', 'como eu faco', 'como melhorar', 'como aliviar', 'me ajude', 'algum conselho', 'conselho', 'me ajuda', 'preciso de ajuda', 'como faco', 'como lidar', 'como passar', 'como superar', 'alguma dica', 'sugest'];
 const AGRADECIMENTO = ['obrigad', 'valeu', 'agradeco', 'me ajudou', 'ajudou muito'];
 
 // Os termos casam no início de uma palavra: "dor " não pega "dormir" e
