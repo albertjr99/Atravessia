@@ -6,6 +6,15 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
+import { useAuth } from '../../hooks/AuthContext';
+
+// "Bom dia, Larissa" — saudação pelo horário de Brasília e primeiro nome.
+function saudacaoAdmin(nome) {
+  const h = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false })) % 24;
+  const periodo = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = String(nome || '').trim().split(/\s+/)[0];
+  return primeiro ? `${periodo}, ${primeiro}` : periodo;
+}
 
 const hojeStr = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
@@ -15,6 +24,7 @@ const normalizarPlano = (p) => {
 };
 
 export default function AdminHomeScreen({ navigation }) {
+  const { perfil } = useAuth();
   const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: {} });
   const [conteudo, setConteudo] = useState({ conteudos: 0, audios: 0, parcerias: 0 });
   const [carregando, setCarregando] = useState(true);
@@ -78,7 +88,7 @@ export default function AdminHomeScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         <View style={s.pageHeader}>
-          <Text style={s.pageTitle}>Dashboard</Text>
+          <Text style={s.pageTitle}>{saudacaoAdmin(perfil?.apelido || perfil?.nome)}</Text>
           <Text style={s.pageSub}>Bem-vinda ao painel Atravessia</Text>
         </View>
 

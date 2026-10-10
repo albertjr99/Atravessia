@@ -108,6 +108,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Indicações Atravessia (produtos com link de afiliado da Amazon) —
+    // leitura para todas, escrita só admin. Os cliques são contados pela
+    // Cloud Function registrarClique.
+    match /indicacoes/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Cashback: créditos, usos e estornos. Cada usuária só lê os seus; a
+    // escrita é exclusiva das Cloud Functions (Admin SDK), para ninguém
+    // conseguir se dar crédito pelo app.
+    match /cashback/{docId} {
+      allow read: if isSignedIn() && (resource.data.usuarioId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
     // ── Módulo de Benefícios/Cupons com comissão ("Cuide-se") ──────────────
     // O cálculo financeiro (desconto, comissão) só pode acontecer nas Cloud
     // Functions (functions/index.js), que usam o Admin SDK e ignoram estas

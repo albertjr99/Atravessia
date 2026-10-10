@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import {
-  collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, increment, where,
+  collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, where,
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../services/firebase';
@@ -337,9 +337,46 @@ export function AppProvider({ children }) {
     setParcerias(docs);
   });
 
-  const registrarCliqueParceria = (id) => {
-    updateDoc(doc(db, 'parcerias', id), { cliques: increment(1) }).catch(() => {});
+  // O app não pode escrever em parcerias/indicações: o contador de cliques é
+  // atualizado pela Cloud Function registrarClique.
+  const registrarClique = (tipo, id) => {
+    if (!id) return;
+    httpsCallable(functions, 'registrarClique')({ tipo, id })
+      .catch(e => console.warn('[Cliques] não registrado:', e?.message));
   };
+  const registrarCliqueParceria = (id) => registrarClique('parceria', id);
+
+  // ---- Indicações Atravessia (afiliados Amazon) -------------------------------
+  const [indicacoes, setIndicacoes] = useState([]);
+  useColecaoGlobal(uid, 'indicacoes', (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false);
+    docs.sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999)
+      || (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
+    setIndicacoes(docs);
+  });
+
+  // ---- Cashback ---------------------------------------------------------------
+  // Créditos, usos e estornos da usuária (gravados só pelo servidor).
+  const [movimentosCashback, setMovimentosCashback] = useState([]);
+  useEffect(() => {
+    if (!uid) { setMovimentosCashback([]); return undefined; }
+    const ref = query(collection(db, 'cashback'), where('usuarioId', '==', uid));
+    return onSnapshot(ref, (snap) => {
+      setMovimentosCashback(snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0)));
+    }, (e) => console.warn('[Cashback] leitura:', e?.message));
+  }, [uid]);
+
+  const cashback = useMemo(() => {
+    const agora = Date.now();
+    const em30 = agora + 30 * 86400000;
+    const validos = movimentosCashback.filter(m => m.tipo === 'credito' && !m.estornado
+      && (m.saldoCentavos || 0) > 0 && (m.expiraEm?.toMillis?.() || 0) > agora);
+    const saldoCentavos = validos.reduce((s, m) => s + m.saldoCentavos, 0);
+    const aVencerCentavos = validos.filter(m => m.expiraEm.toMillis() <= em30).reduce((s, m) => s + m.saldoCentavos, 0);
+    const proximo = validos.map(m => m.expiraEm.toMillis()).sort((a, b) => a - b)[0] || null;
+    return { saldoCentavos, aVencerCentavos, proximoVencimento: proximo, movimentos: movimentosCashback };
+  }, [movimentosCashback]);
 
   // ---- Benefícios com cupom/comissão ("Cuide-se") ----------------------------
   // O documento em si (vouchers/resgates) é sempre gerado e calculado pela
@@ -614,7 +651,8 @@ export function AppProvider({ children }) {
       mensagensRelatorio,
       jornadasAdmin,
       travessiaItens,
-      parcerias, registrarCliqueParceria,
+      parcerias, registrarCliqueParceria, registrarClique,
+      indicacoes, cashback,
       meusVouchers, meusResgates, resgatesAguardandoConfirmacao,
       gerarVoucherBeneficio, responderConfirmacaoResgate,
       jornadasComProgresso, concluirAtividadeJornada,

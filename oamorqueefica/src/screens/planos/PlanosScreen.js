@@ -9,13 +9,14 @@ const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { planos as planosPadrao } from '../../data';
 import { ScriptTitle, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
 import { db, functions } from '../../services/firebase';
+import UsarCashback from '../cashback/UsarCashback';
 
 export default function PlanosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -25,6 +26,7 @@ export default function PlanosScreen({ navigation }) {
   const [carregando, setCarregando] = useState(false);
   const [demorando, setDemorando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [usarCashback, setUsarCashback] = useState(false);
 
   // Situação de acesso da usuária, para a tela dizer com clareza em que plano
   // ela está e não oferecer a compra do que ela já tem.
@@ -56,7 +58,7 @@ export default function PlanosScreen({ navigation }) {
     const aviso = setTimeout(() => setDemorando(true), 8000);
     try {
       const criarSessaoCheckout = httpsCallable(functions, 'criarSessaoCheckout');
-      const { data } = await criarSessaoCheckout({ planoId });
+      const { data } = await criarSessaoCheckout({ planoId, usarCashback });
       await abrirPagamento(data.url);
       // O plano é atualizado automaticamente quando o pagamento é confirmado
       // (webhook do Stripe grava em usuarios/{uid}.plano e o app escuta em tempo real).
@@ -103,7 +105,7 @@ export default function PlanosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -229,11 +231,14 @@ export default function PlanosScreen({ navigation }) {
               <Button title="Voltar" onPress={() => navigation.goBack()} variant="ghost" />
             )
           ) : (
+            <>
+            <UsarCashback ativo={usarCashback} onChange={setUsarCashback} />
             <Button
               title={carregando ? 'Abrindo pagamento...' : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
               onPress={() => assinarPlano(sel)}
               disabled={carregando}
             />
+            </>
           )}
           <Text style={styles.cancelInfo}>Pagamento seguro pelo Stripe. Cancele quando quiser.</Text>
         </View>
@@ -258,12 +263,12 @@ export default function PlanosScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
-  headerIlustracao: { width: 80, height: 80, marginLeft: 8 },
+  headerIlustracao: { width: 80, height: 80, marginLeft: 8, borderRadius: 16 },
   sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
   planCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.md,
@@ -313,10 +318,10 @@ const styles = StyleSheet.create({
   seuPlanoTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: 'white' },
   infoAcao: {
     flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md,
-    borderRadius: radius.lg, backgroundColor: '#EEF5EF', borderWidth: 1, borderColor: '#D5E6D8',
+    borderRadius: radius.lg, backgroundColor: colors.sageFundo, borderWidth: 1, borderColor: colors.escuro ? '#35503B' : '#D5E6D8',
   },
   infoAcaoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.sageFg, lineHeight: 18 },
-  esperaFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  esperaFundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   esperaCard: { width: '100%', maxWidth: 340, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', gap: 10 },
   esperaTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, textAlign: 'center' },
   esperaSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, textAlign: 'center', lineHeight: 18 },
@@ -329,4 +334,4 @@ const styles = StyleSheet.create({
   emBreveCard: { flex: 1, alignItems: 'center', gap: 6, padding: spacing.md, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, opacity: 0.7 },
   emBreveNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tl },
   emBreveSub: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
-});
+}));

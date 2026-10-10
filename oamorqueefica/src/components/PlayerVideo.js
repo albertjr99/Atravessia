@@ -5,7 +5,7 @@ import {
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEvent } from 'expo';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, radius } from '../theme';
+import { colors, fonts, radius, criarEstilos } from '../theme';
 
 // Player de vídeo no estilo do YouTube, com a cara do app: tocar/pausar,
 // voltar e avançar 10 s, barra de progresso arrastável, velocidade (0,5× a 2×),
@@ -250,7 +250,7 @@ export default function PlayerVideo({ url, titulo, autoPlay = true, onTerminar, 
   );
 }
 
-const st = StyleSheet.create({
+const st = criarEstilos(() => ({
   caixa: {
     width: '100%', backgroundColor: '#17141f', borderRadius: radius.lg, overflow: 'hidden',
     justifyContent: 'center', alignItems: 'center',
@@ -294,4 +294,4 @@ const st = StyleSheet.create({
   menuItemSel: { backgroundColor: 'rgba(184,171,217,0.16)' },
   menuTxt: { fontFamily: fonts.body, fontSize: 13.5, color: 'white' },
   menuTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav3 },
-});
+}));

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { colors, fonts, radius, shadow, spacing } from '../theme';
+import { colors, fonts, radius, shadow, spacing, criarEstilos } from '../theme';
 
 const lavLeft = require('../../assets/images/lavanda_left.png');
 const lavRight = require('../../assets/images/lavanda_right.png');
@@ -10,8 +10,9 @@ const decorFlores = require('../../assets/images/decoracao_flores.png');
 const folhaVento = require('../../assets/images/il_folha_vento.png');
 
 export function LavandaBg() {
+  // No noturno os ramos ficam mais discretos, para não brilhar no escuro.
   return (
-    <View style={bgSty.container} pointerEvents="none">
+    <View style={[bgSty.container, colors.escuro && { opacity: 0.45 }]} pointerEvents="none">
       <Image source={lavRight} style={bgSty.topRight} resizeMode="contain" />
       <Image source={lavLeft} style={bgSty.bottomLeft} resizeMode="contain" />
       <Image source={folhaVento} style={bgSty.topLeft} resizeMode="contain" />
@@ -22,7 +23,7 @@ export function LavandaBg() {
   );
 }
 
-const bgSty = StyleSheet.create({
+const bgSty = criarEstilos(() => ({
   container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
   topRight: { position: 'absolute', top: -10, right: -10, width: 170, height: 170, opacity: 0.55, tintColor: '#B8A6C9' },
   bottomLeft: { position: 'absolute', bottom: 40, left: -10, width: 150, height: 150, opacity: 0.50, tintColor: '#B8A6C9' },
@@ -30,7 +31,7 @@ const bgSty = StyleSheet.create({
   bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 120, height: 120, opacity: 0.48, tintColor: '#E8A898' },
   centerLeft: { position: 'absolute', top: '38%', left: -20, width: 100, height: 100, opacity: 0.38, tintColor: '#B8A6C9' },
   centerRight: { position: 'absolute', top: '55%', right: -10, width: 90, height: 90, opacity: 0.40, tintColor: '#B8A6C9' },
-});
+}));
 
 export function Card({ children, style, onPress }) {
   const Wrapper = onPress ? TouchableOpacity : View;
@@ -135,7 +136,7 @@ export function ProgressBar({ progress, color = colors.lav4 }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -204,4 +205,4 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: radius.full,
   },
-});
+}));

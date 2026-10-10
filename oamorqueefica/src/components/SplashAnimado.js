@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, Animated, Easing, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fonts } from '../theme';
+import { colors, fonts, criarEstilos } from '../theme';
 
 const logo = require('../../assets/images/travessia_logo.png');
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -143,7 +143,7 @@ export default function SplashAnimado({ pronto, onFim }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   raiz: { alignItems: 'center', justifyContent: 'center', zIndex: 999 },
   centro: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   halo: {
@@ -171,4 +171,4 @@ const s = StyleSheet.create({
     width: 13, height: 13, borderRadius: 7,
     backgroundColor: colors.accent,
   },
-});
+}));

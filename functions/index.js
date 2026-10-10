@@ -165,8 +165,11 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   const stripe = stripeDe();
 
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
+  // Cashback: desconto na primeira mensalidade, se ela escolheu usar.
+  const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
   const session = await stripe.checkout.sessions.create({
+    ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'subscription',
     customer: customerId,
     locale: 'pt-BR',
@@ -182,7 +185,7 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
     }],
     success_url: request.data?.successUrl || `${SITE_URL}/checkout-sucesso.html`,
     cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
-    metadata: { uid, planoId: String(planoId) },
+    metadata: { uid, planoId: String(planoId), cashbackCentavos: String(cashback?.desconto || 0) },
     subscription_data: { metadata: { uid, planoId: String(planoId) } },
     custom_text: {
       submit: { message: 'Você poderá cancelar quando quiser, direto no app.' },
@@ -211,8 +214,10 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
 
   const stripe = stripeDe();
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
+  const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
   const session = await stripe.checkout.sessions.create({
+    ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'payment',
     customer: customerId,
     locale: 'pt-BR',
@@ -226,7 +231,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
     }],
     success_url: request.data?.successUrl || `${SITE_URL}/checkout-sucesso.html`,
     cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
-    metadata: { uid, tipo: 'periodo_credito' },
+    metadata: { uid, tipo: 'periodo_credito', cashbackCentavos: String(cashback?.desconto || 0) },
     custom_text: {
       submit: { message: `${reaisTexto(valorAtual)} por relatório — use quando quiser.` },
     },
@@ -271,6 +276,17 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
+      const usado = Number(session.metadata?.cashbackCentavos || 0);
+      if (usado > 0 && session.metadata?.uid) {
+        try {
+          await debitarCashback(session.metadata.uid, usado, {
+            descricao: session.metadata?.tipo === 'periodo_credito' ? 'Desconto no relatório personalizado' : 'Desconto na mensalidade do plano',
+            referencia: session.id,
+          });
+        } catch (e) {
+          console.error('[cashback] falha ao debitar', session.id, e);
+        }
+      }
       if (session.metadata?.tipo === 'periodo_credito') {
         const uid = session.metadata?.uid;
         if (uid) {
@@ -816,6 +832,7 @@ exports.responderConfirmacaoResgate = onCall(async (request) => {
   if (!resgateId) throw new HttpsError('invalid-argument', 'Resgate inválido.');
 
   const resgateRef = db.collection('resgates').doc(resgateId);
+  let dadosResgate = null;
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(resgateRef);
@@ -823,6 +840,7 @@ exports.responderConfirmacaoResgate = onCall(async (request) => {
     const r = snap.data();
     if (r.usuarioId !== uid) throw new HttpsError('permission-denied', 'Este registro não pertence a você.');
     if (r.status !== 'CONCLUIDO') throw new HttpsError('failed-precondition', 'Este registro já foi respondido.');
+    dadosResgate = r;
 
     const agora = admin.firestore.FieldValue.serverTimestamp();
     if (confirmar) {
@@ -838,7 +856,27 @@ exports.responderConfirmacaoResgate = onCall(async (request) => {
     usuarioId: uid, perfil: 'usuaria',
   });
 
-  return { ok: true };
+  // Cashback: atendimento confirmado gera crédito sobre o valor original.
+  let cashbackCentavos = 0;
+  if (confirmar && dadosResgate) {
+    try {
+      const cfg = await configCashback();
+      const valor = Math.floor((dadosResgate.valorOriginalCentavos || 0) * (cfg.percentual / 100));
+      if (cfg.ativo && valor >= 1) {
+        const criado = await creditarCashback(uid, valor, {
+          origem: 'cupom',
+          descricao: `Cupom ${dadosResgate.parceriaNome || 'de parceria'}`,
+          referencia: resgateId,
+          idDoc: `cupom_${resgateId}`,
+        }, cfg);
+        if (criado) cashbackCentavos = valor;
+      }
+    } catch (e) {
+      console.error('[cashback] não foi possível creditar', resgateId, e);
+    }
+  }
+
+  return { ok: true, cashback: reais(cashbackCentavos) };
 });
 
 // ---- 5) Job periódico: expira vouchers vencidos e libera resgates para
@@ -989,4 +1027,201 @@ exports.consultarExtratoParceiro = onCall(async (request) => {
     itens,
     totalComissaoPendente: totalPendente,
   };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CASHBACK
+// Carteira de créditos de cada usuária, em `cashback/{id}` (coleção própria,
+// que só o servidor grava; a usuária apenas lê os seus). Cada crédito vale
+// por um prazo (padrão 6 meses) e é consumido do mais antigo para o mais
+// novo. Valores sempre em centavos.
+//   credito: { usuarioId, tipo: 'credito', origem: 'cupom'|'manual', descricao,
+//              valorCentavos, saldoCentavos, criadoEm, expiraEm, referencia }
+//   uso:     { usuarioId, tipo: 'uso', valorCentavos, descricao, referencia, creditos }
+//   estorno: { usuarioId, tipo: 'estorno', valorCentavos, descricao, referencia }
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CASHBACK_PADRAO = { ativo: true, percentual: 1, validadeMeses: 6, limitePercentual: 100 };
+
+async function configCashback() {
+  try {
+    const snap = await db.collection('configuracoes').doc('cashback').get();
+    const c = snap.data() || {};
+    return {
+      ativo: c.ativo !== false,
+      percentual: Number.isFinite(Number(c.percentual)) ? Math.max(0, Math.min(50, Number(c.percentual))) : CASHBACK_PADRAO.percentual,
+      validadeMeses: Number.isFinite(Number(c.validadeMeses)) && Number(c.validadeMeses) > 0 ? Math.min(24, Math.round(Number(c.validadeMeses))) : CASHBACK_PADRAO.validadeMeses,
+      limitePercentual: Number.isFinite(Number(c.limitePercentual)) ? Math.max(1, Math.min(100, Number(c.limitePercentual))) : CASHBACK_PADRAO.limitePercentual,
+    };
+  } catch {
+    return { ...CASHBACK_PADRAO };
+  }
+}
+
+function dataMaisMeses(meses) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + meses);
+  return admin.firestore.Timestamp.fromDate(d);
+}
+
+// Créditos com saldo e ainda válidos, do que vence primeiro para o último.
+async function creditosDisponiveis(uid) {
+  const snap = await db.collection('cashback').where('usuarioId', '==', uid).where('tipo', '==', 'credito').get();
+  const agora = Date.now();
+  return snap.docs
+    .map(d => ({ ref: d.ref, id: d.id, ...d.data() }))
+    .filter(c => (c.saldoCentavos || 0) > 0 && !c.estornado && (c.expiraEm?.toMillis?.() || 0) > agora)
+    .sort((a, b) => a.expiraEm.toMillis() - b.expiraEm.toMillis());
+}
+
+async function saldoCashbackCentavos(uid) {
+  return (await creditosDisponiveis(uid)).reduce((s, c) => s + c.saldoCentavos, 0);
+}
+
+// Cria um crédito (id fixo opcional, para não duplicar).
+async function creditarCashback(uid, valorCentavos, { origem, descricao, referencia, idDoc }, cfg) {
+  if (!uid || !(valorCentavos > 0)) return null;
+  const ref = idDoc ? db.collection('cashback').doc(idDoc) : db.collection('cashback').doc();
+  const criado = await db.runTransaction(async (tx) => {
+    const existente = await tx.get(ref);
+    if (existente.exists) return false;
+    tx.set(ref, {
+      usuarioId: uid, tipo: 'credito', origem, descricao, referencia: referencia || null,
+      valorCentavos, saldoCentavos: valorCentavos,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+      expiraEm: dataMaisMeses(cfg.validadeMeses),
+    });
+    return true;
+  });
+  if (criado) {
+    await db.collection('notificacoesEditoriais').add({
+      usuarioId: uid, tipo: 'cashback',
+      // Sem valor no texto: esta coleção é lida pelo app de todas as usuárias.
+      texto: 'Você ganhou cashback! Toque para ver seu saldo e usar no seu plano.',
+      screen: 'Cashback', ativa: true, criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+  return criado;
+}
+
+// Consome `valorCentavos` dos créditos (mais antigos primeiro). Idempotente
+// pela referência (ex.: id da sessão do Stripe).
+async function debitarCashback(uid, valorCentavos, { descricao, referencia }) {
+  if (!uid || !(valorCentavos > 0) || !referencia) return 0;
+  const usoRef = db.collection('cashback').doc(`uso_${referencia}`);
+  const creditos = await creditosDisponiveis(uid);
+  return db.runTransaction(async (tx) => {
+    const ja = await tx.get(usoRef);
+    if (ja.exists) return 0;
+    const atuais = await Promise.all(creditos.map(c => tx.get(c.ref)));
+    let falta = valorCentavos;
+    const usados = [];
+    atuais.forEach((snap) => {
+      if (falta <= 0 || !snap.exists) return;
+      const saldo = snap.data().saldoCentavos || 0;
+      if (saldo <= 0) return;
+      const tirar = Math.min(saldo, falta);
+      tx.update(snap.ref, { saldoCentavos: saldo - tirar });
+      usados.push({ id: snap.id, valorCentavos: tirar });
+      falta -= tirar;
+    });
+    const debitado = valorCentavos - falta;
+    tx.set(usoRef, {
+      usuarioId: uid, tipo: 'uso', valorCentavos: debitado, descricao, referencia, creditos: usados,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return debitado;
+  });
+}
+
+// Desconto de cashback para uma cobrança: cupom de uso único no Stripe. Deixa
+// sempre pelo menos R$ 1,00 a pagar (o Stripe não aceita cobranças zeradas
+// em pagamentos avulsos) e respeita o limite configurado.
+async function descontoCashback(stripe, uid, valorCentavos) {
+  const cfg = await configCashback();
+  if (!cfg.ativo) return null;
+  const saldo = await saldoCashbackCentavos(uid);
+  const limite = Math.floor(valorCentavos * (cfg.limitePercentual / 100));
+  const desconto = Math.min(saldo, limite, valorCentavos - 100);
+  if (!(desconto >= 50)) return null;
+  const cupom = await stripe.coupons.create({
+    amount_off: desconto, currency: 'brl', duration: 'once', max_redemptions: 1, name: 'Cashback Atravessia',
+  });
+  return { cupomId: cupom.id, desconto };
+}
+
+exports.concederCashbackAdmin = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const email = String(request.data?.email || '').trim().toLowerCase();
+  const valor = centavos(request.data?.valor);
+  const motivo = String(request.data?.motivo || '').trim().slice(0, 140) || 'Crédito concedido pela Atravessia';
+  if (!email) throw new HttpsError('invalid-argument', 'Informe o e-mail da usuária.');
+  if (!valor || valor < 100) throw new HttpsError('invalid-argument', 'Informe um valor a partir de R$ 1,00.');
+  if (valor > 50000) throw new HttpsError('invalid-argument', 'Valor acima do limite de R$ 500,00 por crédito.');
+  const digitado = String(request.data?.email || '').trim();
+  let snap = await db.collection('usuarios').where('email', '==', email).limit(1).get();
+  if (snap.empty && digitado !== email) snap = await db.collection('usuarios').where('email', '==', digitado).limit(1).get();
+  if (snap.empty) throw new HttpsError('not-found', 'Nenhuma usuária encontrada com esse e-mail.');
+  const uid = snap.docs[0].id;
+  const cfg = await configCashback();
+  await creditarCashback(uid, valor, { origem: 'manual', descricao: motivo, referencia: `admin:${adminUid}` }, cfg);
+  return { ok: true, nome: snap.docs[0].data().nome || email };
+});
+
+exports.estornarCashbackAdmin = onCall(async (request) => {
+  await exigirAdmin(request);
+  const creditoId = String(request.data?.creditoId || '');
+  const motivo = String(request.data?.motivo || '').trim().slice(0, 140) || 'Crédito estornado';
+  if (!creditoId) throw new HttpsError('invalid-argument', 'Crédito não informado.');
+  const ref = db.collection('cashback').doc(creditoId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.data().tipo !== 'credito') throw new HttpsError('not-found', 'Crédito não encontrado.');
+    const c = snap.data();
+    if (c.estornado) throw new HttpsError('failed-precondition', 'Este crédito já foi estornado.');
+    tx.update(ref, { estornado: true, saldoCentavos: 0, estornadoEm: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(db.collection('cashback').doc(), {
+      usuarioId: c.usuarioId, tipo: 'estorno', valorCentavos: c.saldoCentavos || 0, descricao: motivo,
+      referencia: creditoId, criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  });
+  return { ok: true };
+});
+
+// Todo dia às 10h30: avisa quem tem crédito vencendo daqui a 30 dias.
+exports.avisarCashbackAVencer = onSchedule({ schedule: '30 10 * * *', timeZone: TIMEZONE }, async () => {
+  const de = admin.firestore.Timestamp.fromMillis(Date.now() + 29 * 86400000);
+  const ate = admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 86400000);
+  const snap = await db.collection('cashback').where('expiraEm', '>=', de).where('expiraEm', '<', ate).get();
+  const porUsuaria = {};
+  snap.docs.forEach(d => {
+    const c = d.data();
+    if (c.tipo !== 'credito' || c.estornado || !(c.saldoCentavos > 0)) return;
+    porUsuaria[c.usuarioId] = (porUsuaria[c.usuarioId] || 0) + c.saldoCentavos;
+  });
+  for (const uid of Object.keys(porUsuaria)) {
+    await db.collection('notificacoesEditoriais').add({
+      usuarioId: uid, tipo: 'cashback',
+      texto: 'Parte do seu cashback vence em 30 dias. Toque para ver e usar no seu plano.',
+      screen: 'Cashback', ativa: true, criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CLIQUES (parcerias e indicações)
+// O app não pode escrever nesses documentos (só as administradoras), então o
+// contador de cliques é atualizado aqui. Antes, a tentativa direta falhava em
+// silêncio e os cliques das parcerias não eram contados.
+// ═══════════════════════════════════════════════════════════════════════════
+exports.registrarClique = onCall(async (request) => {
+  if (!request.auth?.uid) return { ok: false };
+  const tipo = request.data?.tipo === 'indicacao' ? 'indicacoes' : 'parcerias';
+  const id = String(request.data?.id || '');
+  if (!id || id.includes('/')) return { ok: false };
+  const ref = db.collection(tipo).doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return { ok: false };
+  await ref.update({ cliques: admin.firestore.FieldValue.increment(1) });
+  return { ok: true };
 });

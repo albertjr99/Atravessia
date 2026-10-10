@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Button, Disclaimer, LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 
@@ -266,7 +266,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { flexGrow: 1 },
   heroWrap: { position: 'relative', height: 240 },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   tagline: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(255,240,255,0.95)', marginTop: 4, letterSpacing: 0.4 },
   card: { marginHorizontal: spacing.lg, marginTop: -28, backgroundColor: colors.card, borderRadius: 24, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 24, elevation: 6 },
   cardTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, marginBottom: spacing.md, textAlign: 'center' },
-  erroInline: { fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, backgroundColor: '#FFF0EE', borderRadius: radius.sm, padding: spacing.sm, marginBottom: spacing.sm, textAlign: 'center' },
+  erroInline: { fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, backgroundColor: colors.erroFundo, borderRadius: radius.sm, padding: spacing.sm, marginBottom: spacing.sm, textAlign: 'center' },
   fieldLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm },
   inputIcon: { marginRight: 6 },
@@ -295,4 +295,4 @@ const styles = StyleSheet.create({
   secondaryBtn: { borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.lav3, paddingVertical: 14, alignItems: 'center', backgroundColor: colors.lav1 },
   secondaryBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lav6 },
   footer: { marginTop: spacing.xl, paddingHorizontal: spacing.lg, alignItems: 'center' },
-});
+}));

@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { cartasInspiradoras } from '../../data';
 import { ScriptTitle, Card, Button, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
@@ -30,7 +30,7 @@ export default function CartasScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -123,10 +123,10 @@ export default function CartasScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   tabs: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 8, marginBottom: spacing.sm },
   tab: { flex: 1, paddingVertical: 8, borderRadius: radius.full, alignItems: 'center', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
   fab: {
     position: 'absolute', right: spacing.lg, bottom: spacing.lg,
-    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.lav5,
+    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.botaoForte,
     alignItems: 'center', justifyContent: 'center', ...shadow.soft,
   },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(74,63,85,0.35)', justifyContent: 'flex-end' },
@@ -155,4 +155,4 @@ const styles = StyleSheet.create({
   input: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: 10, fontFamily: fonts.body, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
   inputMulti: { height: 100, textAlignVertical: 'top' },
   moderacao: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, lineHeight: 14 },
-});
+}));

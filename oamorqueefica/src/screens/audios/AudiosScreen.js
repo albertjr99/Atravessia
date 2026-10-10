@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -30,11 +30,12 @@ const acaoIconeDe = (tipo) => {
 // Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
 const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
 
-const CAT_COR = {
+// Função (e não objeto fixo) para acompanhar o tema claro/noturno.
+const corDaCategoria = () => ({
   acolhimento: { bg: colors.lav1, color: colors.lav5 },
-  noturno:     { bg: '#F5EDE5', color: '#B08070' },
+  noturno:     { bg: colors.escuro ? '#3A2E26' : '#F5EDE5', color: colors.escuro ? '#DDB49F' : '#B08070' },
   complementar:{ bg: colors.lav1, color: colors.lav5 },
-};
+});
 
 export default function AudiosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -93,7 +94,7 @@ export default function AudiosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
@@ -132,7 +133,7 @@ export default function AudiosScreen({ navigation }) {
             <Text style={s.countLabel}>{favoritos.length} conteúdo{favoritos.length !== 1 ? 's' : ''} salvo{favoritos.length !== 1 ? 's' : ''}</Text>
             {favoritos.map(item => {
               const bloqueado = !temAcesso(item.plano);
-              const cat = CAT_COR[item.grupo] || CAT_COR.acolhimento;
+              const cat = corDaCategoria()[item.grupo] || corDaCategoria().acolhimento;
               const acaoIcone = acaoIconeDe(item.tipo);
               return (
                 <TouchableOpacity
@@ -181,20 +182,20 @@ export default function AudiosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
     borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   scroll: { padding: spacing.lg },
   infoCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: '#FFF0F5', borderRadius: radius.lg,
-    borderWidth: 1, borderColor: '#F0C0D0',
+    backgroundColor: colors.roseFundo, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.escuro ? '#5A3A45' : '#F0C0D0',
     padding: spacing.md, marginBottom: spacing.lg,
   },
   infoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18 },
@@ -217,4 +218,4 @@ const s = StyleSheet.create({
   emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
   emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: colors.lav1, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav3 },
   emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
-});
+}));

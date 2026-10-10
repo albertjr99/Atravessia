@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -235,7 +235,7 @@ export default function ParceriasScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
@@ -406,7 +406,7 @@ export default function ParceriasScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   badge: {
     position: 'absolute', top: 2, right: 0, minWidth: 16, height: 16, borderRadius: 8,
     backgroundColor: colors.peach2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
@@ -424,7 +424,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
 
   hero: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: 6 },
@@ -480,14 +480,14 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: colors.gold + '30', borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4,
   },
-  tagCupomTxt: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: '#8A6A33' },
+  tagCupomTxt: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.goldFg },
   botao: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14,
   },
   botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
 
-  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalFundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
   modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
   modalTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: spacing.sm },
   opcao: {
@@ -497,4 +497,4 @@ const s = StyleSheet.create({
   opcaoTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
   opcaoSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
   opcaoQtd: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
-});
+}));

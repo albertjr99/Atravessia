@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg, ScriptTitle } from '../../components';
 import PlayerVideo from '../../components/PlayerVideo';
 import TextoComLinks from '../../components/TextoComLinks';
@@ -34,7 +34,7 @@ export default function ProdutosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -81,10 +81,10 @@ export default function ProdutosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   carregando: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
@@ -99,8 +99,8 @@ const s = StyleSheet.create({
   texto: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.tm, textAlign: 'center' },
   botao: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 15,
+    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 15,
   },
   botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
   emBreve: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, textAlign: 'center' },
-});
+}));

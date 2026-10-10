@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -30,11 +30,12 @@ const acaoIconeDe = (tipo) => {
 // Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
 const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
 
-const CAT_ICONE = {
+// Função (e não objeto fixo) para acompanhar o tema claro/noturno.
+const corDaCategoria = () => ({
   acolhimento: { bg: colors.lav1, color: colors.lav5 },
-  noturno:     { bg: '#F5EDE5', color: '#B08070' },
+  noturno:     { bg: colors.escuro ? '#3A2E26' : '#F5EDE5', color: colors.escuro ? '#DDB49F' : '#B08070' },
   complementar:{ bg: colors.lav1, color: colors.lav5 },
-};
+});
 
 export default function FavoritosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -94,7 +95,7 @@ export default function FavoritosScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
       <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
@@ -132,7 +133,7 @@ export default function FavoritosScreen({ navigation }) {
             <Text style={s.countLabel}>{favoritos.length} conteúdo{favoritos.length !== 1 ? 's' : ''} salvo{favoritos.length !== 1 ? 's' : ''}</Text>
             {favoritos.map(item => {
               const bloqueado = !temAcesso(item.plano);
-              const cat = CAT_ICONE[item.grupo] || CAT_ICONE.acolhimento;
+              const cat = corDaCategoria()[item.grupo] || corDaCategoria().acolhimento;
               const acaoIcone = acaoIconeDe(item.tipo);
               return (
                 <TouchableOpacity
@@ -177,14 +178,14 @@ export default function FavoritosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 10,
     borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   scroll: { padding: spacing.lg },
   countLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: spacing.md },
@@ -201,11 +202,11 @@ const s = StyleSheet.create({
   desc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
   grupo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 2, textTransform: 'capitalize' },
   playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
   avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
   emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
   emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
   emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: colors.lav1, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav3 },
   emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
-});
+}));

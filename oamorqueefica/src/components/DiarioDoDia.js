@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../theme';
 import { useApp } from '../hooks/AppContext';
 import {
   montarDiarioDoDia, proximoDepoisDe, foiDispensadoHoje, dispensarHoje, desfazerDispensaHoje,
@@ -256,7 +256,7 @@ export function ProximoPasso({ navigation, depoisDe, style }) {
   );
 }
 
-const st = StyleSheet.create({
+const st = criarEstilos(() => ({
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.xl,
@@ -372,4 +372,4 @@ const st = StyleSheet.create({
     shadowOpacity: 0, elevation: 0, paddingVertical: spacing.sm,
   },
   ppRecusaTxt: { fontFamily: fonts.quote, fontSize: 14, color: colors.tm },
-});
+}));

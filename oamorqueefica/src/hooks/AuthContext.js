@@ -10,7 +10,7 @@ import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/fi
 import { auth, db } from '../services/firebase';
 import { isAdminEmail } from '../services/firebaseConfig';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);

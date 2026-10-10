@@ -8,7 +8,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../services/firebase';
 import { useAuth } from '../hooks/AuthContext';
-import { colors, fonts, spacing, radius } from '../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../theme';
 import PlayerVideo from './PlayerVideo';
 
 // Vídeos de apresentação gravados pela administradora (um para "Continue a
@@ -107,7 +107,7 @@ export function ModalVideoApresentacao({ visivel, onFechar, video, tituloPadrao 
   );
 }
 
-const st = StyleSheet.create({
+const st = criarEstilos(() => ({
   fundo: { flex: 1, backgroundColor: 'rgba(23,20,31,0.96)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   topo: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: spacing.md },
   rotulo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav3, letterSpacing: 0.8, textTransform: 'uppercase' },
@@ -129,4 +129,4 @@ const st = StyleSheet.create({
   },
   botaoIcone: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
   botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
-});
+}));

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable,
+  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes } from '../../data';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
@@ -17,6 +17,8 @@ import { situacaoCupom } from '../../utils/cupons';
 import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
 import DiarioDoDia from '../../components/DiarioDoDia';
+import { escolherEnviarFoto } from '../../utils/fotoPerfil';
+import { brl } from '../cashback/CashbackScreen';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 
@@ -29,9 +31,10 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
-    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers,
+    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes,
   } = useApp();
-  const { sair, firebaseUser, perfil } = useAuth();
+  const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo ou o link.
   const [temProdutos, setTemProdutos] = useState(false);
@@ -75,7 +78,33 @@ export default function HomeScreen({ navigation }) {
     setMenuAberto(false);
     acao();
   };
+  // Foto do perfil: escolher, trocar ou remover.
+  const trocarFoto = async () => {
+    setEnviandoFoto(true);
+    try {
+      const url = await escolherEnviarFoto(uid);
+      if (url) await atualizarPerfil({ photoURL: url });
+    } catch (e) {
+      Alert.alert('Não foi possível enviar a foto', e?.message || 'Tente novamente em instantes.');
+    } finally {
+      setEnviandoFoto(false);
+    }
+  };
+  const tocarFoto = () => {
+    if (!perfil?.photoURL) { trocarFoto(); return; }
+    Alert.alert('Sua foto', 'O que você quer fazer?', [
+      { text: 'Trocar foto', onPress: trocarFoto },
+      { text: 'Remover foto', style: 'destructive', onPress: () => atualizarPerfil({ photoURL: null }).catch(() => {}) },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+  const inicial = (usuario.apelido || usuario.nome || 'A').trim().charAt(0).toUpperCase();
+
   const itensMenu = [
+    { icone: 'sparkles-outline', rotulo: 'AtravessIA', sub: 'Conversa, diário guiado e carta do mês', acao: () => navigation.navigate('AtravessIA') },
+    { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', acao: () => navigation.navigate('Cashback') },
+    { icone: 'image-outline', rotulo: 'Foto do perfil', sub: perfil?.photoURL ? 'Trocar ou remover sua foto' : 'Personalize sua área com uma foto', acao: tocarFoto },
+    { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
     { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
     { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', acao: () => navigation.navigate('Onboarding', { revisita: true }) },
     { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', acao: () => navigation.navigate('MeusCupons') },
@@ -97,18 +126,20 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
         {/* ===== HEADER COM AQUARELA ===== */}
         <View style={[s.headerWrap, { height: 210 + insets.top }]}>
           <Image source={headerLavender} style={[s.headerImg, { height: 210 + insets.top }]} resizeMode="cover" />
+          {/* No noturno, um véu escurece a aquarela do topo */}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.headerVeu }]} pointerEvents="none" />
           {/* Gradiente fade para o fundo */}
           <View style={s.headerFade} />
           {/* Sino notificação */}
           <TouchableOpacity style={[s.bellBtn, { top: 16 + insets.top }]} onPress={() => navigation.navigate('Notificacoes')}>
-            <Ionicons name={naoLidas > 0 ? 'notifications' : 'notifications-outline'} size={18} color="#9b86bd" />
+            <Ionicons name={naoLidas > 0 ? 'notifications' : 'notifications-outline'} size={18} color={colors.lilasIcone} />
             {naoLidas > 0 && (
               <View style={s.bellBadge}>
                 <Text style={s.bellBadgeTxt}>{naoLidas > 9 ? '9+' : naoLidas}</Text>
@@ -121,7 +152,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('MeusCupons')}
             accessibilityLabel="Meus cupons"
           >
-            <Ionicons name={cuponsPendentes > 0 ? 'ticket' : 'ticket-outline'} size={18} color="#9b86bd" />
+            <Ionicons name={cuponsPendentes > 0 ? 'ticket' : 'ticket-outline'} size={18} color={colors.lilasIcone} />
             {cuponsPendentes > 0 && (
               <View style={[s.bellBadge, s.cupomBadge]}>
                 <Text style={s.bellBadgeTxt}>{cuponsPendentes > 9 ? '9+' : cuponsPendentes}</Text>
@@ -134,7 +165,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() => setMenuAberto(true)}
             accessibilityLabel="Menu"
           >
-            <Ionicons name="menu-outline" size={20} color="#9b86bd" />
+            <Ionicons name="menu-outline" size={20} color={colors.lilasIcone} />
           </TouchableOpacity>
           {/* Logo + nome do app */}
           <View style={s.headerBottom}>
@@ -147,9 +178,38 @@ export default function HomeScreen({ navigation }) {
 
           {/* Saudação */}
           <View style={s.greetSect}>
-            <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
-            <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
+            <TouchableOpacity
+              style={s.avatar}
+              onPress={tocarFoto}
+              disabled={enviandoFoto}
+              activeOpacity={0.85}
+              accessibilityLabel={perfil?.photoURL ? 'Sua foto. Toque para trocar' : 'Adicionar foto do perfil'}
+            >
+              {perfil?.photoURL ? (
+                <Image source={{ uri: perfil.photoURL }} style={s.avatarImg} />
+              ) : (
+                <Text style={s.avatarInicial}>{inicial}</Text>
+              )}
+              <View style={s.avatarBadge}>
+                {enviandoFoto
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Ionicons name="camera" size={11} color="white" />}
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome}</Text>
+              <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
+            </View>
           </View>
+
+          {/* Cashback disponível */}
+          {cashback?.saldoCentavos > 0 && (
+            <TouchableOpacity style={s.cashbackAviso} onPress={() => navigation.navigate('Cashback')} activeOpacity={0.85}>
+              <Ionicons name="wallet-outline" size={17} color={colors.sageFg} />
+              <Text style={s.cashbackTxt}>Você tem <Text style={s.cashbackValor}>{brl(cashback.saldoCentavos)}</Text> de cashback</Text>
+              <Ionicons name="chevron-forward" size={15} color={colors.sageFg} />
+            </TouchableOpacity>
+          )}
 
           {/* Aviso de notificações não lidas */}
           {naoLidas > 0 && (
@@ -176,11 +236,21 @@ export default function HomeScreen({ navigation }) {
           {/* ===== SEU DIA (sequência sugerida, opcional) ===== */}
           <DiarioDoDia navigation={navigation} />
 
+          {/* ===== ATRAVESSIA (inteligência própria do app) ===== */}
+          <TouchableOpacity style={s.iaCard} onPress={() => navigation.navigate('AtravessIA')} activeOpacity={0.9}>
+            <View style={s.iaIcone}><Ionicons name="sparkles" size={20} color="white" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.iaTit}>AtravessIA</Text>
+              <Text style={s.iaSub}>Converse, escreva no diário guiado ou leia sua carta do mês</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+
           {/* ===== FRASE DO DIA ===== */}
           {fraseDoDia && (
             <View style={s.fraseCard}>
               <View style={s.fraseTagRow}>
-                <Ionicons name="sunny-outline" size={13} color="#9b86bd" />
+                <Ionicons name="sunny-outline" size={13} color={colors.lilasIcone} />
                 <Text style={s.fraseTag}>Frase do dia</Text>
                 <Image source={ilCoracao} style={s.fraseIl} resizeMode="contain" />
               </View>
@@ -198,7 +268,7 @@ export default function HomeScreen({ navigation }) {
                   <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
                     <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
                   </View>
-                  <Text style={s.emoLbl} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>{e.label}</Text>
+                  <Text style={s.emoLbl} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{e.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -212,7 +282,7 @@ export default function HomeScreen({ navigation }) {
           <View style={s.sect}>
             <View style={s.sectHeaderRow}>
               <View style={s.sectTitleRow}>
-                <Ionicons name="moon-outline" size={14} color="#9b86bd" />
+                <Ionicons name="moon-outline" size={14} color={colors.lilasIcone} />
                 <Text style={s.sectTitle}>Reflexão do dia</Text>
               </View>
               <TouchableOpacity><Text style={s.sectLink}>Ver todas</Text></TouchableOpacity>
@@ -227,15 +297,15 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.sectTitle}>Acesso rápido</Text>
             <View style={s.perfilGrid}>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Audios')} activeOpacity={0.85}>
-                <Ionicons name="headset-outline" size={20} color="#8B7AC0" />
+                <Ionicons name="headset-outline" size={20} color={colors.lav4} />
                 <Text style={s.perfilLbl}>Conteúdos</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('PequenasVitorias')} activeOpacity={0.85}>
-                <Ionicons name="star-outline" size={20} color="#8B7AC0" />
+                <Ionicons name="star-outline" size={20} color={colors.lav4} />
                 <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Relatorios')} activeOpacity={0.85}>
-                <Ionicons name="bar-chart-outline" size={20} color="#8B7AC0" />
+                <Ionicons name="bar-chart-outline" size={20} color={colors.lav4} />
                 <Text style={s.perfilLbl}>Relatórios</Text>
               </TouchableOpacity>
             </View>
@@ -265,6 +335,19 @@ export default function HomeScreen({ navigation }) {
               </View>
             </TouchableOpacity>
 
+            {indicacoes?.length > 0 && (
+              <TouchableOpacity style={s.indicacoesBtn} onPress={() => navigation.navigate('Indicacoes')} activeOpacity={0.88}>
+                <View style={s.indicacoesIcone}>
+                  <Ionicons name="book-outline" size={21} color={colors.lav5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.indicacoesTit}>Indicações Atravessia</Text>
+                  <Text style={s.indicacoesSub}>Livros e cuidados escolhidos com carinho</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.tl} />
+              </TouchableOpacity>
+            )}
+
             {temProdutos && (
               <TouchableOpacity style={s.produtosBtn} onPress={() => navigation.navigate('Produtos')} activeOpacity={0.88}>
                 <View style={s.produtosIcone}>
@@ -286,7 +369,7 @@ export default function HomeScreen({ navigation }) {
             <View style={s.sect}>
               <View style={s.sectHeaderRow}>
                 <View style={s.sectTitleRow}>
-                  <Ionicons name="gift-outline" size={14} color="#9b86bd" />
+                  <Ionicons name="gift-outline" size={14} color={colors.lilasIcone} />
                   <Text style={s.sectTitle}>Espaço para Parcerias</Text>
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('Parcerias')}>
@@ -349,10 +432,10 @@ export default function HomeScreen({ navigation }) {
                 activeOpacity={0.7}
               >
                 <View style={[s.menuIcone, item.sair && s.menuIconeSair]}>
-                  <Ionicons name={item.icone} size={18} color={item.sair ? '#A0525E' : colors.lav5} />
+                  <Ionicons name={item.icone} size={18} color={item.sair ? colors.roseTexto : colors.lav5} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.menuRotulo, item.sair && { color: '#A0525E' }]}>{item.rotulo}</Text>
+                  <Text style={[s.menuRotulo, item.sair && { color: colors.roseTexto }]}>{item.rotulo}</Text>
                   {!!item.sub && <Text style={s.menuSub}>{item.sub}</Text>}
                 </View>
                 {!item.sair && <Ionicons name="chevron-forward" size={16} color={colors.tl} />}
@@ -376,7 +459,7 @@ export default function HomeScreen({ navigation }) {
             <Ionicons
               name={item.active ? item.icon : `${item.icon}-outline`}
               size={20}
-              color={item.active ? '#8B7AC0' : '#8c8597'}
+              color={item.active ? colors.lav4 : colors.texto2}
             />
             <Text style={[s.navLbl, item.active && s.navLblActive]}>{item.name}</Text>
           </TouchableOpacity>
@@ -386,8 +469,8 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8F4EE' },
+const s = criarEstilos(() => ({
+  safe: { flex: 1, backgroundColor: colors.bg },
   scrollContent: { paddingBottom: 80 },
 
   // Header
@@ -401,8 +484,8 @@ const s = StyleSheet.create({
   },
   bellBtn: {
     position: 'absolute', right: 16, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.vidro,
     alignItems: 'center', justifyContent: 'center',
   },
   bellBadge: {
@@ -411,7 +494,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     backgroundColor: '#C4566B',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#FFFDF9',
+    borderWidth: 1.5, borderColor: colors.card,
   },
   bellBadgeTxt: {
     fontFamily: 'Lato_700Bold', fontSize: 10, color: '#fff', lineHeight: 13,
@@ -419,8 +502,8 @@ const s = StyleSheet.create({
 
   notifBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#EDE9F5', borderRadius: 16,
-    borderWidth: 1, borderColor: '#C8BCE2',
+    backgroundColor: colors.lav1, borderRadius: 16,
+    borderWidth: 1, borderColor: colors.lav2,
     paddingVertical: 13, paddingHorizontal: 14,
     marginBottom: 18,
     shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 3 },
@@ -428,43 +511,43 @@ const s = StyleSheet.create({
   },
   notifBannerIcon: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#8B7AC0',
+    backgroundColor: colors.lav4,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   notifBannerTit: {
-    fontFamily: 'Lato_700Bold', fontSize: 13.5, color: '#4A4B4A',
+    fontFamily: 'Lato_700Bold', fontSize: 13.5, color: colors.td,
   },
   notifBannerSub: {
-    fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#76737A', marginTop: 2,
+    fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.tm, marginTop: 2,
   },
   cupomBtn: {
-    position: 'absolute', right: 64, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    position: 'absolute', right: 68, top: 16,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.vidro,
     alignItems: 'center', justifyContent: 'center',
   },
   cupomBadge: { backgroundColor: '#7A9E7E' },
   menuBtn: {
     position: 'absolute', left: 16, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.vidro,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.28)', paddingHorizontal: 16, alignItems: 'flex-start' },
+  menuFundo: { flex: 1, backgroundColor: colors.sobreposicao, paddingHorizontal: 16, alignItems: 'flex-start' },
   menuCaixa: {
-    width: '100%', maxWidth: 340, backgroundColor: '#FFFDF9', borderRadius: 20,
+    width: '100%', maxWidth: 340, backgroundColor: colors.card, borderRadius: 20,
     paddingVertical: 6, paddingHorizontal: 6,
     shadowColor: '#2E2740', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 10 },
-  menuItemBorda: { borderTopWidth: 1, borderTopColor: 'rgba(230,221,210,0.7)' },
+  menuItemBorda: { borderTopWidth: 1, borderTopColor: colors.bordaSuave },
   menuIcone: {
     width: 34, height: 34, borderRadius: 17, backgroundColor: colors.lav1,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuIconeSair: { backgroundColor: '#F7E8EA' },
-  menuRotulo: { fontFamily: 'Lato_700Bold', fontSize: 14, color: '#4a4453' },
-  menuSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#8c8597', marginTop: 1 },
+  menuIconeSair: { backgroundColor: colors.roseFundo },
+  menuRotulo: { fontFamily: 'Lato_700Bold', fontSize: 14, color: colors.titulo },
+  menuSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.texto2, marginTop: 1 },
   headerLogo: { width: 44, height: 44, marginBottom: 2, borderRadius: 10 },
   headerBottom: {
     position: 'absolute', bottom: 10, left: 0, right: 0,
@@ -472,29 +555,40 @@ const s = StyleSheet.create({
   },
   appTitle: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 28, color: '#4a4453', marginTop: 4,
+    fontSize: 28, color: colors.titulo, marginTop: 4,
     letterSpacing: 0.5,
   },
 
   body: { paddingHorizontal: 20 },
 
   // Saudação
-  greetSect: { marginTop: 20, marginBottom: 20 },
+  greetSect: { marginTop: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+    width: 58, height: 58, borderRadius: 29, backgroundColor: colors.lav1,
+    borderWidth: 2, borderColor: colors.lav2, alignItems: 'center', justifyContent: 'center',
+  },
+  avatarImg: { width: 54, height: 54, borderRadius: 27 },
+  avatarInicial: { fontFamily: 'PlayfairDisplay_400Regular', fontSize: 24, color: colors.lav5 },
+  avatarBadge: {
+    position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11,
+    backgroundColor: colors.lav4, borderWidth: 2, borderColor: colors.bg,
+    alignItems: 'center', justifyContent: 'center',
+  },
   greetName: {
     fontFamily: 'PlayfairDisplay_400Regular',
-    fontSize: 24, color: '#4a4453',
+    fontSize: 24, color: colors.titulo,
   },
   greetSub: {
     fontFamily: 'Lato_400Regular',
-    fontSize: 14, color: '#8c8597', marginTop: 4,
+    fontSize: 14, color: colors.texto2, marginTop: 4,
   },
   greetIl: { width: 80, height: 80, marginLeft: 8 },
 
   // Frase
   fraseCard: {
-    backgroundColor: '#FFFDF9',
+    backgroundColor: colors.card,
     borderRadius: 24, padding: 24, paddingTop: 20,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    borderWidth: 1, borderColor: colors.bordaSuave,
     marginBottom: 24,
     // shadow-card
     shadowColor: '#6b5b7a',
@@ -510,48 +604,48 @@ const s = StyleSheet.create({
   fraseIl: { width: 32, height: 32, marginLeft: 'auto' },
   fraseTag: {
     fontFamily: 'Lato_700Bold', fontSize: 12,
-    color: '#9b86bd', letterSpacing: 1, textTransform: 'uppercase',
+    color: colors.lilasIcone, letterSpacing: 1, textTransform: 'uppercase',
   },
   fraseTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
     fontSize: 26, fontStyle: 'italic',
-    color: '#4a4453', lineHeight: 36, textAlign: 'center',
+    color: colors.titulo, lineHeight: 36, textAlign: 'center',
   },
   fraseAutor: {
     fontFamily: 'Lato_400Regular', fontSize: 12,
-    color: '#8c8597', textAlign: 'center', marginTop: 8,
+    color: colors.texto2, textAlign: 'center', marginTop: 8,
   },
 
   // Section
   sect: { marginBottom: 24 },
-  sectTitle: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#4a4453', marginBottom: 12 },
+  sectTitle: { fontFamily: 'Lato_700Bold', fontSize: 16, color: colors.titulo, marginBottom: 12 },
   sectHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectLink: { fontFamily: 'Lato_400Regular', fontSize: 13, color: '#9b86bd' },
+  sectLink: { fontFamily: 'Lato_400Regular', fontSize: 13, color: colors.lilasIcone },
 
   // Emoções
   emoGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 12 },
   emoCard: {
     flex: 1, alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFDF9', borderRadius: 16,
+    backgroundColor: colors.card, borderRadius: 16,
     paddingVertical: 12, paddingHorizontal: 4,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    borderWidth: 1, borderColor: colors.bordaSuave,
   },
   emoCircle: {
     width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
   },
-  emoLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#4a4453', textAlign: 'center' },
+  emoLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: colors.titulo, textAlign: 'center' },
 
   // Perfil e cuidados
   perfilGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   perfilCard: {
     flexBasis: '47%', flexGrow: 1, alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFDF9', borderRadius: 16,
+    backgroundColor: colors.card, borderRadius: 16,
     paddingVertical: 16, paddingHorizontal: 8,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    borderWidth: 1, borderColor: colors.bordaSuave,
   },
-  perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 12, color: '#4a4453', textAlign: 'center' },
+  perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 12, color: colors.titulo, textAlign: 'center' },
 
   // Experimente a vida
   vidaBtn: {
@@ -577,18 +671,44 @@ const s = StyleSheet.create({
   vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#fff' },
   vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
 
+  // AtravessIA
+  iaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20,
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18, backgroundColor: colors.botaoForte,
+    shadowColor: '#5C3FA0', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 5,
+  },
+  iaIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  iaTit: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#fff' },
+  iaSub: { fontFamily: 'Lato_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+
+  // Cashback e Indicações
+  cashbackAviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16,
+    backgroundColor: colors.sageFundo, borderRadius: 14, paddingVertical: 11, paddingHorizontal: 14,
+  },
+  cashbackTxt: { flex: 1, fontFamily: 'Lato_400Regular', fontSize: 13.5, color: colors.sageFg },
+  cashbackValor: { fontFamily: 'Lato_700Bold' },
+  indicacoesBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10,
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18,
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaSuave,
+  },
+  indicacoesIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  indicacoesTit: { fontFamily: 'Lato_700Bold', fontSize: 15, color: colors.titulo },
+  indicacoesSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.texto2, marginTop: 2 },
+
   // Produtos Atravessia
   produtosBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10,
     paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18,
-    backgroundColor: '#FBF4E8', borderWidth: 1, borderColor: '#EBD9B8',
+    backgroundColor: colors.douradoFundo, borderWidth: 1, borderColor: colors.douradoBorda,
   },
   produtosIcone: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3E4C6',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.douradoIcone,
     alignItems: 'center', justifyContent: 'center',
   },
-  produtosTit: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#6B5326' },
-  produtosSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#8A7550', marginTop: 2 },
+  produtosTit: { fontFamily: 'Lato_700Bold', fontSize: 15, color: colors.douradoTitulo },
+  produtosSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.douradoTexto, marginTop: 2 },
   produtosPlay: {
     width: 28, height: 28, borderRadius: 14, backgroundColor: '#C9A35F',
     alignItems: 'center', justifyContent: 'center',
@@ -597,10 +717,10 @@ const s = StyleSheet.create({
   // Check-in btn
   checkinBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#9b86bd', borderRadius: 999,
+    backgroundColor: colors.botao, borderRadius: 999,
     paddingVertical: 16,
     // shadow-soft
-    shadowColor: '#9b86bd',
+    shadowColor: colors.lilasIcone,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 28,
@@ -610,26 +730,26 @@ const s = StyleSheet.create({
 
   // Reflexão
   reflexaoCard: {
-    backgroundColor: 'rgba(235,227,243,0.5)',
+    backgroundColor: colors.lavVeu,
     borderRadius: 24, padding: 20,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    borderWidth: 1, borderColor: colors.bordaSuave,
   },
   reflexaoTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
     fontSize: 15, fontStyle: 'italic',
-    color: '#6b5b88', lineHeight: 24, textAlign: 'justify',
+    color: colors.lilasTexto, lineHeight: 24, textAlign: 'justify',
   },
 
   disclaimer: {
     fontFamily: 'Lato_400Regular', fontSize: 12,
-    color: '#8c8597', textAlign: 'center',
+    color: colors.texto2, textAlign: 'center',
     lineHeight: 18, marginBottom: 20,
   },
 
   // Parcerias
   parceriaCard: {
-    width: 148, backgroundColor: '#FFFDF9', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)', overflow: 'hidden',
+    width: 148, backgroundColor: colors.card, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.bordaSuave, overflow: 'hidden',
   },
   parceriaImg: { width: 148, height: 88 },
   parceriaImgPlaceholder: {
@@ -637,24 +757,24 @@ const s = StyleSheet.create({
   },
   parceriaInfo: { padding: 8 },
   parceriaTit: {
-    fontFamily: 'Lato_700Bold', fontSize: 11, color: '#4a4453', lineHeight: 16,
+    fontFamily: 'Lato_700Bold', fontSize: 11, color: colors.titulo, lineHeight: 16,
   },
-  parceriaCat: { fontFamily: 'Lato_400Regular', fontSize: 9, color: '#9b86bd', marginTop: 3 },
+  parceriaCat: { fontFamily: 'Lato_400Regular', fontSize: 9, color: colors.lilasIcone, marginTop: 3 },
   parceriaVerTodas: { width: 60, alignItems: 'center', justifyContent: 'center', gap: 4 },
   parceriaVerTodasTxt: {
-    fontFamily: 'Lato_400Regular', fontSize: 10, color: '#9b86bd', textAlign: 'center',
+    fontFamily: 'Lato_400Regular', fontSize: 10, color: colors.lilasIcone, textAlign: 'center',
   },
 
   // Nav
   bnav: {
-    backgroundColor: 'rgba(255,253,249,0.95)',
-    borderTopWidth: 1, borderTopColor: 'rgba(230,221,210,0.7)',
+    backgroundColor: colors.vidroForte,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave,
     paddingBottom: 10,
     paddingTop: 8,
     flexDirection: 'row', justifyContent: 'space-around',
     position: 'absolute', bottom: 0, left: 0, right: 0,
   },
   navItem: { alignItems: 'center', gap: 3, flex: 1 },
-  navLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#8c8597' },
-  navLblActive: { fontFamily: 'Lato_700Bold', color: '#9b86bd' },
-});
+  navLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: colors.texto2 },
+  navLblActive: { fontFamily: 'Lato_700Bold', color: colors.lilasIcone },
+}));

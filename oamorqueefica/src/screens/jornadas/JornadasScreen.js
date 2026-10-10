@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -41,7 +41,7 @@ export default function JornadasScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
       <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -139,13 +139,13 @@ export default function JornadasScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   sub: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, marginTop: 4 },
-  headerIlustracao: { width: 64, height: 64 },
+  headerIlustracao: { width: 64, height: 64, borderRadius: 16 },
   lista: { paddingHorizontal: spacing.lg, gap: 12 },
   botaoVideo: { marginLeft: spacing.lg, marginBottom: spacing.md },
   jornadaCard: {
@@ -181,4 +181,4 @@ const styles = StyleSheet.create({
   travessiaIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   travessiaTitulo: { fontFamily: fonts.bodyBold, fontSize: 17, lineHeight: 23, color: colors.lav6 },
   travessiaSub: { fontFamily: fonts.body, fontSize: 15, color: colors.tm, marginTop: 4, lineHeight: 22 },
-});
+}));

@@ -23,7 +23,15 @@ function timeAgo(ts) {
 
 const PLAN_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
 
-export default function Dashboard() {
+// "Bom dia, Carla" — saudação pelo horário de Brasília e primeiro nome.
+function saudacaoAdmin(nome) {
+  const h = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false })) % 24;
+  const periodo = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const primeiro = String(nome || '').trim().split(/\s+/)[0];
+  return primeiro ? `${periodo}, ${primeiro}` : periodo;
+}
+
+export default function Dashboard({ perfil }) {
   const [usuarios, setUsuarios] = useState([]);
   const [counts, setCounts] = useState({
     frases: 0, conteudos: 0, audios: 0, parcerias: 0,
@@ -115,8 +123,8 @@ export default function Dashboard() {
   return (
     <div className="screen-content">
       <div className="screen-header">
-        <h1 className="screen-title">Dashboard</h1>
-        <p className="screen-sub">Visão geral do Atravessia — atualizado em tempo real.</p>
+        <h1 className="screen-title">{saudacaoAdmin(perfil?.apelido || perfil?.nome)}</h1>
+        <p className="screen-sub">Bem-vinda ao painel. Visão geral do Atravessia, atualizada em tempo real.</p>
       </div>
 
       {error && (

@@ -24,6 +24,7 @@ const NAV_GRUPOS = [
     titulo: null,
     itens: [
       { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
+      { icon: 'sparkles', iconOff: 'sparkles-outline', label: 'AtravessIA', sub: 'Leitura dos dados · Assistente de conteúdo', screen: 'AdminAtravessIA' },
     ],
   },
   {
@@ -41,8 +42,8 @@ const NAV_GRUPOS = [
       },
       {
         icon: 'gift', iconOff: 'gift-outline',
-        label: 'Parcerias', sub: 'Benefícios · Cupons e comissões',
-        screen: 'AdminParcerias', irmas: ['AdminBeneficios'],
+        label: 'Parcerias', sub: 'Cupons · Cashback · Indicações',
+        screen: 'AdminParcerias', irmas: ['AdminBeneficios', 'AdminCashback', 'AdminIndicacoes'],
       },
     ],
   },
