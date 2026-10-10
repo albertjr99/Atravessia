@@ -26,6 +26,8 @@ const TemaContext = createContext(null);
 
 export function TemaProvider({ children }) {
   const [modo, setModoEstado] = useState('claro');
+  // O painel das administradoras tem a própria escolha de tema.
+  const [modoPainel, setModoPainelEstado] = useState('claro');
   const [vibracao, setVibracaoEstado] = useState(true);
   const [noite, setNoite] = useState(ehNoite());
   const [modoAdmin, setModoAdmin] = useState(false);
@@ -37,23 +39,23 @@ export function TemaProvider({ children }) {
         const salvo = bruto ? JSON.parse(bruto) : null;
         if (salvo?.modo && MODOS_TEMA.some(m => m.id === salvo.modo)) setModoEstado(salvo.modo);
         if (typeof salvo?.vibracao === 'boolean') setVibracaoEstado(salvo.vibracao);
+        if (salvo?.modoPainel && MODOS_TEMA.some(m => m.id === salvo.modoPainel)) setModoPainelEstado(salvo.modoPainel);
       })
       .catch(e => console.warn('[Tema] não foi possível ler a preferência:', e?.message));
   }, []);
 
   // No automático, confere o horário a cada minuto e quando o app volta à frente.
   useEffect(() => {
-    if (modo !== 'auto') return undefined;
+    if ((modoAdmin ? modoPainel : modo) !== 'auto') return undefined;
     const conferir = () => setNoite(ehNoite());
     conferir();
     const t = setInterval(conferir, 60 * 1000);
     const sub = AppState.addEventListener('change', (e) => { if (e === 'active') conferir(); });
     return () => { clearInterval(t); sub.remove(); };
-  }, [modo]);
+  }, [modo, modoPainel, modoAdmin]);
 
-  // O painel das administradoras fica sempre claro (as telas dele não foram
-  // desenhadas para o noturno).
-  const efetivo = modoAdmin ? 'claro' : modo === 'auto' ? (noite ? 'escuro' : 'claro') : modo;
+  const resolver = (m) => (m === 'auto' ? (noite ? 'escuro' : 'claro') : m);
+  const efetivo = resolver(modoAdmin ? modoPainel : modo);
 
   useEffect(() => {
     if (aplicarPaleta(efetivo)) setVersao(tema.versao);
@@ -69,22 +71,28 @@ export function TemaProvider({ children }) {
   const setModo = useCallback((m) => {
     setModoEstado(m);
     setNoite(ehNoite());
-    salvar({ modo: m, vibracao });
-  }, [salvar, vibracao]);
+    salvar({ modo: m, vibracao, modoPainel });
+  }, [salvar, vibracao, modoPainel]);
+
+  const setModoPainel = useCallback((m) => {
+    setModoPainelEstado(m);
+    setNoite(ehNoite());
+    salvar({ modo, vibracao, modoPainel: m });
+  }, [salvar, modo, vibracao]);
 
   const setVibracao = useCallback((v) => {
     setVibracaoEstado(v);
-    salvar({ modo, vibracao: v });
-  }, [salvar, modo]);
+    salvar({ modo, vibracao: v, modoPainel });
+  }, [salvar, modo, modoPainel]);
 
   const valor = useMemo(() => ({
-    modo, setModo, vibracao, setVibracao, efetivo, versao, escuro: efetivo === 'escuro', setModoAdmin,
-  }), [modo, setModo, vibracao, setVibracao, efetivo, versao]);
+    modo, setModo, modoPainel, setModoPainel, vibracao, setVibracao, efetivo, versao, escuro: efetivo === 'escuro', setModoAdmin,
+  }), [modo, setModo, modoPainel, setModoPainel, vibracao, setVibracao, efetivo, versao]);
 
   return <TemaContext.Provider value={valor}>{children}</TemaContext.Provider>;
 }
 
 export const useTema = () => useContext(TemaContext) || {
   modo: 'claro', efetivo: 'claro', versao: 0, escuro: false, vibracao: true,
-  setModo: () => {}, setVibracao: () => {}, setModoAdmin: () => {},
+  modoPainel: 'claro', setModo: () => {}, setModoPainel: () => {}, setVibracao: () => {}, setModoAdmin: () => {},
 };

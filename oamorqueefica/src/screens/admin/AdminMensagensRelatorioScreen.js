@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert,
+  View, Text, ScrollView, TextInput, TouchableOpacity, Alert,
 } from 'react-native';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { emocoes } from '../../data';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -80,7 +80,7 @@ export default function AdminMensagensRelatorioScreen() {
   );
 }
 
-const sty = StyleSheet.create({
+const sty = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: {
@@ -108,4 +108,4 @@ const sty = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center', marginTop: spacing.md,
   },
   saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-});
+}), { escalar: false });

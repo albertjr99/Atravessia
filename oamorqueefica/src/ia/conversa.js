@@ -8,6 +8,43 @@ import { analisar, escolher } from './analise';
 
 export const AVISO_IA = 'A AtravessIA está aqui para acolher e caminhar com você, mas não substitui o cuidado de um profissional de saúde.';
 
+// Um cuidado concreto quando a pessoa pede ajuda, conforme o que ela sente.
+const CUIDADO_AGORA = {
+  saudade: [
+    'Uma ideia para agora: escreva algumas linhas como se fosse uma carta para essa pessoa, contando algo do seu dia. Muita gente sente que isso aproxima.',
+    'Talvez ajude separar uns minutos para uma lembrança boa: uma foto, uma música que vocês ouviam, uma receita. Deixar a saudade ter um lugar também é cuidado.',
+  ],
+  triste: [
+    'Uma ideia para agora: algo pequeno que acolha você, como um chá quente, um banho morno ou deitar um pouco com uma música calma.',
+    'Se puder, mande uma mensagem para alguém de confiança dizendo só "hoje está difícil". Não precisa explicar mais nada.',
+  ],
+  ansioso: [
+    'Vamos respirar juntos: inspire contando até 4, segure um pouco e solte contando até 6. Repita algumas vezes, no seu tempo.',
+    'Tente notar 5 coisas que você vê, 4 que pode tocar e 3 sons ao redor. Isso ajuda o corpo a voltar para o agora.',
+  ],
+  medo: [
+    'Respire devagar, soltando o ar mais longo do que puxa. E lembre: agora, neste instante, você está aqui e está seguro o bastante para respirar.',
+    'Escrever o medo em uma frase às vezes diminui o tamanho dele. Quer tentar no diário guiado?',
+  ],
+  sozinho: [
+    'Que tal escolher uma pessoa e mandar um "pensei em você hoje"? Pequenas conexões fazem diferença.',
+    'Se não houver ninguém agora, fico aqui com você. E um áudio de acolhimento pode fazer companhia por alguns minutos.',
+  ],
+  culpado: [
+    'Experimente escrever o que você gostaria de ter dito, e depois o que essa pessoa provavelmente diria para você. A resposta costuma ser mais gentil do que a culpa.',
+  ],
+  raiva: [
+    'A raiva precisa sair por algum lugar: uma caminhada rápida, escrever sem filtro ou apertar uma almofada. Depois, respire fundo algumas vezes.',
+  ],
+  desanimado: [
+    'Escolha a menor tarefa possível, como beber um copo de água ou abrir a janela. Já conta como passo.',
+  ],
+  geral: [
+    'Uma ideia para agora: escolha uma coisa pequena que acolha você hoje, como um chá, um banho morno, uma música, ou escrever duas linhas sobre o que sente.',
+    'Às vezes o primeiro cuidado é só desacelerar: alguns minutos sem tela, respirando devagar.',
+  ],
+};
+
 const VALIDACAO = {
   saudade: [
     'A saudade é o amor procurando um lugar para ficar. Faz sentido ela apertar assim.',
@@ -224,9 +261,7 @@ export function responder(texto, ctx = {}) {
 
   // Pedido de ajuda: oferece um cuidado concreto.
   if (a.pedido) {
-    partes.push(emocao === 'ansioso' || emocao === 'medo'
-      ? 'Um cuidado para agora: respire contando 4 para inspirar e 6 para soltar, algumas vezes. Posso te guiar.'
-      : 'Um cuidado para agora: escolha uma coisa pequena que acolha você hoje, como um chá, um banho morno, uma música, ou escrever duas linhas sobre o que sente.');
+    partes.push(marcar(escolher(CUIDADO_AGORA[emocao] || CUIDADO_AGORA.geral, usados)));
   }
 
   // Se a pessoa já disse de quem sente falta (mãe, filho, pet...), não pergunta de novo.

@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Platform,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Platform,
   KeyboardAvoidingView, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -130,32 +130,32 @@ const STATUS = {
   CONCLUIDO: {
     rotulo: 'Aguardando a cliente confirmar', icone: 'hourglass-outline',
     ajuda: 'O parceiro registrou o atendimento. Falta a cliente confirmar no app que ele aconteceu.',
-    cor: colors.gold, fg: colors.goldFg, bg: 'rgba(212,180,131,0.18)',
+    get cor() { return colors.gold; }, get fg() { return colors.goldFg; }, get bg() { return 'rgba(212,180,131,0.18)'; },
   },
   CONFIRMADO_USUARIO: {
     rotulo: 'Em prazo de contestação', icone: 'time-outline',
     ajuda: 'A cliente confirmou. Esperamos 24 horas por segurança; depois fica pronto para cobrar sozinho.',
-    cor: '#8FA5C6', fg: '#46597A', bg: 'rgba(185,200,223,0.34)',
+    get cor() { return '#8FA5C6'; }, get fg() { return colors.escuro ? '#B9C8DF' : '#46597A'; }, get bg() { return 'rgba(185,200,223,0.34)'; },
   },
   ELEGIVEL_LIQUIDACAO: {
     rotulo: 'Pronto para cobrar', icone: 'checkmark-done-outline',
     ajuda: 'Tudo certo com este atendimento. Ele entra na próxima cobrança que você gerar para o parceiro.',
-    cor: colors.lav4, fg: colors.lav6, bg: colors.lav1,
+    get cor() { return colors.lav4; }, get fg() { return colors.lav6; }, get bg() { return colors.lav1; },
   },
   AGUARDANDO_PAGAMENTO: {
     rotulo: 'Cobrado, aguardando pagamento', icone: 'document-text-outline',
     ajuda: 'Já faz parte de uma cobrança enviada ao parceiro. Quando ele pagar, registre o recebimento.',
-    cor: '#D39A7C', fg: '#8A523A', bg: 'rgba(242,201,184,0.42)',
+    get cor() { return '#D39A7C'; }, get fg() { return colors.escuro ? '#F2C9B8' : '#8A523A'; }, get bg() { return 'rgba(242,201,184,0.42)'; },
   },
   LIQUIDADO: {
     rotulo: 'Recebido', icone: 'wallet-outline',
     ajuda: 'O parceiro já pagou esta comissão. Nada mais a fazer.',
-    cor: colors.sage, fg: colors.sageFg, bg: 'rgba(122,158,126,0.16)',
+    get cor() { return colors.sage; }, get fg() { return colors.sageFg; }, get bg() { return 'rgba(122,158,126,0.16)'; },
   },
   CONTESTADO: {
     rotulo: 'Contestado', icone: 'alert-circle-outline',
     ajuda: 'A cliente informou que o atendimento não aconteceu; esse valor não será cobrado.',
-    cor: '#B4635A', fg: '#94463E', bg: 'rgba(180,99,90,0.11)',
+    get cor() { return '#B4635A'; }, get fg() { return colors.roseTexto; }, get bg() { return 'rgba(180,99,90,0.11)'; },
   },
 };
 const ORDEM_STATUS = ['CONCLUIDO', 'CONFIRMADO_USUARIO', 'ELEGIVEL_LIQUIDACAO', 'AGUARDANDO_PAGAMENTO', 'LIQUIDADO', 'CONTESTADO'];
@@ -1210,7 +1210,7 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 64 },
   cabecalho: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.md },
   pageTitle: { fontFamily: fonts.serif, fontSize: 22, color: colors.lav6, marginBottom: 4 },
@@ -1233,7 +1233,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(180,99,90,0.08)',
     borderWidth: 1, borderColor: 'rgba(180,99,90,0.3)', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
   },
-  erroTxt: { fontFamily: fonts.body, fontSize: 12.5, color: '#8A3F37', lineHeight: 18 },
+  erroTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.roseTexto, lineHeight: 18 },
 
   // Como funciona
   como: {
@@ -1331,7 +1331,7 @@ const s = StyleSheet.create({
   parcMetrica: { width: '50%', paddingRight: 8 },
   parcMetricaRot: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
   parcMetricaVal: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  txtContestado: { fontFamily: fonts.body, fontSize: 11, color: '#94463E' },
+  txtContestado: { fontFamily: fonts.body, fontSize: 11, color: colors.roseTexto },
   parcSaldos: { flexDirection: 'row', gap: 8 },
   parcSaldo: { flex: 1, borderRadius: radius.sm, padding: 10 },
   parcSaldoRot: { fontFamily: fonts.bodyBold, fontSize: 11 },
@@ -1454,4 +1454,4 @@ const s = StyleSheet.create({
   resultadoValor: { fontFamily: fonts.serif, fontSize: 28, color: colors.lav6, marginBottom: spacing.sm },
   proximo: { backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.md, width: '100%' },
   proximoTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lav6, lineHeight: 18 },
-});
+}), { escalar: false });

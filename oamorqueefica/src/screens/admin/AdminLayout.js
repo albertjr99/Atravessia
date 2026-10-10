@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform, Image,
+  View, Text, TouchableOpacity, Platform, Image,
   ScrollView, Dimensions, StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/AuthContext';
+import { useTema, MODOS_TEMA } from '../../hooks/TemaContext';
 import { confirmar } from '../../utils/confirm';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import AdminPreviewPanel from './AdminPreviewPanel';
 
@@ -74,6 +75,7 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
   // Android — em tablets ela é alta e o botão aparecia cortado.
   const insetsBaixo = useSafeAreaInsets().bottom;
   const { setVerComoUsuaria } = useAuth();
+  const { modoPainel, setModoPainel } = useTema();
   return (
     <View style={[sty.sidebarInner, { paddingBottom: spacing.lg + insetsBaixo }]}>
       {/* Branding */}
@@ -136,6 +138,27 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
           </View>
         ))}
       </ScrollView>
+
+      {/* Tema do painel: claro, noturno ou automático pelo horário. */}
+      <View style={sty.temaRow} accessibilityRole="radiogroup" accessibilityLabel="Tema do painel">
+        {MODOS_TEMA.map(m => {
+          const sel = modoPainel === m.id;
+          return (
+            <TouchableOpacity
+              key={m.id}
+              style={[sty.temaBtn, sel && sty.temaBtnSel]}
+              onPress={() => setModoPainel(m.id)}
+              activeOpacity={0.8}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: sel }}
+              accessibilityLabel={`Tema ${m.rotulo}`}
+            >
+              <Ionicons name={m.icone} size={15} color={sel ? colors.lav5 : colors.tm} />
+              <Text style={[sty.temaTxt, sel && sty.temaTxtSel]}>{m.id === 'auto' ? 'Auto' : m.rotulo}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       {/* Abre o app como uma usuária comum, sem sair da conta; o botão
           flutuante "Voltar ao painel" traz de volta. */}
@@ -218,7 +241,7 @@ export default function AdminLayout({ children, currentScreen }) {
   );
 }
 
-const sty = StyleSheet.create({
+const sty = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
 
   // Wide layout
@@ -300,6 +323,14 @@ const sty = StyleSheet.create({
   navLabelActive: { fontFamily: fonts.bodyBold, color: colors.lav5 },
 
   // Logout
+  temaRow: {
+    flexDirection: 'row', gap: 4, padding: 3, marginBottom: 8,
+    backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border,
+  },
+  temaBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 7, borderRadius: radius.full },
+  temaBtnSel: { backgroundColor: colors.lav1 },
+  temaTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
+  temaTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
   verUsuariaBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     marginHorizontal: spacing.md, marginTop: spacing.sm,
@@ -331,4 +362,4 @@ const sty = StyleSheet.create({
   },
   drawer: { width: SIDEBAR_W, backgroundColor: colors.card },
   drawerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
-});
+}), { escalar: false });

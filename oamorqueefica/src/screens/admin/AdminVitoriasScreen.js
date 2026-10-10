@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, TextInput, Alert, ActivityIndicator, Modal, Pressable,
+  TextInput, Alert, ActivityIndicator, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -9,7 +9,7 @@ import {
   onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { ICONES_VITORIA, iconeDaVitoria } from '../../data/iconesVitoria';
@@ -251,7 +251,7 @@ export default function AdminVitoriasScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   icones: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   iconeBtn: {
     width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
@@ -313,4 +313,4 @@ const s = StyleSheet.create({
   },
   padraoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
   hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: spacing.md, lineHeight: 17, textAlign: 'center' },
-});
+}), { escalar: false });

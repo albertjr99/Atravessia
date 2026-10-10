@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Platform, ActivityIndicator, Modal, KeyboardAvoidingView,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator, Modal, KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -11,7 +10,7 @@ import {
 import { ref as sRef, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { uploadToStorage } from '../../utils/storageUpload';
 import { db, storage } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Card, Button } from '../../components';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
@@ -37,7 +36,7 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_COR = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
+const PLANO_COR = { get 0() { return colors.sage; }, get 1() { return colors.lav4; }, 2: '#7B5EA7', 3: '#C0843F' };
 
 function novoForm() {
   return { titulo: '', duracao: '', plano: 1, emocoes: [], url: '', storagePath: '' };
@@ -412,7 +411,7 @@ export default function AdminAudiosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
@@ -438,7 +437,7 @@ const s = StyleSheet.create({
     borderRadius: 20, backgroundColor: colors.lav1,
     borderWidth: 1, borderColor: colors.lav2,
   },
-  chipSel: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  chipSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
   chipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
   chipTxtSel: { color: 'white' },
 
@@ -490,7 +489,7 @@ const s = StyleSheet.create({
     borderRadius: 16, borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.bg,
   },
-  emocaoOpcSel: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  emocaoOpcSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
   emocaoOpcTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
   emocaoOpcTxtSel: { color: 'white' },
   planoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -501,4 +500,4 @@ const s = StyleSheet.create({
   },
   planoTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
   formBtns: { flexDirection: 'row', marginTop: spacing.sm },
-});
+}), { escalar: false });

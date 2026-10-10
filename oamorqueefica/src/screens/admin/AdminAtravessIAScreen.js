@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Share,
+  View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   addDoc, collection, collectionGroup, getDocs, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { gerarRascunhos, lerDados, TIPOS_CONTEUDO, TEMAS_CONTEUDO } from '../../ia/iaAdmin';
 import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
@@ -15,9 +15,9 @@ import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
 // AtravessIA no painel: assistente de conteúdo e leitura dos dados.
 // Inteligência própria do app (sem custo por uso).
 const NIVEL = {
-  atencao: { icone: 'alert-circle-outline', cor: colors.roseFg, fundo: '#FBEFEA' },
-  sugestao: { icone: 'bulb-outline', cor: colors.goldFg, fundo: '#FBF4E8' },
-  info: { icone: 'information-circle-outline', cor: colors.lav5, fundo: colors.lav1 },
+  atencao: { icone: 'alert-circle-outline', get cor() { return colors.roseFg; }, get fundo() { return colors.roseFundo; } },
+  sugestao: { icone: 'bulb-outline', get cor() { return colors.goldFg; }, get fundo() { return colors.douradoFundo; } },
+  info: { icone: 'information-circle-outline', get cor() { return colors.lav5; }, get fundo() { return colors.lav1; } },
 };
 
 function Assistente() {
@@ -173,10 +173,10 @@ export default function AdminAtravessIAScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48, gap: spacing.md },
   cabecalho: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iaIcone: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.lav5, alignItems: 'center', justifyContent: 'center' },
+  iaIcone: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.botaoForte, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td },
   sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, lineHeight: 19 },
   abas: { flexDirection: 'row', gap: 6, backgroundColor: colors.card, borderRadius: radius.lg, padding: 4, borderWidth: 1, borderColor: colors.border },
@@ -187,7 +187,7 @@ const s = StyleSheet.create({
   label: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, textTransform: 'uppercase', letterSpacing: 0.5 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 13, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
-  chipSel: { backgroundColor: colors.lav5, borderColor: colors.lav5 },
+  chipSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
   chipTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
   chipTxtSel: { fontFamily: fonts.bodyBold, color: 'white' },
   rascunho: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 8 },
@@ -195,7 +195,7 @@ const s = StyleSheet.create({
   rascunhoTxt: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.td },
   rascunhoRef: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: colors.tm },
   acoes: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 },
-  acao: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14 },
+  acao: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14 },
   acaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
   acaoSec: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.lav1, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14 },
   acaoSecTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
@@ -206,4 +206,4 @@ const s = StyleSheet.create({
   insightTit: { fontFamily: fonts.bodyBold, fontSize: 14 },
   insightTxt: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20, color: colors.td, marginTop: 2 },
   erro: { fontFamily: fonts.body, fontSize: 12.5, color: colors.roseFg },
-});
+}), { escalar: false });

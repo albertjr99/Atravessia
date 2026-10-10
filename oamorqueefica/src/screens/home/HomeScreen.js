@@ -234,17 +234,9 @@ export default function HomeScreen({ navigation }) {
           )}
 
           {/* ===== SEU DIA (sequência sugerida, opcional) ===== */}
-          <DiarioDoDia navigation={navigation} />
-
-          {/* ===== ATRAVESSIA (inteligência própria do app) ===== */}
-          <TouchableOpacity style={s.iaCard} onPress={() => navigation.navigate('AtravessIA')} activeOpacity={0.9}>
-            <View style={s.iaIcone}><Ionicons name="sparkles" size={20} color="white" /></View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.iaTit}>AtravessIA</Text>
-              <Text style={s.iaSub}>Converse, escreva no diário guiado ou leia sua carta do mês</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
+          <View style={s.seuDia}>
+            <DiarioDoDia navigation={navigation} />
+          </View>
 
           {/* ===== FRASE DO DIA ===== */}
           {fraseDoDia && (
@@ -276,6 +268,32 @@ export default function HomeScreen({ navigation }) {
               <Text style={s.checkinTxt}>Fazer check-in emocional</Text>
               <Ionicons name="chevron-forward" size={18} color="white" />
             </TouchableOpacity>
+          </View>
+
+          {/* ===== ATRAVESSIA: espaço de conversa, logo depois do check-in ===== */}
+          <View style={s.sect}>
+            <View style={s.iaCard}>
+              <TouchableOpacity style={s.iaTopo} onPress={() => navigation.navigate('AtravessIA')} activeOpacity={0.85}>
+                <View style={s.iaAvatar}><Ionicons name="sparkles" size={20} color={colors.lav5} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.iaTit}>Quer conversar?</Text>
+                  <Text style={s.iaSub}>A AtravessIA está aqui para te ouvir, sem pressa.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.tl} />
+              </TouchableOpacity>
+              <View style={s.iaAtalhos}>
+                {[
+                  { icone: 'chatbubbles-outline', rotulo: 'Conversar', tela: 'ConversaIA' },
+                  { icone: 'create-outline', rotulo: 'Diário guiado', tela: 'DiarioGuiado' },
+                  { icone: 'mail-open-outline', rotulo: 'Carta do mês', tela: 'CartaMes' },
+                ].map(a => (
+                  <TouchableOpacity key={a.tela} style={s.iaAtalho} onPress={() => navigation.navigate(a.tela)} activeOpacity={0.8}>
+                    <Ionicons name={a.icone} size={18} color={colors.lav5} />
+                    <Text style={s.iaAtalhoTxt} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{a.rotulo}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
 
           {/* ===== REFLEXÃO ===== */}
@@ -672,14 +690,24 @@ const s = criarEstilos(() => ({
   vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
 
   // AtravessIA
+  seuDia: { marginBottom: 24 },
   iaCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20,
-    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18, backgroundColor: colors.botaoForte,
-    shadowColor: '#5C3FA0', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 5,
+    backgroundColor: colors.card, borderRadius: 24, padding: 16,
+    borderWidth: 1, borderColor: colors.bordaSuave,
   },
-  iaIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  iaTit: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#fff' },
-  iaSub: { fontFamily: 'Lato_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  iaTopo: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingBottom: 14 },
+  iaAvatar: {
+    width: 46, height: 46, borderRadius: 23, backgroundColor: colors.lav1,
+    borderWidth: 1, borderColor: colors.lav2, alignItems: 'center', justifyContent: 'center',
+  },
+  iaTit: { fontFamily: 'Lato_700Bold', fontSize: 16, color: colors.titulo },
+  iaSub: { fontFamily: 'Lato_400Regular', fontSize: 12.5, color: colors.texto2, marginTop: 2 },
+  iaAtalhos: { flexDirection: 'row', gap: 8, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.bordaSuave },
+  iaAtalho: {
+    flex: 1, alignItems: 'center', gap: 6, paddingVertical: 12, paddingHorizontal: 4,
+    borderRadius: 16, backgroundColor: colors.lavVeu,
+  },
+  iaAtalhoTxt: { fontFamily: 'Lato_700Bold', fontSize: 12, color: colors.titulo },
 
   // Cashback e Indicações
   cashbackAviso: {

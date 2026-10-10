@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Switch,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
@@ -127,7 +127,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
@@ -143,4 +143,4 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8, ...shadow.soft },
   itemTipo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5, marginBottom: 2 },
   itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 18 },
-});
+}), { escalar: false });

@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput,
+  View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { emocoes } from '../../data';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { formatDataBR } from '../../utils/date';
 import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
@@ -707,9 +707,9 @@ export default function AdminRelatoriosScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
-  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
   erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: spacing.md },
 
@@ -727,7 +727,7 @@ const s = StyleSheet.create({
   funilBarra: { height: '100%', borderRadius: 6 },
   funilAlerta: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: spacing.md,
-    backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm,
+    backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm,
   },
   funilAlertaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
   funilNota: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 16, marginBottom: spacing.md },
@@ -860,4 +860,4 @@ const s = StyleSheet.create({
   histData: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
 
   emptyTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', paddingVertical: spacing.md },
-});
+}), { escalar: false });

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, Image, Platform,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { uploadToStorage } from '../../utils/storageUpload';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Card, Button } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 import { storage } from '../../services/firebase';
@@ -174,7 +174,7 @@ export default function AdminPerfilScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
@@ -192,7 +192,7 @@ const s = StyleSheet.create({
   avatarEdit: {
     position: 'absolute', bottom: 2, right: 2,
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: colors.lav5,
+    backgroundColor: colors.botaoForte,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: 'white',
   },
@@ -216,4 +216,4 @@ const s = StyleSheet.create({
   },
   emailText: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
   hint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 4 },
-});
+}), { escalar: false });
