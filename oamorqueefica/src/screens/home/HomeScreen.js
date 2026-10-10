@@ -100,6 +100,7 @@ export default function HomeScreen({ navigation }) {
   const inicial = (usuario.apelido || usuario.nome || 'A').trim().charAt(0).toUpperCase();
 
   const itensMenu = [
+    { icone: 'sparkles-outline', rotulo: 'AtravessIA', sub: 'Conversa, diário guiado e carta do mês', acao: () => navigation.navigate('AtravessIA') },
     { icone: 'image-outline', rotulo: 'Foto do perfil', sub: perfil?.photoURL ? 'Trocar ou remover sua foto' : 'Personalize sua área com uma foto', acao: tocarFoto },
     { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
     { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
@@ -223,6 +224,16 @@ export default function HomeScreen({ navigation }) {
 
           {/* ===== SEU DIA (sequência sugerida, opcional) ===== */}
           <DiarioDoDia navigation={navigation} />
+
+          {/* ===== ATRAVESSIA (inteligência própria do app) ===== */}
+          <TouchableOpacity style={s.iaCard} onPress={() => navigation.navigate('AtravessIA')} activeOpacity={0.9}>
+            <View style={s.iaIcone}><Ionicons name="sparkles" size={20} color="white" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.iaTit}>AtravessIA</Text>
+              <Text style={s.iaSub}>Converse, escreva no diário guiado ou leia sua carta do mês</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
 
           {/* ===== FRASE DO DIA ===== */}
           {fraseDoDia && (
@@ -635,6 +646,16 @@ const s = criarEstilos(() => ({
   },
   vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#fff' },
   vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+
+  // AtravessIA
+  iaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20,
+    paddingVertical: 16, paddingHorizontal: 18, borderRadius: 18, backgroundColor: colors.botaoForte,
+    shadowColor: '#5C3FA0', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 14, elevation: 5,
+  },
+  iaIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  iaTit: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#fff' },
+  iaSub: { fontFamily: 'Lato_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 
   // Produtos Atravessia
   produtosBtn: {

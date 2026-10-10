@@ -47,6 +47,10 @@ import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 import LembreteScreen from '../screens/perfil/LembreteScreen';
 import ProdutosScreen from '../screens/produtos/ProdutosScreen';
 import AparenciaScreen from '../screens/perfil/AparenciaScreen';
+import AtravessIAScreen from '../screens/atravessia/AtravessIAScreen';
+import ConversaIAScreen from '../screens/atravessia/ConversaIAScreen';
+import DiarioGuiadoScreen from '../screens/atravessia/DiarioGuiadoScreen';
+import CartaMesScreen from '../screens/atravessia/CartaMesScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { useTema } from '../hooks/TemaContext';
@@ -88,6 +92,10 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Lembrete" component={LembreteScreen} />
       <Stack.Screen name="Produtos" component={ProdutosScreen} />
       <Stack.Screen name="Aparencia" component={AparenciaScreen} />
+      <Stack.Screen name="AtravessIA" component={AtravessIAScreen} />
+      <Stack.Screen name="ConversaIA" component={ConversaIAScreen} />
+      <Stack.Screen name="DiarioGuiado" component={DiarioGuiadoScreen} />
+      <Stack.Screen name="CartaMes" component={CartaMesScreen} />
     </Stack.Navigator>
   );
 }
