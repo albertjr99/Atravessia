@@ -40,7 +40,7 @@ export default function AtravessIAScreen({ navigation }) {
           <View style={s.hero}>
             <View style={s.heroIcone}><Ionicons name="sparkles" size={26} color="white" /></View>
             <Text style={s.heroTit}>AtravessIA</Text>
-            <Text style={s.heroSub}>A inteligência do Atravessia, feita para acolher. Funciona aqui no seu celular: o que você escreve fica com você.</Text>
+            <Text style={s.heroSub}>Um espaço de escuta para conversar, escrever e acolher o que você sente. O que você compartilha aqui fica entre nós.</Text>
           </View>
 
           {MODULOS.map(m => (

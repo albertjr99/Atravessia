@@ -156,7 +156,7 @@ export default function AdminAtravessIAScreen() {
           <View style={s.iaIcone}><Ionicons name="sparkles" size={18} color="white" /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.title}>AtravessIA</Text>
-            <Text style={s.sub}>Inteligência própria do app: lê os dados em linguagem simples e ajuda a criar conteúdos.</Text>
+            <Text style={s.sub}>Lê os dados em linguagem simples e ajuda a criar conteúdos.</Text>
           </View>
         </View>
         <View style={s.abas}>

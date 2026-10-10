@@ -6,7 +6,7 @@
 // qualquer sinal de risco, responde com o CVV (188) e a Rede de Apoio.
 import { analisar, escolher } from './analise';
 
-export const AVISO_IA = 'A AtravessIA é uma assistente do app: acolhe e sugere caminhos, mas não substitui um profissional de saúde.';
+export const AVISO_IA = 'A AtravessIA está aqui para acolher e caminhar com você, mas não substitui o cuidado de um profissional de saúde.';
 
 const VALIDACAO = {
   saudade: [
@@ -147,7 +147,7 @@ export function mensagemInicial(ctx = {}) {
     };
   }
   return {
-    texto: `Oi${nomeDe(ctx)}. Eu sou a AtravessIA, a assistente de acolhimento do app. Pode me contar como você está agora, do seu jeito. Estou aqui para ouvir e sugerir um cuidado para este momento.`,
+    texto: `Oi${nomeDe(ctx)}. Eu sou a AtravessIA. Pode me contar como você está agora, do seu jeito, sem pressa. Estou aqui para te ouvir.`,
     sugestoes: [],
   };
 }

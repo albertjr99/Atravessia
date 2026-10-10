@@ -130,7 +130,7 @@ export default function AtravessIA({ showToast }) {
           <span className="ia-icone"><IconSpark size={20} /></span>
           <div>
             <h1 className="screen-title">AtravessIA</h1>
-            <p className="screen-sub">Inteligência própria do app: lê os dados em linguagem simples e ajuda a criar conteúdos, sem custo por uso.</p>
+            <p className="screen-sub">Lê os dados em linguagem simples e ajuda a criar conteúdos.</p>
           </div>
         </div>
       </div>

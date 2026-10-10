@@ -78,15 +78,17 @@ export default function ConversaIAScreen({ navigation }) {
     const minha = { id: `u${Date.now()}`, de: 'eu', texto: msg };
     setMensagens(m => [...(m || []), minha]);
     setDigitando(true);
-    // Pequena pausa para a resposta não aparecer "seca".
+    // Tempo de "escrevendo..." proporcional ao tamanho da resposta, como numa
+    // conversa de verdade. Em situação de risco, responde logo.
+    const r = responder(msg, { nome, usados, ultimaEmocao, jaDisseQuem });
+    const pausa = r.risco ? 700 : Math.min(3200, Math.max(1300, 700 + r.texto.length * 14));
     setTimeout(() => {
-      const r = responder(msg, { nome, usados, ultimaEmocao, jaDisseQuem });
       setUsados(r.usados);
       if (r.jaDisseQuem) setJaDisseQuem(true);
       if (r.emocao) setUltimaEmocao(r.emocao);
       setMensagens(m => [...(m || []), { id: `i${Date.now()}`, de: 'ia', texto: r.texto, sugestoes: r.sugestoes, risco: r.risco }]);
       setDigitando(false);
-    }, 650);
+    }, pausa);
   };
 
   const tocarSugestao = (s) => {
@@ -101,7 +103,7 @@ export default function ConversaIAScreen({ navigation }) {
 
   const apagar = () => confirmar(
     'Apagar conversa',
-    'A conversa fica guardada só neste aparelho. Deseja apagá-la?',
+    'Esta conversa será apagada e não poderá ser recuperada. Deseja continuar?',
     () => {
       AsyncStorage.removeItem(chave(uid)).catch(() => {});
       setUsados([]);

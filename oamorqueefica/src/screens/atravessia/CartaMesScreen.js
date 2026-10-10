@@ -94,7 +94,7 @@ export default function CartaMesScreen({ navigation }) {
               <Text key={i} style={[s.paragrafo, i === 0 && s.saudacao, i === carta.paragrafos.length - 1 && s.assinatura]}>{p}</Text>
             ))}
           </View>
-          <Text style={s.nota}>A carta é escrita pela AtravessIA a partir dos seus registros, aqui mesmo no seu celular.</Text>
+          <Text style={s.nota}>Escrita com carinho pela AtravessIA a partir do que você viveu e registrou no mês.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
