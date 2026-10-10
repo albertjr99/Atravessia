@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable,
+  StyleSheet, StatusBar, Image, Modal, Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius } from '../../theme';
 import { emocoes } from '../../data';
-import { ScriptTitle, LavandaBg } from '../../components';
+import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
@@ -24,7 +24,6 @@ const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
 
 const ilCoracao = require('../../../assets/images/il_coracao_ramos.png');
-const { width: SCREEN_W } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -48,7 +47,9 @@ export default function HomeScreen({ navigation }) {
   }).length;
 
   const uid = firebaseUser?.uid;
-  const jaFezCheckinHoje = checkins.some(c => c.data === hojeStrBR());
+  const checkinHoje = checkins.find(c => c.data === hojeStrBR());
+  const emocaoHoje = emocoes.find(e => e.id === checkinHoje?.emocao);
+  const jaFezCheckinHoje = !!checkinHoje;
 
   // Lembrete diário: os avisos são agendados para os próximos dias e refeitos
   // sempre que a tela inicial volta ao foco ou um check-in é registrado — assim
@@ -93,8 +94,6 @@ export default function HomeScreen({ navigation }) {
     if (h < 18) return 'Boa tarde';
     return 'Boa noite';
   };
-  const weekHistory = checkins.slice(-6);
-
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
@@ -102,8 +101,8 @@ export default function HomeScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
         {/* ===== HEADER COM AQUARELA ===== */}
-        <View style={[s.headerWrap, { height: 210 + insets.top }]}>
-          <Image source={headerLavender} style={[s.headerImg, { height: 210 + insets.top }]} resizeMode="cover" />
+        <View style={[s.headerWrap, { height: 154 + insets.top }]}>
+          <Image source={headerLavender} style={[s.headerImg, { height: 154 + insets.top }]} resizeMode="cover" />
           {/* Gradiente fade para o fundo */}
           <View style={s.headerFade} />
           {/* Sino notificação */}
@@ -147,7 +146,8 @@ export default function HomeScreen({ navigation }) {
 
           {/* Saudação */}
           <View style={s.greetSect}>
-            <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome} <Text style={{ color: '#9b86bd' }}>💜</Text></Text>
+            <Text style={s.greetDate}>{new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+            <Text style={s.greetName}>{saudacao()}, {usuario.apelido || usuario.nome}</Text>
             <Text style={s.greetSub}>Que hoje você se permita sentir, acolher e seguir.</Text>
           </View>
 
@@ -173,6 +173,38 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
+          {/* ===== CHECK-IN EMOCIONAL ===== */}
+          <View style={s.checkinCard}>
+            <View style={s.checkinCardTop}>
+              <View style={[s.checkinIcon, jaFezCheckinHoje && s.checkinIconDone]}>
+                <Ionicons
+                  name={jaFezCheckinHoje ? 'checkmark' : 'heart-outline'}
+                  size={21}
+                  color={jaFezCheckinHoje ? colors.sageFg : colors.lav5}
+                />
+              </View>
+              <View style={s.checkinCopy}>
+                <Text style={s.checkinEyebrow}>{jaFezCheckinHoje ? 'CUIDADO DE HOJE' : 'UM MOMENTO PARA VOCÊ'}</Text>
+                <Text style={s.checkinTitle}>{jaFezCheckinHoje ? 'Você se escutou hoje' : 'Como você está se sentindo?'}</Text>
+                <Text style={s.checkinSub}>
+                  {jaFezCheckinHoje
+                    ? `Seu registro de hoje: ${emocaoHoje?.label?.toLowerCase() || 'feito com carinho'}.`
+                    : 'Não existe resposta certa. Você pode começar pelo que sente agora.'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[s.checkinBtn, jaFezCheckinHoje && s.checkinBtnDone]}
+              onPress={() => navigation.navigate(jaFezCheckinHoje ? 'Relatorios' : 'CheckIn')}
+              activeOpacity={0.86}
+              accessibilityRole="button"
+              accessibilityLabel={jaFezCheckinHoje ? 'Acompanhar meu caminho' : 'Fazer check-in emocional'}
+            >
+              <Text style={s.checkinTxt}>{jaFezCheckinHoje ? 'Acompanhar meu caminho' : 'Fazer check-in emocional'}</Text>
+              <Ionicons name="arrow-forward" size={17} color="white" />
+            </TouchableOpacity>
+          </View>
+
           {/* ===== SEU DIA (sequência sugerida, opcional) ===== */}
           <DiarioDoDia navigation={navigation} />
 
@@ -189,33 +221,14 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {/* ===== CHECK-IN ===== */}
-          <View style={s.sect}>
-            <Text style={s.sectTitle}>Como estou me sentindo hoje?</Text>
-            <View style={s.emoGrid}>
-              {emocoes.filter(e => e.positiva).map(e => (
-                <TouchableOpacity key={e.id} style={s.emoCard} onPress={() => navigation.navigate('CheckIn')} activeOpacity={0.8}>
-                  <View style={[s.emoCircle, { backgroundColor: e.bg }]}>
-                    <Ionicons name={`${e.icon}-outline`} size={18} color={e.color} />
-                  </View>
-                  <Text style={s.emoLbl} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.6}>{e.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={s.checkinBtn} onPress={() => navigation.navigate('CheckIn')} activeOpacity={0.85}>
-              <Text style={s.checkinTxt}>Fazer check-in emocional</Text>
-              <Ionicons name="chevron-forward" size={18} color="white" />
-            </TouchableOpacity>
-          </View>
-
           {/* ===== REFLEXÃO ===== */}
           <View style={s.sect}>
             <View style={s.sectHeaderRow}>
               <View style={s.sectTitleRow}>
                 <Ionicons name="moon-outline" size={14} color="#9b86bd" />
-                <Text style={s.sectTitle}>Reflexão do dia</Text>
+                <Text style={s.sectTitle}>Uma pausa para hoje</Text>
               </View>
-              <TouchableOpacity><Text style={s.sectLink}>Ver todas</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Audios')}><Text style={s.sectLink}>Mais conteúdos</Text></TouchableOpacity>
             </View>
             <View style={s.reflexaoCard}>
               <Text style={s.reflexaoTxt}>{fraseDoDia?.reflexao || 'Cada dia traz uma nova chance de cuidar de si. Permita-se sentir, acolher e seguir.'}</Text>
@@ -232,7 +245,7 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('PequenasVitorias')} activeOpacity={0.85}>
                 <Ionicons name="star-outline" size={20} color="#8B7AC0" />
-                <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
+                <Text style={s.perfilLbl}>Vitórias</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Relatorios')} activeOpacity={0.85}>
                 <Ionicons name="bar-chart-outline" size={20} color="#8B7AC0" />
@@ -387,23 +400,22 @@ export default function HomeScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8F4EE' },
-  scrollContent: { paddingBottom: 80 },
+  safe: { flex: 1, backgroundColor: '#FAF8F5' },
+  scrollContent: { paddingBottom: 108 },
 
   // Header
-  headerWrap: { position: 'relative', height: 210 },
-  headerImg: { width: '100%', height: 210 },
+  headerWrap: { position: 'relative', height: 154, overflow: 'hidden' },
+  headerImg: { width: '100%', height: 154 },
   headerFade: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
-    backgroundColor: 'transparent',
-    // CSS gradient simulation
-    opacity: 1,
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 36,
+    backgroundColor: 'rgba(250,248,245,0.32)',
   },
   bellBtn: {
     position: 'absolute', right: 16, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.85)',
   },
   bellBadge: {
     position: 'absolute', right: 3, top: 3,
@@ -439,16 +451,18 @@ const s = StyleSheet.create({
   },
   cupomBtn: {
     position: 'absolute', right: 64, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.85)',
   },
   cupomBadge: { backgroundColor: '#7A9E7E' },
   menuBtn: {
     position: 'absolute', left: 16, top: 16,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,253,249,0.8)',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.85)',
   },
   menuFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.28)', paddingHorizontal: 16, alignItems: 'flex-start' },
   menuCaixa: {
@@ -465,43 +479,63 @@ const s = StyleSheet.create({
   menuIconeSair: { backgroundColor: '#F7E8EA' },
   menuRotulo: { fontFamily: 'Lato_700Bold', fontSize: 14, color: '#4a4453' },
   menuSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: '#8c8597', marginTop: 1 },
-  headerLogo: { width: 44, height: 44, marginBottom: 2, borderRadius: 10 },
+  headerLogo: { width: 34, height: 34, borderRadius: 9 },
   headerBottom: {
-    position: 'absolute', bottom: 10, left: 0, right: 0,
-    alignItems: 'center',
+    position: 'absolute', bottom: 12, left: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.83)',
   },
   appTitle: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 28, color: '#4a4453', marginTop: 4,
-    letterSpacing: 0.5,
+    fontSize: 25, color: '#453D50', letterSpacing: 0.3,
   },
 
   body: { paddingHorizontal: 20 },
 
   // Saudação
-  greetSect: { marginTop: 20, marginBottom: 20 },
+  greetSect: { marginTop: 17, marginBottom: 18 },
+  greetDate: {
+    fontFamily: 'Lato_700Bold', fontSize: 11, color: '#827B8A',
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5,
+  },
   greetName: {
     fontFamily: 'PlayfairDisplay_400Regular',
-    fontSize: 24, color: '#4a4453',
+    fontSize: 25, color: '#393442', lineHeight: 34,
   },
   greetSub: {
     fontFamily: 'Lato_400Regular',
-    fontSize: 14, color: '#8c8597', marginTop: 4,
+    fontSize: 14, color: '#756F7D', marginTop: 4, lineHeight: 20,
   },
   greetIl: { width: 80, height: 80, marginLeft: 8 },
 
+  // Cartão de check-in — ação principal da tela
+  checkinCard: {
+    padding: 18, marginBottom: 18, borderRadius: 22,
+    backgroundColor: '#F0ECF5', borderWidth: 1, borderColor: '#E2DBEB',
+  },
+  checkinCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  checkinIcon: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: '#E1D9ED',
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  checkinIconDone: { backgroundColor: '#E1EADF' },
+  checkinCopy: { flex: 1, minWidth: 0 },
+  checkinEyebrow: {
+    fontFamily: 'Lato_700Bold', fontSize: 10, color: '#75648A',
+    letterSpacing: 0.9, marginBottom: 4,
+  },
+  checkinTitle: { fontFamily: 'Lato_700Bold', fontSize: 17, color: '#393442', lineHeight: 22 },
+  checkinSub: { fontFamily: 'Lato_400Regular', fontSize: 13, color: '#6F6878', lineHeight: 19, marginTop: 4 },
+
   // Frase
   fraseCard: {
-    backgroundColor: '#FFFDF9',
-    borderRadius: 24, padding: 24, paddingTop: 20,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
-    marginBottom: 24,
-    // shadow-card
-    shadowColor: '#6b5b7a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22, padding: 20, paddingTop: 18,
+    borderWidth: 1, borderColor: '#ECE7E2',
+    marginBottom: 22,
+    shadowColor: '#51465E', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.055, shadowRadius: 12, elevation: 2,
   },
   fraseTagRow: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
@@ -509,73 +543,58 @@ const s = StyleSheet.create({
   },
   fraseIl: { width: 32, height: 32, marginLeft: 'auto' },
   fraseTag: {
-    fontFamily: 'Lato_700Bold', fontSize: 12,
-    color: '#9b86bd', letterSpacing: 1, textTransform: 'uppercase',
+    fontFamily: 'Lato_700Bold', fontSize: 11,
+    color: '#75648A', letterSpacing: 0.9, textTransform: 'uppercase',
   },
   fraseTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 26, fontStyle: 'italic',
-    color: '#4a4453', lineHeight: 36, textAlign: 'center',
+    fontSize: 24, fontStyle: 'italic',
+    color: '#393442', lineHeight: 33, textAlign: 'left',
   },
   fraseAutor: {
     fontFamily: 'Lato_400Regular', fontSize: 12,
-    color: '#8c8597', textAlign: 'center', marginTop: 8,
+    color: '#827B8A', textAlign: 'left', marginTop: 9,
   },
 
   // Section
-  sect: { marginBottom: 24 },
-  sectTitle: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#4a4453', marginBottom: 12 },
+  sect: { marginBottom: 22 },
+  sectTitle: { fontFamily: 'Lato_700Bold', fontSize: 16, color: '#393442', marginBottom: 12 },
   sectHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  sectLink: { fontFamily: 'Lato_400Regular', fontSize: 13, color: '#9b86bd' },
+  sectLink: { fontFamily: 'Lato_700Bold', fontSize: 12, color: '#75648A' },
 
   // Emoções
-  emoGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 12 },
-  emoCard: {
-    flex: 1, alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFDF9', borderRadius: 16,
-    paddingVertical: 12, paddingHorizontal: 4,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
-  },
-  emoCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  emoLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#4a4453', textAlign: 'center' },
-
   // Perfil e cuidados
-  perfilGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  perfilGrid: { flexDirection: 'row', flexWrap: 'nowrap', gap: 9 },
   perfilCard: {
-    flexBasis: '47%', flexGrow: 1, alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFDF9', borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 8,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 17,
+    paddingVertical: 15, paddingHorizontal: 5,
+    borderWidth: 1, borderColor: '#ECE7E2',
   },
-  perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 12, color: '#4a4453', textAlign: 'center' },
+  perfilLbl: { fontFamily: 'Lato_700Bold', fontSize: 11.5, color: '#514A5B', textAlign: 'center' },
 
   // Experimente a vida
   vidaBtn: {
     marginTop: 10,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#5C3FA0',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 6,
+    borderWidth: 1, borderColor: '#6D5C83',
+    shadowColor: '#51465E', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 3,
   },
   vidaBtnInner: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingVertical: 18, paddingHorizontal: 18,
-    backgroundColor: '#7B5EA7',
+    paddingVertical: 15, paddingHorizontal: 16,
+    backgroundColor: '#75648A',
   },
   vidaIconCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
   },
-  vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: '#fff' },
-  vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  vidaBtnTxt: { fontFamily: 'Lato_700Bold', fontSize: 14, color: '#fff' },
+  vidaBtnSub: { fontFamily: 'Lato_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.82)', marginTop: 3 },
 
   // Produtos Atravessia
   produtosBtn: {
@@ -596,50 +615,45 @@ const s = StyleSheet.create({
 
   // Check-in btn
   checkinBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#9b86bd', borderRadius: 999,
-    paddingVertical: 16,
-    // shadow-soft
-    shadowColor: '#9b86bd',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 28,
-    elevation: 6,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    backgroundColor: '#75648A', borderRadius: 14,
+    paddingVertical: 13, marginTop: 15,
   },
-  checkinTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: 'white' },
+  checkinBtnDone: { backgroundColor: '#71866F' },
+  checkinTxt: { fontFamily: 'Lato_700Bold', fontSize: 14, color: 'white' },
 
   // Reflexão
   reflexaoCard: {
-    backgroundColor: 'rgba(235,227,243,0.5)',
-    borderRadius: 24, padding: 20,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)',
+    backgroundColor: '#F1EDF5',
+    borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: '#E5DEEC',
   },
   reflexaoTxt: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
     fontSize: 15, fontStyle: 'italic',
-    color: '#6b5b88', lineHeight: 24, textAlign: 'justify',
+    color: '#5E536B', lineHeight: 23, textAlign: 'left',
   },
 
   disclaimer: {
-    fontFamily: 'Lato_400Regular', fontSize: 12,
-    color: '#8c8597', textAlign: 'center',
-    lineHeight: 18, marginBottom: 20,
+    fontFamily: 'Lato_400Regular', fontSize: 11.5,
+    color: '#827B8A', textAlign: 'center',
+    lineHeight: 17, marginBottom: 18,
   },
 
   // Parcerias
   parceriaCard: {
-    width: 148, backgroundColor: '#FFFDF9', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(230,221,210,0.7)', overflow: 'hidden',
+    width: 156, backgroundColor: '#FFFFFF', borderRadius: 16,
+    borderWidth: 1, borderColor: '#ECE7E2', overflow: 'hidden',
   },
-  parceriaImg: { width: 148, height: 88 },
+  parceriaImg: { width: 156, height: 94 },
   parceriaImgPlaceholder: {
     backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
   },
   parceriaInfo: { padding: 8 },
   parceriaTit: {
-    fontFamily: 'Lato_700Bold', fontSize: 11, color: '#4a4453', lineHeight: 16,
+    fontFamily: 'Lato_700Bold', fontSize: 12, color: '#514A5B', lineHeight: 17,
   },
-  parceriaCat: { fontFamily: 'Lato_400Regular', fontSize: 9, color: '#9b86bd', marginTop: 3 },
+  parceriaCat: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#75648A', marginTop: 4 },
   parceriaVerTodas: { width: 60, alignItems: 'center', justifyContent: 'center', gap: 4 },
   parceriaVerTodasTxt: {
     fontFamily: 'Lato_400Regular', fontSize: 10, color: '#9b86bd', textAlign: 'center',
@@ -647,14 +661,15 @@ const s = StyleSheet.create({
 
   // Nav
   bnav: {
-    backgroundColor: 'rgba(255,253,249,0.95)',
-    borderTopWidth: 1, borderTopColor: 'rgba(230,221,210,0.7)',
-    paddingBottom: 10,
-    paddingTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderTopWidth: 1, borderTopColor: '#ECE7E2',
+    paddingBottom: 10, paddingTop: 10,
     flexDirection: 'row', justifyContent: 'space-around',
     position: 'absolute', bottom: 0, left: 0, right: 0,
+    shadowColor: '#393442', shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.045, shadowRadius: 8, elevation: 8,
   },
-  navItem: { alignItems: 'center', gap: 3, flex: 1 },
-  navLbl: { fontFamily: 'Lato_400Regular', fontSize: 10, color: '#8c8597' },
-  navLblActive: { fontFamily: 'Lato_700Bold', color: '#9b86bd' },
+  navItem: { alignItems: 'center', justifyContent: 'center', gap: 4, flex: 1, minHeight: 44 },
+  navLbl: { fontFamily: 'Lato_400Regular', fontSize: 10.5, color: '#827B8A' },
+  navLblActive: { fontFamily: 'Lato_700Bold', color: '#75648A' },
 });
