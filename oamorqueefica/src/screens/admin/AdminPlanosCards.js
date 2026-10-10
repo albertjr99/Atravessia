@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, TextInput, Alert, Modal, ScrollView, Switch,
+  View, Text, TouchableOpacity, TextInput, Alert, Modal, ScrollView, Switch,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 
 const PLANOS_PADRAO = [
   {
@@ -260,7 +260,7 @@ export default function AdminPlanosCards() {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   card: {
     backgroundColor: colors.card, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border,
@@ -330,4 +330,4 @@ const s = StyleSheet.create({
     backgroundColor: colors.lav4,
   },
   btnPrimTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
-});
+}), { escalar: false });

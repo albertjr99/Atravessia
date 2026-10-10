@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 import { useAuth } from '../../hooks/AuthContext';
@@ -138,7 +138,7 @@ export default function AdminHomeScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageHeader: { marginBottom: spacing.lg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td },
@@ -163,4 +163,4 @@ const s = StyleSheet.create({
   atalhoIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   atalhoLabel: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
   atalhoSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
-});
+}), { escalar: false });

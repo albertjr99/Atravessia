@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminPlanosCards from './AdminPlanosCards';
 
@@ -256,7 +256,7 @@ export default function AdminPrecosScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48 },
   title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
@@ -307,4 +307,4 @@ const s = StyleSheet.create({
   saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
 
   hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 17, textAlign: 'center' },
-});
+}), { escalar: false });

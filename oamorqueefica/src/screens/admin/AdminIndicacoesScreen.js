@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
+  View, Text, ScrollView, TouchableOpacity, Alert, TextInput,
   Modal, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -194,7 +194,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
   );
 }
 
-const st = StyleSheet.create({
+const st = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
@@ -202,7 +202,7 @@ const st = StyleSheet.create({
   statBox: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
   statN: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav5 },
   statL: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 12, marginBottom: spacing.md },
+  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 12, marginBottom: spacing.md },
   addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
   chipRow: { gap: 8, marginBottom: spacing.md },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -231,6 +231,6 @@ const st = StyleSheet.create({
   previa: { width: '100%', height: 140, marginTop: 8, backgroundColor: 'white', borderRadius: radius.md },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
   switchTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  saveBtn: { backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: spacing.lg },
+  saveBtn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: spacing.lg },
   saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-});
+}), { escalar: false });

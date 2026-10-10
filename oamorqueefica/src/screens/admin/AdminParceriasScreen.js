@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput,
+  View, Text, ScrollView, TouchableOpacity, TextInput,
   Alert, Platform, Image, Switch, KeyboardAvoidingView, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import {
   addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Card, Button } from '../../components';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
@@ -307,7 +307,13 @@ export default function AdminParceriasScreen({ navigation }) {
             scrollEnabled={false}
             value={descricao}
             onChangeText={setDescricao}
-            onContentSizeChange={e => setAlturaDescricao(Math.max(120, Math.ceil(e.nativeEvent.contentSize.height) + 24))}
+            // Cresce com o texto (com teto). Na web a medida inclui a própria
+            // altura do campo e o ajuste entraria em loop, então lá fica fixo.
+            onContentSizeChange={e => {
+              if (Platform.OS === 'web') return;
+              const h = Math.min(420, Math.max(120, Math.ceil(e.nativeEvent.contentSize.height) + 24));
+              setAlturaDescricao(a => (Math.abs(a - h) > 4 ? h : a));
+            }}
           />
 
           <Text style={s.formLabel}>Link de destino <Text style={s.optional}>(opcional)</Text></Text>
@@ -564,7 +570,7 @@ export default function AdminParceriasScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   formTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
   cancelarEdicao: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.full, backgroundColor: colors.lav1 },
   cancelarEdicaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
@@ -649,7 +655,7 @@ const s = StyleSheet.create({
   },
   infoBaseTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, lineHeight: 17 },
   erroBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo,
     borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md,
   },
   erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
@@ -673,9 +679,9 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: colors.gold + '30', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
   },
-  cupomTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: '#8A6A33' },
+  cupomTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.goldFg },
   itemLink: { fontFamily: fonts.body, fontSize: 10, color: colors.lav4 },
   verComissoesLink: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5, marginTop: 2 },
   itemActions: { alignItems: 'center', gap: 2 },
   switchLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
-});
+}), { escalar: false });

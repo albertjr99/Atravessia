@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 
 // Sub-abas dentro de uma mesma seção do painel. Permite reunir telas irmãs
 // (ex.: Conteúdos / Áudios Check-in / Frases) sob um único item da barra
@@ -58,7 +58,7 @@ export default function AdminSubTabs({ grupo, atual }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   wrap: {
     borderBottomWidth: 1, borderBottomColor: colors.border,
     backgroundColor: colors.card,
@@ -72,4 +72,4 @@ const s = StyleSheet.create({
   tabAtiva: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
   txt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm },
   txtAtivo: { fontFamily: fonts.bodyBold, color: colors.lav5 },
-});
+}), { escalar: false });

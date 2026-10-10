@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput,
+  View, Text, ScrollView, TouchableOpacity, Alert, TextInput,
   Modal, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import {
   orderBy, query, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -352,7 +352,7 @@ export default function AdminFrasesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
@@ -405,4 +405,4 @@ const styles = StyleSheet.create({
   inputMulti: { textAlignVertical: 'top', minHeight: 80 },
   saveBtn: { backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: spacing.lg },
   saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-});
+}), { escalar: false });

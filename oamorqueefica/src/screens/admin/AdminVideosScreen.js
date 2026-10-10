@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator,
   Platform, useWindowDimensions, Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { doc, onSnapshot, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { uploadToStorage } from '../../utils/storageUpload';
 import { confirmar } from '../../utils/confirm';
 import PlayerVideo from '../../components/PlayerVideo';
@@ -241,7 +241,7 @@ export default function AdminVideosScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48 },
   title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, lineHeight: 19, marginBottom: spacing.lg },
@@ -278,4 +278,4 @@ const s = StyleSheet.create({
   btnSecTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
   btnIcone: { padding: 8 },
   loja: { backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.md, gap: 6 },
-});
+}), { escalar: false });

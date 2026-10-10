@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Alert,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 
 const PLANO_NOME = { 0: 'Perceber', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
-const PLANO_COR = { 0: colors.sage, 1: colors.lav5, 2: '#7B5EA7', 3: '#C0843F' };
+const PLANO_COR = { get 0() { return colors.sage; }, get 1() { return colors.lav5; }, 2: '#7B5EA7', 3: '#C0843F' };
 const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
 
 // O painel web grava o plano como texto ('acolher') e o app como número (0..3);
@@ -306,7 +306,7 @@ export default function AdminUsuariasScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   empresaText: { fontFamily: fonts.body, fontSize: 10, color: colors.gold },
   planoBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: radius.full, borderWidth: 1.5, paddingVertical: 5, paddingHorizontal: 9, marginTop: 2 },
   planoBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11 },
-  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF0EE', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
+  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
   erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', marginTop: spacing.xl },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
@@ -349,4 +349,4 @@ const styles = StyleSheet.create({
   concederBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },
   revogarBtn: { borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.peach2 },
   revogarBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.peach2 },
-});
+}), { escalar: false });

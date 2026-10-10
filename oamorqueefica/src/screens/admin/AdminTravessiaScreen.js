@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, Modal, Switch, KeyboardAvoidingView, Platform,
+  View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Switch, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -9,7 +8,7 @@ import {
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow } from '../../theme';
+import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { Card } from '../../components';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -256,14 +255,14 @@ export default function AdminTravessiaScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: spacing.lg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.lav5, borderRadius: radius.full,
+    backgroundColor: colors.botaoForte, borderRadius: radius.full,
     paddingVertical: 9, paddingHorizontal: 14,
   },
   addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: '#fff' },
@@ -302,6 +301,6 @@ const s = StyleSheet.create({
   iconeBtn: { width: 42, height: 42, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-  saveBtn: { backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
+  saveBtn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
   saveBtnText: { fontFamily: fonts.bodyBold, fontSize: 15, color: '#fff' },
-});
+}), { escalar: false });

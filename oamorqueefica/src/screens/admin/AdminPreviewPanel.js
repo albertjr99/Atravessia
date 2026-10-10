@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, radius } from '../../theme';
+import { colors, fonts, radius, criarEstilos } from '../../theme';
 
 const PHONE_W = 238;
 const PHONE_H = PHONE_W * 1.95;
@@ -254,10 +254,11 @@ export default function AdminPreviewPanel({ currentScreen }) {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+// O painel acompanha o tema; o celular da prévia continua claro.
+const s = criarEstilos(() => ({
   panel: {
     width: 292,
-    backgroundColor: '#EDE8F5',
+    backgroundColor: colors.lav1,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
     paddingVertical: 20,
@@ -291,7 +292,7 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
   },
-});
+}), { escalar: false });
 
 const ph = StyleSheet.create({
   phone: {

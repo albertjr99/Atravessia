@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput, ActivityIndicator, Switch,
+  View, Text, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { brl } from '../cashback/CashbackScreen';
@@ -220,7 +220,7 @@ export default function AdminCashbackScreen({ navigation }) {
   );
 }
 
-const st = StyleSheet.create({
+const st = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 40, maxWidth: 900, width: '100%', alignSelf: 'center' },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
@@ -238,7 +238,7 @@ const st = StyleSheet.create({
   label: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.td, marginBottom: 4, marginTop: spacing.sm },
   input: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, fontFamily: fonts.body, fontSize: 14, color: colors.td },
   ajuda: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 17, marginTop: 4 },
-  btn: { backgroundColor: colors.lav5, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginTop: spacing.md },
+  btn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginTop: spacing.md },
   btnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
   vazio: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
   mov: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
@@ -247,4 +247,4 @@ const st = StyleSheet.create({
   movSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 1 },
   movValor: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.tm },
   estornar: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.roseTexto || colors.rose },
-});
+}), { escalar: false });

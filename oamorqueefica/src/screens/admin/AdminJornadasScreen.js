@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  StyleSheet, Alert, Switch,
+  Alert, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -9,7 +9,7 @@ import {
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Card, Button } from '../../components';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
@@ -22,7 +22,7 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_CORES = { 0: colors.sage, 1: colors.lav4, 2: '#7B5EA7', 3: '#C0843F' };
+const PLANO_CORES = { get 0() { return colors.sage; }, get 1() { return colors.lav4; }, 2: '#7B5EA7', 3: '#C0843F' };
 
 const ICONES = [
   'heart-outline', 'leaf-outline', 'sunny-outline', 'moon-outline',
@@ -170,7 +170,7 @@ export default function AdminJornadasScreen({ navigation }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg },
   pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
   pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
@@ -200,4 +200,4 @@ const s = StyleSheet.create({
   tagInativa: { backgroundColor: colors.peach + '33', color: colors.peach2 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionBtn: { padding: 6 },
-});
+}), { escalar: false });
