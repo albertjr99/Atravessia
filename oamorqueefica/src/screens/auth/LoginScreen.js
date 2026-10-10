@@ -43,6 +43,18 @@ function descreverBiometria(tipos = []) {
   return { rotulo: 'Entrar com biometria', nome: 'biometria', icone: 'finger-print-outline' };
 }
 
+// Muitos tablets (e alguns celulares) têm reconhecimento facial só por câmera,
+// que o Android classifica como "conveniência" e NÃO libera para nenhum app —
+// apenas para desbloquear a tela. Nesses aparelhos o app oferece entrar com o
+// bloqueio do próprio aparelho (PIN, padrão ou senha), que é o que o sistema
+// permite. Onde o rosto ou a digital estão liberados, continuam sendo usados.
+const BLOQUEIO_APARELHO = {
+  rotulo: 'Entrar com o bloqueio do aparelho',
+  nome: 'o bloqueio do aparelho (PIN, padrão ou senha)',
+  icone: 'lock-closed-outline',
+  bloqueio: true,
+};
+
 function mensagemErro(code) {
   switch (code) {
     case 'auth/invalid-email': return 'E-mail inválido.';
@@ -73,10 +85,14 @@ export default function LoginScreen({ navigation }) {
         const cadastrado = await LocalAuthentication.isEnrolledAsync();
         const ativado = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
         const tipos = await LocalAuthentication.supportedAuthenticationTypesAsync().catch(() => []);
-        setBiometria(descreverBiometria(tipos));
-        setBiometricDisponivel(compativel && cadastrado);
+        // 0 = sem bloqueio, 1 = só PIN/padrão/senha, 2+ = biometria liberada para apps.
+        const nivel = await LocalAuthentication.getEnrolledLevelAsync().catch(() => 0);
+        const biometriaLiberada = compativel && cadastrado;
+        const disponivel = biometriaLiberada || nivel >= 1;
+        setBiometria(biometriaLiberada ? descreverBiometria(tipos) : BLOQUEIO_APARELHO);
+        setBiometricDisponivel(disponivel);
         setBiometricAtivado(ativado === 'true');
-        if (compativel && cadastrado && ativado === 'true') {
+        if (disponivel && ativado === 'true') {
           const emailSalvo = await SecureStore.getItemAsync(BIOMETRIC_EMAIL_KEY);
           if (emailSalvo) setEmail(emailSalvo);
         }
@@ -122,9 +138,11 @@ export default function LoginScreen({ navigation }) {
   const handleBiometria = async () => {
     try {
       const resultado = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Confirme sua identidade',
+        promptMessage: biometria.bloqueio ? 'Use o bloqueio do aparelho para entrar' : 'Confirme sua identidade',
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar senha',
+        // Se a biometria não estiver liberada, o sistema pede o PIN/padrão/senha.
+        disableDeviceFallback: false,
         // 'weak' aceita também o reconhecimento facial dos aparelhos Android
         // (classe 2), além da digital. No iPhone/iPad, vale o Face ID ou Touch ID.
         biometricsSecurityLevel: 'weak',

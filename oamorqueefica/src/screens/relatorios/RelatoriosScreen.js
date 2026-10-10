@@ -17,6 +17,7 @@ import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
 import { functions, db } from '../../services/firebase';
+import { LOGO_RELATORIO } from '../../utils/logoRelatorio';
 
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -602,16 +603,24 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES }) 
   .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
   .footer .left { font-size: 10px; color: #aaa; }
   .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
+
+  .timbre { display: flex; align-items: center; gap: 12px; }
+  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
+  .timbre .app-name { font-size: 24px; }
+  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
+  .footer .left { display: flex; align-items: center; gap: 6px; }
+  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
 </style>
 </head>
 <body>
 <div class="page">
   ${BOTANICA_WATERMARK}
   <div class="header">
-    <div class="app-brand">
+    <div class="timbre">
+      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
       <div>
         <div class="app-name">Atravessia</div>
-        <div class="app-sub">App de perdas e luto</div>
+        <div class="timbre-sub">Relatório emocional pessoal</div>
       </div>
     </div>
     <div class="report-title">
@@ -693,7 +702,7 @@ function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES }) 
   `}
 
   <div class="footer">
-    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
+    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Perceber é o início.</div>
   </div>
 </div>
@@ -756,15 +765,25 @@ function gerarRelatorioAnualHTML({ anual, usuario, year }) {
   .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
   .footer .left { font-size: 10px; color: #aaa; }
   .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
+
+  .timbre { display: flex; align-items: center; gap: 12px; }
+  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
+  .timbre .app-name { font-size: 24px; }
+  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
+  .footer .left { display: flex; align-items: center; gap: 6px; }
+  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
 </style>
 </head>
 <body>
 <div class="page">
   ${BOTANICA_WATERMARK}
   <div class="header">
-    <div>
-      <div class="app-name">Atravessia</div>
-      <div class="app-sub">App de perdas e luto</div>
+    <div class="timbre">
+      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
+      <div>
+        <div class="app-name">Atravessia</div>
+        <div class="timbre-sub">Relatório emocional pessoal</div>
+      </div>
     </div>
     <div class="report-title">
       <h1>RELATÓRIO ANUAL</h1>
@@ -827,7 +846,7 @@ function gerarRelatorioAnualHTML({ anual, usuario, year }) {
   ${renderInsightsHTML(insights)}
 
   <div class="footer">
-    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
+    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Siga se cuidando. Você vale! 💜</div>
   </div>
 </div>
@@ -887,15 +906,25 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
   .footer .left { font-size: 10px; color: #aaa; }
   .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
+
+  .timbre { display: flex; align-items: center; gap: 12px; }
+  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
+  .timbre .app-name { font-size: 24px; }
+  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
+  .footer .left { display: flex; align-items: center; gap: 6px; }
+  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
 </style>
 </head>
 <body>
 <div class="page">
   ${BOTANICA_WATERMARK}
   <div class="header">
-    <div>
-      <div class="app-name">Atravessia</div>
-      <div class="app-sub">App de perdas e luto</div>
+    <div class="timbre">
+      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
+      <div>
+        <div class="app-name">Atravessia</div>
+        <div class="timbre-sub">Relatório emocional pessoal</div>
+      </div>
     </div>
     <div class="report-title">
       <h1>RELATÓRIO PERSONALIZADO</h1>
@@ -950,7 +979,7 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
   ${renderInsightsHTML(insights)}
 
   <div class="footer">
-    <div class="left">Gerado em ${agoraStr} (Brasília) • Atravessia</div>
+    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
     <div class="right">Perceber é o início.</div>
   </div>
 </div>

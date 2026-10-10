@@ -19,6 +19,8 @@ import AdminSubTabs from './AdminSubTabs';
 const VIDEOS = [
   { chave: 'jornadas', nome: 'Continue a travessia', tituloPadrao: 'Conheça o Continue a travessia' },
   { chave: 'parcerias', nome: 'Experimente a vida', tituloPadrao: 'Conheça o Experimente a vida' },
+  // Não abre sozinho: fica na tela "Produtos Atravessia" (cartão na tela inicial).
+  { chave: 'produtos', nome: 'Produtos Atravessia', tituloPadrao: 'Leve a Atravessia com você', loja: true },
 ];
 
 // Escolhe um arquivo de vídeo e devolve { uri | file, nome, tipo }.
@@ -59,6 +61,24 @@ function CartaoVideo({ info, dados }) {
   const [titulo, setTitulo] = useState(dados?.titulo || info.tituloPadrao);
   const [enviando, setEnviando] = useState(false);
   const [verPrevia, setVerPrevia] = useState(false);
+  const [descricao, setDescricao] = useState(dados?.descricao || '');
+  const [link, setLink] = useState(dados?.link || '');
+  const [textoBotao, setTextoBotao] = useState(dados?.textoBotao || '');
+  useEffect(() => {
+    setDescricao(dados?.descricao || ''); setLink(dados?.link || ''); setTextoBotao(dados?.textoBotao || '');
+  }, [dados?.descricao, dados?.link, dados?.textoBotao]);
+
+  const salvarLoja = async () => {
+    try {
+      await salvar({
+        descricao: descricao.trim(), link: link.trim(), textoBotao: textoBotao.trim(),
+        titulo: titulo.trim() || info.tituloPadrao, ativo: dados?.ativo !== false,
+      });
+      Alert.alert('', 'Informações salvas.');
+    } catch (e) {
+      Alert.alert('Erro', e?.message || 'Não foi possível salvar.');
+    }
+  };
 
   useEffect(() => { setTitulo(dados?.titulo || info.tituloPadrao); }, [dados?.titulo, info.tituloPadrao]);
 
@@ -120,6 +140,21 @@ function CartaoVideo({ info, dados }) {
         onEndEditing={() => dados?.url && salvar({ titulo: titulo.trim() || info.tituloPadrao }).catch(() => {})}
       />
 
+      {info.loja && (
+        <View style={s.loja}>
+          <Text style={s.label}>Texto da tela</Text>
+          <TextInput style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]} multiline value={descricao} onChangeText={setDescricao}
+            placeholder="Canecas, cadernos e outros carinhos com a marca da Atravessia..." placeholderTextColor={colors.tl} />
+          <Text style={s.label}>Link para comprar (WhatsApp, Instagram ou loja)</Text>
+          <TextInput style={s.input} value={link} onChangeText={setLink} autoCapitalize="none" placeholder="https://..." placeholderTextColor={colors.tl} />
+          <Text style={s.label}>Texto do botão</Text>
+          <TextInput style={s.input} value={textoBotao} onChangeText={setTextoBotao} placeholder="Quero meus produtos" placeholderTextColor={colors.tl} />
+          <TouchableOpacity style={[s.btnSec, { alignSelf: 'flex-start', marginTop: 4 }]} onPress={salvarLoja}>
+            <Text style={s.btnSecTxt}>Salvar informações</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={s.botoes}>
         <TouchableOpacity style={[s.btn, enviando && { opacity: 0.6 }]} onPress={trocar} disabled={enviando}>
           {enviando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="cloud-upload-outline" size={16} color="white" />}
@@ -155,7 +190,7 @@ export default function AdminVideosScreen() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.title}>Vídeos de apresentação</Text>
         <Text style={s.sub}>
-          Na primeira vez que a usuária abre a tela, o vídeo toca sozinho. Depois, fica no botão “Assistir à apresentação”.
+          Os vídeos de apresentação tocam sozinhos na primeira vez que a usuária abre a tela; depois ficam no botão “Assistir à apresentação”. O de Produtos fica na tela própria, com o link de compra.
           Para vídeos grandes, prefira enviar pelo painel web.
         </Text>
         {!!erro && <Text style={s.erro}>Não foi possível carregar: {erro}</Text>}
@@ -201,4 +236,5 @@ const s = StyleSheet.create({
   btnSec: { borderRadius: radius.full, paddingVertical: 9, paddingHorizontal: 14, backgroundColor: colors.lav1 },
   btnSecTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
   btnIcone: { padding: 8 },
+  loja: { backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.md, gap: 6 },
 });
