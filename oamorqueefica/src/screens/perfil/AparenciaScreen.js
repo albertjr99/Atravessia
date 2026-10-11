@@ -88,7 +88,7 @@ const s = criarEstilos(() => ({
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   conteudo: { paddingHorizontal: spacing.lg },
-  coluna: { width: '100%', maxWidth: 560, alignSelf: 'center' },
+  coluna: { width: '100%' },
   secTit: {
     fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tl, letterSpacing: 0.8,
     textTransform: 'uppercase', marginTop: spacing.lg, marginBottom: spacing.sm,

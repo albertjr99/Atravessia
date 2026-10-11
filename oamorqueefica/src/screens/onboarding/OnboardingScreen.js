@@ -43,16 +43,16 @@ const PASSOS = [
   {
     imagem: require('../../../assets/images/il_rede_apoio.png'),
     icone: 'gift-outline',
-    titulo: 'Experimente a vida',
-    texto: 'Na aba Explorar, as parcerias do Experimente a vida trazem benefícios pensados para o seu bem-estar. '
-      + 'Os cupons que você gerar ficam na sua carteira, na aba Perfil.',
+    titulo: 'Cuide-se',
+    texto: 'Nas parcerias do Cuide-se você encontra benefícios pensados para o seu bem-estar. '
+      + 'Os cupons que você gerar ficam em "Meus cupons", no ícone de ingresso no topo da tela inicial.',
   },
   {
     imagem: require('../../../assets/images/il_onda_coracao.png'),
     icone: 'notifications-outline',
     titulo: 'Um lembrete gentil',
     texto: 'Você pode escolher um horário para lembrarmos do seu check-in, e o sino guarda as '
-      + 'mensagens que preparamos para você. O lembrete fica na aba Perfil.',
+      + 'mensagens que preparamos para você. Tudo isso fica no menu do topo da tela inicial.',
     acao: { rotulo: 'Escolher o horário do lembrete', destino: 'Lembrete' },
   },
 ];
@@ -63,7 +63,7 @@ const NOTA_PLANOS = 'Alguns recursos fazem parte dos planos. Você escolhe o seu
 // - Primeiro acesso: aparece uma única vez, para contas novas (o cadastro grava
 //   onboardingPendente: true no perfil). Ao terminar, grava false e recomeça a
 //   pilha na tela inicial (ou no primeiro check-in).
-// - Revisita (`{ revisita: true }`, aberto pelo Perfil): não grava
+// - Revisita (`{ revisita: true }`, aberto pelo menu da tela inicial): não grava
 //   nada no perfil; ao terminar ou pular, apenas volta para onde estava.
 export default function OnboardingScreen({ navigation, route }) {
   const revisita = route?.params?.revisita === true;

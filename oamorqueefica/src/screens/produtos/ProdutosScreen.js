@@ -30,7 +30,7 @@ export default function ProdutosScreen({ navigation }) {
     setDados(null);
   }), []);
 
-  const largura = Math.min(width - spacing.lg * 2, 720);
+  const largura = width - spacing.lg * 2;
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
@@ -88,7 +88,7 @@ const s = criarEstilos(() => ({
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   carregando: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   video: { alignItems: 'center' },
   cartao: {
     backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,

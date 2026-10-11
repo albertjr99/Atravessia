@@ -140,7 +140,7 @@ const s = criarEstilos(() => ({
   iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', maxWidth: 620, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   saldo: { backgroundColor: colors.botaoForte, borderRadius: radius.xl, padding: spacing.lg, alignItems: 'center', gap: 6 },
   saldoRotulo: { fontFamily: fonts.bodyBold, fontSize: 12, color: 'rgba(255,255,255,0.85)', letterSpacing: 0.8, textTransform: 'uppercase' },
   saldoValor: { fontFamily: fonts.serif, fontSize: 40, color: 'white' },

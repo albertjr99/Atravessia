@@ -10,7 +10,7 @@ import Frases from './Frases';
 import OutrosConteudos from './OutrosConteudos';
 import Videos from './Videos';
 import AtravessIA from './AtravessIA';
-import { IA_ATIVA } from './recursos';
+import { IA_PAINEL } from './recursos';
 import Travessia from './Travessia';
 import Jornadas from './Jornadas';
 import Vitorias from './Vitorias';
@@ -39,7 +39,7 @@ const NAV_GRUPOS = [
     titulo: 'Visão geral',
     itens: [
       { id: 'dashboard', Icon: IconDashboard, label: 'Dashboard' },
-      ...(IA_ATIVA ? [{ id: 'atravessia', Icon: IconSpark, label: 'AtravessIA', sub: 'Leitura dos dados · Assistente' }] : []),
+      ...(IA_PAINEL ? [{ id: 'atravessia', Icon: IconSpark, label: 'AtravessIA', sub: 'Leitura dos dados · Assistente' }] : []),
     ],
   },
   {
@@ -99,7 +99,7 @@ const NAV_GRUPOS = [
 // Uma entrada por tela (aba). Cada tela recebe { showToast, perfil }.
 const SCREENS = {
   dashboard:       Dashboard,
-  ...(IA_ATIVA ? { atravessia: AtravessIA } : {}),
+  ...(IA_PAINEL ? { atravessia: AtravessIA } : {}),
   audios:          Audios,
   frases:          Frases,
   outrosConteudos: OutrosConteudos,

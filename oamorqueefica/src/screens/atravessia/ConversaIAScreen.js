@@ -217,7 +217,7 @@ const s = criarEstilos(() => ({
   avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.botaoForte, alignItems: 'center', justifyContent: 'center' },
   topTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
   topSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
-  lista: { padding: spacing.md, paddingBottom: spacing.lg, gap: 10, width: '100%', maxWidth: 720, alignSelf: 'center' },
+  lista: { padding: spacing.md, paddingBottom: spacing.lg, gap: 10, width: '100%' },
   aviso: {
     flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: colors.lav1,
     borderRadius: radius.md, padding: 10, marginBottom: 4,

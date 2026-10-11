@@ -187,7 +187,7 @@ const s = criarEstilos(() => ({
   iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', maxWidth: 680, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   retorno: { backgroundColor: colors.lav1, borderRadius: radius.xl, padding: spacing.md, gap: 8 },
   retornoRisco: { borderWidth: 1.5, borderColor: colors.roseTexto },
   retornoTopo: { flexDirection: 'row', alignItems: 'center', gap: 8 },

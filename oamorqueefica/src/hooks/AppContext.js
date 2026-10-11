@@ -6,7 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { registrarPushToken } from '../utils/pushNotifications';
-import { jornadas as jornadasBase } from '../data';
+import { jornadas as jornadasBase, emocoes } from '../data';
 import { FRASES_SEED } from '../data/frasesSeed';
 
 const AppContext = createContext();
@@ -584,7 +584,10 @@ export function AppProvider({ children }) {
       }
     });
 
-    if (temAcesso(1) && !liberadoHoje('acolhimento')) {
+    // Com check-in positivo hoje, não há convite ao áudio de acolhimento.
+    const ultimoDeHoje = [...checkins].reverse().find(c => c.data === hoje);
+    const positivoHoje = !!emocoes.find(e => e.id === ultimoDeHoje?.emocao)?.positiva;
+    if (temAcesso(1) && !liberadoHoje('acolhimento') && !positivoHoje) {
       lista.push({ id: `novo-audio-${hoje}`, tipo: 'conteudo', texto: 'Seu áudio de acolhimento de hoje está disponível.' });
     }
 

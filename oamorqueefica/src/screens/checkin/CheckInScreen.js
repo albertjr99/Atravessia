@@ -21,6 +21,7 @@ import { vibrarLeve, vibrarSucesso } from '../../utils/vibrar';
 import {
   carregarHistoricoSugestoes, registrarSugestoes, escolherSugestao, camadasPorEmocao, historicoParaPerfil,
 } from '../../utils/sugestoes';
+import { ehAcolhimento } from '../../utils/diario';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
@@ -177,9 +178,12 @@ export default function CheckInScreen({ navigation, route }) {
     [emocaoSel, conteudos]
   );
   // Camadas: conteúdos da emoção e, se forem poucos, de emoções próximas.
+  // Emoção positiva: nada de acolhimento (áudios ou conteúdos de acolhimento).
   const camadasConteudo = useMemo(
-    () => emocaoSel ? camadasPorEmocao((conteudos || []).filter(c => c.ativo !== false), emocaoSel) : [[]],
-    [emocaoSel, conteudos]
+    () => emocaoSel
+      ? camadasPorEmocao((conteudos || []).filter(c => c.ativo !== false && !(emocaoObj?.positiva && ehAcolhimento(c))), emocaoSel)
+      : [[]],
+    [emocaoSel, emocaoObj, conteudos]
   );
 
   const conteudoExibido = useMemo(() => {

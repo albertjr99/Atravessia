@@ -89,7 +89,8 @@ function PassoItem({ passo, destaque, onPress, largura }) {
 }
 
 // ── Cartão principal ─────────────────────────────────────────────────────────
-export default function DiarioDoDia({ navigation, variante = 'cartao' }) {
+// `recolhidoPadrao`: começa recolhido (tela inicial); um toque abre a lista.
+export default function DiarioDoDia({ navigation, variante = 'cartao', recolhidoPadrao = false }) {
   const app = useApp() || {};
   const diario = useMemo(
     () => montarDiarioDoDia(app),
@@ -99,13 +100,14 @@ export default function DiarioDoDia({ navigation, variante = 'cartao' }) {
   const [recolhido, setRecolhido] = useDispensaDoDia('cartao', navigation, diario.hoje);
   const [larguraCartao, setLarguraCartao] = useState(0);
 
-  const compacto = variante === 'compacto' || recolhido === true;
+  const [aberto, setAberto] = useState(false);
+  const compacto = variante === 'compacto' || (recolhidoPadrao ? !aberto : recolhido === true);
   const progresso = diario.total > 0 ? diario.feitos / diario.total : 0;
   const duasColunas = larguraCartao >= 560;
   const larguraPasso = duasColunas ? (larguraCartao - spacing.lg * 2 - spacing.sm) / 2 : undefined;
 
-  const recolher = () => { setRecolhido(true); dispensarHoje('cartao', diario.hoje); };
-  const expandir = () => { setRecolhido(false); desfazerDispensaHoje('cartao', diario.hoje); };
+  const recolher = () => { setAberto(false); setRecolhido(true); dispensarHoje('cartao', diario.hoje); };
+  const expandir = () => { setAberto(true); setRecolhido(false); desfazerDispensaHoje('cartao', diario.hoje); };
 
   if (compacto) {
     return (
