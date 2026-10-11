@@ -52,7 +52,7 @@ function ConteudoCard({ c, onPress, isFav, onFav }) {
 
 const totalCamadas = (camadas) => (camadas || []).reduce((n, l) => n + (l?.length || 0), 0);
 
-export default function CheckInScreen({ navigation }) {
+export default function CheckInScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso, conteudosLiberados, liberadoHoje } = useApp();
   const liberadoHojeAcolhimento = liberadoHoje?.('acolhimento') === true;
@@ -76,7 +76,8 @@ export default function CheckInScreen({ navigation }) {
     atualizarPerfil?.({ sugestoesRecentes: historicoParaPerfil(h) })
       .catch(e => console.warn('[Sugestões] perfil:', e?.message));
   };
-  const [emocaoSel, setEmocaoSel] = useState(null);
+  // A emoção pode vir escolhida do Início (toque direto no cartão principal).
+  const [emocaoSel, setEmocaoSel] = useState(() => (emocoes.some(e => e.id === route?.params?.emocao) ? route.params.emocao : null));
   const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [audioLiberado, setAudioLiberado] = useState(false);

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { AVISO_IA } from '../../ia/conversa';
+import BarraAbas, { ALTURA_BARRA } from '../../components/BarraAbas';
 
 // Central da AtravessIA: a inteligência própria do app (sem custo por uso,
 // tudo processado no aparelho).
@@ -29,13 +30,8 @@ export default function AtravessIAScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconeBtn} accessibilityLabel="Voltar">
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
-        </TouchableOpacity>
-        <View style={{ width: 44 }} />
-      </View>
-      <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
+      {/* Aba central da barra: sem "voltar", a navegação é pelas abas. */}
+      <ScrollView contentContainerStyle={[s.conteudo, { paddingTop: insets.top + 28, paddingBottom: ALTURA_BARRA + Math.max(insets.bottom, 8) + 28 }]} showsVerticalScrollIndicator={false}>
         <View style={s.coluna}>
           <View style={s.hero}>
             <View style={s.heroIcone}><Ionicons name="sparkles" size={26} color="white" /></View>
@@ -60,6 +56,7 @@ export default function AtravessIAScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
+      <BarraAbas navigation={navigation} ativo="ia" />
     </SafeAreaView>
   );
 }
