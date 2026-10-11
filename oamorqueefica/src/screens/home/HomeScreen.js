@@ -19,6 +19,7 @@ import { carregarHistoricoSugestoes, escolherSugestao, camadasPorEmocao } from '
 import { urlDeImagem } from '../../utils/imagemUrl';
 import { vibrarLeve } from '../../utils/vibrar';
 import { brl } from '../cashback/CashbackScreen';
+import { IA_ATIVA } from '../../config/recursos';
 
 const lavanda = require('../../../assets/images/lavanda_left.png');
 const ilAudio = require('../../../assets/images/il_audio_respiracao.png');
@@ -308,7 +309,7 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* Conversa no contexto do check-in */}
-          {emocaoHoje && !emocaoHoje.positiva && (
+          {IA_ATIVA && emocaoHoje && !emocaoHoje.positiva && (
             <TouchableOpacity style={s.cartao} onPress={() => navigation.navigate('ConversaIA')} activeOpacity={0.88}>
               <View style={s.iaLinha}>
                 <View style={s.iaAvatar}><Ionicons name="sparkles" size={19} color={colors.lav5} /></View>
