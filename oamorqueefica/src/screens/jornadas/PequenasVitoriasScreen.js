@@ -362,7 +362,7 @@ const styles = criarEstilos(() => ({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  coluna: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: spacing.lg },
+  coluna: { width: '100%', paddingHorizontal: spacing.lg },
 
   header: { paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
   headerIlustracao: { width: 72, height: 72, marginLeft: 8, borderRadius: 16 },

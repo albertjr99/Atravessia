@@ -12,7 +12,7 @@ import { confirmar } from '../../utils/confirm';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import AdminPreviewPanel from './AdminPreviewPanel';
-import { IA_ATIVA } from '../../config/recursos';
+import { IA_PAINEL } from '../../config/recursos';
 
 const logo = require('../../../assets/images/travessia_logo.png');
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -26,7 +26,7 @@ const NAV_GRUPOS = [
     titulo: null,
     itens: [
       { icon: 'grid', iconOff: 'grid-outline', label: 'Dashboard', screen: 'AdminHome' },
-      ...(IA_ATIVA ? [{ icon: 'sparkles', iconOff: 'sparkles-outline', label: 'AtravessIA', sub: 'Leitura dos dados · Assistente de conteúdo', screen: 'AdminAtravessIA' }] : []),
+      ...(IA_PAINEL ? [{ icon: 'sparkles', iconOff: 'sparkles-outline', label: 'AtravessIA', sub: 'Leitura dos dados · Assistente de conteúdo', screen: 'AdminAtravessIA' }] : []),
     ],
   },
   {

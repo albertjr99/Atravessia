@@ -7,6 +7,7 @@
 // As funções de "dispensa" guardam, por data, que a usuária tocou em "Agora não"
 // — assim o app não volta a insistir no mesmo dia.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { emocoes } from '../data';
 
 const TZ = 'America/Sao_Paulo';
 
@@ -76,6 +77,19 @@ export const PASSOS_DIARIO = [
   },
 ];
 
+// Emoção do último check-in de hoje (ou null). Com emoção positiva, o app não
+// oferece áudios nem mensagens de acolhimento naquele dia — combinado com a equipe.
+export function emocaoDeHoje(checkins = [], hoje = hojeDiario()) {
+  const doDia = (checkins || []).filter(c => diaDe(c?.data) === hoje);
+  const ultimo = doDia[doDia.length - 1];
+  return ultimo ? emocoes.find(e => e.id === ultimo.emocao) || null : null;
+}
+export const diaPositivo = (checkins, hoje) => emocaoDeHoje(checkins, hoje)?.positiva === true;
+
+// Itens de acolhimento (áudios e conteúdos marcados como acolhimento) não são
+// sugeridos para emoções positivas.
+export const ehAcolhimento = (item) => item?.tipo === 'audio' || item?.categoria === 'acolhimento' || item?.grupo === 'acolhimento';
+
 const chamar = (fn, ...args) => {
   try { return typeof fn === 'function' ? !!fn(...args) : false; } catch { return false; }
 };
@@ -116,7 +130,9 @@ export function montarDiarioDoDia(dados = {}, hoje = hojeDiario()) {
     return feitas > 0 && feitas < total;
   });
 
-  const passos = PASSOS_DIARIO.map(p => {
+  // Dia de emoção positiva: o passo "Acolhimento" (áudio) não é oferecido.
+  const positivo = diaPositivo(checkins, hoje);
+  const passos = PASSOS_DIARIO.filter(p => !(positivo && p.id === 'acolhimento')).map(p => {
     const bloqueado = !temPlano(p.plano);
     const feito = p.rastreavel ? !!feitoPorId[p.id] : null;
     let descricao = p.descricao;

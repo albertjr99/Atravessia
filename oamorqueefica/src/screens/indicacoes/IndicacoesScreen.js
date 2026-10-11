@@ -71,7 +71,7 @@ export default function IndicacoesScreen({ navigation }) {
   const lista = filtro === 'todas' ? indicacoes : indicacoes.filter(i => (i.categoria || 'outros') === filtro);
 
   const colunas = width >= 900 ? 3 : 2;
-  const larguraUtil = Math.min(width, 980) - spacing.lg * 2;
+  const larguraUtil = width - spacing.lg * 2;
   const largura = (larguraUtil - (colunas - 1) * 12) / colunas;
 
   const abrir = (item) => {
@@ -137,7 +137,7 @@ const s = criarEstilos(() => ({
   iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', maxWidth: 980, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   intro: { fontFamily: fonts.body, fontSize: 14.5, lineHeight: 21, color: colors.tm, textAlign: 'center' },
   filtros: { gap: 8 },
   filtro: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },

@@ -4,10 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, criarEstilos } from '../theme';
 import { vibrarLeve } from '../utils/vibrar';
-import { IA_ATIVA } from '../config/recursos';
+import { IA_CONVERSA } from '../config/recursos';
 
 // Barra de abas da usuária: Início · Meu caminho · Explorar · Perfil (e a
-// AtravessIA no centro, quando IA_ATIVA estiver ligada). As abas são telas da mesma pilha: o Início fica sempre
+// AtravessIA no centro, quando IA_CONVERSA estiver ligada). As abas são telas da mesma pilha: o Início fica sempre
 // por baixo e as outras se substituem entre si, então o "voltar" do Android
 // leva ao Início em vez de empilhar abas.
 const TODAS_ABAS = [
@@ -17,7 +17,7 @@ const TODAS_ABAS = [
   { id: 'explorar', rotulo: 'Explorar', icone: 'compass', rota: 'Explorar' },
   { id: 'perfil', rotulo: 'Perfil', icone: 'person', rota: 'PerfilUsuario' },
 ];
-export const ABAS = TODAS_ABAS.filter(a => IA_ATIVA || a.id !== 'ia');
+export const ABAS = TODAS_ABAS.filter(a => IA_CONVERSA || a.id !== 'ia');
 
 // Altura ocupada pela barra (sem a área do sistema), para o conteúdo não ficar por baixo.
 export const ALTURA_BARRA = 72;

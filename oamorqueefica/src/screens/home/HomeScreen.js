@@ -14,12 +14,12 @@ import { useAuth } from '../../hooks/AuthContext';
 import { situacaoCupom } from '../../utils/cupons';
 import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
-import { montarDiarioDoDia } from '../../utils/diario';
+import { montarDiarioDoDia, ehAcolhimento } from '../../utils/diario';
 import { carregarHistoricoSugestoes, escolherSugestao, camadasPorEmocao } from '../../utils/sugestoes';
 import { urlDeImagem } from '../../utils/imagemUrl';
 import { vibrarLeve } from '../../utils/vibrar';
 import { brl } from '../cashback/CashbackScreen';
-import { IA_ATIVA } from '../../config/recursos';
+import { IA_CONVERSA } from '../../config/recursos';
 
 const lavanda = require('../../../assets/images/lavanda_left.png');
 const ilAudio = require('../../../assets/images/il_audio_respiracao.png');
@@ -118,7 +118,8 @@ export default function HomeScreen({ navigation }) {
   }, [emocaoHoje, audiosAtivos, historicoSug, hoje, temAcesso]);
   const conteudoHoje = useMemo(() => {
     if (!emocaoHoje) return null;
-    return escolherSugestao(camadasPorEmocao(conteudosAtivos, emocaoHoje.id), {
+    const pool = emocaoHoje.positiva ? conteudosAtivos.filter(c => !ehAcolhimento(c)) : conteudosAtivos;
+    return escolherSugestao(camadasPorEmocao(pool, emocaoHoje.id), {
       historico: historicoSug, tipo: 'conteudo', emocao: emocaoHoje.id, hoje,
     });
   }, [emocaoHoje, conteudosAtivos, historicoSug, hoje]);
@@ -288,10 +289,12 @@ export default function HomeScreen({ navigation }) {
                     <Ionicons name="chevron-forward" size={18} color={colors.tl} />
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={s.verMais} onPress={() => navigation.navigate('Audios')}>
-                  <Ionicons name="swap-horizontal" size={16} color={colors.lav5} />
-                  <Text style={s.link}>Ver mais conteúdos</Text>
-                </TouchableOpacity>
+                {!emocaoHoje.positiva && (
+                  <TouchableOpacity style={s.verMais} onPress={() => navigation.navigate('Audios')}>
+                    <Ionicons name="swap-horizontal" size={16} color={colors.lav5} />
+                    <Text style={s.link}>Ver mais conteúdos</Text>
+                  </TouchableOpacity>
+                )}
                 {proximo && (
                   <View style={s.proximo}>
                     <View style={{ flex: 1 }}>
@@ -309,7 +312,7 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* Conversa no contexto do check-in */}
-          {IA_ATIVA && emocaoHoje && !emocaoHoje.positiva && (
+          {IA_CONVERSA && emocaoHoje && !emocaoHoje.positiva && (
             <TouchableOpacity style={s.cartao} onPress={() => navigation.navigate('ConversaIA')} activeOpacity={0.88}>
               <View style={s.iaLinha}>
                 <View style={s.iaAvatar}><Ionicons name="sparkles" size={19} color={colors.lav5} /></View>
@@ -414,7 +417,7 @@ export default function HomeScreen({ navigation }) {
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   lavanda: { position: 'absolute', left: -26, width: 150, height: 190 },
-  coluna: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16 },
+  coluna: { width: '100%', paddingHorizontal: 16 },
 
   topo: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4, paddingTop: 10 },
   avatar: {

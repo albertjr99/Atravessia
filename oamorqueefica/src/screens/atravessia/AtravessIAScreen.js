@@ -66,7 +66,7 @@ const s = criarEstilos(() => ({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm },
   iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg },
-  coluna: { width: '100%', maxWidth: 620, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   hero: { alignItems: 'center', gap: 8, paddingVertical: spacing.md },
   heroIcone: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: colors.botaoForte,

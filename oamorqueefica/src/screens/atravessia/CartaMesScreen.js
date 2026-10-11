@@ -107,7 +107,7 @@ const s = criarEstilos(() => ({
   iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', maxWidth: 680, alignSelf: 'center', gap: spacing.md },
+  coluna: { width: '100%', gap: spacing.md },
   meses: { gap: 8 },
   mes: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   mesSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },

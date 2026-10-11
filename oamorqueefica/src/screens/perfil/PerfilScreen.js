@@ -190,7 +190,7 @@ export default function PerfilScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  coluna: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16 },
+  coluna: { width: '100%', paddingHorizontal: 16 },
   cab: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 4 },
   avatar: {
     width: 80, height: 80, borderRadius: 40, backgroundColor: colors.lav1,

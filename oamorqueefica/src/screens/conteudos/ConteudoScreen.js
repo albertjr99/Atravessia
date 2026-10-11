@@ -184,7 +184,7 @@ const s = criarEstilos(() => ({
   topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
   scroll: { padding: spacing.lg },
   // Em tablet a linha de leitura não fica longa demais.
-  coluna: { width: '100%', maxWidth: 680, alignSelf: 'center' },
+  coluna: { width: '100%' },
   titulo: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 32, color: colors.lav6, marginBottom: spacing.sm },
   descricao: { fontFamily: fonts.bodyLight, fontSize: 15, lineHeight: 23, color: colors.tm },
   divisor: { height: 1, backgroundColor: colors.lav2, marginVertical: spacing.lg, width: 48 },

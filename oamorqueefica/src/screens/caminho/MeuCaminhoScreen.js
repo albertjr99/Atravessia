@@ -10,7 +10,7 @@ import { LavandaBg } from '../../components';
 import BarraAbas, { ALTURA_BARRA } from '../../components/BarraAbas';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
-import { IA_ATIVA } from '../../config/recursos';
+import { IA_DIARIO_CARTA } from '../../config/recursos';
 
 const ilCarta = require('../../../assets/images/il_onda_coracao.png');
 const ilDiario = require('../../../assets/images/il_broto.png');
@@ -37,7 +37,7 @@ export default function MeuCaminhoScreen({ navigation }) {
   const [paginas, setPaginas] = useState([]);
 
   useEffect(() => {
-    if (!uid || !IA_ATIVA) return undefined;
+    if (!uid || !IA_DIARIO_CARTA) return undefined;
     return onSnapshot(collection(db, 'usuarios', uid, 'diario'),
       (snap) => setPaginas(snap.docs.map(d => d.data())),
       (e) => console.warn('[Meu caminho] diário:', e?.message));
@@ -128,7 +128,7 @@ export default function MeuCaminhoScreen({ navigation }) {
                 <Text style={[s.numeroN, { color: colors.goldFg }]}>{vtPeriodo.length}</Text>
                 <Text style={s.numeroL}>{vtPeriodo.length === 1 ? 'vitória' : 'vitórias'}</Text>
               </View>
-              {IA_ATIVA && (
+              {IA_DIARIO_CARTA && (
                 <View style={[s.numero, { backgroundColor: colors.sageFundo }]}>
                   <Text style={[s.numeroN, { color: colors.sageFg }]}>{dgPeriodo.length}</Text>
                   <Text style={s.numeroL}>{dgPeriodo.length === 1 ? 'página no diário' : 'páginas no diário'}</Text>
@@ -165,7 +165,7 @@ export default function MeuCaminhoScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {IA_ATIVA && (
+          {IA_DIARIO_CARTA && (
           <View style={s.dupla}>
             <TouchableOpacity style={[s.cartao, s.tile]} onPress={() => navigation.navigate('CartaMes')} activeOpacity={0.88}>
               <Image source={ilCarta} style={s.tileImg} />
@@ -205,7 +205,7 @@ export default function MeuCaminhoScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  coluna: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16 },
+  coluna: { width: '100%', paddingHorizontal: 16 },
   titulo: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 36, lineHeight: 40, color: colors.titulo, paddingHorizontal: 4 },
   sub: { fontFamily: 'Lato_400Regular', fontSize: 14.5, color: colors.texto2, paddingHorizontal: 4, marginTop: 2 },
   segmento: {

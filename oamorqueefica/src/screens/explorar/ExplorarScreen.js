@@ -214,7 +214,7 @@ export default function ExplorarScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  coluna: { width: '100%', maxWidth: 640, alignSelf: 'center', paddingHorizontal: 16 },
+  coluna: { width: '100%', paddingHorizontal: 16 },
   titulo: { fontFamily: 'CormorantGaramond_400Regular_Italic', fontSize: 36, lineHeight: 40, color: colors.titulo, paddingHorizontal: 4 },
   busca: {
     marginTop: 14, height: 50, borderRadius: 25, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaSuave,
