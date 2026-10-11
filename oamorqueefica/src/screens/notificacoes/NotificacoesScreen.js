@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { ScriptTitle, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { situacaoCupom } from '../../utils/cupons';
 
 const ICONES = {
   inatividade: 'time-outline',
@@ -42,7 +43,10 @@ const DESTINO = {
 
 export default function NotificacoesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { notificacoes, marcarLida } = useApp();
+  const { notificacoes, marcarLida, meusVouchers } = useApp();
+  // O sino do Início também conta os cupons que pedem algo dela.
+  const cuponsProntos = (meusVouchers || []).filter(v => situacaoCupom(v) === 'ativo').length;
+  const cuponsAguardando = (meusVouchers || []).filter(v => situacaoCupom(v) === 'aguardando').length;
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
   const handlePress = (n) => {
@@ -76,6 +80,20 @@ export default function NotificacoesScreen({ navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.lista}>
+        {(cuponsProntos > 0 || cuponsAguardando > 0) && (
+          <TouchableOpacity style={styles.cupons} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.85}>
+            <View style={styles.cuponsIcone}><Ionicons name="ticket-outline" size={19} color={colors.sageFg} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cuponsTit}>Meus cupons</Text>
+              <Text style={styles.cuponsSub}>
+                {cuponsAguardando > 0
+                  ? `${cuponsAguardando} ${cuponsAguardando === 1 ? 'atendimento para confirmar' : 'atendimentos para confirmar'}`
+                  : `${cuponsProntos} ${cuponsProntos === 1 ? 'cupom pronto' : 'cupons prontos'} para usar`}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.sageFg} />
+          </TouchableOpacity>
+        )}
         {notificacoes.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="notifications-outline" size={36} color={colors.lav3} />
@@ -156,4 +174,11 @@ const styles = criarEstilos(() => ({
   topSub: { fontFamily: fonts.body, fontSize: 10.5, color: colors.lav5, marginTop: 1 },
   empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: 8 },
   emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
+  cupons: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 12,
+    borderRadius: radius.lg, backgroundColor: colors.sageFundo,
+  },
+  cuponsIcone: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
+  cuponsTit: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.sageFg },
+  cuponsSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.sageFg, marginTop: 1 },
 }));

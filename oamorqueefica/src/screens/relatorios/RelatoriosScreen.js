@@ -989,12 +989,12 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function RelatoriosScreen({ navigation }) {
+export default function RelatoriosScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { checkins, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
-  const [tab, setTab] = useState('mensal');
+  const [tab, setTab] = useState(() => (['mensal', 'anual', 'personalizado'].includes(route?.params?.tab) ? route.params.tab : 'mensal'));
   const [exportando, setExportando] = useState(false);
   const [comprando, setComprando] = useState(false);
   const [usarCashback, setUsarCashback] = useState(false);
