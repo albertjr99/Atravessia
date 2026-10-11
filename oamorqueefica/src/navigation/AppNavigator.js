@@ -50,9 +50,6 @@ import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 import LembreteScreen from '../screens/perfil/LembreteScreen';
 import ProdutosScreen from '../screens/produtos/ProdutosScreen';
 import AparenciaScreen from '../screens/perfil/AparenciaScreen';
-import MeuCaminhoScreen from '../screens/caminho/MeuCaminhoScreen';
-import ExplorarScreen from '../screens/explorar/ExplorarScreen';
-import PerfilScreen from '../screens/perfil/PerfilScreen';
 import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PAINEL } from '../config/recursos';
 import AtravessIAScreen from '../screens/atravessia/AtravessIAScreen';
 import ConversaIAScreen from '../screens/atravessia/ConversaIAScreen';
@@ -76,17 +73,11 @@ function AuthStack() {
   );
 }
 
-// Telas da barra de abas trocam com um esmaecer curto, sem o deslize de "nova tela".
-const ABA = { animation: 'fade', animationDuration: 160 };
-
 function MainStack({ rotaInicial = 'MainTabs' }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={rotaInicial}>
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ gestureEnabled: false }} />
-      <Stack.Screen name="MainTabs" component={HomeScreen} options={ABA} />
-      <Stack.Screen name="MeuCaminho" component={MeuCaminhoScreen} options={ABA} />
-      <Stack.Screen name="Explorar" component={ExplorarScreen} options={ABA} />
-      <Stack.Screen name="PerfilUsuario" component={PerfilScreen} options={ABA} />
+      <Stack.Screen name="MainTabs" component={HomeScreen} />
       <Stack.Screen name="Inicio" component={HomeScreen} />
       <Stack.Screen name="Audios" component={AudiosScreen} />
       <Stack.Screen name="AudioPlayer" component={AudioPlayerScreen} />
@@ -109,7 +100,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Aparencia" component={AparenciaScreen} />
       {IA_CONVERSA && (
         <>
-          <Stack.Screen name="AtravessIA" component={AtravessIAScreen} options={ABA} />
+          <Stack.Screen name="AtravessIA" component={AtravessIAScreen} />
           <Stack.Screen name="ConversaIA" component={ConversaIAScreen} />
         </>
       )}
