@@ -1,0 +1,46 @@
+# Build do app Atravessia para iPhone (sem precisar de Mac) e envio ao TestFlight.
+# O app Expo fica em oamorqueefica/; o Codemagic gera a pasta ios/ na hora (expo prebuild).
+#
+# Antes do primeiro build, no Codemagic:
+#   Team integrations › Developer Portal › Manage keys › adicionar a chave de API do
+#   App Store Connect com o nome "Atravessia App Store" (o mesmo nome usado abaixo).
+workflows:
+  ios-testflight:
+    name: iOS · TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    working_directory: oamorqueefica
+    integrations:
+      app_store_connect: Atravessia App Store
+    environment:
+      node: 22
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.atravessia
+    triggering:
+      events: []   # só roda quando alguém clica em "Start new build"
+    scripts:
+      - name: Instalar dependências
+        script: npm ci
+      - name: Gerar o projeto iOS (Expo prebuild)
+        script: npx expo prebuild --platform ios --non-interactive --clean
+      - name: Instalar pods
+        script: cd ios && pod install
+      - name: Assinatura (certificados e perfis automáticos)
+        script: xcode-project use-profiles
+      - name: Número do build
+        # BUILD_NUMBER é o contador do próprio Codemagic: cada envio sobe 1.
+        script: cd ios && agvtool new-version -all $BUILD_NUMBER
+      - name: Gerar o .ipa
+        script: |
+          xcode-project build-ipa \
+            --workspace "ios/Atravessia.xcworkspace" \
+            --scheme "Atravessia"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
