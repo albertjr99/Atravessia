@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes } from '../../data';
 import { ScriptTitle, LavandaBg } from '../../components';
+import { LogoRespira, Vidro, Profundo } from '../../components/Efeitos';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
@@ -45,7 +47,9 @@ export default function HomeScreen({ navigation }) {
   };
   const { width: larguraTela } = useWindowDimensions();
   const tablet = larguraTela >= 600;
-  const alturaTopo = tablet ? 230 : 172;
+  // Com avisos, o cartão de vidro sobe e fica por cima da aquarela; o topo cresce um pouco para caber.
+  const temAvisos = cashback?.saldoCentavos > 0 || notificacoes.some(n => !n.lida);
+  const alturaTopo = (tablet ? 230 : 172) + (temAvisos ? 28 : 0);
   const [reflexaoAberta, setReflexaoAberta] = useState(false);
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
@@ -137,6 +141,8 @@ export default function HomeScreen({ navigation }) {
     return 'Boa noite';
   };
   const weekHistory = checkins.slice(-6);
+  // Cartões roxos com leve profundidade: um degradê de cima para baixo.
+  const gradienteVida = colors.escuro ? ['#6B56A6', '#55428E'] : ['#8C70B8', '#6E52A0'];
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
@@ -153,6 +159,7 @@ export default function HomeScreen({ navigation }) {
           <View style={s.headerFade} />
           {/* Sino notificação */}
           <TouchableOpacity style={[s.bellBtn, { top: 16 + insets.top }]} onPress={() => navigation.navigate('Notificacoes')}>
+            <Vidro style={s.vidroBtn} />
             <Ionicons name={naoLidas > 0 ? 'notifications' : 'notifications-outline'} size={18} color={colors.lilasIcone} />
             {naoLidas > 0 && (
               <View style={s.bellBadge}>
@@ -166,6 +173,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate('MeusCupons')}
             accessibilityLabel="Meus cupons"
           >
+            <Vidro style={s.vidroBtn} />
             <Ionicons name={cuponsPendentes > 0 ? 'ticket' : 'ticket-outline'} size={18} color={colors.lilasIcone} />
             {cuponsPendentes > 0 && (
               <View style={[s.bellBadge, s.cupomBadge]}>
@@ -179,16 +187,50 @@ export default function HomeScreen({ navigation }) {
             onPress={() => setMenuAberto(true)}
             accessibilityLabel="Menu"
           >
+            <Vidro style={s.vidroBtn} />
             <Ionicons name="menu-outline" size={20} color={colors.lilasIcone} />
           </TouchableOpacity>
           {/* Logo + nome do app */}
-          <View style={s.headerBottom}>
-            <Image source={logo} style={[s.headerLogo, tablet && s.headerLogoTablet]} resizeMode="contain" />
+          <View style={[s.headerBottom, temAvisos && s.headerBottomAvisos]}>
+            <LogoRespira source={logo} style={[s.headerLogo, tablet && s.headerLogoTablet]} />
             <Text style={[s.appTitle, tablet && s.appTitleTablet]}>Atravessia</Text>
           </View>
         </View>
 
         <View style={s.body}>
+
+          {/* ===== AVISOS: cashback e mensagens num cartão de vidro sobre a aquarela ===== */}
+          {temAvisos && (
+            <Vidro style={s.avisos} intensidade={50}>
+              {cashback?.saldoCentavos > 0 && (
+                <TouchableOpacity style={[s.cashbackAviso, s.avisoNoVidro]} onPress={() => navigation.navigate('Cashback')} activeOpacity={0.85}>
+                  <Ionicons name="wallet-outline" size={17} color={colors.sageFg} />
+                  <Text style={s.cashbackTxt}>Você tem <Text style={s.cashbackValor}>{brl(cashback.saldoCentavos)}</Text> de cashback</Text>
+                  <Ionicons name="chevron-forward" size={15} color={colors.sageFg} />
+                </TouchableOpacity>
+              )}
+              {naoLidas > 0 && (
+                <TouchableOpacity
+                  style={[s.notifLinha, cashback?.saldoCentavos > 0 && s.notifLinhaBorda]}
+                  onPress={() => navigation.navigate('Notificacoes')}
+                  activeOpacity={0.88}
+                >
+                  <View style={s.notifBannerIcon}>
+                    <Ionicons name="notifications" size={17} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.notifBannerTit}>
+                      {naoLidas === 1 ? 'Você tem 1 mensagem nova' : `Você tem ${naoLidas} mensagens novas`}
+                    </Text>
+                    <Text style={s.notifBannerSub} numberOfLines={1}>
+                      {primeiraNaoLida?.texto || 'Toque para ver'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.lav5} />
+                </TouchableOpacity>
+              )}
+            </Vidro>
+          )}
 
           {/* Saudação */}
           <View style={s.greetSect}>
@@ -216,39 +258,6 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* ===== AVISOS: cashback e mensagens no mesmo cartão ===== */}
-          {(cashback?.saldoCentavos > 0 || naoLidas > 0) && (
-            <View style={s.avisos}>
-              {cashback?.saldoCentavos > 0 && (
-                <TouchableOpacity style={s.cashbackAviso} onPress={() => navigation.navigate('Cashback')} activeOpacity={0.85}>
-                  <Ionicons name="wallet-outline" size={17} color={colors.sageFg} />
-                  <Text style={s.cashbackTxt}>Você tem <Text style={s.cashbackValor}>{brl(cashback.saldoCentavos)}</Text> de cashback</Text>
-                  <Ionicons name="chevron-forward" size={15} color={colors.sageFg} />
-                </TouchableOpacity>
-              )}
-              {naoLidas > 0 && (
-                <TouchableOpacity
-                  style={[s.notifLinha, cashback?.saldoCentavos > 0 && s.notifLinhaBorda]}
-                  onPress={() => navigation.navigate('Notificacoes')}
-                  activeOpacity={0.88}
-                >
-                  <View style={s.notifBannerIcon}>
-                    <Ionicons name="notifications" size={17} color="#fff" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.notifBannerTit}>
-                      {naoLidas === 1 ? 'Você tem 1 mensagem nova' : `Você tem ${naoLidas} mensagens novas`}
-                    </Text>
-                    <Text style={s.notifBannerSub} numberOfLines={1}>
-                      {primeiraNaoLida?.texto || 'Toque para ver'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.lav5} />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
           {/* ===== CHECK-IN (primeiro convite do dia) ===== */}
           <View style={s.checkinCard}>
             <Text style={s.sectTitle}>Como estou me sentindo hoje?</Text>
@@ -262,10 +271,17 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={s.checkinBtn} onPress={() => navigation.navigate('CheckIn')} activeOpacity={0.85}>
+            {/* Botão com profundidade: afunda ao toque */}
+            <Profundo
+              estilo={s.checkinBtn}
+              base={colors.escuro ? '#4A3D86' : '#7B6BAF'}
+              sombra={s.checkinSombra}
+              onPress={() => navigation.navigate('CheckIn')}
+              accessibilityLabel="Fazer check-in emocional"
+            >
               <Text style={s.checkinTxt}>Fazer check-in emocional</Text>
               <Ionicons name="chevron-forward" size={18} color="white" />
-            </TouchableOpacity>
+            </Profundo>
           </View>
 
           {/* ===== SEU DIA (começa recolhido; um toque abre) ===== */}
@@ -363,7 +379,17 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <View style={s.dupla}>
-              <TouchableOpacity style={s.vidaTile} onPress={() => navigation.navigate('Parcerias')} activeOpacity={0.88}>
+              <Profundo
+                externo={s.vidaExterno}
+                estilo={s.vidaTile}
+                raio={18}
+                altura={4}
+                base={colors.escuro ? '#3A2D63' : '#5A4285'}
+                sombra={s.vidaSombra}
+                onPress={() => navigation.navigate('Parcerias')}
+                accessibilityLabel="Experimente a vida"
+              >
+                <LinearGradient colors={gradienteVida} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={s.vidaGradiente} />
                 <View style={s.vidaIconCircle}>
                   <Ionicons name="gift-outline" size={20} color="#fff" />
                 </View>
@@ -371,8 +397,18 @@ export default function HomeScreen({ navigation }) {
                   <Text style={s.vidaBtnTxt}>Experimente a vida</Text>
                   <Text style={s.vidaBtnSub}>Parcerias e benefícios exclusivos</Text>
                 </View>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.vidaTile} onPress={() => navigation.navigate('Jornadas')} activeOpacity={0.88}>
+              </Profundo>
+              <Profundo
+                externo={s.vidaExterno}
+                estilo={s.vidaTile}
+                raio={18}
+                altura={4}
+                base={colors.escuro ? '#3A2D63' : '#5A4285'}
+                sombra={s.vidaSombra}
+                onPress={() => navigation.navigate('Jornadas')}
+                accessibilityLabel="Continue a travessia"
+              >
+                <LinearGradient colors={gradienteVida} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={s.vidaGradiente} />
                 <View style={s.vidaIconCircle}>
                   <Ionicons name="people-outline" size={20} color="#fff" />
                 </View>
@@ -380,7 +416,7 @@ export default function HomeScreen({ navigation }) {
                   <Text style={s.vidaBtnTxt}>Continue a travessia</Text>
                   <Text style={s.vidaBtnSub}>Eu caminho junto com você</Text>
                 </View>
-              </TouchableOpacity>
+              </Profundo>
             </View>
 
             {(indicacoes?.length > 0 || temProdutos) && (
@@ -537,7 +573,7 @@ const s = criarEstilos(() => ({
   bellBtn: {
     position: 'absolute', right: 16, top: 16,
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.vidro,
+    backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center',
   },
   bellBadge: {
@@ -575,14 +611,14 @@ const s = criarEstilos(() => ({
   cupomBtn: {
     position: 'absolute', right: 68, top: 16,
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.vidro,
+    backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center',
   },
   cupomBadge: { backgroundColor: '#7A9E7E' },
   menuBtn: {
     position: 'absolute', left: 16, top: 16,
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: colors.vidro,
+    backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center',
   },
   menuFundo: { flex: 1, backgroundColor: colors.sobreposicao, paddingHorizontal: 16, alignItems: 'flex-start' },
@@ -783,12 +819,10 @@ const s = criarEstilos(() => ({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colors.botao, borderRadius: 999,
     paddingVertical: 16,
-    // shadow-soft
-    shadowColor: colors.lilasIcone,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 28,
-    elevation: 6,
+  },
+  checkinSombra: {
+    shadowColor: '#4B3F72', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28, shadowRadius: 14, elevation: 6,
   },
   checkinTxt: { fontFamily: 'Lato_700Bold', fontSize: 15, color: 'white' },
 
@@ -844,8 +878,8 @@ const s = criarEstilos(() => ({
 
   // Proposta B: avisos juntos, check-in em destaque, atalhos em grade
   avisos: {
-    marginBottom: 16, borderRadius: 16, overflow: 'hidden',
-    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaSuave,
+    marginTop: -30, marginBottom: 4, borderRadius: 18, overflow: 'hidden', zIndex: 2,
+    borderWidth: 1, borderColor: colors.escuro ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.8)',
   },
   notifLinha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   notifLinhaBorda: { borderTopWidth: 1, borderTopColor: colors.bordaSuave },
@@ -870,5 +904,18 @@ const s = criarEstilos(() => ({
     flex: 1, minHeight: 108, padding: 14, borderRadius: 18, gap: 10, justifyContent: 'space-between',
     backgroundColor: colors.douradoFundo, borderWidth: 1, borderColor: colors.douradoBorda,
   },
+  vidaExterno: { flex: 1 },
+  vidaSombra: {
+    shadowColor: '#4B3F72', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3, shadowRadius: 12, elevation: 5,
+  },
+  vidaGradiente: {
+    ...StyleSheet.absoluteFillObject, borderRadius: 18,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.28)',
+  },
+  // Vidro fosco: botões do topo e o cartão de avisos sobre a aquarela
+  vidroBtn: { ...StyleSheet.absoluteFillObject, borderRadius: 22, borderWidth: 1, borderColor: colors.escuro ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.75)' },
+  headerBottomAvisos: { bottom: 40 },
+  avisoNoVidro: { backgroundColor: 'transparent', marginBottom: 0, borderRadius: 0 },
   tileTopo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 }));
