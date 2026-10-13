@@ -192,9 +192,11 @@ export default function AdminTravessiaScreen({ navigation }) {
             />
 
             <Text style={s.label}>Descrição / subtítulo</Text>
+            {/* Várias linhas: textos longos ficam visíveis por inteiro para revisar e editar. */}
             <TextInput
-              style={s.input} value={form.descricao} onChangeText={v => set('descricao', v)}
+              style={[s.input, s.inputMulti]} value={form.descricao} onChangeText={v => set('descricao', v)}
               placeholder="Ex: Agende pelo WhatsApp" placeholderTextColor={colors.tl}
+              multiline textAlignVertical="top"
             />
 
             <Text style={s.label}>URL / Link *</Text>
@@ -288,6 +290,7 @@ const s = criarEstilos(() => ({
   modalBody: { padding: spacing.lg },
   label: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 6, marginTop: 14 },
   hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: -4, marginBottom: 4 },
+  inputMulti: { minHeight: 120, maxHeight: 260, textAlignVertical: 'top', lineHeight: 20 },
   input: {
     backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: 12, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14, color: colors.td,

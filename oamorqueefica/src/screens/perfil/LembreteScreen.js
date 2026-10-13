@@ -12,7 +12,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { hojeStrBR } from '../../utils/date';
 import {
   agendarLembretes, carregarPreferencia, salvarPreferenciaLocal, pedirPermissao,
-  statusPermissao, calcularDatasLembrete, formatarHorario, normalizarPreferencia,
+  statusPermissao, calcularDatasLembrete, formatarHorario, normalizarPreferencia, testarLembrete, abrirAjusteAlarmes, abrirAjusteBateria,
 } from '../../utils/lembreteCheckin';
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
@@ -110,6 +110,7 @@ export default function LembreteScreen({ navigation }) {
   }, [pref, jaFezHoje]);
 
   const negada = permissao === 'denied';
+  const [teste, setTeste] = useState('');
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
@@ -227,6 +228,36 @@ export default function LembreteScreen({ navigation }) {
               {salvo && <Text style={s.salvo}>Preferência salva</Text>}
             </View>
           </View>
+
+          {/* Garantir que o aviso chegue na hora (celular e tablet) */}
+          {pref.ativo && !naWeb && (
+            <View style={s.cartao}>
+              <Text style={s.secTit}>Para o lembrete chegar na hora certa</Text>
+              <TouchableOpacity style={s.ajusteBtn} onPress={async () => {
+                const ok = await testarLembrete();
+                setTeste(ok ? 'Em 10 segundos chega um aviso de teste. Pode sair do app para ver.' : 'Não foi possível enviar o teste. Confira se as notificações estão permitidas.');
+              }} activeOpacity={0.85}>
+                <Ionicons name="paper-plane-outline" size={18} color={colors.lav5} />
+                <Text style={s.ajusteTxt}>Enviar um lembrete de teste</Text>
+              </TouchableOpacity>
+              {!!teste && <Text style={s.dica}>{teste}</Text>}
+              {Platform.OS === 'android' && (
+                <>
+                  <Text style={s.dica}>
+                    Alguns celulares e tablets Android atrasam avisos para economizar bateria. Se o lembrete não chegar no horário, permita os dois itens abaixo:
+                  </Text>
+                  <TouchableOpacity style={s.ajusteBtn} onPress={abrirAjusteAlarmes} activeOpacity={0.85}>
+                    <Ionicons name="alarm-outline" size={18} color={colors.lav5} />
+                    <Text style={s.ajusteTxt}>Permitir “Alarmes e lembretes”</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.ajusteBtn} onPress={abrirAjusteBateria} activeOpacity={0.85}>
+                    <Ionicons name="battery-charging-outline" size={18} color={colors.lav5} />
+                    <Text style={s.ajusteTxt}>Tirar a Atravessia da economia de bateria</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -295,4 +326,9 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14, marginTop: spacing.sm,
   },
   avisoBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
+  ajusteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 14, marginTop: 10,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.lav1,
+  },
+  ajusteTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lav6 },
 }));

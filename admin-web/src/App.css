@@ -546,7 +546,7 @@ img.avatar { display: block; }
 
 .list-card-body, .audio-card-body { flex: 1; min-width: 0; }
 .list-card-title, .audio-card-title { font-size: 14px; font-weight: 600; color: var(--text-dark); }
-.list-card-desc, .audio-card-desc { font-size: 12.5px; color: var(--text-mid); margin-top: 3px; }
+.list-card-desc, .audio-card-desc { font-size: 12.5px; color: var(--text-mid); margin-top: 3px; white-space: pre-line; }
 .list-card-url, .audio-card-url {
   font-size: 11px; color: var(--text-light); margin-top: 5px;
   overflow-wrap: anywhere;
