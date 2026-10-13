@@ -28,7 +28,10 @@ const dataBonita = (iso) => {
 // As entradas ficam em usuarios/{uid}/diario e só a própria pessoa lê.
 export default function DiarioGuiadoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { checkins } = useApp();
+  const { checkins, temAcesso } = useApp();
+  // Recurso dos planos pagos (Plano Acolher em diante): sem acesso, vai para Planos.
+  const semAcesso = !temAcesso(1);
+  useEffect(() => { if (semAcesso) navigation.replace('Planos'); }, [semAcesso, navigation]);
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
   const hoje = hojeISO();

@@ -137,7 +137,7 @@ export default function Travessia({ showToast }) {
               </div>
               <div className="field-group">
                 <label>Descrição / subtítulo</label>
-                <input type="text" value={form.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Ex: Agende pelo WhatsApp" />
+                <textarea rows={5} value={form.descricao} onChange={e => set('descricao', e.target.value)} placeholder="Ex: Agende pelo WhatsApp" style={{ resize: 'vertical', minHeight: 110, lineHeight: 1.5 }} />
               </div>
               <div className="field-group">
                 <label>URL / Link *</label>

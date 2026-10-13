@@ -1,4 +1,6 @@
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -11,8 +13,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // registrado): se ela já fez o check-in hoje, o lembrete de hoje simplesmente
 // deixa de existir.
 
-export const CANAL_LEMBRETES = 'lembretes';
-export const DIAS_AGENDADOS = 7;
+// Canal novo (o antigo era de importância média e não aparecia no topo da tela;
+// no Android a importância de um canal não pode ser mudada depois de criado).
+export const CANAL_LEMBRETES = 'lembretes-checkin';
+// 30 dias à frente: o lembrete continua tocando mesmo se o app ficar dias sem
+// ser aberto (o iOS aceita até 64 avisos agendados).
+export const DIAS_AGENDADOS = 30;
 export const PREFERENCIA_PADRAO = { ativo: false, hora: 20, minuto: 0 };
 
 const PREFIXO_ID = 'lembrete-checkin-';
@@ -73,6 +79,8 @@ export async function statusPermissao() {
 
 export async function pedirPermissao() {
   if (!suportado()) return 'indisponivel';
+  // No Android 13+, a pergunta de permissão só aparece se já existir um canal.
+  await criarCanalLembretes();
   try {
     const atual = await Notifications.getPermissionsAsync();
     if (atual.status === 'granted') return 'granted';
@@ -90,9 +98,62 @@ export async function criarCanalLembretes() {
     await Notifications.setNotificationChannelAsync(CANAL_LEMBRETES, {
       name: 'Lembretes de check-in',
       description: 'Um lembrete gentil para o seu check-in diário.',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      vibrationPattern: [0, 250, 200, 250],
+      enableVibrate: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
+    // Remove o canal antigo, de importância média.
+    await Notifications.deleteNotificationChannelAsync('lembretes').catch(() => {});
   } catch {}
+}
+
+// ---- Ajustes do aparelho (Android) -------------------------------------------
+// No Android 12+, sem a permissão "Alarmes e lembretes" o sistema pode atrasar o
+// aviso (às vezes por horas) para economizar bateria. Estas funções abrem a tela
+// certa nas configurações para a pessoa permitir.
+const pacote = () => Constants.expoConfig?.android?.package || 'com.atravessia';
+
+export async function abrirAjusteAlarmes() {
+  if (Platform.OS !== 'android') return false;
+  try {
+    await IntentLauncher.startActivityAsync('android.settings.REQUEST_SCHEDULE_EXACT_ALARM', { data: `package:${pacote()}` });
+    return true;
+  } catch {
+    try { await Linking.openSettings(); return true; } catch { return false; }
+  }
+}
+
+export async function abrirAjusteBateria() {
+  if (Platform.OS !== 'android') return false;
+  try {
+    await IntentLauncher.startActivityAsync('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
+    return true;
+  } catch {
+    try { await Linking.openSettings(); return true; } catch { return false; }
+  }
+}
+
+// Aviso de teste em 10 segundos, para a pessoa conferir que as notificações chegam.
+export async function testarLembrete() {
+  if (!suportado()) return false;
+  if ((await pedirPermissao()) !== 'granted') return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Atravessia',
+        body: 'Tudo certo! É assim que o seu lembrete de check-in vai aparecer.',
+        data: { screen: 'CheckIn', origem: 'lembreteTeste' },
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: CANAL_LEMBRETES },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ---- Preferência (AsyncStorage) ---------------------------------------------
@@ -166,6 +227,8 @@ async function agendarAgora(pref, jaFezCheckinHoje) {
           title: 'Atravessia',
           body: fraseDoLembrete(data),
           data: { screen: 'CheckIn', origem: 'lembreteCheckin' },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,

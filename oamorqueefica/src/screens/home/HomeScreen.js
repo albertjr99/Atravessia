@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable, Alert, ActivityIndicator,
+  StyleSheet, StatusBar, Image, Dimensions, Modal, Pressable, Alert, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,8 +32,21 @@ const { width: SCREEN_W } = Dimensions.get('window');
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
-    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes,
+    usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes, temAcesso,
   } = useApp();
+  // A AtravessIA (diário guiado e carta do mês) é do Plano Acolher em diante.
+  const iaLiberada = temAcesso(1);
+  const abrirIA = (tela) => {
+    if (iaLiberada) { navigation.navigate(tela); return; }
+    Alert.alert('Disponível no Plano Acolher', 'O diário guiado e a carta do mês fazem parte dos planos pagos, a partir do Plano Acolher. Deseja conhecer os planos?', [
+      { text: 'Agora não', style: 'cancel' },
+      { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
+    ]);
+  };
+  const { width: larguraTela } = useWindowDimensions();
+  const tablet = larguraTela >= 600;
+  const alturaTopo = tablet ? 230 : 172;
+  const [reflexaoAberta, setReflexaoAberta] = useState(false);
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -132,8 +145,8 @@ export default function HomeScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
         {/* ===== HEADER COM AQUARELA ===== */}
-        <View style={[s.headerWrap, { height: 150 + insets.top }]}>
-          <Image source={headerLavender} style={[s.headerImg, { height: 150 + insets.top }]} resizeMode="cover" />
+        <View style={[s.headerWrap, { height: alturaTopo + insets.top }]}>
+          <Image source={headerLavender} style={[s.headerImg, { height: alturaTopo + insets.top }]} resizeMode="cover" />
           {/* No noturno, um véu escurece a aquarela do topo */}
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.headerVeu }]} pointerEvents="none" />
           {/* Gradiente fade para o fundo */}
@@ -170,8 +183,8 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
           {/* Logo + nome do app */}
           <View style={s.headerBottom}>
-            <Image source={logo} style={s.headerLogo} resizeMode="contain" />
-            <Text style={s.appTitle}>Atravessia</Text>
+            <Image source={logo} style={[s.headerLogo, tablet && s.headerLogoTablet]} resizeMode="contain" />
+            <Text style={[s.appTitle, tablet && s.appTitleTablet]}>Atravessia</Text>
           </View>
         </View>
 
@@ -274,14 +287,24 @@ export default function HomeScreen({ navigation }) {
                 <View style={s.fraseDivisor} />
               </>
             )}
-            <View style={s.sectHeaderRow}>
+            {/* Reflexão começa recolhida; a seta abre e fecha. */}
+            <TouchableOpacity
+              style={s.reflexaoCab}
+              onPress={() => setReflexaoAberta(a => !a)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: reflexaoAberta }}
+              accessibilityLabel={reflexaoAberta ? 'Recolher a reflexão do dia' : 'Abrir a reflexão do dia'}
+            >
               <View style={s.sectTitleRow}>
                 <Ionicons name="moon-outline" size={13} color={colors.lilasIcone} />
                 <Text style={s.fraseTag}>Reflexão do dia</Text>
               </View>
-              <TouchableOpacity><Text style={s.sectLink}>Ver todas</Text></TouchableOpacity>
-            </View>
-            <Text style={s.reflexaoTxt}>{fraseDoDia?.reflexao || 'Cada dia traz uma nova chance de cuidar de si. Permita-se sentir, acolher e seguir.'}</Text>
+              <Ionicons name={reflexaoAberta ? 'chevron-up' : 'chevron-down'} size={20} color={colors.lilasIcone} />
+            </TouchableOpacity>
+            {reflexaoAberta && (
+              <Text style={s.reflexaoTxt}>{fraseDoDia?.reflexao || 'Cada dia traz uma nova chance de cuidar de si. Permita-se sentir, acolher e seguir.'}</Text>
+            )}
           </View>
 
           {/* ===== ATRAVESSIA (por ora: diário guiado e carta do mês) ===== */}
@@ -290,7 +313,7 @@ export default function HomeScreen({ navigation }) {
               <View style={s.iaCard}>
                 <TouchableOpacity
                   style={s.iaTopo}
-                  onPress={() => navigation.navigate('AtravessIA')}
+                  onPress={() => abrirIA('AtravessIA')}
                   disabled={!IA_CONVERSA}
                   activeOpacity={0.85}
                 >
@@ -298,7 +321,9 @@ export default function HomeScreen({ navigation }) {
                   <View style={{ flex: 1 }}>
                     <Text style={s.iaTit}>AtravessIA</Text>
                     <Text style={s.iaSub}>
-                      {IA_CONVERSA ? 'Converse, escreva no diário guiado ou leia sua carta do mês' : 'Escreva no diário guiado ou leia sua carta do mês'}
+                      {!iaLiberada
+                        ? 'Disponível a partir do Plano Acolher'
+                        : IA_CONVERSA ? 'Converse, escreva no diário guiado ou leia sua carta do mês' : 'Escreva no diário guiado ou leia sua carta do mês'}
                     </Text>
                   </View>
                   {IA_CONVERSA && <Ionicons name="chevron-forward" size={18} color={colors.tl} />}
@@ -309,8 +334,8 @@ export default function HomeScreen({ navigation }) {
                     IA_DIARIO_CARTA && { icone: 'create-outline', rotulo: 'Diário guiado', tela: 'DiarioGuiado' },
                     IA_DIARIO_CARTA && { icone: 'mail-open-outline', rotulo: 'Carta do mês', tela: 'CartaMes' },
                   ].filter(Boolean).map(a => (
-                    <TouchableOpacity key={a.tela} style={s.iaAtalho} onPress={() => navigation.navigate(a.tela)} activeOpacity={0.8}>
-                      <Ionicons name={a.icone} size={18} color={colors.lav5} />
+                    <TouchableOpacity key={a.tela} style={[s.iaAtalho, !iaLiberada && s.iaAtalhoBloq]} onPress={() => abrirIA(a.tela)} activeOpacity={0.8}>
+                      <Ionicons name={iaLiberada ? a.icone : 'lock-closed-outline'} size={18} color={iaLiberada ? colors.lav5 : colors.tl} />
                       <Text style={s.iaAtalhoTxt} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{a.rotulo}</Text>
                     </TouchableOpacity>
                   ))}
@@ -575,14 +600,16 @@ const s = criarEstilos(() => ({
   menuIconeSair: { backgroundColor: colors.roseFundo },
   menuRotulo: { fontFamily: 'Lato_700Bold', fontSize: 14, color: colors.titulo },
   menuSub: { fontFamily: 'Lato_400Regular', fontSize: 11.5, color: colors.texto2, marginTop: 1 },
-  headerLogo: { width: 34, height: 34, borderRadius: 8 },
+  headerLogo: { width: 54, height: 54, borderRadius: 13 },
+  headerLogoTablet: { width: 76, height: 76, borderRadius: 18 },
+  appTitleTablet: { fontSize: 46 },
   headerBottom: {
     position: 'absolute', bottom: 12, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   appTitle: {
     fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 27, color: colors.titulo,
+    fontSize: 34, color: colors.titulo,
     letterSpacing: 0.5,
   },
 
@@ -827,6 +854,8 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.escuro ? '#2A2439' : '#F3EFF9',
     borderWidth: 1, borderColor: colors.escuro ? colors.bordaSuave : '#E4DCEF',
   },
+  reflexaoCab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 40 },
+  iaAtalhoBloq: { opacity: 0.75 },
   fraseDivisor: { height: 1, backgroundColor: colors.bordaSuave, marginVertical: 16 },
   dupla: { flexDirection: 'row', gap: 10, marginTop: 10 },
   vidaTile: {

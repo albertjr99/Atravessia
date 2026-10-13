@@ -20,6 +20,13 @@ Notifications.setNotificationHandler({
 export async function registrarPushToken(uid) {
   if (!uid || !Device.isDevice) return null;
   try {
+    // No Android 13+, a pergunta de permissão só aparece se já existir um canal.
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.DEFAULT,
+      }).catch(() => {});
+    }
     const { status: existente } = await Notifications.getPermissionsAsync();
     let status = existente;
     if (status !== 'granted') {
