@@ -2,35 +2,57 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { colors, fonts, radius, shadow, spacing, criarEstilos } from '../theme';
 
+import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
+
 const lavLeft = require('../../assets/images/lavanda_left.png');
 const lavRight = require('../../assets/images/lavanda_right.png');
 const lavSmall = require('../../assets/images/lavanda_small.png');
 const florPeach = require('../../assets/images/flor_peach.png');
-const decorFlores = require('../../assets/images/decoracao_flores.png');
-const folhaVento = require('../../assets/images/il_folha_vento.png');
 
+// Manchas da aurora: centro (%), raios (%) e cor. A tela estica o desenho
+// (preserveAspectRatio="none"), então as manchas acompanham qualquer tamanho.
+const MANCHAS = [
+  { id: 'a1', cx: 8, cy: 4, rx: 70, ry: 38, cor: 'auroraLilas' },
+  { id: 'a2', cx: 100, cy: 34, rx: 60, ry: 30, cor: 'auroraPessego' },
+  { id: 'a3', cx: 0, cy: 62, rx: 65, ry: 32, cor: 'auroraSalvia' },
+  { id: 'a4', cx: 100, cy: 88, rx: 70, ry: 36, cor: 'auroraLilas' },
+];
+
+// Fundo "Luz de Vidro": aurora suave (lilás, pêssego e sálvia) e ramos de
+// lavanda discretos. Só imagens com transparência e sem tintColor: antes, as
+// ilustrações sem canal alfa viravam retângulos chapados no Android.
 export function LavandaBg() {
-  // No noturno os ramos ficam mais discretos, para não brilhar no escuro.
   return (
-    <View style={[bgSty.container, colors.escuro && { opacity: 0.45 }]} pointerEvents="none">
-      <Image source={lavRight} style={bgSty.topRight} resizeMode="contain" />
-      <Image source={lavLeft} style={bgSty.bottomLeft} resizeMode="contain" />
-      <Image source={folhaVento} style={bgSty.topLeft} resizeMode="contain" />
-      <Image source={florPeach} style={bgSty.bottomRight} resizeMode="contain" />
-      <Image source={decorFlores} style={bgSty.centerLeft} resizeMode="contain" />
-      <Image source={lavSmall} style={bgSty.centerRight} resizeMode="contain" />
+    <View style={bgSty.container} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={StyleSheet.absoluteFill}>
+        <Defs>
+          {MANCHAS.map(m => (
+            <RadialGradient key={m.id} id={m.id} cx="50%" cy="50%" rx="50%" ry="50%" fx="50%" fy="50%">
+              <Stop offset="0" stopColor={colors[m.cor]} stopOpacity={colors.auroraOpacidade} />
+              <Stop offset="0.45" stopColor={colors[m.cor]} stopOpacity={colors.auroraOpacidade * 0.45} />
+              <Stop offset="1" stopColor={colors[m.cor]} stopOpacity={0} />
+            </RadialGradient>
+          ))}
+        </Defs>
+        {MANCHAS.map(m => (
+          <Ellipse key={m.id} cx={m.cx} cy={m.cy} rx={m.rx} ry={m.ry} fill={`url(#${m.id})`} />
+        ))}
+      </Svg>
+      <Image source={lavRight} style={[bgSty.topRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={lavLeft} style={[bgSty.bottomLeft, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={florPeach} style={[bgSty.bottomRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={lavSmall} style={[bgSty.centerRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
     </View>
   );
 }
 
 const bgSty = criarEstilos(() => ({
-  container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
-  topRight: { position: 'absolute', top: -10, right: -10, width: 170, height: 170, opacity: 0.55, tintColor: '#B8A6C9' },
-  bottomLeft: { position: 'absolute', bottom: 40, left: -10, width: 150, height: 150, opacity: 0.50, tintColor: '#B8A6C9' },
-  topLeft: { position: 'absolute', top: 60, left: -15, width: 120, height: 120, opacity: 0.42, tintColor: '#8BAF9A' },
-  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 120, height: 120, opacity: 0.48, tintColor: '#E8A898' },
-  centerLeft: { position: 'absolute', top: '38%', left: -20, width: 100, height: 100, opacity: 0.38, tintColor: '#B8A6C9' },
-  centerRight: { position: 'absolute', top: '55%', right: -10, width: 90, height: 90, opacity: 0.40, tintColor: '#B8A6C9' },
+  container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', backgroundColor: colors.bg },
+  topRight: { position: 'absolute', top: -20, right: -30, width: 170, height: 170, opacity: 0.22 },
+  bottomLeft: { position: 'absolute', bottom: 30, left: -30, width: 150, height: 150, opacity: 0.2 },
+  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 90, height: 90, opacity: 0.25 },
+  centerRight: { position: 'absolute', top: '52%', right: -16, width: 70, height: 70, opacity: 0.18 },
+  noite: { opacity: 0.1 },
 }));
 
 export function Card({ children, style, onPress }) {
@@ -139,11 +161,11 @@ export function ProgressBar({ progress, color = colors.lav4 }) {
 const styles = criarEstilos(() => ({
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.soft,
+    borderColor: colors.bordaLuz,
+    ...shadow.card,
   },
   btn: {
     borderRadius: radius.full,
@@ -152,14 +174,17 @@ const styles = criarEstilos(() => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPrimary: { backgroundColor: colors.lav4 },
-  btnSecondary: { backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav3 },
+  btnPrimary: {
+    backgroundColor: colors.botao, borderBottomWidth: 3, borderBottomColor: colors.botaoBase,
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 4,
+  },
+  btnSecondary: { backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.lav2 },
   btnGhost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.lav3 },
   btnPeach: { backgroundColor: colors.peach2 },
   btnText: { fontSize: 14, fontFamily: fonts.bodyBold },
   btnTextPrimary: { color: colors.white },
-  btnTextSecondary: { color: colors.lav6 },
-  btnTextGhost: { color: colors.lav5 },
+  btnTextSecondary: { color: colors.lilasTexto },
+  btnTextGhost: { color: colors.lilasTexto },
   btnTextPeach: { color: colors.white },
   sectionHeader: {
     flexDirection: 'row',

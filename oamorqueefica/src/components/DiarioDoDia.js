@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../theme';
 import { useApp } from '../hooks/AppContext';
 import {
@@ -88,6 +89,27 @@ function PassoItem({ passo, destaque, onPress, largura }) {
   );
 }
 
+// Anel com o progresso do dia ("0 de 3") no cartão recolhido.
+function AnelProgresso({ feitos, total }) {
+  const r = 20;
+  const volta = 2 * Math.PI * r;
+  const parte = total > 0 ? Math.min(1, feitos / total) : 0;
+  return (
+    <View style={st.anel} accessibilityLabel={`${feitos} de ${total}`}>
+      <Svg width={48} height={48} style={StyleSheet.absoluteFill}>
+        <Circle cx={24} cy={24} r={r} stroke={colors.lav2} strokeWidth={3.5} fill="none" />
+        {parte > 0 && (
+          <Circle
+            cx={24} cy={24} r={r} stroke={colors.sage} strokeWidth={3.5} fill="none" strokeLinecap="round"
+            strokeDasharray={`${volta * parte} ${volta}`} transform="rotate(-90 24 24)"
+          />
+        )}
+      </Svg>
+      <Text style={st.anelTxt}>{feitos} de {total}</Text>
+    </View>
+  );
+}
+
 // ── Cartão principal ─────────────────────────────────────────────────────────
 // `recolhidoPadrao`: começa recolhido (tela inicial); um toque abre a lista.
 export default function DiarioDoDia({ navigation, variante = 'cartao', recolhidoPadrao = false }) {
@@ -117,9 +139,13 @@ export default function DiarioDoDia({ navigation, variante = 'cartao', recolhido
         activeOpacity={0.85}
         accessibilityRole="button"
       >
-        <View style={st.iconeTopo}>
-          <Ionicons name="book-outline" size={16} color={colors.lav5} />
-        </View>
+        {diario.total > 0 ? (
+          <AnelProgresso feitos={diario.feitos} total={diario.total} />
+        ) : (
+          <View style={st.iconeTopo}>
+            <Ionicons name="footsteps-outline" size={16} color={colors.lav5} />
+          </View>
+        )}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={st.titulo} numberOfLines={1}>Seu dia na Atravessia</Text>
           <Text style={st.compactoSub} numberOfLines={1}>
@@ -128,12 +154,7 @@ export default function DiarioDoDia({ navigation, variante = 'cartao', recolhido
               : diario.proximo ? `Próximo, se quiser: ${diario.proximo.titulo}` : 'Siga no seu ritmo'}
           </Text>
         </View>
-        {diario.total > 0 && (
-          <View style={st.pill}>
-            <Text style={st.pillTxt}>{diario.feitos} de {diario.total}</Text>
-          </View>
-        )}
-        <Ionicons name={variante === 'compacto' ? 'chevron-forward' : 'chevron-down'} size={16} color={colors.lav4} />
+        <Ionicons name={variante === 'compacto' ? 'chevron-forward' : 'chevron-down'} size={18} color={colors.lilasIcone} />
       </TouchableOpacity>
     );
   }
@@ -261,24 +282,27 @@ export function ProximoPasso({ navigation, depoisDe, style }) {
 const st = criarEstilos(() => ({
   card: {
     backgroundColor: colors.card,
-    borderRadius: radius.xl,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.bordaLuz,
     padding: spacing.lg,
     ...shadow.card,
+    shadowColor: colors.sombra,
   },
   cardCompacto: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: spacing.md,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingLeft: 12,
   },
+  anel: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  anelTxt: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: colors.lilasTexto },
   topo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconeTopo: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
   },
-  titulo: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lav6 },
+  titulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
   subtitulo: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginTop: 1 },
-  compactoSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
+  compactoSub: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 1 },
   pill: {
     backgroundColor: colors.lav1, borderRadius: radius.full,
     paddingHorizontal: 9, paddingVertical: 3,
