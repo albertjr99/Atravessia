@@ -25,7 +25,7 @@ export const emocoes = [
   // ── Negativas ──────────────────────────────────────────────
   {
     id: 'triste', label: 'Triste', icon: 'sad', positiva: false,
-    bg: '#EDE5F5', color: '#8FA3BF',
+    bg: '#E3EAF7', color: '#5F7AA8', dado: '#8EA3C8',
     nomeRelatorio: 'a tristeza',
     mensagens: [
       'Percebemos que a tristeza esteve presente hoje. Que tal reservar alguns minutos para cuidar de você?',
@@ -34,7 +34,7 @@ export const emocoes = [
   },
   {
     id: 'saudade', label: 'Com saudade', icon: 'leaf', positiva: false,
-    bg: '#E8E0F0', color: '#B8A6C9',
+    bg: '#ECE6FA', color: '#7A65CB', dado: '#A595DC',
     nomeRelatorio: 'a saudade',
     mensagens: [
       'A saudade apareceu hoje. Você gostaria de acolher esse sentimento por alguns minutos?',
@@ -43,7 +43,7 @@ export const emocoes = [
   },
   {
     id: 'sozinho', label: 'Sozinho', icon: 'person', positiva: false,
-    bg: '#E8F0E5', color: '#7a9870',
+    bg: '#E1EEE5', color: '#4F7A62', dado: '#8FA89A',
     nomeRelatorio: 'o isolamento',
     mensagens: [
       'Sentir-se sozinho pode ser muito difícil. Que tal fazer uma pequena pausa para si agora?',
@@ -52,7 +52,7 @@ export const emocoes = [
   },
   {
     id: 'medo', label: 'Com medo', icon: 'shield', positiva: false,
-    bg: '#EAF0F5', color: '#7088A0',
+    bg: '#E3E8F2', color: '#56698C', dado: '#7C8FB0',
     nomeRelatorio: 'o medo',
     mensagens: [
       'Percebemos que o medo está presente hoje. Vamos atravessar este momento juntos?',
@@ -61,7 +61,7 @@ export const emocoes = [
   },
   {
     id: 'culpado', label: 'Culpado', icon: 'alert-circle', positiva: false,
-    bg: '#F5EDE5', color: '#B0876A',
+    bg: '#F6E6E0', color: '#94593F', dado: '#B98A7A',
     nomeRelatorio: 'a culpa',
     mensagens: [
       'A culpa apareceu hoje. Você merece olhar para esse sentimento com gentileza.',
@@ -70,7 +70,7 @@ export const emocoes = [
   },
   {
     id: 'ansioso', label: 'Ansioso', icon: 'pulse', positiva: false,
-    bg: '#F5EDE5', color: '#B89870',
+    bg: '#F7EBDD', color: '#8A6236', dado: '#C7A07E',
     nomeRelatorio: 'a ansiedade',
     mensagens: [
       'Hoje a ansiedade esteve presente. Que tal desacelerar por alguns minutos?',
@@ -79,7 +79,7 @@ export const emocoes = [
   },
   {
     id: 'raiva', label: 'Com raiva', icon: 'flash', positiva: false,
-    bg: '#F5F0E8', color: '#B0A060',
+    bg: '#F7E1E0', color: '#9C4A46', dado: '#C27C78',
     nomeRelatorio: 'a raiva',
     mensagens: [
       'A raiva também faz parte da experiência humana. Você gostaria de acolher esse momento?',
@@ -88,7 +88,7 @@ export const emocoes = [
   },
   {
     id: 'desanimado', label: 'Desanimado', icon: 'rainy', positiva: false,
-    bg: '#EFEFEF', color: '#9088A0',
+    bg: '#ECE9F2', color: '#655C80', dado: '#9A90AE',
     nomeRelatorio: 'o desânimo',
     mensagens: [
       'Hoje parece estar mais difícil. Talvez alguns minutos de cuidado possam ajudar.',
@@ -98,27 +98,27 @@ export const emocoes = [
   // ── Positivas ──────────────────────────────────────────────
   {
     id: 'grato', label: 'Grato', icon: 'heart', positiva: true,
-    bg: '#F0EDE5', color: '#D4B483',
+    bg: '#F6E9CC', color: '#9A6B1F', dado: '#C9A15A',
     mensagens: ['A gratidão é um sinal bonito de presença. Guarde esse sentimento com carinho.'],
   },
   {
     id: 'tranquilo', label: 'Em paz', icon: 'flower', positiva: true,
-    bg: '#EDF5F0', color: '#70A890',
+    bg: '#DCEFE3', color: '#3F7A5E', dado: '#6E9B7E',
     mensagens: ['Que bom saber que hoje você está em paz. Permita-se sentir isso plenamente.'],
   },
   {
     id: 'esperancoso', label: 'Esperançoso', icon: 'sunny', positiva: true,
-    bg: '#E5EDF0', color: '#A8B8A0',
+    bg: '#DFE7F6', color: '#4C6C9E', dado: '#7F9BCB',
     mensagens: ['Que bom perceber esperança em você hoje. Continue caminhando nesse ritmo.'],
   },
   {
     id: 'alegre', label: 'Alegre', icon: 'happy', positiva: true,
-    bg: '#FFF8E5', color: '#C8A840',
+    bg: '#FBE3D4', color: '#A8582E', dado: '#E39A72',
     mensagens: ['A alegria apareceu hoje — que ela possa se expandir e iluminar o seu dia.'],
   },
   {
     id: 'amoroso', label: 'Amoroso', icon: 'rose', positiva: true,
-    bg: '#FFF0F5', color: '#C07090',
+    bg: '#F8DDE7', color: '#A84868', dado: '#D682A0',
     mensagens: ['Sentir amor é um ato de cura. Permita-se viver isso plenamente hoje.'],
   },
 ];

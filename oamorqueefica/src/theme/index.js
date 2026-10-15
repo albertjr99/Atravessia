@@ -1,135 +1,175 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
+
+// No Android, a sombra (elevation) aparece através de fundos translúcidos e
+// acinzenta o cartão; lá o vidro fica um pouco mais opaco.
+const ANDROID = Platform.OS === 'android';
 
 // Design System — Atravessia
 // Paleta oficial da identidade visual Atravessia (cores institucionais
 // obrigatórias do Instagram + cores exclusivas de apoio do aplicativo)
 
+// Revitalização "Luz de Vidro" (1.17.0): fundo porcelana com aurora suave
+// (lilás, pêssego e sálvia), cartões de vidro translúcidos com borda de luz,
+// Figtree na interface e Cormorant Garamond itálico nos títulos afetivos.
+// Os nomes dos tokens continuam os mesmos; só os valores mudaram.
 const CLARO = {
-  bg: '#FAF7F3',           // Creme — fundo principal
-  card: '#FFFDF9',         // Cartão — bege claro
+  bg: '#F6F1EE',           // Porcelana — fundo principal (a aurora vem por cima)
+  card: ANDROID ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.66)', // Cartão de vidro sobre a aurora
+  cardSolido: '#FFFCFA',   // Cartão opaco (menus, modais, campos sobre conteúdo)
   primary: '#8B7AC0',      // Lilás Travessia — primária (oficial)
   primaryFg: '#ffffff',
-  secondary: '#EADCCB',    // Bege Areia
-  secondaryFg: '#4A4B4A',
-  muted: '#EADCCB',        // Bege Areia
-  mutedFg: '#4A4B4A',
-  accent: '#D8D1E6',       // Lilás Neblina
-  accentFg: '#4A4B4A',
-  border: '#E6DDD2',
-  ring: '#A89AC9',         // Lilás Suave
+  secondary: '#F1E9EC',
+  secondaryFg: '#2A2433',
+  muted: '#F1E9EC',
+  mutedFg: '#534C60',
+  accent: '#DCD2F5',
+  accentFg: '#2A2433',
+  border: 'rgba(42,36,51,0.10)',
+  ring: '#A595DC',
 
-  td: '#4A4B4A',           // Texto escuro — Cinza Grafite
-  tm: '#76737A',           // Texto médio
-  tl: '#A39FA3',           // Texto leve
+  td: '#2A2433',           // Texto forte (tinta ameixa)
+  tm: '#534C60',           // Texto médio
+  tl: '#6F6880',           // Texto leve / legendas
 
   // Cores secundárias
-  rose: '#D4A89A',         // Rosa Empoeirado
-  roseFg: '#6b4a42',
-  sage: '#7A9E7E',         // Verde Sálvia
-  sageFg: '#3F5440',
-  gold: '#D4B483',
-  goldFg: '#5e4d2c',
-  azulNevoa: '#B9C8DF',    // Azul Névoa
-  azulClaro: '#CFE3E3',    // Azul Claro
-  taupesuave: '#CDB9A6',   // Taupe Suave
+  rose: '#D4A89A',
+  roseFg: '#94492F',
+  sage: '#6E9B7E',
+  sageFg: '#3D6A4E',
+  gold: '#C9A15A',
+  goldFg: '#765619',
+  azulNevoa: '#B5C6E6',
+  azulClaro: '#CFE3E3',
+  taupesuave: '#CDB9A6',
 
   // Emoções
   emotion: {
-    triste: '#B9C8DF',
-    saudoso: '#D8D1E6',
+    triste: '#B5C6E6',
+    saudoso: '#DCD2F5',
     ansioso: '#CFE3E3',
-    grato: '#D4B483',
-    esperancoso: '#7A9E7E',
-    empaz: '#A8B8A0',
-    alegria: '#F2C9B8',
+    grato: '#E2C48E',
+    esperancoso: '#6E9B7E',
+    empaz: '#9EC4AB',
+    alegria: '#F8D2C0',
   },
 
   // Escala lilás Atravessia (da mais clara à mais escura)
-  lav1: '#EDE9F5',          // Lilás muito suave (backgrounds)
-  lav2: '#D8D1E6',          // Lilás Neblina
-  lav3: '#A89AC9',          // Lilás Suave
+  lav1: '#ECE6FA',
+  lav2: '#DCD2F5',
+  lav3: '#C3B5EC',
   lav4: '#8B7AC0',          // Lilás Travessia (principal)
-  lav5: '#7B6BAF',          // Lilás mais escuro (ênfase)
-  lav6: '#5C4F8A',          // Lilás profundo (títulos)
-  peach: '#F2C9B8',         // Pêssego Claro
-  peach2: '#D4A89A',        // Rosa Empoeirado
+  lav5: '#7A65CB',          // ênfase (ícones, botões)
+  lav6: '#45358A',          // títulos fortes
+  peach: '#F8D2C0',
+  peach2: '#D98A69',
   white: '#FFFFFF',
 
-  // Tokens de superfície/texto usados nas telas (antes eram cores fixas).
-  titulo: '#4a4453',        // títulos e textos fortes da tela inicial
-  texto2: '#8c8597',        // textos de apoio
-  lilasIcone: '#9b86bd',    // ícones e links lilás
-  botao: '#9b86bd',         // fundo de botão com texto branco
-  botaoForte: '#7B6BAF',    // fundo de botão principal com texto branco
-  lilasTexto: '#6b5b88',    // texto lilás sobre fundo lilás claro
-  lavVeu: 'rgba(235,227,243,0.5)',
-  bordaSuave: 'rgba(230,221,210,0.7)',
-  vidro: 'rgba(255,253,249,0.8)',       // botões sobre a imagem do topo
-  vidroForte: 'rgba(255,253,249,0.96)', // barra inferior
-  headerVeu: 'transparent',             // véu sobre a imagem do topo (noturno)
-  erroFundo: '#FFF0EE',
-  sageFundo: '#EEF5EF',
-  roseFundo: '#F7E8EA',
-  roseTexto: '#A0525E',
-  douradoFundo: '#FBF4E8',
-  douradoBorda: '#EBD9B8',
-  douradoIcone: '#F3E4C6',
-  douradoTitulo: '#6B5326',
-  douradoTexto: '#8A7550',
-  sobreposicao: 'rgba(46,39,64,0.35)',
+  // Tokens de superfície/texto usados nas telas.
+  titulo: '#2A2433',
+  texto2: '#534C60',
+  lilasIcone: '#7A65CB',
+  botao: '#7A65CB',         // topo do botão principal (branco 4,6:1)
+  botaoForte: '#5A46AD',    // base do degradê do botão principal
+  botaoBase: '#45358A',     // "degrau" do botão com profundidade
+  lilasTexto: '#524197',    // links e textos lilás
+  lavVeu: 'rgba(236,230,250,0.62)',
+  bordaSuave: 'rgba(42,36,51,0.09)',
+  bordaLuz: 'rgba(255,255,255,0.85)', // borda de luz dos cartões de vidro
+  vidro: 'rgba(255,255,255,0.62)',
+  vidroForte: 'rgba(255,255,255,0.86)',
+  vidroTenue: 'rgba(255,255,255,0.40)',
+  headerVeu: 'transparent',
+  sombra: '#3A286E',        // sombras com tinta ameixa, nunca preto puro
+  erroFundo: '#FBE6E8',
+  sageFundo: '#E3F1E8',
+  roseFundo: '#F9E1E9',
+  roseTexto: '#A93B4B',
+  douradoFundo: '#F7EBD3',
+  douradoBorda: '#E2C48E',
+  douradoIcone: '#F1DDB4',
+  douradoTitulo: '#765619',
+  douradoTexto: '#7E5A22',
+  // Aurora do fundo
+  auroraLilas: '#C5B2F3',
+  auroraPessego: '#F8CDB8',
+  auroraSalvia: '#C3DDCC',
+  auroraOpacidade: 0.85,
+  // Cartões-joia (pares do Início): [início, fim, base 3D]
+  joiaLilas: ['#EEE7FC', '#D9CBF6', '#BDAAE9'],
+  joiaPessego: ['#FEF0E8', '#F7D3C1', '#E9B49C'],
+  joiaDourado: ['#FBF3E2', '#F1DDB4', '#DDBD84'],
+  joiaLilasTexto: '#45358A',
+  joiaPessegoTexto: '#94492F',
+  joiaDouradoTexto: '#765619',
+  sobreposicao: 'rgba(42,36,51,0.36)',
   statusBar: 'dark-content',
   escuro: false,
 };
-// Modo noturno em lilás profundo. Os tons de destaque (lilás, sálvia, dourado)
-// continuam os mesmos para manter a identidade; fundos e textos se invertem.
+// Modo noturno: "noite de lavanda" com a aurora em tons profundos.
 const ESCURO = {
   ...CLARO,
-  bg: '#1A1622',
-  card: '#25202F',
-  primary: '#9C8BD4',
-  secondary: '#3A3245',
-  secondaryFg: '#ECE7F4',
-  muted: '#3A3245',
-  mutedFg: '#ECE7F4',
-  accent: '#3B3350',
-  accentFg: '#ECE7F4',
-  border: '#3A3348',
-  ring: '#8E7FC2',
-  td: '#ECE7F4',
-  tm: '#B9B2C6',
-  tl: '#8D869B',
-  roseFg: '#E8BFB5',
-  sageFg: '#A9CDAE',
-  goldFg: '#E6CB97',
-  lav1: '#2E2840',
-  lav2: '#3E3654',
+  bg: '#110E18',
+  card: ANDROID ? 'rgba(30,25,43,0.92)' : 'rgba(30,25,43,0.66)',
+  cardSolido: '#1C1726',
+  primary: '#A996F0',
+  secondary: '#2A2238',
+  secondaryFg: '#F4F0FA',
+  muted: '#2A2238',
+  mutedFg: '#CDC5DC',
+  accent: '#2E2648',
+  accentFg: '#F4F0FA',
+  border: 'rgba(255,255,255,0.12)',
+  ring: '#BCAAF8',
+  td: '#F4F0FA',
+  tm: '#CDC5DC',
+  tl: '#ABA2BE',
+  roseFg: '#F6C8B4',
+  sageFg: '#B7DEC4',
+  goldFg: '#EED6A6',
+  lav1: '#2A2340',
+  lav2: '#3A3060',
   lav3: '#8E7FC2',
-  lav4: '#8270C4',
-  lav5: '#B6A7EC',
-  lav6: '#DCD2F7',
+  lav4: '#8F7BE0',
+  lav5: '#BCAAF8',
+  lav6: '#D9CFFF',
   peach: '#5A3F37',
+  peach2: '#D98A69',
   white: '#FFFFFF',
-  titulo: '#EEE9F6',
-  texto2: '#ADA6BB',
-  lilasIcone: '#BBAAE6',
-  botao: '#7562B8',
-  botaoForte: '#6C5AB5',
-  lilasTexto: '#D3C8F0',
-  lavVeu: 'rgba(62,52,86,0.55)',
-  bordaSuave: 'rgba(78,68,98,0.85)',
-  vidro: 'rgba(37,32,47,0.85)',
-  vidroForte: 'rgba(33,28,43,0.97)',
-  headerVeu: 'rgba(26,22,34,0.55)',
-  erroFundo: '#3A2626',
-  sageFundo: '#24322A',
-  roseFundo: '#3D2A2E',
-  roseTexto: '#E7A9B2',
-  douradoFundo: '#2E2719',
+  titulo: '#F4F0FA',
+  texto2: '#CDC5DC',
+  lilasIcone: '#BCAAF8',
+  botao: '#7560CC',
+  botaoForte: '#5541A8',
+  botaoBase: '#3A2C80',
+  lilasTexto: '#CFC2FF',
+  lavVeu: 'rgba(169,150,240,0.13)',
+  bordaSuave: 'rgba(255,255,255,0.09)',
+  bordaLuz: 'rgba(255,255,255,0.14)',
+  vidro: 'rgba(30,25,43,0.62)',
+  vidroForte: 'rgba(26,21,38,0.90)',
+  vidroTenue: 'rgba(255,255,255,0.05)',
+  headerVeu: 'rgba(17,14,24,0.55)',
+  sombra: '#000000',
+  erroFundo: '#3A2427',
+  sageFundo: '#1E2E25',
+  roseFundo: '#3A2430',
+  roseTexto: '#F29AA6',
+  douradoFundo: '#2C2416',
   douradoBorda: '#4D4027',
   douradoIcone: '#43391F',
-  douradoTitulo: '#EED9AE',
-  douradoTexto: '#C9B48A',
-  sobreposicao: 'rgba(0,0,0,0.55)',
+  douradoTitulo: '#EED6A6',
+  douradoTexto: '#CDB78E',
+  auroraLilas: '#4B3A8C',
+  auroraPessego: '#6A3A40',
+  auroraSalvia: '#22503F',
+  auroraOpacidade: 0.6,
+  joiaLilas: ['#3D3270', '#2E2560', '#221A4A'],
+  joiaPessego: ['#4A2C38', '#3A2130', '#2A1622'],
+  joiaDourado: ['#4A3C22', '#3A2E15', '#2A210D'],
+  joiaLilasTexto: '#D9CFFF',
+  joiaPessegoTexto: '#F6C8B4',
+  joiaDouradoTexto: '#EED6A6',
+  sobreposicao: 'rgba(5,3,10,0.60)',
   statusBar: 'light-content',
   escuro: true,
 };
@@ -150,40 +190,45 @@ export function aplicarPaleta(nome) {
 }
 
 
+// Figtree na interface; Cormorant Garamond itálico nos títulos afetivos e na marca.
+// As fontes carregadas ficam em ./fontes.js.
 export const fonts = {
-  script: 'DancingScript_600SemiBold',
-  serif: 'PlayfairDisplay_400Regular',
-  serifItalic: 'PlayfairDisplay_400Regular_Italic',
-  body: 'Lato_400Regular',
-  bodyBold: 'Lato_700Bold',
-  bodyLight: 'Lato_300Light',
-  quote: 'CormorantGaramond_400Regular_Italic',
-};
+  script: 'CormorantGaramond_600SemiBold_Italic',
+  serif: 'CormorantGaramond_600SemiBold_Italic',
+  serifItalic: 'CormorantGaramond_500Medium_Italic',
+  body: 'Figtree_400Regular',
+  bodyMedium: 'Figtree_500Medium',
+  bodySemi: 'Figtree_600SemiBold',
+  bodyBold: 'Figtree_700Bold',
+  bodyLight: 'Figtree_400Regular',
+  quote: 'CormorantGaramond_500Medium_Italic',
+}
 
 export const spacing = {
   xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32,
 };
 
 export const radius = {
-  sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, '3xl': 24, full: 999,
+  sm: 10, md: 14, lg: 18, xl: 22, xxl: 26, '3xl': 28, full: 999,
 };
 
+// Sombras com tinta ameixa (ver colors.sombra).
 export const shadow = {
   card: {
-    shadowColor: '#6b5b7a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 4,
+    shadowColor: '#3A286E',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    elevation: 3,
   },
   soft: {
-    shadowColor: '#9b86bd',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 28,
+    shadowColor: '#5B48A8',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
     elevation: 6,
   },
-};
+}
 
 // Letras maiores e mais confortáveis nas telas da usuária: os tamanhos
 // pequenos crescem mais, os grandes ficam como estão (9→11, 11→13, 14→15).
