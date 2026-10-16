@@ -53,6 +53,7 @@ function formDe(plano) {
     subtitulo: plano?.subtitulo || '',
     preco: plano?.preco != null ? String(plano.preco).replace('.', ',') : '',
     precoLabel: plano?.precoLabel || '',
+    precoAnual: plano?.precoAnual ? String(plano.precoAnual).replace('.', ',') : '',
     descricao: plano?.descricao || '',
     mensagem: plano?.mensagem || '',
     recursos: (plano?.recursos || []).join('\n'),
@@ -88,6 +89,10 @@ export default function AdminPlanosCards() {
     const precoTexto = form.preco.trim();
     const preco = precoTexto ? parseFloat(precoTexto.replace(',', '.')) : 0;
     if (precoTexto && Number.isNaN(preco)) { Alert.alert('Atenção', 'Informe um preço válido, ex: 24,90.'); return; }
+    // Plano anual: vazio = 10 mensalidades (dois meses de presente).
+    const anualTexto = (form.precoAnual || '').trim();
+    const precoAnual = anualTexto ? parseFloat(anualTexto.replace(',', '.')) : 0;
+    if (anualTexto && Number.isNaN(precoAnual)) { Alert.alert('Atenção', 'Informe um preço anual válido, ex: 249,00.'); return; }
     setSalvando(true);
     try {
       // setDoc + merge funciona mesmo se o documento ainda não existir.
@@ -97,6 +102,7 @@ export default function AdminPlanosCards() {
         subtitulo: form.subtitulo.trim(),
         preco,
         precoLabel: form.precoLabel.trim(),
+        precoAnual,
         descricao: form.descricao.trim(),
         mensagem: form.mensagem.trim(),
         recursos: form.recursos.split('\n').map(r => r.trim()).filter(Boolean),
@@ -205,6 +211,11 @@ export default function AdminPlanosCards() {
                   <TextInput style={s.input} value={form.precoLabel} onChangeText={t => set('precoLabel', t)} placeholder="Ex: R$ 24,90/mês" placeholderTextColor={colors.tl} />
                 </View>
               </View>
+              <Text style={s.label}>Preço anual (R$)</Text>
+              <TextInput
+                style={s.input} value={form.precoAnual} onChangeText={t => set('precoAnual', t)}
+                placeholder="Vazio = 10 mensalidades" placeholderTextColor={colors.tl} keyboardType="decimal-pad"
+              />
               <Text style={s.hint}>
                 O preço numérico é o valor realmente cobrado no checkout. O rótulo é só o texto exibido no card.
               </Text>

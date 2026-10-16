@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import MemoriaExperiencia from '../../components/MemoriaExperiencia';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
   Modal, Pressable, useWindowDimensions,
@@ -372,6 +373,11 @@ export default function ParceriasScreen({ navigation }) {
             {renderCartoes()}
           </View>
         )}
+
+        {/* Memória da experiência (opcional): aparece na Carta do mês */}
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
+          <MemoriaExperiencia parcerias={parcerias} />
+        </View>
       </ScrollView>
 
       {/* Escolha de estado / cidade */}

@@ -29,6 +29,11 @@ export default function PlanosScreen({ navigation }) {
   const [demorando, setDemorando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [usarCashback, setUsarCashback] = useState(false);
+  // Assinatura mensal ou anual (o anual vale o preço anual do plano ou 10 mensalidades).
+  const [periodo, setPeriodo] = useState('mensal');
+  const anual = periodo === 'anual';
+  const precoAnualDe = (p) => (p?.precoAnual > 0 ? p.precoAnual : (p?.preco || 0) * 10);
+  const reais = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   // Situação de acesso da usuária, para a tela dizer com clareza em que plano
   // ela está e não oferecer a compra do que ela já tem.
@@ -60,7 +65,7 @@ export default function PlanosScreen({ navigation }) {
     const aviso = setTimeout(() => setDemorando(true), 8000);
     try {
       const criarSessaoCheckout = httpsCallable(functions, 'criarSessaoCheckout');
-      const { data } = await criarSessaoCheckout({ planoId, usarCashback });
+      const { data } = await criarSessaoCheckout({ planoId, usarCashback, periodo });
       await abrirPagamento(data.url);
       // O plano é atualizado automaticamente quando o pagamento é confirmado
       // (webhook do Stripe grava em usuarios/{uid}.plano e o app escuta em tempo real).
@@ -124,6 +129,23 @@ export default function PlanosScreen({ navigation }) {
           <Moldura source={ilustracao} tamanho={80} />
         </View>
 
+        {/* Mensal ou anual */}
+        {planosAtivos.some(p => p.preco > 0) && !acessoTotal && (
+          <View style={styles.periodoTrilho} accessibilityRole="tablist">
+            {[['mensal', 'Mensal'], ['anual', 'Anual · 2 meses de presente']].map(([id, rot]) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.periodoOpcao, periodo === id && styles.periodoAtivo]}
+                onPress={() => setPeriodo(id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: periodo === id }}
+              >
+                <Text style={[styles.periodoTxt, periodo === id && styles.periodoTxtAtivo]} numberOfLines={1}>{rot}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         <View style={[styles.atualBox, { backgroundColor: corAtual.fundo }]}>
           <View style={[styles.atualIcone, { backgroundColor: colors.vidroForte }]}>
             <Ionicons name={acessoTotal || cortesiaAtiva ? 'gift-outline' : 'ribbon-outline'} size={21} color={corAtual.tinta} />
@@ -179,9 +201,10 @@ export default function PlanosScreen({ navigation }) {
                   </View>
                   <View style={styles.planPrecoBox}>
                     <Text style={[styles.planPreco, { color: cor.texto }]}>
-                      {p.preco === 0 ? 'Grátis' : `R$ ${p.preco.toFixed(2).replace('.', ',')}`}
+                      {p.preco === 0 ? 'Grátis' : reais(anual ? precoAnualDe(p) : p.preco)}
                     </Text>
-                    {p.preco > 0 && <Text style={styles.planPrecoPer}>/mês</Text>}
+                    {p.preco > 0 && <Text style={styles.planPrecoPer}>{anual ? '/ano' : '/mês'}</Text>}
+                    {p.preco > 0 && anual && <Text style={styles.planPrecoPer}>{`≈ ${reais(precoAnualDe(p) / 12)}/mês`}</Text>}
                   </View>
                 </View>
               </View>
@@ -269,7 +292,11 @@ export default function PlanosScreen({ navigation }) {
               <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
               <Ionicons name="lock-closed-outline" size={17} color="white" />
               <Text style={styles.btnTxt} numberOfLines={2}>
-                {carregando ? 'Abrindo pagamento...' : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
+                {carregando
+                  ? 'Abrindo pagamento...'
+                  : anual
+                    ? `Assinar ${selectedPlan?.nome || ''} anual — ${reais(precoAnualDe(selectedPlan))}/ano`
+                    : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
               </Text>
             </Profundo>
             </>
@@ -422,4 +449,15 @@ const styles = criarEstilos(() => ({
   emBreveIcone: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   emBreveNome: { fontFamily: fonts.serif, fontSize: 22, lineHeight: 26 },
   emBreveSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.texto2, textAlign: 'center', lineHeight: 16 },
+  periodoTrilho: {
+    flexDirection: 'row', padding: 4, borderRadius: 999, marginBottom: 14,
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  periodoOpcao: { flex: 1, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999 },
+  periodoAtivo: {
+    backgroundColor: colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2,
+  },
+  periodoTxt: { fontFamily: 'Figtree_600SemiBold', fontSize: 13.5, color: colors.texto2 },
+  periodoTxtAtivo: { fontFamily: 'Figtree_700Bold', color: colors.lilasTexto },
 }));

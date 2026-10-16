@@ -32,6 +32,7 @@ export default function CartaMesScreen({ navigation }) {
   const meses = useMemo(ultimosMeses, []);
   const [sel, setSel] = useState(0);
   const [diario, setDiario] = useState([]);
+  const [experiencias, setExperiencias] = useState([]);
 
   useEffect(() => {
     if (!uid) return undefined;
@@ -39,12 +40,19 @@ export default function CartaMesScreen({ navigation }) {
       (snap) => setDiario(snap.docs.map(d => d.data())),
       (e) => console.warn('[Carta] diário:', e?.message));
   }, [uid]);
+  // Memórias guardadas no Experimente a vida.
+  useEffect(() => {
+    if (!uid) return undefined;
+    return onSnapshot(collection(db, 'usuarios', uid, 'experiencias'),
+      (snap) => setExperiencias(snap.docs.map(d => d.data())),
+      () => {});
+  }, [uid]);
 
   const nome = usuario?.apelido || (usuario?.nome !== 'Você' ? usuario?.nome : '');
   const { ano, mes } = meses[sel];
   const carta = useMemo(
-    () => montarCarta({ nome, ano, mes, checkins, vitorias, diario }),
-    [nome, ano, mes, checkins, vitorias, diario],
+    () => montarCarta({ nome, ano, mes, checkins, vitorias, diario, experiencias }),
+    [nome, ano, mes, checkins, vitorias, diario, experiencias],
   );
 
   const compartilhar = () => {

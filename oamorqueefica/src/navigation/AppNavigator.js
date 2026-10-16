@@ -25,6 +25,7 @@ import AdminNotificacoesScreen from '../screens/admin/AdminNotificacoesScreen';
 import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
 import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
+import AdminInstitucionalScreen from '../screens/admin/AdminInstitucionalScreen';
 import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
 import AdminBeneficiosScreen from '../screens/admin/AdminBeneficiosScreen';
 import AdminVitoriasScreen from '../screens/admin/AdminVitoriasScreen';
@@ -131,6 +132,7 @@ function AdminStack() {
       <Stack.Screen name="AdminUsuarias" component={AdminUsuariasScreen} />
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
+      <Stack.Screen name="AdminInstitucional" component={AdminInstitucionalScreen} />
       <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
       <Stack.Screen name="AdminBeneficios" component={AdminBeneficiosScreen} />
       <Stack.Screen name="AdminVitorias" component={AdminVitoriasScreen} />

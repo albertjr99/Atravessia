@@ -323,7 +323,7 @@ const styles = criarEstilos(() => ({
   // Sim / Não em trilho de vidro
   radioGroup: {
     flexDirection: 'row', gap: 4, padding: 4, marginBottom: spacing.sm,
-    backgroundColor: colors.vidro, borderRadius: radius.full, borderWidth: 1, borderColor: colors.bordaLuz,
+    backgroundColor: colors.lavVeu, borderRadius: radius.full, borderWidth: 1, borderColor: colors.bordaSuave,
   },
   radioRow: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

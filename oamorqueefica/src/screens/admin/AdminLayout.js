@@ -74,6 +74,7 @@ const NAV_GRUPOS = [
     titulo: 'Configuração',
     itens: [
       { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços e planos', screen: 'AdminPrecos' },
+      { icon: 'document-text', iconOff: 'document-text-outline', label: 'Sobre e parcerias', screen: 'AdminInstitucional' },
       { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
     ],
   },
