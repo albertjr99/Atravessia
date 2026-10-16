@@ -190,18 +190,19 @@ export function aplicarPaleta(nome) {
 }
 
 
-// Figtree na interface; Cormorant Garamond itálico nos títulos afetivos e na marca.
+// Uma fonte só em todo o app (Figtree). Títulos e frases usam os apelidos
+// 'Titulo' e 'TituloLeve', calibrados em ajustarEstilo.
 // As fontes carregadas ficam em ./fontes.js.
 export const fonts = {
-  script: 'CormorantGaramond_600SemiBold_Italic',
-  serif: 'CormorantGaramond_600SemiBold_Italic',
-  serifItalic: 'CormorantGaramond_500Medium_Italic',
+  script: 'Titulo',
+  serif: 'Titulo',
+  serifItalic: 'TituloLeve',
   body: 'Figtree_400Regular',
   bodyMedium: 'Figtree_500Medium',
   bodySemi: 'Figtree_600SemiBold',
   bodyBold: 'Figtree_700Bold',
   bodyLight: 'Figtree_400Regular',
-  quote: 'CormorantGaramond_500Medium_Italic',
+  quote: 'TituloLeve',
 }
 
 export const spacing = {
@@ -240,13 +241,17 @@ function escalarFonte(fs) {
   return fs + 2;
 }
 
-// Fontes itálicas (Cormorant Garamond) avançam para fora da caixa do texto e o
-// Android corta a última letra ("Atravessi" em vez de "Atravessia"). Uma folga
-// à direita resolve sem mudar o desenho.
+// Títulos e frases ('Titulo'/'TituloLeve') eram desenhados para uma fonte
+// serifada, que é visualmente menor: na Figtree eles ficam 20% menores, sem
+// itálico, para manter a mesma proporção na tela.
+const APELIDOS_TITULO = { Titulo: 1, TituloLeve: 1 };
 function folgaItalico(estilo) {
-  if (typeof estilo.fontFamily !== 'string' || !estilo.fontFamily.includes('Italic')) return estilo;
-  if (estilo.padding != null || estilo.paddingHorizontal != null || estilo.paddingRight != null) return estilo;
-  return { ...estilo, paddingRight: Math.ceil((estilo.fontSize || 16) * 0.18) };
+  if (!APELIDOS_TITULO[estilo.fontFamily]) return estilo;
+  const r = { ...estilo, fontStyle: 'normal' };
+  if (typeof estilo.fontSize === 'number') r.fontSize = Math.round(estilo.fontSize * 0.8 * 2) / 2;
+  if (typeof estilo.lineHeight === 'number') r.lineHeight = Math.round(estilo.lineHeight * 0.85);
+  if (typeof estilo.letterSpacing === 'number' && estilo.letterSpacing > 0.3) r.letterSpacing = 0;
+  return r;
 }
 
 function ajustarEstilo(entrada) {

@@ -9,6 +9,7 @@ import Audios from './Audios';
 import Frases from './Frases';
 import OutrosConteudos from './OutrosConteudos';
 import Videos from './Videos';
+import ProdutosAtravessia from './ProdutosAtravessia';
 import AtravessIA from './AtravessIA';
 import { IA_PAINEL } from './recursos';
 import Travessia from './Travessia';
@@ -25,6 +26,7 @@ import Relatorios from './Relatorios';
 import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
+import RecursosIA from './RecursosIA';
 import Preview from './Preview';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
@@ -54,7 +56,8 @@ const NAV_GRUPOS = [
           { id: 'audios', label: 'Áudios Check-in' },
           { id: 'frases', label: 'Frases' },
           { id: 'outrosConteudos', label: 'Outros conteúdos' },
-          { id: 'videos', label: 'Vídeos' },
+          { id: 'videos', label: 'Apresentações' },
+          { id: 'produtosAtravessia', label: 'Produtos Atravessia' },
         ],
       },
       {
@@ -94,6 +97,7 @@ const NAV_GRUPOS = [
     titulo: 'Configuração',
     itens: [
       { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Cards dos planos e valores' },
+      { id: 'recursosIA', Icon: IconSpark, label: 'Funções da AtravessIA', sub: 'Ligar, desligar e planos de cada uma' },
       { id: 'institucional', Icon: IconDoc, label: 'Sobre e parcerias', sub: 'Sobre o app · Seja nosso parceiro' },
       { id: 'perfil', Icon: IconPerson, label: 'Meu perfil', sub: 'Nome e foto' },
     ],
@@ -108,6 +112,7 @@ const SCREENS = {
   frases:          Frases,
   outrosConteudos: OutrosConteudos,
   videos:          Videos,
+  produtosAtravessia: ProdutosAtravessia,
   travessia:       Travessia,
   jornadas:        Jornadas,
   vitorias:        Vitorias,
@@ -122,6 +127,7 @@ const SCREENS = {
   precos:          PrecosPlanos,
   perfil:          Perfil,
   institucional:   Institucional,
+  recursosIA:      RecursosIA,
 };
 
 const TODOS_ITENS = NAV_GRUPOS.flatMap(g => g.itens);

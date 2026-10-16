@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
-  useWindowDimensions,
+  useWindowDimensions, Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1056,6 +1056,11 @@ export default function RelatoriosScreen({ navigation, route }) {
     const c = snap.data()?.periodo;
     if (typeof c === 'number' && c > 0) setPrecoPeriodo(c);
   }, () => {}), []);
+  // Como em Planos: "acorda" a Cloud Function (e pré-carrega o navegador no
+  // Android) ao abrir a aba Período, para o pagamento abrir rápido.
+  useEffect(() => {
+    if (tab === 'personalizado') aquecerPagamento('criarCheckoutPeriodoUnlocked');
+  }, [tab]);
   const precoPeriodoTxt = (precoPeriodo / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const [rangeInicio, setRangeInicio] = useState('');
   const [rangeFim, setRangeFim] = useState('');
@@ -1159,11 +1164,18 @@ export default function RelatoriosScreen({ navigation, route }) {
   );
 
   const handleDesbloquear = async () => {
+    // No tablet o botão fica visível acima do teclado das datas. O teclado
+    // aberto "engolia" o toque (a ScrollView só fechava o teclado) e o
+    // pagamento nunca abria. Agora o toque chega ao botão e o teclado é
+    // fechado aqui, antes de abrir o Stripe.
+    Keyboard.dismiss();
+    if (comprando) return;
     if (!periodo.ok) { Alert.alert('Defina o período', periodo.motivo); return; }
     setComprando(true);
     try {
       const criarCheckout = httpsCallable(functions, 'criarCheckoutPeriodoUnlocked');
       const { data } = await criarCheckout({ usarCashback });
+      if (!data?.url) throw new Error('Não recebemos o link de pagamento. Tente novamente em alguns instantes.');
       await abrirPagamento(data.url);
     } catch (e) {
       Alert.alert('Não foi possível abrir o pagamento', mensagemErroPagamento(e));
@@ -1293,7 +1305,12 @@ export default function RelatoriosScreen({ navigation, route }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + insets.bottom, paddingHorizontal: spacing.lg }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: 40 + insets.bottom, paddingHorizontal: spacing.lg }}
+      >
 
         {/* ═══════════════════════════════════ RELATÓRIO MENSAL ══════════════════ */}
         {tab === 'mensal' && (

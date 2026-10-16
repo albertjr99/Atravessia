@@ -24,7 +24,10 @@ const hoje = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/S
 
 export default function ConversaIAScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { usuario, checkins } = useApp();
+  const { usuario, checkins, podeUsarIA } = useApp();
+  // Recurso ligado no painel, a partir do plano escolhido lá.
+  const semAcesso = !podeUsarIA('conversa');
+  useEffect(() => { if (semAcesso) navigation.replace('Planos'); }, [semAcesso, navigation]);
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
   const nome = usuario?.apelido || (usuario?.nome !== 'Você' ? usuario?.nome : '');

@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
@@ -31,6 +31,18 @@ export default function PlanosScreen({ navigation }) {
   const [usarCashback, setUsarCashback] = useState(false);
   // Assinatura mensal ou anual (o anual vale o preço anual do plano ou 10 mensalidades).
   const [periodo, setPeriodo] = useState('mensal');
+  // Formas de assinatura liberadas no painel (configuracoes/assinatura).
+  const [assinatura, setAssinatura] = useState({ mensalAtivo: true, anualAtivo: true, seloAnual: '2 meses de presente', textoAnual: '' });
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'assinatura'), (snap) => {
+    const d = { mensalAtivo: true, anualAtivo: true, seloAnual: '2 meses de presente', textoAnual: '', ...(snap.data() || {}) };
+    setAssinatura(d);
+    if (d.mensalAtivo === false) setPeriodo('anual');
+    if (d.anualAtivo === false) setPeriodo('mensal');
+  }, () => {}), []);
+  const opcoesPeriodo = [
+    assinatura.mensalAtivo !== false && ['mensal', 'Mensal', 'Cobrança todo mês'],
+    assinatura.anualAtivo !== false && ['anual', 'Anual', assinatura.seloAnual || 'Pagamento uma vez por ano'],
+  ].filter(Boolean);
   const anual = periodo === 'anual';
   const precoAnualDe = (p) => (p?.precoAnual > 0 ? p.precoAnual : (p?.preco || 0) * 10);
   const reais = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
@@ -129,20 +141,36 @@ export default function PlanosScreen({ navigation }) {
           <Moldura source={ilustracao} tamanho={80} />
         </View>
 
-        {/* Mensal ou anual */}
-        {planosAtivos.some(p => p.preco > 0) && !acessoTotal && (
-          <View style={styles.periodoTrilho} accessibilityRole="tablist">
-            {[['mensal', 'Mensal'], ['anual', 'Anual · 2 meses de presente']].map(([id, rot]) => (
-              <TouchableOpacity
-                key={id}
-                style={[styles.periodoOpcao, periodo === id && styles.periodoAtivo]}
-                onPress={() => setPeriodo(id)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: periodo === id }}
-              >
-                <Text style={[styles.periodoTxt, periodo === id && styles.periodoTxtAtivo]} numberOfLines={1}>{rot}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* Mensal ou anual: duas opções bem visíveis */}
+        {planosAtivos.some(p => p.preco > 0) && !acessoTotal && opcoesPeriodo.length > 1 && (
+          <View style={styles.periodoBox}>
+            <Text style={styles.periodoPergunta}>Como você prefere pagar?</Text>
+            <View style={styles.periodoLinha} accessibilityRole="radiogroup">
+              {opcoesPeriodo.map(([id, rot, sub]) => {
+                const ativo = periodo === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.periodoOpcao, ativo && styles.periodoAtivo]}
+                    onPress={() => setPeriodo(id)}
+                    activeOpacity={0.85}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: ativo }}
+                    accessibilityLabel={`${rot}: ${sub}`}
+                  >
+                    <View style={[styles.periodoRadio, ativo && styles.periodoRadioAtivo]}>
+                      {ativo && <View style={styles.periodoRadioPonto} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.periodoTxt, ativo && styles.periodoTxtAtivo]}>{rot}</Text>
+                      <Text style={[styles.periodoSub, ativo && styles.periodoSubAtivo]}>{sub}</Text>
+                    </View>
+                    {id === 'anual' && !ativo && <View style={styles.periodoSelo}><Text style={styles.periodoSeloTxt}>Economize</Text></View>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {!!assinatura.textoAnual && periodo === 'anual' && <Text style={styles.periodoNota}>{assinatura.textoAnual}</Text>}
           </View>
         )}
 
@@ -449,15 +477,26 @@ const styles = criarEstilos(() => ({
   emBreveIcone: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   emBreveNome: { fontFamily: fonts.serif, fontSize: 22, lineHeight: 26 },
   emBreveSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.texto2, textAlign: 'center', lineHeight: 16 },
-  periodoTrilho: {
-    flexDirection: 'row', padding: 4, borderRadius: 999, marginBottom: 14,
-    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  periodoBox: { marginBottom: 16 },
+  periodoNota: { fontFamily: 'Figtree_500Medium', fontSize: 13, color: colors.texto2, marginTop: 8, marginLeft: 2 },
+  periodoPergunta: { fontFamily: 'Figtree_700Bold', fontSize: 15, color: colors.titulo, marginBottom: 8, marginLeft: 2 },
+  periodoLinha: { flexDirection: 'row', gap: 10 },
+  periodoOpcao: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 64,
+    paddingVertical: 12, paddingHorizontal: 12, borderRadius: 18,
+    backgroundColor: colors.cardSolido, borderWidth: 2, borderColor: colors.lav2,
   },
-  periodoOpcao: { flex: 1, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999 },
   periodoAtivo: {
-    backgroundColor: colors.cardSolido,
-    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2,
+    backgroundColor: colors.botaoForte, borderColor: colors.botaoForte,
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 5,
   },
-  periodoTxt: { fontFamily: 'Figtree_600SemiBold', fontSize: 13.5, color: colors.texto2 },
-  periodoTxtAtivo: { fontFamily: 'Figtree_700Bold', color: colors.lilasTexto },
+  periodoRadio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
+  periodoRadioAtivo: { borderColor: '#FFFFFF' },
+  periodoRadioPonto: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFFFFF' },
+  periodoTxt: { fontFamily: 'Figtree_800ExtraBold', fontSize: 16, color: colors.titulo },
+  periodoTxtAtivo: { color: '#FFFFFF' },
+  periodoSub: { fontFamily: 'Figtree_500Medium', fontSize: 12, color: colors.texto2, marginTop: 1 },
+  periodoSubAtivo: { color: 'rgba(255,255,255,0.88)' },
+  periodoSelo: { position: 'absolute', top: -9, right: 10, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: colors.sage },
+  periodoSeloTxt: { fontFamily: 'Figtree_700Bold', fontSize: 10.5, color: '#FFFFFF' },
 }));

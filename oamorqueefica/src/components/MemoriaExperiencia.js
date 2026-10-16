@@ -94,7 +94,7 @@ const s = criarEstilos(() => ({
   topo: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   pilula: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.joiaPessego[1] },
   sobretitulo: { fontFamily: 'Figtree_700Bold', fontSize: 12, letterSpacing: 1.1, textTransform: 'uppercase', color: colors.lilasTexto },
-  pergunta: { fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 22, lineHeight: 28, color: colors.titulo, marginBottom: 12 },
+  pergunta: { fontFamily: 'Titulo', fontSize: 22, lineHeight: 28, color: colors.titulo, marginBottom: 12 },
   chips: { gap: 8, paddingBottom: 10 },
   chip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.vidroTenue, borderWidth: 1, borderColor: colors.lav2, maxWidth: 200 },
   chipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },

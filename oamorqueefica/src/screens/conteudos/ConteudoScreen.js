@@ -11,6 +11,7 @@ import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import TextoComLinks from '../../components/TextoComLinks';
+import { BotaoFavoritar, AvisoRapido, useAvisoRapido } from '../../components/Favoritar';
 
 // Tela de leitura dos "Outros conteúdos" (imagem, texto e link com descrição).
 // Recebe o item por params (vindo do check-in, da aba Conteúdos ou dos
@@ -33,7 +34,7 @@ export default function ConteudoScreen({ route, navigation }) {
   // a cópia antiga de um favorito).
   const item = useMemo(() => ({ ...recebido, ...(atual || {}), id }), [recebido, atual, id]);
 
-  const plano = typeof item.plano === 'number' ? item.plano : 0;
+  const plano = Number(item.plano) || 0;
   const bloqueado = !temAcesso(plano);
   const favoritado = !bloqueado && isFavorito(id);
 
@@ -63,10 +64,21 @@ export default function ConteudoScreen({ route, navigation }) {
     );
   };
 
+  const { aviso, mostrar, fechar } = useAvisoRapido();
   const toggleFavorito = () => {
     if (!id) return;
     if (bloqueado) { avisarPlano(); return; }
-    favoritado ? removerFavorito(id) : adicionarFavorito(item);
+    if (favoritado) {
+      removerFavorito(id);
+      mostrar({ texto: 'Tirado dos seus Favoritos', icone: 'heart-outline' });
+    } else {
+      adicionarFavorito(item);
+      mostrar({
+        texto: 'Guardado nos seus Favoritos',
+        icone: 'heart',
+        acao: { rotulo: 'Ver', onPress: () => navigation.navigate('Favoritos') },
+      });
+    }
   };
 
   const renderCorpo = () => {
@@ -149,18 +161,7 @@ export default function ConteudoScreen({ route, navigation }) {
         <Text style={s.topTitle} numberOfLines={1}>
           {item.tipo === 'imagem' ? 'Imagem' : item.tipo === 'texto' ? 'Leitura' : item.tipo === 'link' ? 'Link' : 'Conteúdo'}
         </Text>
-        <TouchableOpacity
-          onPress={toggleFavorito}
-          style={s.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          accessibilityLabel={favoritado ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
-        >
-          <Ionicons
-            name={favoritado ? 'heart' : 'heart-outline'}
-            size={21}
-            color={favoritado ? colors.roseTexto : colors.texto2}
-          />
-        </TouchableOpacity>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
@@ -170,6 +171,15 @@ export default function ConteudoScreen({ route, navigation }) {
         <View style={s.coluna}>
           <View style={s.cartao}>
             <Text style={s.titulo}>{item.titulo}</Text>
+            {/* Coração com rótulo: deixa claro que serve para favoritar. */}
+            {!bloqueado && id ? (
+              <View style={s.favLinha}>
+                <BotaoFavoritar favoritado={favoritado} onPress={toggleFavorito} />
+                <Text style={s.favDica} numberOfLines={2}>
+                  {favoritado ? 'Está nos seus Favoritos.' : 'Guarde para encontrar depois em Favoritos.'}
+                </Text>
+              </View>
+            ) : null}
             {item.descricao ? <TextoComLinks style={s.descricao} selectable>{item.descricao}</TextoComLinks> : null}
             {item.tipo === 'texto' && !bloqueado ? (
               <>
@@ -181,6 +191,7 @@ export default function ConteudoScreen({ route, navigation }) {
           {item.tipo === 'texto' && !bloqueado ? null : renderCorpo()}
         </View>
       </ScrollView>
+      <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
     </SafeAreaView>
   );
 }
@@ -208,6 +219,8 @@ const s = criarEstilos(() => ({
   coluna: { width: '100%', gap: 14 },
   cartao: { ...vidro(), padding: 20 },
   titulo: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo, marginBottom: spacing.sm },
+  favLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: spacing.md },
+  favDica: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, lineHeight: 17, color: colors.texto2 },
   descricao: { fontFamily: fonts.body, fontSize: 16, lineHeight: 24, color: colors.texto2 },
   divisor: { height: 1, backgroundColor: colors.bordaSuave, marginVertical: spacing.lg },
   texto: { fontFamily: fonts.body, fontSize: 17, lineHeight: 29, color: colors.titulo, letterSpacing: 0.1 },

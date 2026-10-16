@@ -26,6 +26,7 @@ import AdminUsuariasScreen from '../screens/admin/AdminUsuariasScreen';
 import AdminRelatoriosScreen from '../screens/admin/AdminRelatoriosScreen';
 import AdminPerfilScreen from '../screens/admin/AdminPerfilScreen';
 import AdminInstitucionalScreen from '../screens/admin/AdminInstitucionalScreen';
+import AdminRecursosIAScreen from '../screens/admin/AdminRecursosIAScreen';
 import AdminParceriasScreen from '../screens/admin/AdminParceriasScreen';
 import AdminBeneficiosScreen from '../screens/admin/AdminBeneficiosScreen';
 import AdminVitoriasScreen from '../screens/admin/AdminVitoriasScreen';
@@ -37,6 +38,7 @@ import AdminAudiosScreen from '../screens/admin/AdminAudiosScreen';
 import AdminTravessiaScreen from '../screens/admin/AdminTravessiaScreen';
 import AdminOutrosConteudosScreen from '../screens/admin/AdminOutrosConteudosScreen';
 import AdminVideosScreen from '../screens/admin/AdminVideosScreen';
+import AdminProdutosScreen from '../screens/admin/AdminProdutosScreen';
 import AdminAtravessIAScreen from '../screens/admin/AdminAtravessIAScreen';
 import AdminIndicacoesScreen from '../screens/admin/AdminIndicacoesScreen';
 import AdminCashbackScreen from '../screens/admin/AdminCashbackScreen';
@@ -51,7 +53,7 @@ import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 import LembreteScreen from '../screens/perfil/LembreteScreen';
 import ProdutosScreen from '../screens/produtos/ProdutosScreen';
 import AparenciaScreen from '../screens/perfil/AparenciaScreen';
-import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PAINEL, IA_PLANO_ANO } from '../config/recursos';
+import { IA_PAINEL } from '../config/recursos';
 import PlanoAnoScreen from '../screens/atravessia/PlanoAnoScreen';
 import AtravessIAScreen from '../screens/atravessia/AtravessIAScreen';
 import ConversaIAScreen from '../screens/atravessia/ConversaIAScreen';
@@ -102,21 +104,15 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Lembrete" component={LembreteScreen} />
       <Stack.Screen name="Produtos" component={ProdutosScreen} />
       <Stack.Screen name="Aparencia" component={AparenciaScreen} />
-      {IA_CONVERSA && (
-        <>
-          <Stack.Screen name="AtravessIA" component={AtravessIAScreen} />
-          <Stack.Screen name="ConversaIA" component={ConversaIAScreen} />
-        </>
-      )}
-      {IA_DIARIO_CARTA && (
-        <>
-          <Stack.Screen name="DiarioGuiado" component={DiarioGuiadoScreen} />
-          <Stack.Screen name="CartaMes" component={CartaMesScreen} />
-        </>
-      )}
+      {/* AtravessIA: as telas ficam registradas; quem decide se aparecem e para
+          quais planos são as administradoras, no painel (configuracoes/recursosIA). */}
+      <Stack.Screen name="AtravessIA" component={AtravessIAScreen} />
+      <Stack.Screen name="ConversaIA" component={ConversaIAScreen} />
+      <Stack.Screen name="DiarioGuiado" component={DiarioGuiadoScreen} />
+      <Stack.Screen name="CartaMes" component={CartaMesScreen} />
       <Stack.Screen name="Cashback" component={CashbackScreen} />
       <Stack.Screen name="Indicacoes" component={IndicacoesScreen} />
-      {IA_PLANO_ANO && <Stack.Screen name="PlanoAno" component={PlanoAnoScreen} />}
+      <Stack.Screen name="PlanoAno" component={PlanoAnoScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="Sobre" component={SobreScreen} />
       <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
@@ -133,6 +129,7 @@ function AdminStack() {
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
       <Stack.Screen name="AdminInstitucional" component={AdminInstitucionalScreen} />
+      <Stack.Screen name="AdminRecursosIA" component={AdminRecursosIAScreen} />
       <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
       <Stack.Screen name="AdminBeneficios" component={AdminBeneficiosScreen} />
       <Stack.Screen name="AdminVitorias" component={AdminVitoriasScreen} />
@@ -144,6 +141,7 @@ function AdminStack() {
       <Stack.Screen name="AdminTravessia" component={AdminTravessiaScreen} />
       <Stack.Screen name="AdminOutrosConteudos" component={AdminOutrosConteudosScreen} />
       <Stack.Screen name="AdminVideos" component={AdminVideosScreen} />
+      <Stack.Screen name="AdminProdutos" component={AdminProdutosScreen} />
       {IA_PAINEL && <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />}
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
       <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />

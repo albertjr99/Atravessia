@@ -14,9 +14,9 @@ import { montarPlanoAno } from '../../ia/planoAno';
 // AtravessIA — plano de ação para o ano que começa, a partir do histórico.
 export default function PlanoAnoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { checkins, vitorias, datasSensiveis, usuario, temAcesso } = useApp();
-  // Recurso dos planos pagos (Plano Acolher em diante): sem acesso, vai para Planos.
-  const semAcesso = !temAcesso(1);
+  const { checkins, vitorias, datasSensiveis, usuario, temAcesso, podeUsarIA } = useApp();
+  // Recurso ligado no painel, a partir do plano escolhido lá: sem acesso, vai para Planos.
+  const semAcesso = !podeUsarIA('planoAno');
   useEffect(() => { if (semAcesso) navigation.replace('Planos'); }, [semAcesso, navigation]);
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
@@ -118,10 +118,10 @@ const s = criarEstilos(() => ({
     width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
     backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  tituloTela: { fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 30, color: colors.titulo },
+  tituloTela: { fontFamily: 'Titulo', fontSize: 30, color: colors.titulo },
   heroi: { alignItems: 'center', paddingVertical: 10, marginBottom: 8 },
   heroiIcone: { width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  heroiTit: { fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 34, color: colors.titulo, textAlign: 'center' },
+  heroiTit: { fontFamily: 'Titulo', fontSize: 34, color: colors.titulo, textAlign: 'center' },
   heroiSub: { fontFamily: 'Figtree_400Regular', fontSize: 14.5, color: colors.texto2, textAlign: 'center', marginTop: 4, lineHeight: 20, paddingHorizontal: 12 },
   secao: { fontFamily: 'Figtree_700Bold', fontSize: 18, color: colors.titulo, marginTop: 14, marginBottom: 10, marginLeft: 4 },
   cartao: {
@@ -139,7 +139,7 @@ const s = criarEstilos(() => ({
   estacao: { paddingVertical: 10 },
   estacaoBorda: { borderTopWidth: 1, borderTopColor: colors.bordaSuave },
   periodo: { fontFamily: 'Figtree_700Bold', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: colors.lilasTexto },
-  foco: { fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 21, color: colors.titulo, marginTop: 2 },
-  fechamento: { fontFamily: 'CormorantGaramond_500Medium_Italic', fontSize: 20, lineHeight: 28, color: colors.titulo, marginTop: 14, textAlign: 'center', paddingHorizontal: 8 },
+  foco: { fontFamily: 'Titulo', fontSize: 21, color: colors.titulo, marginTop: 2 },
+  fechamento: { fontFamily: 'TituloLeve', fontSize: 20, lineHeight: 28, color: colors.titulo, marginTop: 14, textAlign: 'center', paddingHorizontal: 8 },
   assinatura: { fontFamily: 'Figtree_600SemiBold', fontSize: 13.5, color: colors.lilasTexto, textAlign: 'center', marginTop: 10 },
 }));

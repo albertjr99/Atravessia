@@ -23,9 +23,9 @@ function ultimosMeses() {
 
 export default function CartaMesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { checkins, vitorias, usuario, temAcesso } = useApp();
-  // Recurso dos planos pagos (Plano Acolher em diante): sem acesso, vai para Planos.
-  const semAcesso = !temAcesso(1);
+  const { checkins, vitorias, usuario, temAcesso, podeUsarIA } = useApp();
+  // Recurso ligado no painel, a partir do plano escolhido lá: sem acesso, vai para Planos.
+  const semAcesso = !podeUsarIA('cartaMes');
   useEffect(() => { if (semAcesso) navigation.replace('Planos'); }, [semAcesso, navigation]);
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;

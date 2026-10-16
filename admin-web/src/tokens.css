@@ -174,14 +174,14 @@
 
   /* Tipografia ------------------------------------------------------------- */
   --fonte-ui:       "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --fonte-emocao:   "Cormorant Garamond", "Cormorant", Georgia, serif;   /* sempre itálico, ≥ 20px */
+  --fonte-emocao:   "Figtree", system-ui, sans-serif;   /* uma fonte só em todo o painel */
   --fonte-numeros:  "Figtree", system-ui, sans-serif;                    /* font-variant-numeric: tabular-nums */
 
   /* Escala (tamanho / altura de linha / peso / família) */
-  --tx-display:   600 italic 40px/1.05 var(--fonte-emocao);  /* marca “Atravessia” */
-  --tx-h1:        600 italic 32px/1.10 var(--fonte-emocao);  /* saudação, títulos emocionais */
-  --tx-h2:        600 italic 26px/1.15 var(--fonte-emocao);  /* “Como estou me sentindo hoje?” */
-  --tx-citacao:   500 italic 24px/1.30 var(--fonte-emocao);  /* Frase do dia */
+  --tx-display:   700 32px/1.05 var(--fonte-emocao);  /* marca “Atravessia” */
+  --tx-h1:        700 25.5px/1.10 var(--fonte-emocao);  /* saudação, títulos emocionais */
+  --tx-h2:        700 21px/1.15 var(--fonte-emocao);  /* “Como estou me sentindo hoje?” */
+  --tx-citacao:   500 19px/1.30 var(--fonte-emocao);  /* Frase do dia */
   --tx-h3:        700 20px/1.25 var(--fonte-ui);             /* título de seção */
   --tx-titulo:    650 17px/1.30 var(--fonte-ui);             /* título de cartão */
   --tx-corpo:     400 16px/1.50 var(--fonte-ui);

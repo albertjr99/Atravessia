@@ -9,7 +9,7 @@ import { IconPlay, IconTrash } from './Icons';
 // configuracoes/videos → { jornadas: {...}, parcerias: {...} }. Na primeira vez
 // que a usuária abre a tela correspondente o vídeo toca sozinho; depois fica
 // no botão "Assistir à apresentação". Trocar o vídeo aqui não exige novo app.
-const VIDEOS = [
+export const VIDEOS = [
   {
     chave: 'jornadas',
     nome: 'Continue a travessia',
@@ -33,7 +33,7 @@ const VIDEOS = [
 
 const MAX_MB = 500;
 
-function CartaoVideo({ info, dados, showToast }) {
+export function CartaoVideo({ info, dados, showToast }) {
   const [titulo, setTitulo] = useState(dados?.titulo || info.tituloPadrao);
   const [progresso, setProgresso] = useState(null);
   const [loja, setLoja] = useState({ descricao: dados?.descricao || '', link: dados?.link || '', textoBotao: dados?.textoBotao || '' });
