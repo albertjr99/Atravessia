@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { pareceNome, primeiroNome } from '../utils/nome';
 import { indiceFraseDoDia, agendarFrasesDoDia } from '../utils/fraseNotificacao';
 import {
   collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, where,
@@ -99,8 +100,9 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (perfil) {
       setUsuarioLocal({
-        nome: (perfil.nome || '').split(' ')[0] || 'Você',
-        apelido: perfil.apelido || '',
+        nome: primeiroNome(perfil.nome) || 'Você',
+        // Só usa o apelido se ele parecer um nome (ver utils/nome.js).
+        apelido: pareceNome(perfil.apelido) ? perfil.apelido.trim() : '',
         plano: normalizarPlano(perfil.plano),
         acessoTotal: perfil.acessoTotal === true,
         // Guarda o objeto bruto (não um booleano pré-calculado): o prazo da

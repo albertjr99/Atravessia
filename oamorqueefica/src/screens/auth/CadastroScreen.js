@@ -162,6 +162,7 @@ export default function CadastroScreen({ navigation }) {
             style={styles.input} placeholder="Seu nome"
             placeholderTextColor={colors.tl} value={form.nome}
             onChangeText={v => set('nome', v)}
+            autoCapitalize="words" autoComplete="name" textContentType="name"
           />
 
           <Text style={styles.fieldLabel}>Como quer ser chamado(a)? <Text style={styles.optional}>(opcional)</Text></Text>
@@ -169,6 +170,7 @@ export default function CadastroScreen({ navigation }) {
             style={styles.input} placeholder="Apelido ou nome preferido"
             placeholderTextColor={colors.tl} value={form.apelido}
             onChangeText={v => set('apelido', v)}
+            autoCapitalize="words" autoComplete="off" importantForAutofill="no" textContentType="nickname"
           />
 
           <Text style={styles.fieldLabel}>E-mail <Text style={styles.required}>*</Text></Text>

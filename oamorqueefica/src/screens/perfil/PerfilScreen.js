@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
 import { escolherEnviarFoto } from '../../utils/fotoPerfil';
 import { planos } from '../../data';
+import { pareceNome, nomeDeExibicao } from '../../utils/nome';
 import { brl } from '../cashback/CashbackScreen';
 import { pedirPermissao } from '../../utils/lembreteCheckin';
 import { normalizarPrefFrase } from '../../utils/fraseNotificacao';
@@ -55,6 +56,7 @@ export default function PerfilScreen({ navigation }) {
 
   const salvar = async () => {
     if (!dados.nome.trim()) { Alert.alert('Seu nome', 'Conte como você se chama para salvar.'); return; }
+    if (dados.apelido.trim() && !pareceNome(dados.apelido)) { Alert.alert('Como prefere ser chamado(a)', 'Escreva um nome ou apelido (só letras), ou deixe em branco.'); return; }
     setSalvando(true);
     try {
       await atualizarPerfil({
@@ -155,7 +157,7 @@ export default function PerfilScreen({ navigation }) {
               </View>
             </TouchableOpacity>
           </LinearGradient>
-          <Text style={s.nome}>{dados.apelido || dados.nome || 'Você'}</Text>
+          <Text style={s.nome}>{nomeDeExibicao(perfil || {})}</Text>
           {!!firebaseUser?.email && <Text style={s.email}>{firebaseUser.email}</Text>}
         </View>
 
@@ -196,8 +198,8 @@ export default function PerfilScreen({ navigation }) {
         {/* Meus dados */}
         <View style={s.cartao}>
           <Text style={s.sobretitulo}>Meus dados</Text>
-          {campo('nome', 'Nome', { autoCapitalize: 'words', placeholder: 'Seu nome' })}
-          {campo('apelido', 'Como prefere ser chamado(a)', { autoCapitalize: 'words', placeholder: 'Apelido (opcional)' })}
+          {campo('nome', 'Nome', { autoCapitalize: 'words', placeholder: 'Seu nome', autoComplete: 'name', textContentType: 'name' })}
+          {campo('apelido', 'Como prefere ser chamado(a)', { autoCapitalize: 'words', placeholder: 'Apelido (opcional)', autoComplete: 'off', importantForAutofill: 'no', textContentType: 'nickname' })}
           {campo('telefone', 'Telefone', { keyboardType: 'phone-pad', placeholder: '(00) 00000-0000' })}
           {campo('cidade', 'Cidade', { autoCapitalize: 'words', placeholder: 'Sua cidade' })}
           {alterado && (
