@@ -238,7 +238,7 @@ export default function PlayerVideo({ url, titulo, autoPlay = true, onTerminar, 
                 return (
                   <TouchableOpacity key={v} style={[st.menuItem, sel && st.menuItemSel]} onPress={() => escolherVelocidade(v)}>
                     <Text style={[st.menuTxt, sel && st.menuTxtSel]}>{v === 1 ? 'Normal' : rotuloVelocidade(v)}</Text>
-                    {sel && <Ionicons name="checkmark" size={14} color={colors.lav3} />}
+                    {sel && <Ionicons name="checkmark" size={14} color="#CFC2FF" />}
                   </TouchableOpacity>
                 );
               })}
@@ -252,7 +252,7 @@ export default function PlayerVideo({ url, titulo, autoPlay = true, onTerminar, 
 
 const st = criarEstilos(() => ({
   caixa: {
-    width: '100%', backgroundColor: '#17141f', borderRadius: radius.lg, overflow: 'hidden',
+    width: '100%', backgroundColor: '#17141f', borderRadius: 22, overflow: 'hidden',
     justifyContent: 'center', alignItems: 'center',
   },
   centro: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 },
@@ -264,34 +264,36 @@ const st = criarEstilos(() => ({
     ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 28,
   },
   btnPlay: {
-    width: 66, height: 66, borderRadius: 33, backgroundColor: 'rgba(139,122,192,0.92)',
+    width: 68, height: 68, borderRadius: 34, backgroundColor: 'rgba(122,101,203,0.94)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4,
+    shadowColor: '#2E2360', shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4,
   },
   btnPulo: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(23,20,31,0.45)',
+    width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center', justifyContent: 'center',
   },
   puloTxt: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: 'white', marginTop: -2 },
   barraInferior: { paddingHorizontal: 12, paddingBottom: 6 },
   trilhoToque: { height: 26, justifyContent: 'center' },
   trilho: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' },
-  trilhoFeito: { height: '100%', backgroundColor: colors.lav3 },
+  trilhoFeito: { height: '100%', backgroundColor: '#BCAAF8' },
   bolinha: {
     position: 'absolute', width: 14, height: 14, borderRadius: 7, marginLeft: -7,
-    backgroundColor: 'white', borderWidth: 2, borderColor: colors.lav4,
+    backgroundColor: 'white', borderWidth: 2, borderColor: '#7A65CB',
   },
   linhaBotoes: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tempo: { fontFamily: fonts.bodyBold, fontSize: 12, color: 'white' },
   btnPequeno: { minWidth: 36, height: 34, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   velocidadeTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
   menu: {
-    position: 'absolute', right: 10, bottom: 70, backgroundColor: 'rgba(23,20,31,0.94)',
-    borderRadius: radius.md, paddingVertical: 6, minWidth: 130,
+    position: 'absolute', right: 10, bottom: 70, backgroundColor: 'rgba(28,23,38,0.96)',
+    borderRadius: 16, paddingVertical: 6, minWidth: 140, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
   menuTit: { fontFamily: fonts.bodyBold, fontSize: 11, color: 'rgba(255,255,255,0.6)', paddingHorizontal: 14, paddingVertical: 4 },
   menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
   menuItemSel: { backgroundColor: 'rgba(184,171,217,0.16)' },
   menuTxt: { fontFamily: fonts.body, fontSize: 13.5, color: 'white' },
-  menuTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav3 },
+  menuTxtSel: { fontFamily: fonts.bodyBold, color: '#CFC2FF' },
 }));

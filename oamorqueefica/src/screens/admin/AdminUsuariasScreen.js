@@ -5,12 +5,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { Card } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, corPlano, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 
 const PLANO_NOME = { 0: 'Perceber', 1: 'Acolher', 2: 'Compreender', 3: 'Evoluir' };
-const PLANO_COR = { get 0() { return colors.sage; }, get 1() { return colors.lav5; }, 2: '#7B5EA7', 3: '#C0843F' };
 const PLANO_TEXTO = { perceber: 0, acolher: 1, compreender: 2, evoluir: 3 };
 
 // O painel web grava o plano como texto ('acolher') e o app como número (0..3);
@@ -127,12 +126,13 @@ export default function AdminUsuariasScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminUsuarias">
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+        <Text style={styles.sobre}>Pessoas</Text>
         <Text style={styles.pageTitle}>Usuárias</Text>
         <Text style={styles.pageSub}>Gerencie planos e acessos das usuárias cadastradas.</Text>
 
         {!!erro && (
           <View style={styles.erroBox}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={18} color={acento('rosa').texto} />
             <Text style={styles.erroTxt}>{erro}</Text>
           </View>
         )}
@@ -143,16 +143,16 @@ export default function AdminUsuariasScreen({ navigation }) {
             <Text style={styles.statN}>{usuarias.length}</Text>
             <Text style={styles.statL}>Total</Text>
           </View>
-          <View style={[styles.statBox, { borderColor: colors.sage }]}>
-            <Text style={[styles.statN, { color: colors.sage }]}>{totalGratis}</Text>
+          <View style={styles.statBox}>
+            <Text style={[styles.statN, { color: corPlano(0).texto }]}>{totalGratis}</Text>
             <Text style={styles.statL}>Perceber</Text>
           </View>
-          <View style={[styles.statBox, { borderColor: colors.lav4 }]}>
-            <Text style={[styles.statN, { color: colors.lav4 }]}>{totalPago}</Text>
+          <View style={styles.statBox}>
+            <Text style={[styles.statN, { color: corPlano(1).texto }]}>{totalPago}</Text>
             <Text style={styles.statL}>Acolher</Text>
           </View>
-          <View style={[styles.statBox, { borderColor: colors.gold }]}>
-            <Text style={[styles.statN, { color: colors.gold }]}>{totalEmpresa}</Text>
+          <View style={styles.statBox}>
+            <Text style={[styles.statN, { color: acento('dourado').texto }]}>{totalEmpresa}</Text>
             <Text style={styles.statL}>Empresa</Text>
           </View>
         </View>
@@ -172,7 +172,7 @@ export default function AdminUsuariasScreen({ navigation }) {
         </View>
 
         {/* Filtro por plano */}
-        <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
+        <View style={[styles.chipRow, { marginBottom: spacing.md, flexWrap: 'wrap' }]}>
           {[{ id: 'todos', label: 'Todos' }, ...[0, 1, 2, 3].map(n => ({ id: String(n), label: planosDocs[n]?.nome || PLANO_NOME[n] })), { id: 'empresa', label: 'Empresa' }].map(f => (
             <TouchableOpacity key={f.id} style={[styles.chip, filtroPlano === f.id && styles.chipSel]} onPress={() => setFiltroPlano(f.id)}>
               <Text style={[styles.chipText, filtroPlano === f.id && styles.chipTextSel]}>{f.label}</Text>
@@ -180,13 +180,14 @@ export default function AdminUsuariasScreen({ navigation }) {
           ))}
         </View>
 
-        {lista.map(u => {
+        {lista.length > 0 && <View style={styles.lista}>
+        {lista.map((u, i) => {
           const plano = planoDe(u);
-          const cor = PLANO_COR[plano] || colors.tl;
+          const cor = corPlano(plano);
           return (
-            <Card key={u.id} style={styles.item}>
-              <View style={[styles.avatar, { backgroundColor: cor + '22' }]}>
-                <Text style={[styles.avatarLetter, { color: cor }]}>
+            <View key={u.id} style={[styles.item, i > 0 && styles.itemDiv]}>
+              <View style={[styles.avatar, { backgroundColor: cor.fundo }]}>
+                <Text style={[styles.avatarLetter, { color: cor.texto }]}>
                   {(u.apelido || u.nome || '?')[0].toUpperCase()}
                 </Text>
               </View>
@@ -201,7 +202,7 @@ export default function AdminUsuariasScreen({ navigation }) {
                 ) : null}
                 {u.linkEmpresa && (
                   <View style={styles.empresaTag}>
-                    <Ionicons name="business-outline" size={10} color={colors.gold} />
+                    <Ionicons name="business-outline" size={13} color={acento('dourado').tinta} />
                     <Text style={styles.empresaText}>
                       {u.empresa ? `Empresa: ${u.empresa}` : 'Via empresa/parceria'}
                     </Text>
@@ -209,24 +210,26 @@ export default function AdminUsuariasScreen({ navigation }) {
                 )}
                 {u.acessoTotal && (
                   <View style={[styles.empresaTag, { marginTop: 2 }]}>
-                    <Ionicons name="shield-checkmark-outline" size={10} color={colors.lav5} />
-                    <Text style={[styles.empresaText, { color: colors.lav5 }]}>Acesso Total</Text>
+                    <Ionicons name="shield-checkmark-outline" size={13} color={acento('lilas').tinta} />
+                    <Text style={[styles.empresaText, { color: acento('lilas').texto }]}>Acesso Total</Text>
                   </View>
                 )}
                 {(() => { const d = cortesiaDiasRestantes(u); return d ? (
                   <View style={[styles.empresaTag, { marginTop: 2 }]}>
-                    <Ionicons name="gift-outline" size={10} color={colors.peach2} />
-                    <Text style={[styles.empresaText, { color: colors.peach2 }]}>Cortesia: {d}</Text>
+                    <Ionicons name="gift-outline" size={13} color={acento('pessego').tinta} />
+                    <Text style={[styles.empresaText, { color: acento('pessego').texto }]}>Cortesia: {d}</Text>
                   </View>
                 ) : null; })()}
               </View>
-              <TouchableOpacity style={[styles.planoBadge, { backgroundColor: cor + '22', borderColor: cor }]} onPress={() => handleAlterarPlano(u)}>
-                <Text style={[styles.planoBadgeText, { color: cor }]}>{planosDocs[plano]?.nome || PLANO_NOME[plano] || 'Perceber'}</Text>
-                <Ionicons name="chevron-down" size={11} color={cor} />
+              <TouchableOpacity style={[styles.planoBadge, { backgroundColor: cor.fundo }]} onPress={() => handleAlterarPlano(u)}>
+                <View style={[styles.planoPonto, { backgroundColor: cor.tinta }]} />
+                <Text style={[styles.planoBadgeText, { color: cor.texto }]}>{planosDocs[plano]?.nome || PLANO_NOME[plano] || 'Perceber'}</Text>
+                <Ionicons name="chevron-down" size={14} color={cor.texto} />
               </TouchableOpacity>
-            </Card>
+            </View>
           );
         })}
+        </View>}
 
         {lista.length === 0 && (
           <Text style={styles.emptyText}>
@@ -248,7 +251,7 @@ export default function AdminUsuariasScreen({ navigation }) {
                 const sel = planoDe(planoModal.usuaria) === n && !planoModal.usuaria?.acessoTotal;
                 return (
                   <TouchableOpacity key={n} style={[styles.planoOpcao, sel && styles.planoOpcaoSel]} onPress={() => setPlano(n)}>
-                    <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={16} color={PLANO_COR[n]} />
+                    <Ionicons name={sel ? 'radio-button-on' : 'radio-button-off'} size={20} color={corPlano(n).tinta} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.planoOpcaoText}>{d.nome || PLANO_NOME[n]}</Text>
                       {!!d.descricao && <Text style={styles.planoOpcaoDesc} numberOfLines={2}>{d.descricao}</Text>}
@@ -257,14 +260,14 @@ export default function AdminUsuariasScreen({ navigation }) {
                 );
               })}
               <TouchableOpacity style={[styles.planoOpcao, planoModal.usuaria?.acessoTotal && styles.planoOpcaoSel]} onPress={toggleAcessoTotal}>
-                <Ionicons name={planoModal.usuaria?.acessoTotal ? 'shield-checkmark' : 'shield-checkmark-outline'} size={16} color={colors.lav5} />
+                <Ionicons name={planoModal.usuaria?.acessoTotal ? 'shield-checkmark' : 'shield-checkmark-outline'} size={20} color={acento('lilas').tinta} />
                 <Text style={styles.planoOpcaoText}>
                   {planoModal.usuaria?.acessoTotal ? 'Acesso Total — remover' : 'Acesso Total (admin)'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.planoOpcao} onPress={abrirCortesia}>
-                <Ionicons name="gift-outline" size={16} color={colors.peach2} />
-                <Text style={[styles.planoOpcaoText, { color: colors.peach2 }]}>Cortesia temporária...</Text>
+                <Ionicons name="gift-outline" size={20} color={acento('pessego').tinta} />
+                <Text style={[styles.planoOpcaoText, { color: acento('pessego').texto }]}>Cortesia temporária...</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={{ marginTop: 12, paddingVertical: 8, alignItems: 'center' }} onPress={fecharPlanoModal}>
@@ -291,6 +294,7 @@ export default function AdminUsuariasScreen({ navigation }) {
               placeholderTextColor={colors.tl}
             />
             <TouchableOpacity style={styles.concederBtn} onPress={concederCortesia}>
+              <Degrade />
               <Text style={styles.concederBtnText}>Conceder acesso</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.revogarBtn} onPress={revogarCortesia}>
@@ -307,46 +311,50 @@ export default function AdminUsuariasScreen({ navigation }) {
 }
 
 const styles = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.md },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
-  statN: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav5 },
-  statL: { fontFamily: fonts.body, fontSize: 10, color: colors.tm, marginTop: 1 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, marginBottom: spacing.sm },
-  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  statBox: { ...est.vidro(20), flex: 1, alignItems: 'center', paddingVertical: 14 },
+  statN: { fontFamily: 'Figtree_800ExtraBold', fontSize: 24, color: colors.titulo },
+  statL: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  searchRow: { ...est.campo(), flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0, marginBottom: spacing.sm },
+  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.td, paddingVertical: 12 },
   chipRow: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 5, paddingHorizontal: 12 },
-  chipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8, ...shadow.soft },
-  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  avatarLetter: { fontFamily: fonts.bodyBold, fontSize: 16 },
-  nome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  nomeCompleto: { fontFamily: fonts.body, fontSize: 11, color: colors.tm },
-  email: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
-  detalhe: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 1 },
-  empresaTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
-  empresaText: { fontFamily: fonts.body, fontSize: 10, color: colors.gold },
-  planoBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: radius.full, borderWidth: 1.5, paddingVertical: 5, paddingHorizontal: 9, marginTop: 2 },
-  planoBadgeText: { fontFamily: fonts.bodyBold, fontSize: 11 },
-  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
-  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
-  emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', marginTop: spacing.xl },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  cortesiaBox: { backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg, width: '100%', maxWidth: 360 },
-  cortesiaTitulo: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
-  cortesiaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  planoOpcoesCol: { marginTop: 16, gap: 4 },
-  planoOpcao: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: radius.md },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipText: est.chipTxt(),
+  chipTextSel: est.chipTxtSel(),
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 13, paddingHorizontal: 16 },
+  itemDiv: est.divisoria(),
+  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  avatarLetter: { fontFamily: fonts.serif, fontSize: 21 },
+  nome: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  nomeCompleto: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2 },
+  email: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 1 },
+  detalhe: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tl, marginTop: 1 },
+  empresaTag: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  empresaText: { fontFamily: fonts.bodySemi, fontSize: 12.5, color: acento('dourado').texto },
+  planoBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 11, marginTop: 2 },
+  planoPonto: { width: 7, height: 7, borderRadius: 4 },
+  planoBadgeText: { fontFamily: fonts.bodyBold, fontSize: 13 },
+  erroBox: { ...est.aviso('rosa'), alignItems: 'center', marginBottom: spacing.md },
+  erroTxt: est.avisoTxt('rosa'),
+  emptyText: { ...est.legenda(), textAlign: 'center', marginTop: spacing.xl },
+  modalOverlay: { ...est.veu(), alignItems: 'center', justifyContent: 'center', padding: 24 },
+  cortesiaBox: { ...est.modal(), padding: spacing.lg, width: '100%', maxWidth: 400 },
+  cortesiaTitulo: { ...est.modalTitulo(), marginBottom: 2 },
+  cortesiaSub: est.legenda(),
+  planoOpcoesCol: { marginTop: 16, gap: 2 },
+  planoOpcao: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 16 },
   planoOpcaoSel: { backgroundColor: colors.lav1 },
-  planoOpcaoText: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  planoOpcaoDesc: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginTop: 2, lineHeight: 16 },
-  diasInput: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 10, fontFamily: fonts.body, fontSize: 15, color: colors.td, marginBottom: 14 },
-  concederBtn: { backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginBottom: 8 },
-  concederBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },
-  revogarBtn: { borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.peach2 },
-  revogarBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.peach2 },
+  planoOpcaoText: { fontFamily: fonts.bodySemi, fontSize: 15, color: colors.td },
+  planoOpcaoDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2, lineHeight: 18 },
+  diasInput: { ...est.campo(), marginBottom: 14 },
+  concederBtn: { ...est.botao(), marginBottom: 8 },
+  concederBtnText: est.botaoTxt(),
+  revogarBtn: { ...est.botaoSec(), borderColor: acento('rosa').fundo },
+  revogarBtnText: { ...est.botaoSecTxt(), color: colors.roseTexto },
 }), { escalar: false });

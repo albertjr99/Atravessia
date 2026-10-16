@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { EMOCOES, ordenarPor } from './emocoes';
+import { iconeVitoria } from './iconesVitoria';
+import {
+  IconHome, IconAudio, IconStar, IconChart, IconDiamond, IconCompass, IconLink,
+  IconWhatsapp, IconPlay, IconMusic, IconImage, IconDoc, IconBulb, IconGift,
+  IconUsers, IconBell, IconChevron, IconSpark, Logo,
+} from './Icons';
 
 // Lê a coleção inteira (sem orderBy — ele esconderia documentos sem o campo e
 // um erro mataria o listener) e ordena/limita no cliente.
@@ -29,11 +35,11 @@ function ErroPrevia({ erro }) {
 // ── Bottom nav tabs (matches actual HomeScreen.js) ────────────────────────────
 
 const NAV_TABS = [
-  { label: 'Início',     icon: '⌂',  activeFor: ['dashboard', 'frases', 'travessia', 'notificacoes', 'parcerias', 'beneficios'] },
-  { label: 'Conteúdos', icon: '🎧', activeFor: ['outrosConteudos', 'audios', 'jornadas'] },
-  { label: 'Vitórias',  icon: '⭐', activeFor: ['vitorias'] },
-  { label: 'Relatórios',icon: '📊', activeFor: ['relatorios', 'mensagens'] },
-  { label: 'Planos',    icon: '💎', activeFor: ['usuarias', 'precos'] },
+  { label: 'Início',     Icon: IconHome,    activeFor: ['dashboard', 'frases', 'travessia', 'notificacoes', 'parcerias', 'beneficios'] },
+  { label: 'Conteúdos', Icon: IconAudio,   activeFor: ['outrosConteudos', 'audios', 'jornadas'] },
+  { label: 'Vitórias',  Icon: IconStar,    activeFor: ['vitorias'] },
+  { label: 'Relatórios',Icon: IconChart,   activeFor: ['relatorios', 'mensagens'] },
+  { label: 'Planos',    Icon: IconDiamond, activeFor: ['usuarias', 'precos'] },
 ];
 
 // ── Phone shell ───────────────────────────────────────────────────────────────
@@ -41,26 +47,42 @@ const NAV_TABS = [
 function PhoneShell({ children, currentScreen }) {
   return (
     <div className="ph-phone">
-      <div className="ph-notch" />
-      <div className="ph-statusbar">
-        <span className="ph-time">9:41</span>
-        <span className="ph-icons">▰▰▰</span>
+      <div className="ph-tela">
+        <div className="ph-notch" />
+        <div className="ph-statusbar">
+          <span className="ph-time">9:41</span>
+          <span className="ph-icons" aria-hidden="true"><i style={{ height: 4 }} /><i style={{ height: 6 }} /><i style={{ height: 8 }} /></span>
+        </div>
+        <div className="ph-appbar"><Logo size={22} />Atravessia</div>
+        <div className="ph-screen">{children}</div>
+        <div className="ph-bottomnav">
+          {NAV_TABS.map(({ label, Icon, activeFor }) => {
+            const active = activeFor.includes(currentScreen);
+            return (
+              <div key={label} className={`ph-navtab${active ? ' ph-navtab-active' : ''}`}>
+                <span className="ph-navtab-icon"><Icon size={11} /></span>
+                <span className="ph-navtab-label">{label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="ph-homebar" />
       </div>
-      <div className="ph-appbar">Atravessia</div>
-      <div className="ph-screen">{children}</div>
-      <div className="ph-bottomnav">
-        {NAV_TABS.map(tab => {
-          const active = tab.activeFor.includes(currentScreen);
-          return (
-            <div key={tab.label} className={`ph-navtab${active ? ' ph-navtab-active' : ''}`}>
-              <span className="ph-navtab-icon">{tab.icon}</span>
-              <span className="ph-navtab-label">{tab.label}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div className="ph-homebar" />
     </div>
+  );
+}
+
+// Ícone de Pequenas Vitórias (SVG do Ionicons como máscara, na cor do texto).
+function IconeVitoriaMini({ id }) {
+  const { url, nome } = iconeVitoria(id);
+  return (
+    <span
+      role="img" aria-label={nome}
+      style={{
+        display: 'inline-block', width: 11, height: 11, backgroundColor: 'currentColor',
+        WebkitMask: `url(${url}) center / contain no-repeat`, mask: `url(${url}) center / contain no-repeat`,
+      }}
+    />
   );
 }
 
@@ -85,7 +107,7 @@ function RowCard({ icon, title, sub }) {
         <div className="pw-row-title">{title}</div>
         {sub && <div className="pw-row-sub">{sub}</div>}
       </div>
-      <span className="pw-row-chevron">›</span>
+      <span className="pw-row-chevron"><IconChevron size={10} /></span>
     </div>
   );
 }
@@ -102,18 +124,18 @@ function Empty({ msg }) {
 
 function TravessiaPreview() {
   const [itens, erro] = useCollection('travessiaItens', { ordem: 'ordem', filtro: i => i.ativo !== false, max: 6 });
-  const TIPO_ICON = { link: '🔗', whatsapp: '💬', video: '▶', audio: '🎵' };
+  const TIPO_ICON = { link: <IconLink size={12} />, whatsapp: <IconWhatsapp size={12} />, video: <IconPlay size={12} />, audio: <IconMusic size={12} /> };
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="🧭" title="Continue a Travessia" />
+      <SectionHeader icon={<IconCompass size={10} />} title="Continue a Travessia" />
       <ErroPrevia erro={erro} />
       {itens.filter(i => i.ativo !== false).length === 0
         ? <Empty msg="Nenhum item ativo ainda" />
         : itens.filter(i => i.ativo !== false).map(item => (
           <RowCard
             key={item.id}
-            icon={TIPO_ICON[item.tipo] || '🔗'}
+            icon={TIPO_ICON[item.tipo] || <IconLink size={12} />}
             title={item.titulo}
             sub={item.descricao}
           />
@@ -160,12 +182,12 @@ function OutrosConteudosPreview() {
     ordem: 'criadoEm', direcao: 'desc',
     filtro: i => i.ativo !== false && ['imagem', 'link', 'texto'].includes(i.tipo),
   });
-  const TIPO_ICON = { imagem: '🖼', link: '🔗', texto: '📝' };
+  const TIPO_ICON = { imagem: <IconImage size={12} />, link: <IconLink size={12} />, texto: <IconDoc size={12} /> };
   const visiveis = itens.slice(0, 6);
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="💡" title="Sugestões para você" />
+      <SectionHeader icon={<IconBulb size={10} />} title="Sugestões para você" />
       <ErroPrevia erro={erro} />
       {visiveis.length === 0
         ? <Empty msg="Nenhum conteúdo ativo ainda" />
@@ -178,7 +200,7 @@ function OutrosConteudosPreview() {
           ) : (
             <RowCard
               key={item.id}
-              icon={TIPO_ICON[item.tipo] || '📄'}
+              icon={TIPO_ICON[item.tipo] || <IconDoc size={12} />}
               title={item.titulo}
               sub={item.descricao || (item.tipo === 'texto' ? item.texto : '')}
             />
@@ -195,12 +217,12 @@ function JornadasPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="🧭" title="Jornadas" />
+      <SectionHeader icon={<IconCompass size={10} />} title="Jornadas" />
       <ErroPrevia erro={erro} />
       {jornadas.length === 0
         ? <Empty msg="Nenhuma jornada ativa ainda" />
         : jornadas.map(j => (
-          <RowCard key={j.id} icon="✦" title={j.titulo} sub={j.descricao || PLANOS[j.plano] || ''} />
+          <RowCard key={j.id} icon={<IconSpark size={12} />} title={j.titulo} sub={j.descricao || PLANOS[j.plano] || ''} />
         ))
       }
     </div>
@@ -212,12 +234,12 @@ function ParceriasPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="🎁" title="Parcerias e benefícios" />
+      <SectionHeader icon={<IconGift size={10} />} title="Parcerias e benefícios" />
       <ErroPrevia erro={erro} />
       {parcerias.length === 0
         ? <Empty msg="Nenhuma parceria ativa ainda" />
         : parcerias.map(p => (
-          <RowCard key={p.id} icon="🎁" title={p.titulo} sub={p.descricao} />
+          <RowCard key={p.id} icon={<IconGift size={12} />} title={p.titulo} sub={p.descricao} />
         ))
       }
     </div>
@@ -237,7 +259,7 @@ function MensagensPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="📊" title="Relatório do mês" />
+      <SectionHeader icon={<IconChart size={10} />} title="Relatório do mês" />
       <ErroPrevia erro={erro} />
       <div className="pw-reflexao-card">
         <div className="pw-frase-label">EMOÇÃO PREDOMINANTE · {emo.label.toUpperCase()}</div>
@@ -252,13 +274,13 @@ function AudiosPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="🎵" title="Áudios de Acolhimento" />
+      <SectionHeader icon={<IconMusic size={10} />} title="Áudios de Acolhimento" />
       <ErroPrevia erro={erro} />
       {audios.length === 0
         ? <Empty msg="Nenhum áudio ainda" />
         : audios.filter(a => a.ativo !== false).map(item => (
           <div key={item.id} className="pw-row">
-            <div className="pw-audio-play">▶</div>
+            <div className="pw-audio-play"><IconPlay size={10} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pw-row-title">{item.titulo || item.nome || '—'}</div>
               {item.descricao && <div className="pw-row-sub">{item.descricao}</div>}
@@ -275,13 +297,13 @@ function VitoriasPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="⭐" title="Pequenas Vitórias" />
+      <SectionHeader icon={<IconStar size={10} />} title="Pequenas Vitórias" />
       <ErroPrevia erro={erro} />
       {opcoes.filter(o => o.ativo !== false).length === 0
         ? <Empty msg="Nenhuma vitória cadastrada" />
         : opcoes.filter(o => o.ativo !== false).map(item => (
           <div key={item.id} className="pw-row">
-            <span className="pw-vitoria-star">{item.emoji || '⭐'}</span>
+            <span className="pw-vitoria-star">{item.emoji || <IconeVitoriaMini id={item.icone} />}</span>
             <div className="pw-row-title">{item.label}</div>
           </div>
         ))
@@ -303,7 +325,7 @@ function UsuariasPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="👥" title="Usuárias" />
+      <SectionHeader icon={<IconUsers size={10} />} title="Usuárias" />
       <ErroPrevia erro={erro} />
       {usuarios.length === 0
         ? <Empty msg="Nenhuma usuária cadastrada" />
@@ -348,22 +370,22 @@ function DashboardPreview() {
 
       {/* Quick access */}
       <div className="pw-section">
-        <SectionHeader icon="⚡" title="Acesso Rápido" />
+        <SectionHeader icon={<IconSpark size={10} />} title="Acesso Rápido" />
         <div className="pw-quick-grid">
-          {[['🎧','Conteúdos'],['⭐','Vitórias'],['📊','Relatórios']].map(([ic, lb]) => (
+          {[[IconAudio, 'Conteúdos'], [IconStar, 'Vitórias'], [IconChart, 'Relatórios']].map(([Ic, lb]) => (
             <div key={lb} className="pw-quick-card">
-              <span className="pw-quick-icon">{ic}</span>
+              <span className="pw-quick-icon"><Ic size={11} /></span>
               <span className="pw-quick-label">{lb}</span>
             </div>
           ))}
         </div>
         <div className="pw-vida-btn">
-          <div className="pw-vida-circle">🧭</div>
+          <div className="pw-vida-circle"><IconCompass size={13} /></div>
           <div style={{ flex: 1 }}>
             <div className="pw-vida-title">Continue a travessia</div>
             <div className="pw-vida-sub">Eu caminho junto com você</div>
           </div>
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>›</span>
+          <span className="pw-vida-chevron"><IconChevron size={10} /></span>
         </div>
       </div>
     </div>
@@ -383,13 +405,13 @@ function NotificacoesPreview() {
 
   return (
     <div className="pw-section">
-      <SectionHeader icon="🔔" title="Notificações" />
+      <SectionHeader icon={<IconBell size={10} />} title="Notificações" />
       <ErroPrevia erro={erro} />
       {notifs.length === 0
         ? <Empty msg="Nenhuma notificação enviada" />
         : notifs.map(n => (
           <div key={n.id} className="pw-row">
-            <div className="pw-row-icon">🔔</div>
+            <div className="pw-row-icon"><IconBell size={12} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pw-row-title" style={{ whiteSpace: 'normal', lineHeight: '1.3' }}>{n.texto}</div>
             </div>
@@ -442,10 +464,7 @@ export default function Preview({ currentScreen }) {
   return (
     <>
       <div className="preview-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4CAF50', display: 'inline-block' }} />
-          <div className="preview-title">Prévia · Tempo real</div>
-        </div>
+        <div className="preview-title">Prévia · Tempo real</div>
         <div className="preview-sub">{SCREEN_LABEL[currentScreen] || 'Tela'}</div>
       </div>
       <div className="ph-wrap">

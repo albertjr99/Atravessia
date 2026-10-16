@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -72,10 +73,13 @@ export default function ConteudoScreen({ route, navigation }) {
     if (bloqueado) {
       return (
         <View style={s.lockCard}>
-          <Ionicons name="lock-closed-outline" size={32} color={colors.lav4} />
+          <View style={s.pilulaGrande}>
+            <Ionicons name="lock-closed-outline" size={30} color={colors.lilasIcone} />
+          </View>
           <Text style={s.lockTit}>Conteúdo de um plano superior</Text>
           <Text style={s.lockSub}>Este conteúdo faz parte de outro plano. Conheça os planos para acessá-lo.</Text>
           <TouchableOpacity style={s.lockBtn} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
+            <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
             <Text style={s.lockBtnTxt}>Ver planos</Text>
             <Ionicons name="arrow-forward" size={14} color="white" />
           </TouchableOpacity>
@@ -90,7 +94,7 @@ export default function ConteudoScreen({ route, navigation }) {
       return (
         <View style={s.imagemWrap}>
           {ratio == null ? (
-            <View style={s.imagemCarregando}><ActivityIndicator color={colors.lav4} /></View>
+            <View style={s.imagemCarregando}><ActivityIndicator color={colors.lilasIcone} /></View>
           ) : (
             <Image
               source={{ uri: item.url }}
@@ -109,7 +113,7 @@ export default function ConteudoScreen({ route, navigation }) {
         return conteudos?.length ? (
           <Text style={s.indisponivel}>Este texto não está mais disponível.</Text>
         ) : (
-          <View style={s.imagemCarregando}><ActivityIndicator color={colors.lav4} /></View>
+          <View style={s.imagemCarregando}><ActivityIndicator color={colors.lilasIcone} /></View>
         );
       }
       return <TextoComLinks style={s.texto} selectable>{item.texto}</TextoComLinks>;
@@ -120,9 +124,10 @@ export default function ConteudoScreen({ route, navigation }) {
     const endereco = item.url || item.link;
     return endereco ? (
       <View style={s.linkCard}>
-        <View style={s.linkIcone}><Ionicons name="link-outline" size={20} color={colors.lav5} /></View>
+        <View style={s.linkIcone}><Ionicons name="link-outline" size={22} color={colors.lilasIcone} /></View>
         <Text style={s.linkHost} numberOfLines={1}>{hostDe(endereco)}</Text>
         <TouchableOpacity style={s.lockBtn} onPress={() => abrirLink(endereco)} activeOpacity={0.85}>
+          <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
           <Text style={s.lockBtnTxt}>Abrir o link</Text>
           <Ionicons name="open-outline" size={14} color="white" />
         </TouchableOpacity>
@@ -137,9 +142,9 @@ export default function ConteudoScreen({ route, navigation }) {
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
         <Text style={s.topTitle} numberOfLines={1}>
           {item.tipo === 'imagem' ? 'Imagem' : item.tipo === 'texto' ? 'Leitura' : item.tipo === 'link' ? 'Link' : 'Conteúdo'}
@@ -152,8 +157,8 @@ export default function ConteudoScreen({ route, navigation }) {
         >
           <Ionicons
             name={favoritado ? 'heart' : 'heart-outline'}
-            size={22}
-            color={favoritado ? '#C06080' : colors.tm}
+            size={21}
+            color={favoritado ? colors.roseTexto : colors.texto2}
           />
         </TouchableOpacity>
       </View>
@@ -163,56 +168,65 @@ export default function ConteudoScreen({ route, navigation }) {
         contentContainerStyle={[s.scroll, { paddingBottom: 40 + insets.bottom }]}
       >
         <View style={s.coluna}>
-          <Text style={s.titulo}>{item.titulo}</Text>
-          {item.descricao ? <TextoComLinks style={s.descricao} selectable>{item.descricao}</TextoComLinks> : null}
-          <View style={s.divisor} />
-          {renderCorpo()}
+          <View style={s.cartao}>
+            <Text style={s.titulo}>{item.titulo}</Text>
+            {item.descricao ? <TextoComLinks style={s.descricao} selectable>{item.descricao}</TextoComLinks> : null}
+            {item.tipo === 'texto' && !bloqueado ? (
+              <>
+                <View style={s.divisor} />
+                {renderCorpo()}
+              </>
+            ) : null}
+          </View>
+          {item.tipo === 'texto' && !bloqueado ? null : renderCorpo()}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card, borderRadius: 24, borderWidth: 1, borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11, shadowRadius: 20, elevation: 2,
+});
+
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
-  scroll: { padding: spacing.lg },
-  // Em tablet a linha de leitura não fica longa demais.
-  coluna: { width: '100%' },
-  titulo: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 32, color: colors.lav6, marginBottom: spacing.sm },
-  descricao: { fontFamily: fonts.bodyLight, fontSize: 15, lineHeight: 23, color: colors.tm },
-  divisor: { height: 1, backgroundColor: colors.lav2, marginVertical: spacing.lg, width: 48 },
-  texto: { fontFamily: fonts.body, fontSize: 17, lineHeight: 29, color: colors.td, letterSpacing: 0.1 },
-  imagemWrap: {
-    width: '100%', borderRadius: radius.lg, overflow: 'hidden',
-    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, ...shadow.card,
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  scroll: { paddingHorizontal: spacing.lg, paddingTop: 8 },
+  coluna: { width: '100%', gap: 14 },
+  cartao: { ...vidro(), padding: 20 },
+  titulo: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo, marginBottom: spacing.sm },
+  descricao: { fontFamily: fonts.body, fontSize: 16, lineHeight: 24, color: colors.texto2 },
+  divisor: { height: 1, backgroundColor: colors.bordaSuave, marginVertical: spacing.lg },
+  texto: { fontFamily: fonts.body, fontSize: 17, lineHeight: 29, color: colors.titulo, letterSpacing: 0.1 },
+  imagemWrap: { ...vidro(), width: '100%', borderRadius: 22, overflow: 'hidden' },
   imagem: { width: '100%' },
   imagemCarregando: { paddingVertical: 60, alignItems: 'center', justifyContent: 'center' },
-  indisponivel: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.tm, textAlign: 'center', paddingVertical: spacing.xl },
-  linkCard: {
-    alignItems: 'center', gap: 8, backgroundColor: colors.card,
-    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...shadow.card,
-  },
-  linkIcone: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  linkHost: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, maxWidth: '100%' },
-  lockCard: {
-    alignItems: 'center', gap: 10, backgroundColor: colors.card,
-    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2, borderStyle: 'dashed',
-    padding: spacing.xl,
-  },
-  lockTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, textAlign: 'center' },
-  lockSub: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.tm, textAlign: 'center' },
+  indisponivel: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.texto2, textAlign: 'center', paddingVertical: spacing.xl },
+  linkCard: { ...vidro(), alignItems: 'center', gap: 10, padding: spacing.lg },
+  linkIcone: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  linkHost: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.texto2, maxWidth: '100%' },
+  pilulaGrande: { width: 64, height: 64, borderRadius: 20, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  lockCard: { ...vidro(), alignItems: 'center', gap: 10, padding: spacing.xl, borderStyle: 'dashed', borderColor: colors.lav3 },
+  lockTit: { fontFamily: fonts.serif, fontSize: 26, lineHeight: 31, color: colors.titulo, textAlign: 'center' },
+  lockSub: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.texto2, textAlign: 'center' },
   lockBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center',
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingHorizontal: 20, paddingVertical: 10, marginTop: 6,
+    backgroundColor: colors.botao, borderRadius: radius.full, overflow: 'hidden',
+    paddingHorizontal: 24, minHeight: 48, marginTop: 6,
+    borderBottomWidth: 3, borderBottomColor: colors.botaoBase,
   },
-  lockBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  lockBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
 }));

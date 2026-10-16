@@ -8,8 +8,8 @@ import {
   addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, BotaoAdmin } from './adminEstilo';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
@@ -253,6 +253,7 @@ export default function AdminParceriasScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={s.scroll}
       >
+        <Text style={s.sobre}>Parcerias</Text>
         <Text style={s.pageTitle}>Parcerias</Text>
         <Text style={s.pageSub}>
           Crie banners de parceria e benefícios exclusivos que aparecem para todas as usuárias no app, direto do plano gratuito.
@@ -261,24 +262,24 @@ export default function AdminParceriasScreen({ navigation }) {
         {/* ── Resumo ── */}
         <View style={s.statsRow}>
           <View style={s.statBox}>
-            <Ionicons name="people-outline" size={18} color={colors.lav4} />
-            <Text style={[s.statNum, { color: colors.lav4 }]}>{parcerias.length}</Text>
+            <View style={[s.statIcone, { backgroundColor: acento('lilas').fundo }]}><Ionicons name="people-outline" size={18} color={acento('lilas').tinta} /></View>
+            <Text style={[s.statNum, { color: acento('lilas').texto }]}>{parcerias.length}</Text>
             <Text style={s.statLbl}>total</Text>
           </View>
           <View style={s.statBox}>
-            <Ionicons name="checkmark-circle-outline" size={18} color={colors.sage} />
-            <Text style={[s.statNum, { color: colors.sage }]}>{ativas}</Text>
+            <View style={[s.statIcone, { backgroundColor: acento('salvia').fundo }]}><Ionicons name="checkmark-circle-outline" size={18} color={acento('salvia').tinta} /></View>
+            <Text style={[s.statNum, { color: acento('salvia').texto }]}>{ativas}</Text>
             <Text style={s.statLbl}>ativas</Text>
           </View>
           <View style={s.statBox}>
-            <Ionicons name="stats-chart-outline" size={18} color={colors.gold} />
-            <Text style={[s.statNum, { color: colors.gold }]}>{totalCliques}</Text>
+            <View style={[s.statIcone, { backgroundColor: acento('dourado').fundo }]}><Ionicons name="stats-chart-outline" size={18} color={acento('dourado').tinta} /></View>
+            <Text style={[s.statNum, { color: acento('dourado').texto }]}>{totalCliques}</Text>
             <Text style={s.statLbl}>cliques totais</Text>
           </View>
         </View>
 
         {/* ── Formulário ── */}
-        <Card style={{ marginBottom: spacing.lg }}>
+        <View style={s.form}>
           <View style={s.formTopo}>
             <Text style={[s.cardTitle, { flex: 1, marginBottom: 0 }]}>{editId ? 'Editar parceria' : 'Nova parceria / benefício'}</Text>
             {editId && (
@@ -333,7 +334,7 @@ export default function AdminParceriasScreen({ navigation }) {
             onPress={handleUploadImagem}
             disabled={uploadando}
           >
-            <Ionicons name={uploadando ? 'hourglass-outline' : 'image-outline'} size={24} color={colors.lav4} />
+            <Ionicons name={uploadando ? 'hourglass-outline' : 'image-outline'} size={26} color={colors.lilasIcone} />
             <Text style={s.uploadLabel}>
               {uploadando ? 'Fazendo upload...' : 'Clique para enviar imagem do banner'}
             </Text>
@@ -407,7 +408,7 @@ export default function AdminParceriasScreen({ navigation }) {
               style={[s.tipoOpc, tipoBeneficio === 'link' && s.tipoOpcSel]}
               onPress={() => setTipoBeneficio('link')}
             >
-              <Ionicons name="link-outline" size={16} color={tipoBeneficio === 'link' ? colors.lav5 : colors.tm} />
+              <Ionicons name="link-outline" size={18} color={tipoBeneficio === 'link' ? colors.lilasTexto : colors.texto2} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.tipoOpcTit, tipoBeneficio === 'link' && s.tipoOpcTitSel]}>Link simples</Text>
                 <Text style={s.tipoOpcDesc}>Desconto direto — sem comissão nem rastreamento financeiro.</Text>
@@ -417,7 +418,7 @@ export default function AdminParceriasScreen({ navigation }) {
               style={[s.tipoOpc, tipoBeneficio === 'cupom' && s.tipoOpcSel]}
               onPress={() => setTipoBeneficio('cupom')}
             >
-              <Ionicons name="pricetag-outline" size={16} color={tipoBeneficio === 'cupom' ? colors.lav5 : colors.tm} />
+              <Ionicons name="pricetag-outline" size={18} color={tipoBeneficio === 'cupom' ? colors.lilasTexto : colors.texto2} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.tipoOpcTit, tipoBeneficio === 'cupom' && s.tipoOpcTitSel]}>Cupom com comissão</Text>
                 <Text style={s.tipoOpcDesc}>Gera voucher, o parceiro confirma o atendimento e a Atravessia recebe uma comissão.</Text>
@@ -451,7 +452,7 @@ export default function AdminParceriasScreen({ navigation }) {
               </Text>
 
               <View style={s.infoBase}>
-                <Ionicons name="information-circle-outline" size={15} color={colors.lav5} />
+                <Ionicons name="information-circle-outline" size={17} color={acento('lilas').texto} />
                 <Text style={s.infoBaseTxt}>
                   A comissão é calculada sobre o valor original do serviço (antes do desconto).
                   {' '}Ex.: num serviço de {brl(100)}, a usuária paga {brl(exemploPaga)} e a comissão da Atravessia é {brl(exemploComissao)}.
@@ -468,12 +469,12 @@ export default function AdminParceriasScreen({ navigation }) {
             </View>
           )}
 
-          <Button
+          <BotaoAdmin
             title={enviando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Publicar parceria no app'}
             onPress={handlePublicar}
-            style={{ marginTop: spacing.md }}
+            style={{ marginTop: spacing.lg }}
           />
-        </Card>
+        </View>
 
         {/* ── Lista ── */}
         <Text style={s.sectionTitle}>
@@ -482,7 +483,7 @@ export default function AdminParceriasScreen({ navigation }) {
 
         {!!erroLista && (
           <View style={s.erroBox}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={18} color={acento('rosa').texto} />
             <Text style={s.erroTxt}>Não foi possível carregar as parcerias: {erroLista}</Text>
           </View>
         )}
@@ -491,8 +492,9 @@ export default function AdminParceriasScreen({ navigation }) {
           <Text style={s.emptyText}>Nenhuma parceria publicada ainda.</Text>
         )}
 
-        {parcerias.map(p => (
-          <Card key={p.id} style={s.item}>
+        {parcerias.length > 0 && <View style={s.lista}>
+        {parcerias.map((p, i) => (
+          <View key={p.id} style={[s.item, i > 0 && s.itemDiv]}>
             {p.imagemUrl ? (
               <Image source={{ uri: urlDeImagem(p.imagemUrl) }} style={s.itemThumb} resizeMode="cover" />
             ) : (
@@ -508,12 +510,12 @@ export default function AdminParceriasScreen({ navigation }) {
                 ))}
                 {p.tipoBeneficio === 'cupom' ? (
                   <View style={s.cupomTag}>
-                    <Ionicons name="pricetag" size={10} color="#8A6A33" />
+                    <Ionicons name="pricetag" size={12} color={acento('dourado').tinta} />
                     <Text style={s.cupomTagTxt}>Cupom · {p.percentualComissao || 0}% comissão</Text>
                   </View>
                 ) : (
                   <View style={s.cliquesTag}>
-                    <Ionicons name="stats-chart-outline" size={10} color={colors.lav5} />
+                    <Ionicons name="stats-chart-outline" size={12} color={acento('salvia').tinta} />
                     <Text style={s.cliquesTagTxt}>{p.cliques || 0} cliques</Text>
                   </View>
                 )}
@@ -537,14 +539,15 @@ export default function AdminParceriasScreen({ navigation }) {
               />
               <Text style={s.switchLbl}>{p.ativo !== false ? 'Ativa' : 'Oculta'}</Text>
               <TouchableOpacity onPress={() => editar(p)} style={{ padding: 4, marginTop: 4 }} accessibilityLabel="Editar">
-                <Ionicons name="create-outline" size={18} color={colors.lav5} />
+                <Ionicons name="create-outline" size={19} color={colors.lilasIcone} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleRemover(p.id)} style={{ padding: 4, marginTop: 4 }}>
-                <Ionicons name="trash-outline" size={17} color={colors.peach2} />
+                <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
               </TouchableOpacity>
             </View>
-          </Card>
+          </View>
         ))}
+        </View>}
       </ScrollView>
       </KeyboardAvoidingView>
 
@@ -558,8 +561,8 @@ export default function AdminParceriasScreen({ navigation }) {
               </TouchableOpacity>
               {UFS.map(e => (
                 <TouchableOpacity key={e.uf} style={s.ufItem} onPress={() => { setEstado(e.uf); setEscolhendoEstado(false); }}>
-                  <Text style={[s.ufTxt, estado === e.uf && { color: colors.lav5, fontFamily: fonts.bodyBold }]}>{e.nome} ({e.uf})</Text>
-                  {estado === e.uf && <Ionicons name="checkmark" size={16} color={colors.lav5} />}
+                  <Text style={[s.ufTxt, estado === e.uf && { color: colors.lilasTexto, fontFamily: fonts.bodyBold }]}>{e.nome} ({e.uf})</Text>
+                  {estado === e.uf && <Ionicons name="checkmark" size={18} color={colors.lilasTexto} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -571,117 +574,99 @@ export default function AdminParceriasScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  formTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
-  cancelarEdicao: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.full, backgroundColor: colors.lav1 },
-  cancelarEdicaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  miniLabel: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginBottom: 4, marginTop: 6 },
+  formTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  cancelarEdicao: { ...est.botaoSec(), minHeight: 36, paddingHorizontal: 14 },
+  cancelarEdicaoTxt: { ...est.botaoSecTxt(), fontSize: 13 },
+  miniLabel: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, marginBottom: 6, marginTop: 8 },
   seletor: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
-  seletorTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  onlineLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: spacing.sm },
-  onlineTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  itemLocal: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
-  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
-  ufItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.border },
-  ufTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 20 },
+  seletorTxt: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.td },
+  onlineLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
+  onlineTxt: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.td },
+  itemLocal: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2 },
+  modalFundo: { ...est.veu(), alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalCaixa: { ...est.modal(), width: '100%', maxWidth: 440, padding: spacing.lg },
+  ufItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave },
+  ufTxt: { fontFamily: fonts.body, fontSize: 15, color: colors.td },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
 
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.lg },
-  statBox: {
-    flex: 1, alignItems: 'center', gap: 4,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
-  },
-  statNum: { fontFamily: fonts.bodyBold, fontSize: 22 },
-  statLbl: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
+  statBox: { ...est.vidro(22), flex: 1, alignItems: 'center', gap: 4, padding: 14 },
+  statIcone: est.pilula(38),
+  statNum: { fontFamily: 'Figtree_800ExtraBold', fontSize: 24 },
+  statLbl: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, textAlign: 'center' },
 
-  cardTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: spacing.sm },
-  formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
-  required: { color: colors.rose },
-  optional: { color: colors.tl, fontSize: 11 },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
-  hint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 4 },
+  form: { ...est.vidro(26), padding: 18, marginBottom: spacing.xl },
+  cardTitle: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.titulo, marginBottom: spacing.sm },
+  formLabel: est.rotulo(),
+  required: est.obrigatorio(),
+  optional: { color: colors.tl, fontSize: 12.5, fontFamily: fonts.body },
+  input: est.campo(),
+  hint: est.dica(),
   uploadArea: {
     borderWidth: 1.5, borderColor: colors.lav3, borderStyle: 'dashed',
-    borderRadius: radius.lg, padding: spacing.lg,
+    borderRadius: 20, padding: spacing.lg,
     alignItems: 'center', gap: 6, backgroundColor: colors.lav1,
     marginVertical: spacing.sm,
   },
-  uploadLabel: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5, textAlign: 'center' },
-  uploadHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  progressTrack: { height: 6, backgroundColor: colors.lav1, borderRadius: radius.full, overflow: 'hidden', marginVertical: 4 },
-  progressFill: { height: '100%', backgroundColor: colors.lav4, borderRadius: radius.full },
-  orText: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', marginVertical: 8 },
-  previewImg: { width: '100%', height: 130, borderRadius: radius.md, marginTop: spacing.sm },
+  uploadLabel: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.lilasTexto, textAlign: 'center' },
+  uploadHint: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2 },
+  progressTrack: { height: 6, backgroundColor: colors.lav1, borderRadius: 999, overflow: 'hidden', marginVertical: 4 },
+  progressFill: { height: '100%', backgroundColor: colors.lav4, borderRadius: 999 },
+  orText: { ...est.dica(), textAlign: 'center', marginVertical: 8 },
+  previewImg: { width: '100%', height: 140, borderRadius: 16, marginTop: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 2 },
-  chip: {
-    backgroundColor: colors.bg, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 6, paddingHorizontal: 10,
-  },
-  chipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipText: est.chipTxt(),
+  chipTextSel: est.chipTxtSel(),
 
   tipoRow: { gap: 8, marginBottom: 4 },
   tipoOpc: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg,
-    padding: spacing.md, backgroundColor: colors.bg,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    borderWidth: 1, borderColor: colors.border, borderRadius: 18,
+    padding: 14, backgroundColor: colors.cardSolido,
   },
-  tipoOpcSel: { borderColor: colors.lav4, backgroundColor: colors.lav1 },
-  tipoOpcTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 2 },
+  tipoOpcSel: { borderColor: colors.lav3, backgroundColor: colors.lav1 },
+  tipoOpcTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: 2 },
   tipoOpcTitSel: { color: colors.lav6 },
-  tipoOpcDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, lineHeight: 15 },
+  tipoOpcDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 18 },
 
-  comissaoBox: {
-    backgroundColor: colors.lav1, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2,
-    padding: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm, gap: 4,
-  },
+  comissaoBox: { ...est.tenue(18), padding: spacing.md, marginTop: spacing.sm, marginBottom: spacing.sm, gap: 4 },
   linha2: { flexDirection: 'row', gap: spacing.sm },
-  calculoTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, marginBottom: 8, lineHeight: 17 },
+  calculoTxt: { fontFamily: fonts.body, fontSize: 13.5, color: colors.lav6, marginTop: 6, marginBottom: 8, lineHeight: 20 },
   calculoForte: { fontFamily: fonts.bodyBold },
-  infoBase: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
-    backgroundColor: colors.card, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav2, padding: spacing.sm, marginBottom: 4,
-  },
-  infoBaseTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, lineHeight: 17 },
-  erroBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo,
-    borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md,
-  },
-  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
+  infoBase: { ...est.aviso('lilas'), backgroundColor: colors.cardSolido, padding: 12, marginBottom: 4 },
+  infoBaseTxt: { ...est.avisoTxt('lilas'), fontSize: 13 },
+  erroBox: { ...est.aviso('rosa'), alignItems: 'center', marginBottom: spacing.md },
+  erroTxt: est.avisoTxt('rosa'),
 
-  sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 8 },
-  emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  itemThumb: { width: 56, height: 56, borderRadius: radius.md, flexShrink: 0 },
-  itemThumbPlaceholder: { backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+  sectionTitle: { ...est.secao(), marginBottom: 10 },
+  emptyText: { ...est.legenda(), marginBottom: spacing.md },
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
+  itemDiv: est.divisoria(),
+  itemThumb: { width: 60, height: 60, borderRadius: 16, flexShrink: 0 },
+  itemThumbPlaceholder: { backgroundColor: acento('pessego').fundo, alignItems: 'center', justifyContent: 'center' },
+  itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
   itemTag: {
-    fontFamily: fonts.body, fontSize: 10, color: colors.tm,
-    backgroundColor: colors.lav1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
+    fontFamily: fonts.bodySemi, fontSize: 12, color: acento('lilas').texto,
+    backgroundColor: acento('lilas').fundo, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, overflow: 'hidden',
   },
   cliquesTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.sage + '22', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: acento('salvia').fundo, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999,
   },
-  cliquesTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav5 },
+  cliquesTagTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: acento('salvia').texto },
   cupomTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.gold + '30', paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: acento('dourado').fundo, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999,
   },
-  cupomTagTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.goldFg },
-  itemLink: { fontFamily: fonts.body, fontSize: 10, color: colors.lav4 },
-  verComissoesLink: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5, marginTop: 2 },
+  cupomTagTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: acento('dourado').texto },
+  itemLink: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lilasTexto },
+  verComissoesLink: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto, marginTop: 2 },
   itemActions: { alignItems: 'center', gap: 2 },
-  switchLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
+  switchLbl: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2 },
 }), { escalar: false });

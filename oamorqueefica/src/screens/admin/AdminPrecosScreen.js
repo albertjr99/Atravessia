@@ -9,6 +9,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminPlanosCards from './AdminPlanosCards';
+import { est, dadoPlano, acento, Degrade } from './adminEstilo';
 
 const PLANOS_INFO = [
   { id: 1, nome: 'Plano Acolher', cor: colors.rose, campo: 'plano1' },
@@ -162,6 +163,7 @@ export default function AdminPrecosScreen() {
   return (
     <AdminLayout currentScreen="AdminPrecos">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        <Text style={s.sobre}>Configuração</Text>
         <Text style={s.title}>Preços e Planos</Text>
         <Text style={s.sub}>
           Edite os valores dos planos e do relatório por período. Os preços são armazenados em centavos e usados pelas funções do Stripe.
@@ -176,7 +178,7 @@ export default function AdminPrecosScreen() {
         <Text style={s.cardHint}>Deixe em branco os campos que não deseja alterar.</Text>
           {PLANOS_INFO.map(p => (
             <View key={p.id} style={s.precoRow}>
-              <View style={[s.planDot, { backgroundColor: p.cor }]} />
+              <View style={[s.planDot, { backgroundColor: dadoPlano(p.id) }]} />
               <Text style={s.planNome}>{p.nome}</Text>
               <View style={s.inputWrap}>
                 <Text style={s.cifrao}>R$</Text>
@@ -198,7 +200,7 @@ export default function AdminPrecosScreen() {
           <Text style={s.cardTitle}>Relatório por período (por crédito)</Text>
         <Text style={s.cardHint}>Deixe em branco para não alterar.</Text>
           <View style={s.precoRow}>
-            <Ionicons name="calendar-outline" size={18} color={colors.lav4} />
+            <Ionicons name="calendar-outline" size={18} color={acento('lilas').tinta} />
             <Text style={s.planNome}>Relatório personalizado</Text>
             <View style={s.inputWrap}>
               <Text style={s.cifrao}>R$</Text>
@@ -240,6 +242,7 @@ export default function AdminPrecosScreen() {
           onPress={handleSalvar}
           disabled={salvando}
         >
+          <Degrade />
           {salvando
             ? <ActivityIndicator size="small" color="white" />
             : <Ionicons name="checkmark-circle-outline" size={18} color="white" />}
@@ -258,53 +261,46 @@ export default function AdminPrecosScreen() {
 
 const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48 },
-  title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
+  sobre: est.sobretitulo(),
+  title: est.titulo(),
+  sub: { ...est.subtitulo(), marginBottom: spacing.lg },
 
-  card: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.md,
-  },
-  cardTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
-  cardSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: spacing.sm, lineHeight: 17 },
-  cardHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginBottom: spacing.sm },
+  card: { ...est.vidro(26), padding: 18, marginBottom: spacing.md },
+  cardTitle: { ...est.cartaoTitulo(), marginBottom: 4 },
+  cardSub: { ...est.legenda(), marginBottom: spacing.sm },
+  cardHint: { ...est.dica(), marginTop: 0, marginBottom: 6 },
 
   precoRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 0.5, borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave,
   },
-  planDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  planNome: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  planDot: { width: 12, height: 12, borderRadius: 6, flexShrink: 0 },
+  planNome: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 15, color: colors.td },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.bg, borderRadius: radius.sm,
+    backgroundColor: colors.cardSolido, borderRadius: 14,
     borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 8, paddingVertical: 6,
+    paddingHorizontal: 12, minHeight: 46,
   },
-  cifrao: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginRight: 2 },
+  cifrao: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.texto2, marginRight: 4 },
   precoInput: {
-    fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td,
-    minWidth: 60, textAlign: 'right',
+    fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td,
+    minWidth: 70, textAlign: 'right', paddingVertical: 10,
   },
 
   dateRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.bg, borderRadius: radius.md,
+    backgroundColor: colors.cardSolido, borderRadius: 14,
     borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.sm, paddingVertical: 10,
+    paddingHorizontal: 14, minHeight: 48,
   },
   dateInput: {
-    flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td,
+    flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.td, paddingVertical: 12,
   },
 
-  saveBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingVertical: 14, marginBottom: spacing.md,
-  },
-  saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
+  saveBtn: { ...est.botao(), marginBottom: spacing.md, marginTop: 4 },
+  saveBtnTxt: est.botaoTxt(),
 
-  hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 17, textAlign: 'center' },
+  hint: { ...est.dica(), textAlign: 'center' },
 }), { escalar: false });

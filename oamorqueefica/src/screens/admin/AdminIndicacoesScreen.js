@@ -8,8 +8,8 @@ import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { Card } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { urlDeImagem } from '../../utils/imagemUrl';
@@ -82,16 +82,18 @@ export default function AdminIndicacoesScreen({ navigation }) {
     <AdminLayout navigation={navigation} currentScreen="AdminIndicacoes">
       <AdminSubTabs grupo="parcerias" atual="AdminIndicacoes" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={st.scroll}>
+        <Text style={st.sobre}>Parcerias</Text>
         <Text style={st.pageTitle}>Indicações Atravessia</Text>
         <Text style={st.pageSub}>Vitrine de produtos com link de afiliada da Amazon. A comissão chega pela conta de Associados.</Text>
 
         <View style={st.statsRow}>
           <View style={st.statBox}><Text style={st.statN}>{itens.length}</Text><Text style={st.statL}>Produtos</Text></View>
-          <View style={st.statBox}><Text style={[st.statN, { color: colors.sageFg }]}>{ativos}</Text><Text style={st.statL}>Visíveis</Text></View>
+          <View style={st.statBox}><Text style={[st.statN, { color: acento('salvia').texto }]}>{ativos}</Text><Text style={st.statL}>Visíveis</Text></View>
           <View style={st.statBox}><Text style={st.statN}>{totalCliques}</Text><Text style={st.statL}>Cliques</Text></View>
         </View>
 
         <TouchableOpacity style={st.addBtn} onPress={abrirNovo}>
+          <Degrade />
           <Ionicons name="add" size={18} color="white" />
           <Text style={st.addBtnTxt}>Nova indicação</Text>
         </TouchableOpacity>
@@ -106,20 +108,21 @@ export default function AdminIndicacoesScreen({ navigation }) {
 
         {itens.length === 0 && (
           <View style={st.dica}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.lav5} />
+            <Ionicons name="information-circle-outline" size={18} color={acento('lilas').texto} />
             <Text style={st.dicaTxt}>
               Para começar: entre no programa Amazon Associados, gere o link de afiliada do produto (barra SiteStripe) e cadastre aqui com uma foto.
             </Text>
           </View>
         )}
 
-        {lista.map(item => {
+        {lista.length > 0 && <View style={st.lista}>
+        {lista.map((item, i) => {
           const inativo = item.ativo === false;
           const img = urlDeImagem(item.imagemUrl);
           return (
-            <Card key={item.id} style={[st.item, inativo && { opacity: 0.55 }]}>
+            <View key={item.id} style={[st.item, i > 0 && st.itemDiv, inativo && { opacity: 0.55 }]}>
               <View style={st.thumb}>
-                {img ? <Image source={{ uri: img }} style={st.thumbImg} resizeMode="contain" /> : <Ionicons name="gift-outline" size={22} color={colors.lav4} />}
+                {img ? <Image source={{ uri: img }} style={st.thumbImg} resizeMode="contain" /> : <Ionicons name="gift-outline" size={22} color={acento('pessego').tinta} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={st.itemCat}>{CATEGORIAS_INDICACAO.find(c => c.id === item.categoria)?.rotulo || 'Outros'}{inativo ? ' · oculta' : ''}</Text>
@@ -128,18 +131,19 @@ export default function AdminIndicacoesScreen({ navigation }) {
               </View>
               <View style={st.acoes}>
                 <TouchableOpacity style={st.acaoBtn} onPress={() => abrirEditar(item)} accessibilityLabel="Editar">
-                  <Ionicons name="pencil-outline" size={18} color={colors.lav5} />
+                  <Ionicons name="pencil-outline" size={18} color={colors.lilasIcone} />
                 </TouchableOpacity>
                 <TouchableOpacity style={st.acaoBtn} onPress={() => alternar(item)} accessibilityLabel={inativo ? 'Mostrar' : 'Ocultar'}>
                   <Ionicons name={inativo ? 'eye-outline' : 'eye-off-outline'} size={18} color={inativo ? colors.sageFg : colors.tl} />
                 </TouchableOpacity>
                 <TouchableOpacity style={st.acaoBtn} onPress={() => excluir(item)} accessibilityLabel="Excluir">
-                  <Ionicons name="trash-outline" size={18} color={colors.rose} />
+                  <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                 </TouchableOpacity>
               </View>
-            </Card>
+            </View>
           );
         })}
+        </View>}
       </ScrollView>
 
       <Modal visible={modal !== null} animationType="slide" transparent onRequestClose={fechar}>
@@ -148,7 +152,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
             <View style={st.modalCard}>
               <View style={st.modalHeader}>
                 <Text style={st.modalTitle}>{modal?.mode === 'add' ? 'Nova indicação' : 'Editar indicação'}</Text>
-                <TouchableOpacity onPress={fechar} accessibilityLabel="Fechar"><Ionicons name="close" size={22} color={colors.td} /></TouchableOpacity>
+                <TouchableOpacity onPress={fechar} accessibilityLabel="Fechar" style={st.fechar}><Ionicons name="close" size={20} color={colors.td} /></TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={st.label}>Nome do produto *</Text>
@@ -183,6 +187,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
                 </View>
 
                 <TouchableOpacity style={[st.saveBtn, salvando && { opacity: 0.6 }]} onPress={salvar} disabled={salvando}>
+                  <Degrade />
                   {salvando ? <ActivityIndicator size="small" color="white" /> : <Text style={st.saveBtnTxt}>Salvar</Text>}
                 </TouchableOpacity>
               </ScrollView>
@@ -195,42 +200,46 @@ export default function AdminIndicacoesScreen({ navigation }) {
 }
 
 const st = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.md },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
-  statN: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav5 },
-  statL: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
-  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 12, marginBottom: spacing.md },
-  addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
+  statBox: { ...est.vidro(20), flex: 1, alignItems: 'center', paddingVertical: 14 },
+  statN: { fontFamily: 'Figtree_800ExtraBold', fontSize: 24, color: acento('lilas').texto },
+  statL: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  addBtn: { ...est.botao(), marginBottom: spacing.md },
+  addBtnTxt: est.botaoTxt(),
   chipRow: { gap: 8, marginBottom: spacing.md },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 7, paddingHorizontal: 12 },
-  chipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  chipText: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm },
-  chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
-  dica: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
-  dicaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.lav6, lineHeight: 18 },
-  item: { marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadow.soft },
-  thumb: { width: 56, height: 56, borderRadius: radius.md, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  thumbImg: { width: 50, height: 50 },
-  itemCat: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lav5, letterSpacing: 0.5, textTransform: 'uppercase' },
-  itemTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginTop: 1 },
-  itemSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  acoes: { flexDirection: 'row', gap: 2 },
-  acaoBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: 40, maxHeight: '92%' },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipText: est.chipTxt(),
+  chipTextSel: est.chipTxtSel(),
+  dica: { ...est.aviso('lilas'), marginBottom: spacing.md },
+  dicaTxt: est.avisoTxt('lilas'),
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  itemDiv: est.divisoria(),
+  thumb: { width: 58, height: 58, borderRadius: 16, backgroundColor: colors.escuro ? colors.vidroTenue : '#FFFFFF', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  thumbImg: { width: 52, height: 52 },
+  itemCat: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, letterSpacing: 0.8, textTransform: 'uppercase' },
+  itemTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, marginTop: 2 },
+  itemSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  acoes: { flexDirection: 'row', gap: 4 },
+  acaoBtn: { ...est.botaoIcone(), width: 38, height: 38 },
+  overlay: { ...est.veu(), justifyContent: 'flex-end' },
+  modalCard: { ...est.folha(), padding: spacing.lg, paddingBottom: 40, maxHeight: '92%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
-  label: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.td, marginBottom: 4, marginTop: spacing.sm },
-  input: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  multi: { textAlignVertical: 'top', minHeight: 80 },
-  alerta: { fontFamily: fonts.body, fontSize: 12, color: colors.goldFg, marginTop: 4 },
-  previa: { width: '100%', height: 140, marginTop: 8, backgroundColor: 'white', borderRadius: radius.md },
+  modalTitle: est.modalTitulo(),
+  fechar: est.fechar(),
+  label: est.rotulo(),
+  input: est.campo(),
+  multi: { textAlignVertical: 'top', minHeight: 84 },
+  alerta: { ...est.dica(), color: acento('dourado').texto },
+  previa: { width: '100%', height: 150, marginTop: 10, backgroundColor: '#FFFFFF', borderRadius: 16 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.md },
-  switchTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  saveBtn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: spacing.lg },
-  saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
+  switchTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
+  saveBtn: { ...est.botao(), marginTop: spacing.lg },
+  saveBtnTxt: est.botaoTxt(),
 }), { escalar: false });

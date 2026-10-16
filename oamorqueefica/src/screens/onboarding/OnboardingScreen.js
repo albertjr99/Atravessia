@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg, ScriptTitle } from '../../components';
+import { Profundo } from '../../components/Efeitos';
 import { useAuth } from '../../hooks/AuthContext';
 
 const PASSOS = [
@@ -59,6 +61,47 @@ const PASSOS = [
 
 const NOTA_PLANOS = 'Alguns recursos fazem parte dos planos. Você escolhe o seu ritmo.';
 
+// As ilustrações são aquarelas num cartão de papel arredondado sobre fundo
+// branco (sem transparência). Ampliamos um pouco e recortamos nas bordas do
+// próprio cartão, para ele "flutuar" sobre a aurora sem o quadrado branco.
+function Ilustracao({ source, tamanho }) {
+  const raio = Math.round(tamanho * 0.12);
+  const extra = tamanho * 0.08;
+  return (
+    <View style={[s.ilMoldura, { width: tamanho, height: tamanho, borderRadius: raio }]}>
+      <View style={[StyleSheet.absoluteFill, { borderRadius: raio, overflow: 'hidden' }]}>
+        <Image
+          source={source}
+          resizeMode="cover"
+          style={{
+            position: 'absolute', left: -extra, top: -extra,
+            width: tamanho + extra * 2, height: tamanho + extra * 2,
+            opacity: colors.escuro ? 0.9 : 1,
+          }}
+        />
+      </View>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, s.ilBorda, { borderRadius: raio }]} />
+    </View>
+  );
+}
+
+// Botão principal: degradê lilás com "degrau" que afunda ao toque.
+function BotaoLilas({ onPress, children, rotulo }) {
+  return (
+    <Profundo
+      externo={s.btnExterno}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={onPress}
+      accessibilityLabel={rotulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.btnGrad} />
+      {children}
+    </Profundo>
+  );
+}
+
 // Tour do app.
 // - Primeiro acesso: aparece uma única vez, para contas novas (o cadastro grava
 //   onboardingPendente: true no perfil). Ao terminar, grava false e recomeça a
@@ -75,7 +118,7 @@ export default function OnboardingScreen({ navigation, route }) {
 
   const nome = perfil?.apelido || perfil?.nome?.split(' ')[0] || '';
   const ultimo = passo === PASSOS.length - 1;
-  const alturaImagem = Math.min(height * 0.32, 290);
+  const tamanhoImagem = Math.round(Math.min(height * 0.3, 260, width - 96));
 
   const irPara = (i) => {
     setPasso(i);
@@ -111,12 +154,14 @@ export default function OnboardingScreen({ navigation, route }) {
       <LavandaBg />
 
       <View style={[s.topo, { paddingTop: insets.top + 8 }]}>
-        <Text style={s.contador}>{passo + 1} de {PASSOS.length}</Text>
+        <View style={s.contadorChip}>
+          <Text style={s.contador}>{passo + 1} de {PASSOS.length}</Text>
+        </View>
         {!ultimo ? (
-          <TouchableOpacity onPress={() => concluir('MainTabs')} hitSlop={12}>
+          <TouchableOpacity onPress={() => concluir('MainTabs')} hitSlop={8} style={s.pularBtn} activeOpacity={0.8}>
             <Text style={s.pular}>{revisita ? 'Fechar' : 'Pular'}</Text>
           </TouchableOpacity>
-        ) : <View />}
+        ) : <View style={{ height: 40 }} />}
       </View>
 
       <ScrollView
@@ -134,25 +179,27 @@ export default function OnboardingScreen({ navigation, route }) {
             contentContainerStyle={s.passo}
             showsVerticalScrollIndicator={false}
           >
-            <Image source={p.imagem} style={[s.imagem, { height: alturaImagem }]} resizeMode="contain" />
+            <View style={s.imagem}>
+              <Ilustracao source={p.imagem} tamanho={tamanhoImagem} />
+            </View>
             {i === 0 && !revisita && !!nome && <Text style={s.boasVindas}>Boas-vindas, {nome}</Text>}
             {i === 0 && revisita && <Text style={s.boasVindas}>Tour do app</Text>}
             <View style={s.tituloLinha}>
               <View style={s.tituloIcone}>
-                <Ionicons name={p.icone} size={16} color={colors.lav5} />
+                <Ionicons name={p.icone} size={20} color={colors.lilasIcone} />
               </View>
             </View>
-            <ScriptTitle size={28} style={s.titulo}>{p.titulo}</ScriptTitle>
+            <ScriptTitle size={32} style={s.titulo}>{p.titulo}</ScriptTitle>
             <Text style={s.texto}>{p.texto}</Text>
             {(p.notaPlanos || i === PASSOS.length - 1) && (
               <View style={s.notaPlanos}>
-                <Ionicons name="diamond-outline" size={12} color={colors.lav5} />
+                <Ionicons name="diamond-outline" size={14} color={colors.lilasIcone} />
                 <Text style={s.notaPlanosTxt}>{NOTA_PLANOS}</Text>
               </View>
             )}
             {p.acao && (
               <TouchableOpacity style={s.acao} onPress={() => concluir(p.acao.destino)} activeOpacity={0.8}>
-                <Ionicons name="time-outline" size={15} color={colors.lav5} />
+                <Ionicons name="time-outline" size={18} color={colors.lilasIcone} />
                 <Text style={s.acaoTxt}>{p.acao.rotulo}</Text>
               </TouchableOpacity>
             )}
@@ -168,25 +215,25 @@ export default function OnboardingScreen({ navigation, route }) {
         </View>
 
         {ultimo && revisita ? (
-          <TouchableOpacity style={s.btnPrincipal} onPress={() => concluir()} activeOpacity={0.85}>
+          <BotaoLilas onPress={() => concluir()} rotulo="Concluir o tour">
             <Text style={s.btnPrincipalTxt}>Concluir o tour</Text>
-            <Ionicons name="checkmark" size={17} color="white" />
-          </TouchableOpacity>
+            <Ionicons name="checkmark" size={18} color="white" />
+          </BotaoLilas>
         ) : ultimo ? (
           <>
-            <TouchableOpacity style={s.btnPrincipal} onPress={() => concluir('CheckIn')} activeOpacity={0.85}>
+            <BotaoLilas onPress={() => concluir('CheckIn')} rotulo="Fazer meu primeiro check-in">
               <Text style={s.btnPrincipalTxt}>Fazer meu primeiro check-in</Text>
-              <Ionicons name="heart-outline" size={17} color="white" />
-            </TouchableOpacity>
+              <Ionicons name="heart-outline" size={18} color="white" />
+            </BotaoLilas>
             <TouchableOpacity style={s.btnSecundario} onPress={() => concluir('MainTabs')} activeOpacity={0.7}>
               <Text style={s.btnSecundarioTxt}>Explorar o app primeiro</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <TouchableOpacity style={s.btnPrincipal} onPress={() => irPara(passo + 1)} activeOpacity={0.85}>
+          <BotaoLilas onPress={() => irPara(passo + 1)} rotulo="Continuar">
             <Text style={s.btnPrincipalTxt}>Continuar</Text>
-            <Ionicons name="arrow-forward" size={17} color="white" />
-          </TouchableOpacity>
+            <Ionicons name="arrow-forward" size={18} color="white" />
+          </BotaoLilas>
         )}
       </View>
     </View>
@@ -199,51 +246,63 @@ const s = criarEstilos(() => ({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingBottom: spacing.sm,
   },
-  contador: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, letterSpacing: 0.4 },
-  pular: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lav5 },
+  contadorChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.full,
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  contador: { fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.texto2, letterSpacing: 0.3 },
+  pularBtn: {
+    minHeight: 40, paddingHorizontal: 16, borderRadius: radius.full, justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  pular: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lilasTexto },
 
   passo: {
     flexGrow: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.md,
   },
-  imagem: { width: '100%', maxWidth: 320, alignSelf: 'center', borderRadius: 24, marginBottom: spacing.lg },
-  boasVindas: {
-    fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5,
-    letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
+  imagem: { alignItems: 'center', marginBottom: spacing.xl },
+  ilMoldura: {
+    backgroundColor: colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 14 }, shadowOpacity: colors.escuro ? 0.45 : 0.16, shadowRadius: 26, elevation: 4,
   },
-  tituloLinha: { alignItems: 'center', marginBottom: 6 },
+  ilBorda: { borderWidth: 1, borderColor: colors.bordaLuz },
+  boasVindas: {
+    fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto,
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10,
+  },
+  tituloLinha: { alignItems: 'center', marginBottom: 10 },
   tituloIcone: {
-    width: 30, height: 30, borderRadius: 15, backgroundColor: colors.lav1,
+    width: 44, height: 44, borderRadius: 15, backgroundColor: colors.lav1,
     alignItems: 'center', justifyContent: 'center',
   },
-  titulo: { textAlign: 'center', marginBottom: spacing.md },
+  titulo: { textAlign: 'center', marginBottom: spacing.md, color: colors.titulo, lineHeight: 38 },
   texto: {
-    fontFamily: fonts.body, fontSize: 15, color: colors.tm,
-    textAlign: 'center', lineHeight: 23, maxWidth: 420,
+    fontFamily: fonts.body, fontSize: 16, color: colors.texto2,
+    textAlign: 'center', lineHeight: 25, maxWidth: 460,
   },
 
   notaPlanos: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md,
-    backgroundColor: colors.lav1, borderRadius: radius.full, paddingVertical: 6, paddingHorizontal: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: spacing.lg,
+    backgroundColor: colors.lav1, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14,
   },
-  notaPlanosTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.lav6 },
+  notaPlanosTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.lilasTexto, flexShrink: 1 },
   acao: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md,
-    borderWidth: 1, borderColor: colors.lav3, borderRadius: radius.full,
-    paddingVertical: 9, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.lg,
+    minHeight: 48, paddingHorizontal: 20, borderRadius: radius.full,
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.lav2,
   },
-  acaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
+  acaoTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
 
   rodape: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, alignItems: 'center' },
   pontos: { flexDirection: 'row', gap: 7, marginBottom: spacing.lg },
-  ponto: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.lav2 },
-  pontoAtivo: { width: 22, backgroundColor: colors.botaoForte },
-  btnPrincipal: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    width: '100%', maxWidth: 420, paddingVertical: 15, borderRadius: radius.full,
-    backgroundColor: colors.botaoForte,
-  },
-  btnPrincipalTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-  btnSecundario: { paddingVertical: 12, marginTop: 4 },
-  btnSecundarioTxt: { fontFamily: fonts.body, fontSize: 13.5, color: colors.lav5, textDecorationLine: 'underline' },
+  ponto: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.lav2 },
+  pontoAtivo: { width: 24, backgroundColor: colors.botao },
+  btnExterno: { width: '100%', maxWidth: 420 },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 54, paddingHorizontal: 22, overflow: 'hidden' },
+  btnGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  btnHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 5 },
+  btnPrincipalTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnSecundario: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, marginTop: 6 },
+  btnSecundarioTxt: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.lilasTexto, textDecorationLine: 'underline' },
 }));

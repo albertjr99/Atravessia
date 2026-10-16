@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { emocoes } from '../../data';
@@ -117,19 +118,20 @@ export default function ConversaIAScreen({ navigation }) {
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
+      <LavandaBg />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconeBtn} accessibilityLabel="Voltar">
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
         <View style={s.topCentro}>
-          <View style={s.avatar}><Ionicons name="sparkles" size={15} color="white" /></View>
+          <View style={s.avatar}><Ionicons name="sparkles" size={16} color={colors.lilasIcone} /></View>
           <View>
             <Text style={s.topTitulo}>AtravessIA</Text>
             <Text style={s.topSub}>{digitando ? 'escrevendo...' : 'acolhimento'}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={apagar} style={s.iconeBtn} accessibilityLabel="Apagar conversa">
-          <Ionicons name="trash-outline" size={20} color={colors.tm} />
+          <Ionicons name="trash-outline" size={19} color={colors.texto2} />
         </TouchableOpacity>
       </View>
 
@@ -141,7 +143,7 @@ export default function ConversaIAScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={s.aviso}>
-          <Ionicons name="information-circle-outline" size={15} color={colors.lav5} />
+          <Ionicons name="information-circle-outline" size={17} color={colors.lilasIcone} />
           <Text style={s.avisoTxt}>{AVISO_IA} Em situação de risco, ligue para o CVV: 188.</Text>
         </View>
 
@@ -154,7 +156,7 @@ export default function ConversaIAScreen({ navigation }) {
               <View style={s.sugestoes}>
                 {m.sugestoes.map(sg => (
                   <TouchableOpacity key={sg.id} style={[s.sugestao, sg.link && s.sugestaoUrgente]} onPress={() => tocarSugestao(sg)} activeOpacity={0.85}>
-                    <Ionicons name={sg.icone} size={15} color={sg.link ? 'white' : colors.lav5} />
+                    <Ionicons name={sg.icone} size={16} color={sg.link ? 'white' : colors.lilasIcone} />
                     <Text style={[s.sugestaoTxt, sg.link && { color: 'white' }]}>{sg.rotulo}</Text>
                   </TouchableOpacity>
                 ))}
@@ -209,55 +211,62 @@ const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border,
-    backgroundColor: colors.card,
+    paddingHorizontal: spacing.lg, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave,
+    backgroundColor: colors.vidroForte,
   },
-  iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  iconeBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
   topCentro: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.botaoForte, alignItems: 'center', justifyContent: 'center' },
-  topTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
-  topSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
-  lista: { padding: spacing.md, paddingBottom: spacing.lg, gap: 10, width: '100%' },
+  avatar: { width: 38, height: 38, borderRadius: 13, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  topTitulo: { fontFamily: fonts.serif, fontSize: 22, color: colors.titulo },
+  topSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.texto2 },
+  lista: { padding: spacing.lg, paddingBottom: spacing.lg, gap: 12, width: '100%' },
   aviso: {
-    flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: colors.lav1,
-    borderRadius: radius.md, padding: 10, marginBottom: 4,
+    flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: colors.vidroTenue,
+    borderRadius: 16, padding: 12, marginBottom: 4, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 17 },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.texto2, lineHeight: 18 },
   linha: { maxWidth: '88%', gap: 6 },
   linhaEu: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   linhaIa: { alignSelf: 'flex-start' },
-  balao: { borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
-  balaoIa: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderTopLeftRadius: 6 },
+  balao: { borderRadius: 20, paddingVertical: 11, paddingHorizontal: 15 },
+  balaoIa: {
+    backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaLuz, borderTopLeftRadius: 6,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 6 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 12, elevation: 1,
+  },
   balaoEu: { backgroundColor: colors.botaoForte, borderTopRightRadius: 6 },
   balaoRisco: { borderColor: colors.roseTexto, borderWidth: 1.5 },
-  balaoTxt: { fontFamily: fonts.body, fontSize: 14.5, color: colors.td, lineHeight: 21 },
+  balaoTxt: { fontFamily: fonts.body, fontSize: 15, color: colors.titulo, lineHeight: 23 },
   balaoTxtEu: { color: 'white' },
   sugestoes: { gap: 6 },
   sugestao: {
     flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-    backgroundColor: colors.lav1, borderRadius: radius.full, paddingVertical: 9, paddingHorizontal: 14,
+    backgroundColor: colors.lav1, borderRadius: radius.full, minHeight: 40, paddingHorizontal: 14,
   },
   sugestaoUrgente: { backgroundColor: colors.roseTexto },
-  sugestaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
-  digitando: { flexDirection: 'row', gap: 5, paddingVertical: 14 },
+  sugestaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
+  digitando: { flexDirection: 'row', gap: 5, paddingVertical: 15 },
   ponto: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.lav3 },
   rapidas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   rapida: {
-    borderWidth: 1, borderColor: colors.lav3, borderRadius: radius.full,
-    paddingVertical: 8, paddingHorizontal: 14, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.lav2, borderRadius: radius.full,
+    minHeight: 40, justifyContent: 'center', paddingHorizontal: 15, backgroundColor: colors.vidro,
   },
-  rapidaTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.lav6 },
+  rapidaTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.lilasTexto },
   barra: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: spacing.md, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave, backgroundColor: colors.vidroForte,
   },
   entrada: {
-    flex: 1, minHeight: 44, maxHeight: 130, borderRadius: 22, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg, paddingHorizontal: 16, paddingTop: 11, paddingBottom: 11,
-    fontFamily: fonts.body, fontSize: 14.5, color: colors.td,
+    flex: 1, minHeight: 48, maxHeight: 130, borderRadius: 24, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cardSolido, paddingHorizontal: 16, paddingTop: 13, paddingBottom: 13,
+    fontFamily: fonts.body, fontSize: 14.5, color: colors.titulo,
   },
   enviar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.botaoForte,
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.botaoForte,
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 3,
   },
 }));

@@ -3,7 +3,7 @@ import { db } from './firebase';
 import {
   collection, onSnapshot, doc, updateDoc, Timestamp,
 } from 'firebase/firestore';
-import { IconClose, IconSpark } from './Icons';
+import { IconClose, IconSpark, IconSearch, IconChevron } from './Icons';
 
 const PLANO_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
 
@@ -67,14 +67,14 @@ function CortesiaForm({ usuaria, onSalvar, onCancelar }) {
   return (
     <div className="cortesia-box">
       <div className="cortesia-title">Cortesia temporária</div>
-      <p style={{ fontSize: 13, color: '#8A5B00', marginBottom: 12 }}>Concede acesso total temporário a <strong>{usuaria.nome || usuaria.email}</strong> por um número de dias.
+      <p className="cortesia-texto">Concede acesso total temporário a <strong>{usuaria.nome || usuaria.email}</strong> por um número de dias.
       </p>
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
         <div className="field-group" style={{ flex: 1, marginBottom: 0 }}>
           <label>Duração (dias)</label>
           <input type="number" value={dias} onChange={e => setDias(e.target.value)} min={1} max={365} />
         </div>
-        <button className="btn-primary" style={{ background: '#D4A500', marginBottom: 0 }} onClick={aplicar} disabled={salvando}>
+        <button className="btn-primary btn-cortesia" onClick={aplicar} disabled={salvando}>
           {salvando ? 'Aplicando...' : ' Aplicar'}
         </button>
         <button className="btn-ghost" onClick={onCancelar}>Cancelar</button>
@@ -130,7 +130,7 @@ function PlanoModal({ usuaria, onClose, showToast, planosDocs }) {
           <button className="modal-close" onClick={onClose}><IconClose size={17} /></button>
         </div>
         <div className="modal-body">
-          <div style={{ marginBottom: 14, padding: 12, background: 'var(--primary-lav)', borderRadius: 10, fontSize: 13 }}>
+          <div className="plano-atual">
             <strong>Plano atual:</strong>{' '}
             {hasAcessoTotal ? <span className="badge badge-total" style={{ marginLeft: 4 }}>Acesso Total</span>
               : cortesiaAtiva ? <span className="badge badge-cortesia" style={{ marginLeft: 4 }}>Cortesia até {usuaria.cortesia.expiracao.toDate().toLocaleDateString('pt-BR')}</span>
@@ -269,9 +269,9 @@ export default function Usuarias({ showToast }) {
       )}
 
       <div className="search-bar">
-        <span></span>
+        <IconSearch size={18} />
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou e-mail..." />
-        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}></button>}
+        {busca && <button className="search-limpar" onClick={() => setBusca('')} aria-label="Limpar"><IconClose size={16} /></button>}
       </div>
 
       <div className="filter-row">
@@ -299,7 +299,7 @@ export default function Usuarias({ showToast }) {
             <div key={u.id} className="user-card" onClick={() => setModalUsuaria(u)}>
               <div className="user-avatar">
                 {u.photoURL
-                  ? <img src={u.photoURL} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} />
+                  ? <img src={u.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : (u.nome || u.email || 'U')[0].toUpperCase()
                 }
               </div>
@@ -311,7 +311,7 @@ export default function Usuarias({ showToast }) {
                   {u.criadoEm && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{timeAgo(u.criadoEm)}</span>}
                 </div>
               </div>
-              <div style={{ color: 'var(--text-light)', fontSize: 18 }}>›</div>
+              <div className="user-seta"><IconChevron size={18} /></div>
             </div>
           ))}
         </div>

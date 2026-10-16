@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import MemoriaExperiencia from '../../components/MemoriaExperiencia';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
   Modal, Pressable, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { situacaoCupom } from '../../utils/cupons';
@@ -83,7 +86,7 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
           <Image source={{ uri: imagem }} style={s.logo} resizeMode="contain" onError={() => setErroImg(true)} />
         ) : (
           <View style={[s.logo, s.logoVazio]}>
-            <Ionicons name="gift-outline" size={24} color={colors.lav3} />
+            <Ionicons name="gift-outline" size={24} color={colors.lilasIcone} />
           </View>
         )}
         <View style={s.cardCorpo}>
@@ -94,7 +97,7 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
             )}
             {!!local && (
               <View style={s.localTag}>
-                <Ionicons name={p.atendimentoOnline && !p.estado ? 'globe-outline' : 'location-outline'} size={11} color={colors.lav5} />
+                <Ionicons name={p.atendimentoOnline && !p.estado ? 'globe-outline' : 'location-outline'} size={13} color={colors.tl} />
                 <Text style={s.localTxt} numberOfLines={1}>{local}</Text>
               </View>
             )}
@@ -116,22 +119,27 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
       <View style={s.cardRodape}>
         {desconto > 0 ? (
           <View style={s.tagCupom}>
-            <Ionicons name="pricetag" size={11} color="#8A6A33" />
+            <Ionicons name="pricetag-outline" size={13} color={colors.douradoTitulo} />
             <Text style={s.tagCupomTxt}>{desconto}% de desconto</Text>
           </View>
         ) : <View />}
         {temAcao ? (
-          <TouchableOpacity
-            style={[s.botao, carregando && { opacity: 0.7 }]}
-            onPress={onAcao}
-            disabled={carregando}
-            activeOpacity={0.85}
+          // Botão com degradê e "degrau" que afunda ao toque
+          <Profundo
+            externo={carregando && { opacity: 0.7 }}
+            estilo={s.botao}
+            base={colors.botaoBase}
+            sombra={s.botaoHalo}
+            altura={4}
+            onPress={carregando ? undefined : onAcao}
+            accessibilityLabel={ehCupom ? 'Gerar cupom' : 'Acessar'}
           >
+            <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.botaoGrad} />
             {carregando
               ? <ActivityIndicator size="small" color="white" />
-              : <Ionicons name={ehCupom ? 'ticket-outline' : 'open-outline'} size={14} color="white" />}
+              : <Ionicons name={ehCupom ? 'ticket-outline' : 'open-outline'} size={16} color="white" />}
             <Text style={s.botaoTxt}>{carregando ? 'Gerando...' : ehCupom ? 'Gerar cupom' : 'Acessar'}</Text>
-          </TouchableOpacity>
+          </Profundo>
         ) : null}
       </View>
     </View>
@@ -238,13 +246,13 @@ export default function ParceriasScreen({ navigation }) {
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Benefícios e Parcerias</Text>
+        <Text style={s.topTitle} numberOfLines={1}>Benefícios e Parcerias</Text>
         <TouchableOpacity onPress={() => navigation.navigate('MeusCupons')} style={s.backBtn} accessibilityLabel="Meus cupons">
-          <Ionicons name="ticket-outline" size={22} color={colors.lav5} />
+          <Ionicons name="ticket-outline" size={20} color={colors.lilasIcone} />
           {cuponsEmAberto > 0 && (
             <View style={s.badge}><Text style={s.badgeTxt}>{cuponsEmAberto}</Text></View>
           )}
@@ -254,12 +262,14 @@ export default function ParceriasScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}>
         {cuponsEmAberto > 0 && (
           <TouchableOpacity style={s.meusCupons} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.85}>
-            <Ionicons name="ticket-outline" size={18} color={colors.lav5} />
+            <View style={s.meusCuponsIcone}>
+              <Ionicons name="ticket-outline" size={19} color={colors.sageFg} />
+            </View>
             <Text style={s.meusCuponsTxt}>
               {cuponsEmAberto === 1 ? 'Você tem 1 cupom em aberto' : `Você tem ${cuponsEmAberto} cupons em aberto`}
             </Text>
             <Text style={s.meusCuponsLink}>Ver</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.lav5} />
+            <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
           </TouchableOpacity>
         )}
 
@@ -274,23 +284,27 @@ export default function ParceriasScreen({ navigation }) {
 
         {/* Filtro: área da vida */}
         <Text style={s.filtroRotulo}>Área da vida</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
-          {FILTROS.map(f => (
-            <TouchableOpacity
-              key={f.id}
-              style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
-              onPress={() => setFiltroAtivo(f.id)}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>{f.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={s.trilho}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
+            {FILTROS.map(f => (
+              <TouchableOpacity
+                key={f.id}
+                style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
+                onPress={() => setFiltroAtivo(f.id)}
+                activeOpacity={0.75}
+                accessibilityState={{ selected: filtroAtivo === f.id }}
+              >
+                <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>{f.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
         {/* Filtro: onde */}
         {filtrosLocalAtivos && (
           <>
             <Text style={s.filtroRotulo}>Onde</Text>
+            <View style={s.trilho}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
               <TouchableOpacity
                 style={[s.filtroChip, onde === 'todos' && s.filtroChipAtivo]}
@@ -303,7 +317,7 @@ export default function ParceriasScreen({ navigation }) {
                   style={[s.filtroChip, s.filtroChipIcone, onde === 'online' && s.filtroChipAtivo]}
                   onPress={() => setOnde('online')}
                 >
-                  <Ionicons name="globe-outline" size={13} color={onde === 'online' ? 'white' : colors.lav5} />
+                  <Ionicons name="globe-outline" size={15} color={onde === 'online' ? colors.lilasTexto : colors.tl} />
                   <Text style={[s.filtroChipTxt, onde === 'online' && s.filtroChipTxtAtivo]}>Atendimento on-line</Text>
                 </TouchableOpacity>
               )}
@@ -312,11 +326,11 @@ export default function ParceriasScreen({ navigation }) {
                   style={[s.filtroChip, s.filtroChipIcone, estadoSel && s.filtroChipAtivo]}
                   onPress={() => setEscolhendo('estado')}
                 >
-                  <Ionicons name="location-outline" size={13} color={estadoSel ? 'white' : colors.lav5} />
+                  <Ionicons name="location-outline" size={15} color={estadoSel ? colors.lilasTexto : colors.tl} />
                   <Text style={[s.filtroChipTxt, estadoSel && s.filtroChipTxtAtivo]}>
                     {estadoSel ? nomeDoEstado(estadoSel) : 'Estado'}
                   </Text>
-                  <Ionicons name="chevron-down" size={12} color={estadoSel ? 'white' : colors.tm} />
+                  <Ionicons name="chevron-down" size={14} color={estadoSel ? colors.lilasTexto : colors.tl} />
                 </TouchableOpacity>
               )}
               {estadoSel && cidadesDoEstado.length > 0 && (
@@ -325,10 +339,11 @@ export default function ParceriasScreen({ navigation }) {
                   onPress={() => setEscolhendo('cidade')}
                 >
                   <Text style={[s.filtroChipTxt, !!cidadeSel && s.filtroChipTxtAtivo]}>{cidadeSel || 'Cidade'}</Text>
-                  <Ionicons name="chevron-down" size={12} color={cidadeSel ? 'white' : colors.tm} />
+                  <Ionicons name="chevron-down" size={14} color={cidadeSel ? colors.lilasTexto : colors.tl} />
                 </TouchableOpacity>
               )}
             </ScrollView>
+            </View>
             {estadoSel && temOnline && (
               <Text style={s.notaFiltro}>Também aparecem as parcerias com atendimento on-line.</Text>
             )}
@@ -338,7 +353,7 @@ export default function ParceriasScreen({ navigation }) {
         {/* Lista de parcerias */}
         {parcerias.length === 0 ? (
           <View style={s.emptyBox}>
-            <Ionicons name="hourglass-outline" size={40} color={colors.lav3} />
+            <View style={s.emptyIcone}><Ionicons name="hourglass-outline" size={30} color={colors.lilasIcone} /></View>
             <Text style={s.emptyTit}>Em breve</Text>
             <Text style={s.emptySub}>
               Novas parcerias e benefícios exclusivos serão anunciados em breve. Fique de olho!
@@ -346,7 +361,7 @@ export default function ParceriasScreen({ navigation }) {
           </View>
         ) : parceriasExibidas.length === 0 ? (
           <View style={s.emptyBox}>
-            <Ionicons name="search-outline" size={36} color={colors.lav3} />
+            <View style={s.emptyIcone}><Ionicons name="search-outline" size={28} color={colors.lilasIcone} /></View>
             <Text style={s.emptyTit}>Sem parcerias aqui</Text>
             <Text style={s.emptySub}>Nenhuma parceria com esses filtros ainda. Tente outra área ou outro lugar.</Text>
           </View>
@@ -358,6 +373,11 @@ export default function ParceriasScreen({ navigation }) {
             {renderCartoes()}
           </View>
         )}
+
+        {/* Memória da experiência (opcional): aparece na Carta do mês */}
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
+          <MemoriaExperiencia parcerias={parcerias} />
+        </View>
       </ScrollView>
 
       {/* Escolha de estado / cidade */}
@@ -407,94 +427,124 @@ export default function ParceriasScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
+  safe: { flex: 1, backgroundColor: colors.bg },
+
+  // Cabeçalho: voltar e "meus cupons" em pílulas de vidro, título em Cormorant
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 26, color: colors.titulo },
   badge: {
-    position: 'absolute', top: 2, right: 0, minWidth: 16, height: 16, borderRadius: 8,
-    backgroundColor: colors.peach2, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+    position: 'absolute', top: -3, right: -3, minWidth: 19, height: 19, borderRadius: 10,
+    backgroundColor: colors.botaoForte, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+    borderWidth: 1.5, borderColor: colors.cardSolido,
   },
   badgeTxt: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: 'white' },
+
   meusCupons: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: spacing.lg, marginTop: spacing.sm, padding: spacing.md,
-    borderRadius: radius.lg, backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: spacing.lg, marginTop: spacing.sm, paddingVertical: 10, paddingHorizontal: 12,
+    borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 8 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 18, elevation: 2,
   },
-  meusCuponsTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
-  meusCuponsLink: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
-  safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-  },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  meusCuponsIcone: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.sageFundo, alignItems: 'center', justifyContent: 'center' },
+  meusCuponsTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 14, color: colors.titulo },
+  meusCuponsLink: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
 
-  hero: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: 6 },
-  heroTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td, textAlign: 'center', lineHeight: 25 },
-  heroSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 19 },
+  hero: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: 8 },
+  heroTitle: { fontFamily: fonts.serif, fontSize: 30, color: colors.titulo, textAlign: 'center', lineHeight: 36 },
+  heroSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21 },
 
+  // Filtros: chips num trilho de vidro (o ativo fica em branco sólido)
   filtroRotulo: {
-    fontFamily: fonts.bodyBold, fontSize: 11, color: colors.tl, letterSpacing: 0.6, textTransform: 'uppercase',
-    paddingHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: 4,
+    fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lilasTexto, letterSpacing: 1, textTransform: 'uppercase',
+    paddingHorizontal: spacing.lg + 4, marginTop: spacing.md, marginBottom: 8,
   },
-  filtrosRow: { paddingHorizontal: spacing.lg, gap: 8, paddingVertical: 4 },
+  trilho: {
+    marginHorizontal: spacing.lg, borderRadius: radius.full, overflow: 'hidden',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  filtrosRow: { padding: 4, gap: 4 },
   filtroChip: {
-    backgroundColor: colors.card, borderRadius: radius.full,
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderWidth: 1.5, borderColor: colors.border,
+    minHeight: 38, justifyContent: 'center', borderRadius: radius.full, paddingHorizontal: 14,
   },
-  filtroChipIcone: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  filtroChipAtivo: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
-  filtroChipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.td },
-  filtroChipTxtAtivo: { fontFamily: fonts.bodyBold, color: 'white' },
-  notaFiltro: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, paddingHorizontal: spacing.lg, marginTop: 2 },
+  filtroChipIcone: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  filtroChipAtivo: {
+    backgroundColor: colors.escuro ? colors.lav2 : colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 1,
+  },
+  filtroChipTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2 },
+  filtroChipTxtAtivo: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+  notaFiltro: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, paddingHorizontal: spacing.lg + 4, marginTop: 6 },
 
   emptyBox: { alignItems: 'center', padding: spacing.xxl, gap: 10 },
-  emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
-  emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20 },
+  emptyIcone: { width: 64, height: 64, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo },
+  emptySub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21 },
 
-  lista: { paddingHorizontal: spacing.lg, marginTop: spacing.md },
-  listaTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tm, marginBottom: spacing.sm },
+  lista: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
+  listaTitle: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, marginBottom: 10, marginLeft: 4 },
   grade: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 },
 
+  // Cartão de vidro da parceria
   card: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 12, marginBottom: 10, gap: 8,
-    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    backgroundColor: colors.card, borderRadius: 24,
+    borderWidth: 1, borderColor: colors.bordaLuz,
+    padding: 16, marginBottom: 12, gap: 10,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 20, elevation: 2,
   },
   cardGrade: { marginBottom: 0, flex: 1 },
-  cardLinha: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  logo: { width: 56, height: 56, borderRadius: 12, backgroundColor: 'white', borderWidth: 1, borderColor: colors.border },
-  logoVazio: { backgroundColor: colors.lav1, borderColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
+  cardLinha: { flexDirection: 'row', gap: 14, alignItems: 'center' },
+  logo: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFFFFF' },
+  logoVazio: { backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
   cardCorpo: { flex: 1, minWidth: 0, gap: 4 },
-  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 14.5, lineHeight: 19, color: colors.td },
-  metaLinha: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  meta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.lav5, maxWidth: '100%' },
+  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 21, color: colors.titulo },
+  metaLinha: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 },
+  meta: { fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.lilasTexto, maxWidth: '100%' },
   localTag: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '100%' },
-  localTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, flexShrink: 1 },
-  cardDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, lineHeight: 19 },
-  verMais: { alignSelf: 'flex-start', marginTop: 2 },
-  verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  cardRodape: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  localTxt: { fontFamily: fonts.body, fontSize: 11.5, color: colors.texto2, flexShrink: 1 },
+  cardDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, lineHeight: 20 },
+  verMais: { alignSelf: 'flex-start', marginTop: 4 },
+  verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lilasTexto },
+  cardRodape: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingTop: 12, marginTop: 2, borderTopWidth: 1, borderTopColor: colors.bordaSuave,
+  },
   tagCupom: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.gold + '30', borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: colors.douradoFundo, borderRadius: radius.full, paddingHorizontal: 11, paddingVertical: 6,
   },
-  tagCupomTxt: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.goldFg },
+  tagCupomTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.douradoTitulo },
   botao: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.lav4, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    minHeight: 42, paddingHorizontal: 18, overflow: 'hidden',
   },
-  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
+  botaoGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  botaoHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 6 }, shadowOpacity: colors.escuro ? 0.4 : 0.26, shadowRadius: 10, elevation: 3 },
+  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: 'white' },
 
   modalFundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
-  modalTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginBottom: spacing.sm },
+  modalCaixa: {
+    width: '100%', maxWidth: 420, backgroundColor: colors.cardSolido, borderRadius: 26, padding: spacing.lg,
+    borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.2, shadowRadius: 30, elevation: 8,
+  },
+  modalTit: { fontFamily: fonts.serif, fontSize: 24, color: colors.titulo, marginBottom: spacing.sm },
   opcao: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border,
+    minHeight: 50, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave,
   },
-  opcaoTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  opcaoSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
-  opcaoQtd: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
+  opcaoTxt: { fontFamily: fonts.body, fontSize: 15, color: colors.titulo },
+  opcaoSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+  opcaoQtd: {
+    fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.lilasTexto, backgroundColor: colors.lav1,
+    borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 2, overflow: 'hidden',
+  },
 }));

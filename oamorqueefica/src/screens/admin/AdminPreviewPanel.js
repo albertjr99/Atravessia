@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, radius, criarEstilos } from '../../theme';
 
 const PHONE_W = 238;
-const PHONE_H = PHONE_W * 1.95;
+const PHONE_H = PHONE_W * 2.02;
 
 // ── Preview widgets ──────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ function TravessiaPreview() {
   return (
     <View style={pw.section}>
       <View style={pw.sectionHeader}>
-        <Ionicons name="compass-outline" size={12} color={colors.lav5} />
+        <Ionicons name="compass-outline" size={12} color="#7A65CB" />
         <Text style={pw.sectionTitle}>Continue a Travessia</Text>
       </View>
       {itens.length === 0
@@ -32,13 +33,13 @@ function TravessiaPreview() {
         : itens.map(item => (
           <View key={item.id} style={pw.row}>
             <View style={pw.rowIcon}>
-              <Ionicons name={item.icone || 'link-outline'} size={11} color={colors.lav5} />
+              <Ionicons name={item.icone || 'link-outline'} size={11} color="#7A65CB" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={pw.rowTitle} numberOfLines={1}>{item.titulo}</Text>
               {item.descricao ? <Text style={pw.rowSub} numberOfLines={1}>{item.descricao}</Text> : null}
             </View>
-            <Ionicons name="chevron-forward" size={9} color={colors.lav4} />
+            <Ionicons name="chevron-forward" size={9} color="#8B7AC0" />
           </View>
         ))
       }
@@ -108,7 +109,7 @@ function AudiosPreview() {
   return (
     <View style={pw.section}>
       <View style={pw.sectionHeader}>
-        <Ionicons name="musical-notes-outline" size={12} color={colors.lav5} />
+        <Ionicons name="musical-notes-outline" size={12} color="#7A65CB" />
         <Text style={pw.sectionTitle}>Áudios de Acolhimento</Text>
       </View>
       {audios.length === 0 && <Text style={pw.empty}>Nenhum áudio ainda</Text>}
@@ -141,13 +142,13 @@ function VitoriasPreview() {
   return (
     <View style={pw.section}>
       <View style={pw.sectionHeader}>
-        <Ionicons name="star-outline" size={12} color={colors.lav5} />
+        <Ionicons name="star-outline" size={12} color="#7A65CB" />
         <Text style={pw.sectionTitle}>Pequenas Vitórias</Text>
       </View>
       {vitorias.length === 0 && <Text style={pw.empty}>Nenhuma vitória cadastrada</Text>}
       {vitorias.map(v => (
         <View key={v.id} style={pw.row}>
-          <Ionicons name="star" size={10} color="#D4A857" />
+          <Ionicons name="star" size={10} color="#C9A15A" />
           <Text style={pw.rowTitle} numberOfLines={1}>{v.titulo || v.texto}</Text>
         </View>
       ))}
@@ -158,7 +159,7 @@ function VitoriasPreview() {
 function DefaultPreview() {
   return (
     <View style={pw.defaultWrap}>
-      <Ionicons name="eye-outline" size={26} color={colors.lav3} />
+      <Ionicons name="eye-outline" size={26} color="#A595DC" />
       <Text style={pw.defaultTitle}>Prévia disponível</Text>
       <Text style={pw.defaultSub}>
         Módulos com prévia:{'\n\n'}
@@ -189,46 +190,59 @@ const NAV_TABS = [
   { icon: 'person', label: 'Perfil' },
 ];
 
+// Moldura de celular moderna (ilha no topo, cantos arredondados, barra de
+// abas em cápsula). O celular da prévia é sempre claro, como o app aberto.
 function PhoneFrame({ currentScreen, children }) {
   const activeTab = currentScreen === 'AdminAudios' ? 2
     : currentScreen === 'AdminTravessia' ? 1 : 0;
 
   return (
     <View style={ph.phone}>
-      {/* Notch */}
-      <View style={ph.notch} />
-      {/* Status bar */}
-      <View style={ph.statusBar}>
-        <Text style={ph.statusTime}>9:41</Text>
-        <View style={{ flexDirection: 'row', gap: 3 }}>
-          <Ionicons name="cellular" size={8} color="#555" />
-          <Ionicons name="wifi" size={8} color="#555" />
-          <Ionicons name="battery-full" size={8} color="#555" />
-        </View>
-      </View>
-      {/* App bar */}
-      <View style={ph.appBar}>
-        <Text style={ph.appBarTitle}>Atravessia</Text>
-      </View>
-      {/* Screen content */}
-      <ScrollView style={ph.screen} showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
-      {/* Bottom nav */}
-      <View style={ph.bottomNav}>
-        {NAV_TABS.map((tab, i) => (
-          <View key={tab.label} style={ph.navTab}>
-            <Ionicons
-              name={i === activeTab ? tab.icon : `${tab.icon}-outline`}
-              size={14}
-              color={i === activeTab ? colors.lav5 : '#bbb'}
-            />
-            <Text style={[ph.navLabel, i === activeTab && { color: colors.lav5 }]}>{tab.label}</Text>
+      <View style={ph.tela}>
+        {/* Aurora suave do app */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={['#E9E0FA', '#F6EDF0', '#F6F1EE']}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Ilha */}
+        <View style={ph.notch} />
+        {/* Status bar */}
+        <View style={ph.statusBar}>
+          <Text style={ph.statusTime}>9:41</Text>
+          <View style={{ flexDirection: 'row', gap: 3 }}>
+            <Ionicons name="cellular" size={8} color="#2A2433" />
+            <Ionicons name="wifi" size={8} color="#2A2433" />
+            <Ionicons name="battery-full" size={8} color="#2A2433" />
           </View>
-        ))}
+        </View>
+        {/* App bar */}
+        <View style={ph.appBar}>
+          <Text style={ph.appBarTitle}>Atravessia</Text>
+        </View>
+        {/* Screen content */}
+        <ScrollView style={ph.screen} showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+        {/* Bottom nav */}
+        <View style={ph.bottomNav}>
+          {NAV_TABS.map((tab, i) => (
+            <View key={tab.label} style={ph.navTab}>
+              <View style={[ph.navIcone, i === activeTab && ph.navIconeAtivo]}>
+                <Ionicons
+                  name={i === activeTab ? tab.icon : `${tab.icon}-outline`}
+                  size={12}
+                  color={i === activeTab ? '#5A46AD' : '#8C849A'}
+                />
+              </View>
+              <Text style={[ph.navLabel, i === activeTab && ph.navLabelAtivo]}>{tab.label}</Text>
+            </View>
+          ))}
+        </View>
+        {/* Home indicator */}
+        <View style={ph.homeIndicator} />
       </View>
-      {/* Home indicator */}
-      <View style={ph.homeIndicator} />
     </View>
   );
 }
@@ -254,13 +268,22 @@ export default function AdminPreviewPanel({ currentScreen }) {
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
-// O painel acompanha o tema; o celular da prévia continua claro.
+// O painel acompanha o tema (vidro flutuante); o celular da prévia continua claro.
 const s = criarEstilos(() => ({
   panel: {
-    width: 292,
-    backgroundColor: colors.lav1,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
+    width: 300,
+    marginTop: 10,
+    marginBottom: 10,
+    marginRight: 10,
+    backgroundColor: colors.escuro ? colors.card : colors.vidro,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: colors.escuro ? 0.3 : 0.11,
+    shadowRadius: 20,
+    elevation: 2,
     paddingVertical: 20,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -268,29 +291,31 @@ const s = criarEstilos(() => ({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     alignSelf: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   dot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#3E7A55',
+    borderWidth: 2,
+    borderColor: 'rgba(62,122,85,0.25)',
   },
   headerLabel: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 10,
-    color: colors.lav5,
-    letterSpacing: 0.8,
+    fontFamily: 'Figtree_800ExtraBold',
+    fontSize: 12,
+    color: colors.lilasTexto,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   hint: {
-    fontFamily: fonts.body,
-    fontSize: 10,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
     color: colors.tl,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: 14,
   },
 }), { escalar: false });
 
@@ -298,84 +323,110 @@ const ph = StyleSheet.create({
   phone: {
     width: PHONE_W,
     height: PHONE_H,
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    borderWidth: 7,
-    borderColor: '#1E1830',
+    borderRadius: 40,
+    padding: 6,
+    backgroundColor: '#1A1426',
+    borderWidth: 1,
+    borderColor: '#4A3F63',
+    shadowColor: '#2A1D55',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.3,
+    shadowRadius: 28,
+    elevation: 6,
+  },
+  tela: {
+    flex: 1,
+    borderRadius: 34,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
+    backgroundColor: '#F6F1EE',
   },
   notch: {
-    width: 60,
-    height: 6,
-    backgroundColor: '#1E1830',
-    borderRadius: 3,
+    position: 'absolute',
+    top: 7,
     alignSelf: 'center',
-    marginTop: 4,
-    marginBottom: 1,
+    width: 64,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: '#0F0B16',
+    zIndex: 2,
   },
   statusBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    backgroundColor: '#FAF7F4',
+    paddingHorizontal: 16,
+    paddingTop: 9,
+    height: 30,
   },
   statusTime: {
     fontFamily: fonts.bodyBold,
-    fontSize: 7,
-    color: '#333',
+    fontSize: 8,
+    color: '#2A2433',
   },
   appBar: {
-    paddingVertical: 7,
-    backgroundColor: '#FAF7F4',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: 2,
+    paddingBottom: 6,
     alignItems: 'center',
   },
   appBarTitle: {
-    fontFamily: 'CormorantGaramond_400Regular_Italic',
-    fontSize: 13,
-    color: colors.lav6,
+    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontSize: 17,
+    color: '#45358A',
   },
   screen: {
     flex: 1,
-    backgroundColor: '#FAF7F4',
   },
   bottomNav: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: '#fff',
-    paddingVertical: 4,
+    marginHorizontal: 8,
+    marginBottom: 2,
+    paddingVertical: 5,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#3A286E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   navTab: {
     flex: 1,
     alignItems: 'center',
-    gap: 2,
+    gap: 1,
+  },
+  navIcone: {
+    width: 28,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconeAtivo: {
+    backgroundColor: '#ECE6FA',
   },
   navLabel: {
-    fontFamily: fonts.body,
-    fontSize: 6,
-    color: '#bbb',
+    fontFamily: fonts.bodySemi,
+    fontSize: 6.5,
+    color: '#8C849A',
+  },
+  navLabelAtivo: {
+    fontFamily: fonts.bodyBold,
+    color: '#5A46AD',
   },
   homeIndicator: {
-    height: 3,
-    width: 56,
-    backgroundColor: '#ccc',
+    height: 4,
+    width: 64,
+    backgroundColor: '#2A2433',
+    opacity: 0.8,
     borderRadius: 2,
     alignSelf: 'center',
-    marginVertical: 4,
+    marginVertical: 5,
   },
 });
 
 const pw = StyleSheet.create({
-  section: { padding: 8 },
+  section: { padding: 9 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,58 +436,61 @@ const pw = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.bodyBold,
     fontSize: 9,
-    color: colors.td,
+    color: '#524197',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   homeHeader: {
     padding: 10,
     paddingBottom: 4,
-    backgroundColor: '#FAF7F4',
   },
   homeGreet: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
-    color: colors.td,
+    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontSize: 15,
+    color: '#2A2433',
   },
   homeSubGreet: {
     fontFamily: fonts.body,
     fontSize: 9,
-    color: colors.tm,
+    color: '#534C60',
     marginTop: 1,
   },
   fraseCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 9,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 14,
+    padding: 10,
     marginHorizontal: 8,
     marginTop: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#3A286E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
   fraseLabel: {
     fontFamily: fonts.bodyBold,
     fontSize: 7,
-    color: colors.lav5,
-    letterSpacing: 0.6,
+    color: '#524197',
+    letterSpacing: 0.8,
     marginBottom: 5,
   },
   fraseTexto: {
-    fontFamily: 'PlayfairDisplay_400Regular_Italic',
-    fontSize: 9,
-    color: colors.td,
-    lineHeight: 14,
+    fontFamily: 'CormorantGaramond_500Medium_Italic',
+    fontSize: 11,
+    color: '#2A2433',
+    lineHeight: 15,
   },
   fraseAutor: {
     fontFamily: fonts.body,
     fontSize: 7,
-    color: colors.tl,
+    color: '#6F6880',
     marginTop: 4,
   },
   reflexaoTexto: {
     fontFamily: fonts.body,
     fontSize: 9,
-    color: colors.td,
+    color: '#2A2433',
     lineHeight: 13,
     textAlign: 'justify',
   },
@@ -444,18 +498,18 @@ const pw = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 6,
-    marginBottom: 4,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 12,
+    padding: 7,
+    marginBottom: 5,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.95)',
   },
   rowIcon: {
     width: 22,
     height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.lav1,
+    borderRadius: 8,
+    backgroundColor: '#ECE6FA',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -463,30 +517,30 @@ const pw = StyleSheet.create({
   rowTitle: {
     fontFamily: fonts.bodyBold,
     fontSize: 9,
-    color: colors.td,
+    color: '#2A2433',
   },
   rowSub: {
     fontFamily: fonts.body,
     fontSize: 8,
-    color: colors.tm,
+    color: '#534C60',
     marginTop: 1,
   },
   audioRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 6,
-    marginBottom: 4,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 12,
+    padding: 7,
+    marginBottom: 5,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.95)',
   },
   audioPlay: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.lav4,
+    backgroundColor: '#7A65CB',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -494,7 +548,7 @@ const pw = StyleSheet.create({
   empty: {
     fontFamily: fonts.body,
     fontSize: 9,
-    color: colors.tl,
+    color: '#6F6880',
     fontStyle: 'italic',
   },
   defaultWrap: {
@@ -505,15 +559,15 @@ const pw = StyleSheet.create({
     gap: 8,
   },
   defaultTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
-    color: colors.td,
+    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontSize: 16,
+    color: '#2A2433',
     marginTop: 4,
   },
   defaultSub: {
     fontFamily: fonts.body,
     fontSize: 10,
-    color: colors.tl,
+    color: '#534C60',
     textAlign: 'center',
     lineHeight: 18,
   },

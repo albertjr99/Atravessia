@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
+import {
+  IconUsers, IconDiamond, IconHeart, IconBell, IconChat, IconDoc,
+  IconMusic, IconGift, IconStar, IconCompass, IconPie,
+} from './Icons';
 
 // Mesma conta de "hoje" usada pelo app ao gravar o check-in (AppContext.hojeStr):
 // data local de São Paulo no formato YYYY-MM-DD.
@@ -22,6 +26,56 @@ function timeAgo(ts) {
 }
 
 const PLAN_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
+
+// Cores dos planos (tokens --plano-*): as mesmas em todas as telas.
+const COR_PLANO = {
+  perceber: 'var(--plano-perceber)',
+  acolher: 'var(--plano-acolher)',
+  compreender: 'var(--plano-compreender)',
+  evoluir: 'var(--plano-evoluir)',
+  total: 'var(--plano-acesso-total)',
+};
+const CORES_EXTRA = ['var(--lilas-300)', 'var(--nevoa-300)', 'var(--rosa-300)', 'var(--salvia-300)', 'var(--pessego-300)'];
+
+// Iniciais para o avatar da tabela (só exibição).
+function iniciais(nome, email) {
+  const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (partes.length >= 2) return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return String(email || '?').charAt(0).toUpperCase();
+}
+
+// Rosca em SVG (r = 42 → circunferência 263,9). Cada fatia desconta o
+// arredondamento das pontas para sobrar um respiro entre elas.
+const CIRC = 2 * Math.PI * 42;
+function Rosca({ fatias, total }) {
+  let acumulado = 0;
+  const unica = fatias.filter(f => f.count > 0).length === 1;
+  return (
+    <div className="dash-rosca">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--cor-primaria-veu)" strokeWidth="11" />
+        {total > 0 && fatias.map(f => {
+          const frac = f.count / total;
+          const tam = unica ? CIRC : Math.max(frac * CIRC - 15, 0.01);
+          const desloc = unica ? 0 : -(acumulado * CIRC + 7.5);
+          acumulado += frac;
+          return (
+            <circle
+              key={f.chave} cx="50" cy="50" r="42" fill="none"
+              stroke={f.cor} strokeWidth="11" strokeLinecap={unica ? 'butt' : 'round'}
+              strokeDasharray={`${tam} ${CIRC - tam}`} strokeDashoffset={desloc}
+            />
+          );
+        })}
+      </svg>
+      <div className="dash-rosca-meio">
+        <div className="dash-num">{total}</div>
+        <small>Usuárias</small>
+      </div>
+    </div>
+  );
+}
 
 // "Bom dia, Carla" — saudação pelo horário de Brasília e primeiro nome.
 function saudacaoAdmin(nome) {
@@ -120,82 +174,88 @@ export default function Dashboard({ perfil }) {
     );
   }
 
+  const pessoas = [
+    { Icon: IconUsers, value: usuariasReais.length, label: 'Usuárias' },
+    { Icon: IconDiamond, value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
+    { Icon: IconHeart, value: checkinsHoje, label: 'Check-ins hoje' },
+    { Icon: IconBell, value: counts.notificacoes, label: 'Notificações' },
+  ];
+
+  const conteudo = [
+    { Icon: IconChat, value: counts.frases, label: 'Frases' },
+    { Icon: IconDoc, value: counts.conteudos, label: 'Conteúdos' },
+    { Icon: IconMusic, value: counts.audios, label: 'Áudios' },
+    { Icon: IconGift, value: counts.parcerias, label: 'Parcerias' },
+    { Icon: IconStar, value: counts.vitorias, label: 'Opções Vitórias' },
+    { Icon: IconCompass, value: counts.travessia, label: 'Itens Travessia' },
+  ];
+
+  let extra = 0;
+  const fatias = Object.entries(planDist).map(([plano, count]) => ({
+    chave: plano,
+    count,
+    pct: usuariasReais.length > 0 ? Math.round((count / usuariasReais.length) * 100) : 0,
+    label: plano === 'total' ? 'Acesso Total' : (PLAN_LABEL[plano] || plano),
+    cor: COR_PLANO[plano] || CORES_EXTRA[extra++ % CORES_EXTRA.length],
+  }));
+
   return (
-    <div className="screen-content">
-      <div className="screen-header">
+    <div className="screen-content dash">
+      <div className="screen-header dash-saudacao">
         <h1 className="screen-title">{saudacaoAdmin(perfil?.apelido || perfil?.nome)}</h1>
         <p className="screen-sub">Bem-vinda ao painel. Visão geral do Atravessia, atualizada em tempo real.</p>
       </div>
 
       {error && (
-        <div style={{
-          background: '#FFF3CD', border: '1px solid #FFECB3',
-          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
-          fontSize: 13, color: '#8A5B00',
-        }}>
+        <div className="dash-aviso">
           {error}
         </div>
       )}
 
       {falhas.length > 0 && (
-        <div style={{
-          background: '#FFF3CD', border: '1px solid #FFECB3',
-          borderRadius: 10, padding: '12px 16px', marginBottom: 16,
-          fontSize: 13, color: '#8A5B00',
-        }}>Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
+        <div className="dash-aviso">Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
         </div>
       )}
 
-      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>Pessoas
+      <div className="sobretitulo dash-rotulo">Pessoas
       </div>
-      <div className="stats-grid" style={{ marginBottom: 22 }}>
-        {[
-          { icon: '', value: usuariasReais.length, label: 'Usuárias' },
-          { icon: '', value: usuariasReais.filter(u => u.acessoTotal || (u.plano && u.plano !== 'perceber')).length, label: 'Com plano pago' },
-          { icon: '', value: checkinsHoje, label: 'Check-ins hoje' },
-          { icon: '', value: counts.notificacoes, label: 'Notificações' },
-        ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-icon">{s.icon}</div>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
+      <div className="dash-pessoas">
+        {pessoas.map(({ Icon, value, label }) => (
+          <div key={label} className="stat-card">
+            <div className="stat-icon"><Icon size={20} /></div>
+            <div className="stat-value">{value}</div>
+            <div className="stat-label">{label}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--text-light)' }}>Conteúdo publicado
+      <div className="sobretitulo dash-rotulo">Conteúdo publicado
       </div>
-      <div className="stats-grid">
-        {[
-          { icon: '', value: counts.frases, label: 'Frases' },
-          { icon: '', value: counts.conteudos, label: 'Conteúdos' },
-          { icon: '', value: counts.audios, label: 'Áudios' },
-          { icon: '', value: counts.parcerias, label: 'Parcerias' },
-          { icon: '', value: counts.vitorias, label: 'Opções Vitórias' },
-          { icon: '', value: counts.travessia, label: 'Itens Travessia' },
-        ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-icon">{s.icon}</div>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
+      <div className="dash-faixa">
+        {conteudo.map(({ Icon, value, label }) => (
+          <div key={label} className="dash-faixa-item">
+            <span className="pilula xs salvia"><Icon size={17} /></span>
+            <div style={{ minWidth: 0 }}>
+              <div className="dash-num">{value}</div>
+              <div className="dash-lab">{label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 20 }}>
-        <div className="card">
-          <h2 className="card-title">Usuárias recentes</h2>
+      <div className="dash-baixo">
+        <section className="card">
+          <h2 className="card-title"><IconUsers size={20} />Usuárias recentes</h2>
           {error ? (
-            <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Não foi possível carregar. Verifique as permissões do admin no Firestore.
+            <p className="dash-vazio">Não foi possível carregar. Verifique as permissões do admin no Firestore.
             </p>
           ) : recentUsers.length === 0 ? (
-            <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhuma usuária cadastrada ainda.</p>
+            <p className="dash-vazio">Nenhuma usuária cadastrada ainda.</p>
           ) : (
-            <table className="data-table">
+            <table className="data-table dash-tabela">
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>E-mail</th>
+                  <th>Nome · E-mail</th>
                   <th>Plano</th>
                   <th>Cadastro</th>
                 </tr>
@@ -203,8 +263,15 @@ export default function Dashboard({ perfil }) {
               <tbody>
                 {recentUsers.map(u => (
                   <tr key={u.id}>
-                    <td style={{ fontWeight: 600 }}>{u.nome || '—'}</td>
-                    <td style={{ color: 'var(--text-mid)' }}>{u.email || '—'}</td>
+                    <td>
+                      <span className="dash-pessoa">
+                        <span className="dash-ini" aria-hidden="true">{iniciais(u.nome, u.email)}</span>
+                        <span>
+                          <span className="dash-nome">{u.nome || '—'}</span>
+                          <span className="dash-email">{u.email || '—'}</span>
+                        </span>
+                      </span>
+                    </td>
                     <td>
                       {u.acessoTotal
                         ? <span className="badge badge-total">Acesso Total</span>
@@ -213,42 +280,34 @@ export default function Dashboard({ perfil }) {
                           </span>
                       }
                     </td>
-                    <td style={{ color: 'var(--text-light)' }}>{timeAgo(u.criadoEm)}</td>
+                    <td className="dash-data">{timeAgo(u.criadoEm)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
+        </section>
 
-        <div className="card">
-          <h2 className="card-title">Distribuição de planos</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Object.keys(planDist).length === 0 ? (
-              <p style={{ color: 'var(--text-light)', fontSize: 13 }}>Nenhum dado.</p>
-            ) : (
-              Object.entries(planDist).map(([plano, count]) => {
-                const pct = usuariasReais.length > 0 ? Math.round((count / usuariasReais.length) * 100) : 0;
-                const label = plano === 'total' ? 'Acesso Total' : (PLAN_LABEL[plano] || plano);
-                return (
-                  <div key={plano}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-light)' }}>{count} ({pct}%)</span>
-                    </div>
-                    <div style={{ height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', width: `${pct}%`,
-                        background: 'var(--primary)', borderRadius: 3,
-                        transition: 'width 0.6s ease',
-                      }} />
-                    </div>
+        <section className="card">
+          <h2 className="card-title"><IconPie size={20} />Distribuição de planos</h2>
+          {fatias.length === 0 ? (
+            <p className="dash-vazio">Nenhum dado.</p>
+          ) : (
+            <div className="dash-rosca-bloco">
+              <Rosca fatias={fatias} total={usuariasReais.length} />
+              <div className="dash-legenda">
+                {fatias.map(f => (
+                  <div key={f.chave} className="dash-leg">
+                    <i style={{ background: f.cor }} />
+                    <span className="dash-leg-nome">{f.label}</span>
+                    <span className="dash-leg-val">{f.count} ({f.pct}%)</span>
+                    <div className="dash-leg-barra"><b style={{ width: `${f.pct}%`, background: f.cor }} /></div>
                   </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

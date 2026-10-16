@@ -162,7 +162,7 @@ export default function Indicacoes({ showToast }) {
               <div className="field-group">
                 <label>Link de afiliada (Amazon) <span style={{ color: 'var(--rose)' }}>*</span></label>
                 <input type="url" value={form.link} onChange={e => set('link', e.target.value)} placeholder="https://amzn.to/..." />
-                {!linkAmazon && <span className="field-hint" style={{ color: '#7A5A22' }}>Este link não parece ser da Amazon. Confira se é o link de afiliada.</span>}
+                {!linkAmazon && <span className="field-hint" style={{ color: 'var(--cor-aviso)' }}>Este link não parece ser da Amazon. Confira se é o link de afiliada.</span>}
               </div>
               <div className="field-group">
                 <label>Imagem (link direto ou Google Drive)</label>

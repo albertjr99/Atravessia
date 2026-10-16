@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { indiceFraseDoDia, agendarFrasesDoDia } from '../utils/fraseNotificacao';
 import {
   collection, addDoc, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, where,
 } from 'firebase/firestore';
@@ -296,12 +297,16 @@ export function AppProvider({ children }) {
   // Frase do dia — determinística por uid + dia do ano (muda a cada 24h, diferente por usuária)
   const fraseDoDia = useMemo(() => {
     if (!frases.length) return null;
-    const now = new Date();
-    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-    const uidHash = uid ? uid.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) : 0;
-    const idx = (dayOfYear + uidHash) % frases.length;
-    return frases[idx];
+    return frases[indiceFraseDoDia(new Date(), uid, frases.length)];
   }, [frases, uid]);
+
+  // A Frase do dia também chega como notificação no aparelho, de manhã
+  // (pode ser desligada no Perfil).
+  const prefFrase = perfil?.fraseNotificacao;
+  useEffect(() => {
+    if (!uid || !frases.length) return;
+    agendarFrasesDoDia(frases, uid, prefFrase).catch(() => {});
+  }, [uid, frases, prefFrase?.ativo, prefFrase?.hora, prefFrase?.minuto]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mensagens personalizadas dos relatórios (configuradas pela admin)
   const [mensagensRelatorio, setMensagensRelatorio] = useState({});

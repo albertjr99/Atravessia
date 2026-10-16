@@ -8,8 +8,8 @@ import {
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { Card } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -112,10 +112,12 @@ export default function AdminTravessiaScreen({ navigation }) {
 
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
+            <Text style={s.sobre}>Jornada</Text>
             <Text style={s.pageTitle}>Continue a Travessia</Text>
             <Text style={s.pageSub}>Adicione e edite os itens exibidos nessa seção no app.</Text>
           </View>
           <TouchableOpacity style={s.addBtn} onPress={abrirNovo}>
+            <Degrade />
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={s.addBtnText}>Novo item</Text>
           </TouchableOpacity>
@@ -131,41 +133,43 @@ export default function AdminTravessiaScreen({ navigation }) {
           </View>
         )}
 
+        {itens.length > 0 && <View style={s.lista}>
         {itens.map((item, idx) => (
-          <Card key={item.id} style={[s.card, item.ativo === false && s.cardInativo]}>
+          <View key={item.id} style={[s.card, idx > 0 && s.cardDiv, item.ativo === false && s.cardInativo]}>
             <View style={s.cardMain}>
               <View style={s.cardIconWrap}>
-                <Ionicons name={item.icone || 'link-outline'} size={20} color={item.ativo === false ? colors.tl : colors.lav5} />
+                <Ionicons name={item.icone || 'link-outline'} size={20} color={item.ativo === false ? colors.tl : acento('lilas').tinta} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.cardTitulo, item.ativo === false && { color: colors.tl }]}>{item.titulo}</Text>
                 {item.descricao ? <Text style={s.cardDesc}>{item.descricao}</Text> : null}
                 <Text style={s.cardUrl} numberOfLines={1}>{item.url}</Text>
                 <View style={s.cardBadgeRow}>
-                  <Text style={s.tipoBadge}>{TIPOS.find(t => t.id === item.tipo)?.label || item.tipo}</Text>
+                  {!!(TIPOS.find(t => t.id === item.tipo)?.label || item.tipo) && <Text style={s.tipoBadge}>{TIPOS.find(t => t.id === item.tipo)?.label || item.tipo}</Text>}
                   {item.ativo === false && <Text style={s.inativoBadge}>Inativo</Text>}
                 </View>
               </View>
             </View>
             <View style={s.cardActions}>
               <TouchableOpacity onPress={() => moverOrdem(item, -1)} style={s.actionBtn} disabled={idx === 0}>
-                <Ionicons name="arrow-up" size={13} color={idx === 0 ? colors.border : colors.tm} />
+                <Ionicons name="arrow-up" size={17} color={idx === 0 ? colors.border : colors.texto2} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => moverOrdem(item, 1)} style={s.actionBtn} disabled={idx === itens.length - 1}>
-                <Ionicons name="arrow-down" size={13} color={idx === itens.length - 1 ? colors.border : colors.tm} />
+                <Ionicons name="arrow-down" size={17} color={idx === itens.length - 1 ? colors.border : colors.texto2} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => toggleAtivo(item)} style={s.actionBtn}>
-                <Ionicons name={item.ativo === false ? 'eye-off-outline' : 'eye-outline'} size={13} color={colors.tm} />
+                <Ionicons name={item.ativo === false ? 'eye-off-outline' : 'eye-outline'} size={17} color={colors.texto2} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => abrirEditar(item)} style={s.actionBtn}>
-                <Ionicons name="create-outline" size={13} color={colors.lav5} />
+                <Ionicons name="create-outline" size={17} color={colors.lilasIcone} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => excluir(item)} style={s.actionBtn}>
-                <Ionicons name="trash-outline" size={13} color={colors.peach2} />
+                <Ionicons name="trash-outline" size={17} color={colors.roseTexto} />
               </TouchableOpacity>
             </View>
-          </Card>
+          </View>
         ))}
+        </View>}
       </ScrollView>
 
       <Modal
@@ -179,7 +183,7 @@ export default function AdminTravessiaScreen({ navigation }) {
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>{editId ? 'Editar item' : 'Novo item'}</Text>
             <TouchableOpacity onPress={() => setModalVis(false)} style={s.modalClose}>
-              <Ionicons name="close" size={22} color={colors.td} />
+              <Ionicons name="close" size={20} color={colors.td} />
             </TouchableOpacity>
           </View>
 
@@ -215,7 +219,7 @@ export default function AdminTravessiaScreen({ navigation }) {
                   style={[s.tipoChip, form.tipo === t.id && s.tipoChipSel]}
                   onPress={() => { set('tipo', t.id); set('icone', t.icon); }}
                 >
-                  <Ionicons name={t.icon} size={13} color={form.tipo === t.id ? colors.lav5 : colors.tm} />
+                  <Ionicons name={t.icon} size={15} color={form.tipo === t.id ? colors.lilasTexto : colors.texto2} />
                   <Text style={[s.tipoChipText, form.tipo === t.id && s.tipoChipTextSel]}>{t.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -229,7 +233,7 @@ export default function AdminTravessiaScreen({ navigation }) {
                   style={[s.iconeBtn, form.icone === ic && s.iconeBtnSel]}
                   onPress={() => set('icone', ic)}
                 >
-                  <Ionicons name={ic} size={18} color={form.icone === ic ? colors.lav5 : colors.tm} />
+                  <Ionicons name={ic} size={19} color={form.icone === ic ? colors.lilasTexto : colors.texto2} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -245,6 +249,7 @@ export default function AdminTravessiaScreen({ navigation }) {
             </View>
 
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={salvar} disabled={saving}>
+              <Degrade />
               <Text style={s.saveBtnText}>{saving ? 'Salvando...' : 'Salvar'}</Text>
             </TouchableOpacity>
 
@@ -258,52 +263,54 @@ export default function AdminTravessiaScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: spacing.lg },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.botaoForte, borderRadius: radius.full,
-    paddingVertical: 9, paddingHorizontal: 14,
-  },
-  addBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: '#fff' },
-  empty: { alignItems: 'center', paddingVertical: 48, gap: 10 },
-  emptyTitle: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
-  emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', maxWidth: 280 },
-  card: { marginBottom: 10, gap: 10, ...shadow.soft },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: spacing.lg },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: est.subtitulo(),
+  addBtn: { ...est.botao(), minHeight: 46, paddingHorizontal: 18 },
+  addBtnText: est.botaoTxt(),
+  empty: { ...est.vidro(26), alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20, gap: 10 },
+  emptyTitle: est.cartaoTitulo(),
+  emptySub: { ...est.legenda(), textAlign: 'center', maxWidth: 320 },
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  card: { gap: 10, paddingVertical: 14, paddingHorizontal: 16 },
+  cardDiv: est.divisoria(),
   cardInativo: { opacity: 0.55 },
   cardMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  cardIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  cardDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  cardUrl: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 3 },
-  cardBadgeRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  tipoBadge: { fontFamily: fonts.body, fontSize: 10, color: colors.lav5, backgroundColor: colors.lav1, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
-  inativoBadge: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, backgroundColor: colors.bg, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1, borderColor: colors.border },
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
-  actionBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, borderRadius: radius.md },
-  modal: { flex: 1, backgroundColor: colors.bg },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
-  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
-  modalClose: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  modalBody: { padding: spacing.lg },
-  label: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 6, marginTop: 14 },
-  hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: -4, marginBottom: 4 },
-  inputMulti: { minHeight: 120, maxHeight: 260, textAlignVertical: 'top', lineHeight: 20 },
-  input: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 12, paddingVertical: 11, fontFamily: fonts.body, fontSize: 14, color: colors.td,
+  cardIconWrap: { ...est.pilula(42), backgroundColor: acento('lilas').fundo, flexShrink: 0 },
+  cardTitulo: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  cardDesc: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.texto2, marginTop: 2 },
+  cardUrl: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lilasTexto, marginTop: 3 },
+  cardBadgeRow: { flexDirection: 'row', gap: 6, marginTop: 6 },
+  tipoBadge: {
+    ...est.etiquetaTxt(), color: acento('lilas').texto, backgroundColor: acento('lilas').fundo,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden',
   },
+  inativoBadge: {
+    ...est.etiquetaTxt(), color: acento('neutro').texto, backgroundColor: acento('neutro').fundo,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden',
+  },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 6, paddingLeft: 54 },
+  actionBtn: est.botaoIcone(),
+  modal: { flex: 1, backgroundColor: colors.cardSolido },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave },
+  modalTitle: est.modalTitulo(),
+  modalClose: est.fechar(),
+  modalBody: { padding: spacing.lg },
+  label: est.rotulo(),
+  hint: { ...est.dica(), marginTop: 6, marginBottom: 4 },
+  inputMulti: { minHeight: 120, maxHeight: 260, textAlignVertical: 'top', lineHeight: 21 },
+  input: est.campo(),
   tiposRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tipoChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 7, paddingHorizontal: 12 },
-  tipoChipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  tipoChipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  tipoChipTextSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  tipoChip: est.chip(),
+  tipoChipSel: est.chipSel(),
+  tipoChipText: est.chipTxt(),
+  tipoChipTextSel: est.chipTxtSel(),
   iconesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  iconeBtn: { width: 42, height: 42, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
+  iconeBtn: { width: 46, height: 46, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardSolido, alignItems: 'center', justifyContent: 'center' },
+  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-  saveBtn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 14, alignItems: 'center', marginTop: 24 },
-  saveBtnText: { fontFamily: fonts.bodyBold, fontSize: 15, color: '#fff' },
+  saveBtn: { ...est.botao(), marginTop: 24 },
+  saveBtnText: est.botaoTxt(),
 }), { escalar: false });

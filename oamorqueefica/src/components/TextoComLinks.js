@@ -14,7 +14,7 @@ function separarPontuacao(trecho) {
   return m ? [m[1], m[2]] : [trecho, ''];
 }
 
-export default function TextoComLinks({ children, style, corLink = colors.lav5, ...props }) {
+export default function TextoComLinks({ children, style, corLink = colors.lilasTexto, ...props }) {
   const texto = typeof children === 'string' ? children : String(children ?? '');
   const partes = texto.split(REGEX_LINK);
 

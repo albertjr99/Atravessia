@@ -115,7 +115,7 @@ function CartaoVideo({ info, dados, showToast }) {
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <span style={{ color: 'var(--primary)' }}><IconPlay size={18} /></span>
+        <span className="pilula xs lilas"><IconPlay size={16} /></span>
         <h3 className="card-title" style={{ margin: 0, flex: 1 }}>{info.nome}</h3>
         {dados?.url && (
           <span className={`badge ${dados.ativo === false ? 'badge-inactive' : 'badge-total'}`}>
@@ -127,7 +127,7 @@ function CartaoVideo({ info, dados, showToast }) {
 
       {dados?.url ? (
         <video src={dados.url} controls preload="metadata"
-          style={{ width: '100%', maxHeight: 360, borderRadius: 10, background: '#17141f', marginBottom: 12 }} />
+          style={{ width: '100%', maxHeight: 360, borderRadius: 16, background: '#17141f', marginBottom: 12, boxShadow: 'var(--sombra-1)' }} />
       ) : (
         <div className="empty-state" style={{ padding: 20, marginBottom: 12 }}>
           <p>Nenhum vídeo enviado ainda.</p>
@@ -140,7 +140,7 @@ function CartaoVideo({ info, dados, showToast }) {
       </div>
 
       {info.loja && (
-        <div style={{ background: 'var(--primary-lav, #EDE9F5)', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+        <div style={{ background: 'var(--primary-lav)', borderRadius: 16, padding: 16, marginBottom: 14 }}>
           <div className="field-group">
             <label>Texto da tela</label>
             <textarea rows={4} value={loja.descricao} onChange={e => setLoja(l => ({ ...l, descricao: e.target.value }))}

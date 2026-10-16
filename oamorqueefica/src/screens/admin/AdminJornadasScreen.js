@@ -9,8 +9,8 @@ import {
   orderBy, query, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, corPlano, BotaoAdmin } from './adminEstilo';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -22,7 +22,6 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_CORES = { get 0() { return colors.sage; }, get 1() { return colors.lav4; }, 2: '#7B5EA7', 3: '#C0843F' };
 
 const ICONES = [
   'heart-outline', 'leaf-outline', 'sunny-outline', 'moon-outline',
@@ -80,12 +79,13 @@ export default function AdminJornadasScreen({ navigation }) {
     <AdminLayout navigation={navigation} currentScreen="AdminJornadas">
       <AdminSubTabs grupo="jornada" atual="AdminJornadas" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        <Text style={s.sobre}>Jornada</Text>
         <Text style={s.pageTitle}>Jornadas</Text>
         <Text style={s.pageSub}>Crie programas e trilhas de conteúdo, definindo plano de acesso e ordem de exibição.</Text>
 
         {/* ── Formulário ── */}
         {form && (
-          <Card style={{ marginBottom: spacing.lg }}>
+          <View style={s.form}>
             <Text style={s.cardTitle}>{form.id ? 'Editar jornada' : 'Nova jornada'}</Text>
 
             <Text style={s.label}>Título <Text style={s.req}>*</Text></Text>
@@ -98,7 +98,7 @@ export default function AdminJornadasScreen({ navigation }) {
             <View style={s.iconeGrid}>
               {ICONES.map(ic => (
                 <TouchableOpacity key={ic} style={[s.iconeBtn, form.icone === ic && s.iconeBtnSel]} onPress={() => setForm(f => ({ ...f, icone: ic }))}>
-                  <Ionicons name={ic} size={20} color={form.icone === ic ? colors.lav5 : colors.tm} />
+                  <Ionicons name={ic} size={20} color={form.icone === ic ? colors.lilasTexto : colors.texto2} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -106,8 +106,8 @@ export default function AdminJornadasScreen({ navigation }) {
             <Text style={s.label}>Plano mínimo de acesso</Text>
             <View style={s.chipRow}>
               {PLANOS.map(p => (
-                <TouchableOpacity key={p.id} style={[s.chip, form.plano === p.id && { backgroundColor: PLANO_CORES[p.id] + '22', borderColor: PLANO_CORES[p.id] }]} onPress={() => setForm(f => ({ ...f, plano: p.id }))}>
-                  <Text style={[s.chipTxt, form.plano === p.id && { color: PLANO_CORES[p.id], fontFamily: fonts.bodyBold }]}>{p.label}</Text>
+                <TouchableOpacity key={p.id} style={[s.chip, form.plano === p.id && { backgroundColor: corPlano(p.id).fundo, borderColor: corPlano(p.id).tinta }]} onPress={() => setForm(f => ({ ...f, plano: p.id }))}>
+                  <Text style={[s.chipTxt, form.plano === p.id && { color: corPlano(p.id).texto, fontFamily: fonts.bodyBold }]}>{p.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -121,33 +121,34 @@ export default function AdminJornadasScreen({ navigation }) {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.md }}>
-              <Button title="Cancelar" onPress={cancelar} style={{ flex: 1, backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }} textStyle={{ color: colors.tm }} />
-              <Button title={salvando ? 'Salvando...' : 'Salvar'} onPress={salvar} disabled={salvando} style={{ flex: 1 }} />
+              <BotaoAdmin title="Cancelar" variant="secondary" onPress={cancelar} style={{ flex: 1 }} />
+              <BotaoAdmin title={salvando ? 'Salvando...' : 'Salvar'} onPress={salvar} disabled={salvando} style={{ flex: 1 }} />
             </View>
-          </Card>
+          </View>
         )}
 
         {!form && (
-          <Button title="+ Nova jornada" onPress={abrirNova} style={{ marginBottom: spacing.lg }} />
+          <BotaoAdmin title="+ Nova jornada" onPress={abrirNova} style={{ marginBottom: spacing.lg, alignSelf: 'flex-start' }} />
         )}
 
         {/* ── Lista ── */}
         <Text style={s.sectionTitle}>Jornadas ({jornadas.length})</Text>
         {jornadas.length === 0 && <Text style={s.empty}>Nenhuma jornada criada ainda.</Text>}
 
-        {jornadas.map(j => {
+        {jornadas.length > 0 && <View style={s.lista}>
+        {jornadas.map((j, i) => {
           const planoObj = PLANOS.find(p => p.id === j.plano);
-          const cor = PLANO_CORES[j.plano] ?? colors.lav4;
+          const cor = corPlano(j.plano);
           return (
-            <Card key={j.id} style={s.item}>
-              <View style={[s.iconeCircle, { backgroundColor: cor + '22' }]}>
-                <Ionicons name={j.icone || 'compass-outline'} size={18} color={cor} />
+            <View key={j.id} style={[s.item, i > 0 && s.itemDiv]}>
+              <View style={[s.iconeCircle, { backgroundColor: cor.fundo }]}>
+                <Ionicons name={j.icone || 'compass-outline'} size={20} color={cor.tinta} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.itemTit}>{j.titulo}</Text>
                 {j.descricao ? <Text style={s.itemDesc} numberOfLines={1}>{j.descricao}</Text> : null}
                 <View style={{ flexDirection: 'row', gap: 5, marginTop: 4, flexWrap: 'wrap' }}>
-                  {planoObj && <Text style={[s.tag, { backgroundColor: cor + '22', color: cor }]}>{planoObj.label}</Text>}
+                  {planoObj && <Text style={[s.tag, { backgroundColor: cor.fundo, color: cor.texto }]}>{planoObj.label}</Text>}
                   <Text style={[s.tag, j.ativa ? s.tagAtiva : s.tagInativa]}>{j.ativa ? 'Ativa' : 'Inativa'}</Text>
                   <Text style={s.tag}>Ordem: {j.ordem ?? 0}</Text>
                 </View>
@@ -155,15 +156,16 @@ export default function AdminJornadasScreen({ navigation }) {
               <View style={s.actions}>
                 <Switch value={!!j.ativa} onValueChange={() => toggleAtiva(j)} trackColor={{ true: colors.lav4 }} style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} />
                 <TouchableOpacity onPress={() => setForm({ ...j })} style={s.actionBtn}>
-                  <Ionicons name="create-outline" size={17} color={colors.lav5} />
+                  <Ionicons name="create-outline" size={18} color={colors.lilasIcone} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => remover(j.id)} style={s.actionBtn}>
-                  <Ionicons name="trash-outline" size={17} color={colors.peach2} />
+                  <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                 </TouchableOpacity>
               </View>
-            </Card>
+            </View>
           );
         })}
+        </View>}
         <View style={{ height: 40 }} />
       </ScrollView>
     </AdminLayout>
@@ -172,32 +174,35 @@ export default function AdminJornadasScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
-  cardTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: spacing.sm },
-  label: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: spacing.sm, marginBottom: 6 },
-  req: { color: colors.rose },
-  input: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  form: { ...est.vidro(26), padding: 18, marginBottom: spacing.lg },
+  cardTitle: { ...est.cartaoTitulo(), fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, marginBottom: 4 },
+  label: est.rotulo(),
+  req: est.obrigatorio(),
+  input: est.campo(),
   iconeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  iconeBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
-  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 2 },
-  chip: { borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, paddingVertical: 5, paddingHorizontal: 10 },
-  chipTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.tm },
+  iconeBtn: { width: 46, height: 46, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.cardSolido, alignItems: 'center', justifyContent: 'center' },
+  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 2 },
+  chip: est.chip(),
+  chipTxt: est.chipTxt(),
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
-  sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 8 },
-  empty: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  iconeCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  itemTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  itemDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 2 },
-  tag: { fontFamily: fonts.body, fontSize: 10, color: colors.tm, backgroundColor: colors.lav1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.full },
-  tagAtiva: { backgroundColor: colors.sage + '33', color: colors.sageFg },
-  tagInativa: { backgroundColor: colors.peach + '33', color: colors.peach2 },
+  sectionTitle: { ...est.secao(), marginBottom: 10 },
+  empty: { ...est.legenda(), marginBottom: spacing.md },
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
+  itemDiv: est.divisoria(),
+  iconeCircle: { ...est.pilula(42), flexShrink: 0 },
+  itemTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  itemDesc: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2, marginTop: 2 },
+  tag: {
+    ...est.etiquetaTxt(), color: colors.texto2, backgroundColor: colors.escuro ? colors.vidroTenue : colors.lavVeu,
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: 'hidden',
+  },
+  tagAtiva: { backgroundColor: colors.sageFundo, color: colors.sageFg },
+  tagInativa: { backgroundColor: colors.roseFundo, color: colors.roseTexto },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actionBtn: { padding: 6 },
 }), { escalar: false });

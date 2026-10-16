@@ -1,14 +1,17 @@
 import React from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert,
+  StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+
+const ilVazio = require('../../../assets/images/il_coracao_ramos.png');
 
 const TIPO_ICONE = {
   audio: 'headset-outline',
@@ -30,11 +33,16 @@ const acaoIconeDe = (tipo) => {
 // Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
 const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
 
-// Função (e não objeto fixo) para acompanhar o tema claro/noturno.
+
+// Cores por categoria (função para acompanhar o tema claro/noturno).
+const cores = () => ({
+  pessegoFundo: colors.escuro ? 'rgba(242,183,158,0.14)' : '#FCE7DC',
+  pessegoTinta: colors.escuro ? '#B4716A' : '#D98A69',
+});
 const corDaCategoria = () => ({
-  acolhimento: { bg: colors.lav1, color: colors.lav5 },
-  noturno:     { bg: colors.escuro ? '#3A2E26' : '#F5EDE5', color: colors.escuro ? '#DDB49F' : '#B08070' },
-  complementar:{ bg: colors.lav1, color: colors.lav5 },
+  acolhimento: { bg: colors.lav1, color: colors.lilasIcone },
+  noturno:     { bg: cores().pessegoFundo, color: colors.escuro ? '#F2B79E' : '#A8582E' },
+  complementar:{ bg: colors.lav1, color: colors.lilasIcone },
 });
 
 export default function FavoritosScreen({ navigation }) {
@@ -98,18 +106,18 @@ export default function FavoritosScreen({ navigation }) {
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
 
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Meus favoritos</Text>
-        <View style={{ width: 36 }} />
+        <Text style={s.topTitle} numberOfLines={1}>Meus favoritos</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {semBiblioteca ? (
           <View style={s.avisoBox}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={18} color={colors.roseTexto} />
             <Text style={s.avisoTxt}>
               Não foi possível carregar a biblioteca de conteúdos agora, então alguns
               favoritos podem não aparecer. Tente de novo em instantes.
@@ -118,14 +126,14 @@ export default function FavoritosScreen({ navigation }) {
         ) : null}
         {favoritos.length === 0 ? (
           <View style={s.emptyWrap}>
-            <Ionicons name="heart-outline" size={52} color={colors.lav3} />
+            <Moldura source={ilVazio} tamanho={120} />
             <Text style={s.emptyTit}>Nenhum favorito ainda</Text>
             <Text style={s.emptySub}>
               Toque no ícone de coração em qualquer conteúdo para salvá-lo aqui.
             </Text>
             <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Audios')}>
               <Text style={s.emptyBtnTxt}>Explorar conteúdos</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.lav5} />
+              <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -142,11 +150,11 @@ export default function FavoritosScreen({ navigation }) {
                   onPress={() => handleItem(item)}
                   activeOpacity={0.8}
                 >
-                  <View style={[s.thumb, { backgroundColor: cat.bg }]}>
+                  <View style={[s.thumb, { backgroundColor: bloqueado ? cores().pessegoFundo : cat.bg }]}>
                     <Ionicons
                       name={bloqueado ? 'lock-closed-outline' : (TIPO_ICONE[item.tipo] || 'document-outline')}
-                      size={20}
-                      color={bloqueado ? colors.peach2 : cat.color}
+                      size={22}
+                      color={bloqueado ? colors.roseFg : cat.color}
                     />
                   </View>
                   <View style={s.info}>
@@ -160,53 +168,84 @@ export default function FavoritosScreen({ navigation }) {
                   <TouchableOpacity
                     onPress={() => removerFavorito(item.conteudoId)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={{ padding: 4 }}
+                    style={s.favBtn}
+                    accessibilityLabel="Remover dos favoritos"
                   >
-                    <Ionicons name="heart" size={20} color="#C06080" />
+                    <Ionicons name="heart" size={19} color={colors.roseTexto} />
                   </TouchableOpacity>
-                  <View style={[s.playBtn, { backgroundColor: bloqueado ? colors.peach : colors.lav4 }]}>
-                    <Ionicons name={bloqueado ? 'lock-closed' : acaoIcone} size={12} color="white" style={!bloqueado && acaoIcone === 'play' && { marginLeft: 2 }} />
+                  <View style={[s.playBtn, bloqueado && { backgroundColor: cores().pessegoTinta }]}>
+                    {!bloqueado && <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />}
+                    <Ionicons
+                      name={bloqueado ? 'lock-closed' : acaoIcone}
+                      size={14} color="white"
+                      style={!bloqueado && acaoIcone === 'play' ? { marginLeft: 2 } : undefined}
+                    />
                   </View>
                 </TouchableOpacity>
               );
             })}
           </>
         )}
-        <View style={{ height: 40 }} />
+        <View style={{ height: 40 + insets.bottom }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 22,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
+// Ilustração da marca numa moldura arredondada (sem tintColor).
+function Moldura({ source, tamanho = 120 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={{
+      width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26), overflow: 'hidden',
+      borderWidth: 1, borderColor: colors.bordaLuz, backgroundColor: colors.cardSolido, flexShrink: 0,
+    }}>
+      <Image source={source} style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }} resizeMode="cover" />
+    </View>
   );
 }
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
-  scroll: { padding: spacing.lg },
-  countLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: spacing.md },
-  item: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    padding: spacing.md, borderWidth: 1, borderColor: colors.border,
-    marginBottom: 10, ...shadow.soft,
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
-  itemBloqueado: { opacity: 0.65 },
-  thumb: { width: 46, height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  scroll: { paddingHorizontal: spacing.lg, paddingTop: 8 },
+  avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.erroFundo, borderRadius: 18, padding: 14, marginBottom: spacing.md },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.roseTexto, lineHeight: 18 },
+  countLabel: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, marginBottom: spacing.md, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 4 },
+  item: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 12 },
+  itemBloqueado: { opacity: 0.7 },
+  thumb: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   info: { flex: 1 },
-  titulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  desc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  grupo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 2, textTransform: 'capitalize' },
-  playBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
-  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
-  emptyTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td },
-  emptySub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, maxWidth: 280 },
-  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: colors.lav1, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav3 },
-  emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
+  titulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo, lineHeight: 20 },
+  desc: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2, marginTop: 2, lineHeight: 18 },
+  grupo: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2, marginTop: 2, textTransform: 'capitalize' },
+  favBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.roseFundo },
+  playBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' },
+  emptyWrap: { ...vidro(), alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24, gap: 10, marginTop: 8 },
+  emptyTit: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo, textAlign: 'center', marginTop: 6 },
+  emptySub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21 },
+  emptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, minHeight: 46, paddingHorizontal: 22, backgroundColor: colors.vidro, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2 },
+  emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
 }));

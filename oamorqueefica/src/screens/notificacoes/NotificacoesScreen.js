@@ -1,11 +1,13 @@
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { ScriptTitle, LavandaBg } from '../../components';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { LavandaBg } from '../../components';
+
+const ilVazio = require('../../../assets/images/il_folha_vento.png');
 import { useApp } from '../../hooks/AppContext';
 
 const ICONES = {
@@ -60,11 +62,11 @@ export default function NotificacoesScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <View style={{ alignItems: 'center' }}>
+        <View style={{ alignItems: 'center', flex: 1 }}>
           <Text style={styles.topTitle}>Notificações</Text>
           {naoLidas > 0 && (
             <Text style={styles.topSub}>
@@ -72,13 +74,13 @@ export default function NotificacoesScreen({ navigation }) {
             </Text>
           )}
         </View>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.lista}>
         {notificacoes.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="notifications-outline" size={36} color={colors.lav3} />
+            <Moldura source={ilVazio} tamanho={120} />
             <Text style={styles.emptyText}>Nenhuma notificação por aqui ainda.</Text>
           </View>
         ) : (
@@ -93,8 +95,8 @@ export default function NotificacoesScreen({ navigation }) {
               <View style={[styles.itemIcon, !n.lida && styles.itemIconNaoLido]}>
                 <Ionicons
                   name={ICONES[n.tipo] || 'notifications-outline'}
-                  size={17}
-                  color={n.lida ? colors.lav4 : '#fff'}
+                  size={19}
+                  color={n.lida ? colors.lilasIcone : '#fff'}
                 />
               </View>
               <View style={{ flex: 1, gap: 3 }}>
@@ -108,7 +110,7 @@ export default function NotificacoesScreen({ navigation }) {
                   <Text style={styles.itemAcao}>Toque para acessar</Text>
                 )}
               </View>
-              <Ionicons name="chevron-forward" size={15} color={colors.tl} />
+              <Ionicons name="chevron-forward" size={17} color={colors.lilasTexto} />
             </TouchableOpacity>
           ))
         )}
@@ -117,43 +119,66 @@ export default function NotificacoesScreen({ navigation }) {
   );
 }
 
+
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 22,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
+// Ilustração da marca numa moldura arredondada (sem tintColor).
+function Moldura({ source, tamanho = 120 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={{
+      width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26), overflow: 'hidden',
+      borderWidth: 1, borderColor: colors.bordaLuz, backgroundColor: colors.cardSolido, flexShrink: 0,
+    }}>
+      <Image source={source} style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }} resizeMode="cover" />
+    </View>
+  );
+}
+
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  lista: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.xxl },
-  item: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
-    ...shadow.soft,
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  itemNaoLido: {
-    backgroundColor: colors.lav1, borderColor: colors.lav3,
-    paddingLeft: spacing.md + 4,
-    shadowColor: '#6b5b7a', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1, shadowRadius: 9, elevation: 3,
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
+  topTitle: { textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  lista: { paddingHorizontal: spacing.lg, paddingTop: 8, gap: 10, paddingBottom: spacing.xxl },
+  item: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, overflow: 'hidden' },
+  itemNaoLido: { backgroundColor: colors.escuro ? colors.card : 'rgba(255,255,255,0.86)', paddingLeft: 18 },
   acento: {
-    position: 'absolute', left: 0, top: 10, bottom: 10,
-    width: 3.5, borderRadius: 2, backgroundColor: colors.lav4,
+    position: 'absolute', left: 0, top: 12, bottom: 12,
+    width: 4, borderTopRightRadius: 3, borderBottomRightRadius: 3, backgroundColor: colors.botao,
   },
   itemIcon: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card,
+    width: 44, height: 44, borderRadius: 14, backgroundColor: colors.lav1,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    borderWidth: 1, borderColor: colors.border,
   },
-  itemIconNaoLido: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
+  itemIconNaoLido: { backgroundColor: colors.botao },
   novaTag: {
-    alignSelf: 'flex-start', backgroundColor: '#C4566B',
-    borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2,
+    alignSelf: 'flex-start', backgroundColor: '#C9435C',
+    borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2,
   },
-  novaTagTxt: { fontFamily: fonts.bodyBold, fontSize: 8.5, color: '#fff', letterSpacing: 0.8 },
-  itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 19 },
-  itemTextoNaoLido: { fontFamily: fonts.bodyBold, color: colors.lav6 },
-  itemAcao: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
-  topSub: { fontFamily: fonts.body, fontSize: 10.5, color: colors.lav5, marginTop: 1 },
-  empty: { alignItems: 'center', paddingVertical: spacing.xxl, gap: 8 },
-  emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
+  novaTagTxt: { fontFamily: fonts.bodyBold, fontSize: 9, color: '#fff', letterSpacing: 0.8 },
+  itemTexto: { fontFamily: fonts.body, fontSize: 14, color: colors.titulo, lineHeight: 20 },
+  itemTextoNaoLido: { fontFamily: fonts.bodyBold },
+  itemAcao: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.lilasTexto },
+  topSub: { fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.lilasTexto, marginTop: 1 },
+  empty: { ...vidro(), alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24, gap: 14, marginTop: 8 },
+  emptyText: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.titulo, textAlign: 'center' },
 }));

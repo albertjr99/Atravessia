@@ -9,9 +9,9 @@ import { IconAlert } from './Icons';
 // .precoLabel, que é o que o card do plano e o checkout leem.
 
 const PLANOS_INFO = [
-  { id: 1, nome: 'Plano Acolher', cor: '#D4A89A', campo: 'plano1' },
-  { id: 2, nome: 'Plano Compreender', cor: '#8B7AC0', campo: 'plano2' },
-  { id: 3, nome: 'Plano Evoluir', cor: '#7A9E7E', campo: 'plano3' },
+  { id: 1, nome: 'Plano Acolher', cor: 'var(--plano-acolher)', campo: 'plano1' },
+  { id: 2, nome: 'Plano Compreender', cor: 'var(--plano-compreender)', campo: 'plano2' },
+  { id: 3, nome: 'Plano Evoluir', cor: 'var(--plano-evoluir)', campo: 'plano3' },
 ];
 
 const DEFAULT_PRECOS = { plano1: 2490, plano2: 4990, plano3: 8990, periodo: 590 };

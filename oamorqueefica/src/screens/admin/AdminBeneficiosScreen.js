@@ -8,8 +8,9 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import AdminLayout from './AdminLayout';
+import AdminLayout, { LARGURA_LATERAL } from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import { est, acento, Degrade } from './adminEstilo';
 
 // ============================================================================
 // Cupons e Comissões — acompanhamento financeiro das parcerias do tipo
@@ -24,7 +25,6 @@ import AdminSubTabs from './AdminSubTabs';
 // ============================================================================
 
 const JANELA_CONTESTACAO_MS = 24 * 3600000;
-const SIDEBAR_W = 230;
 
 // ---- Formatação ------------------------------------------------------------
 
@@ -130,32 +130,32 @@ const STATUS = {
   CONCLUIDO: {
     rotulo: 'Aguardando a cliente confirmar', icone: 'hourglass-outline',
     ajuda: 'O parceiro registrou o atendimento. Falta a cliente confirmar no app que ele aconteceu.',
-    get cor() { return colors.gold; }, get fg() { return colors.goldFg; }, get bg() { return 'rgba(212,180,131,0.18)'; },
+    get cor() { return acento('dourado').tinta; }, get fg() { return acento('dourado').texto; }, get bg() { return acento('dourado').fundo; },
   },
   CONFIRMADO_USUARIO: {
     rotulo: 'Em prazo de contestação', icone: 'time-outline',
     ajuda: 'A cliente confirmou. Esperamos 24 horas por segurança; depois fica pronto para cobrar sozinho.',
-    get cor() { return '#8FA5C6'; }, get fg() { return colors.escuro ? '#B9C8DF' : '#46597A'; }, get bg() { return 'rgba(185,200,223,0.34)'; },
+    get cor() { return acento('nevoa').tinta; }, get fg() { return acento('nevoa').texto; }, get bg() { return acento('nevoa').fundo; },
   },
   ELEGIVEL_LIQUIDACAO: {
     rotulo: 'Pronto para cobrar', icone: 'checkmark-done-outline',
     ajuda: 'Tudo certo com este atendimento. Ele entra na próxima cobrança que você gerar para o parceiro.',
-    get cor() { return colors.lav4; }, get fg() { return colors.lav6; }, get bg() { return colors.lav1; },
+    get cor() { return acento('lilas').tinta; }, get fg() { return acento('lilas').texto; }, get bg() { return acento('lilas').fundo; },
   },
   AGUARDANDO_PAGAMENTO: {
     rotulo: 'Cobrado, aguardando pagamento', icone: 'document-text-outline',
     ajuda: 'Já faz parte de uma cobrança enviada ao parceiro. Quando ele pagar, registre o recebimento.',
-    get cor() { return '#D39A7C'; }, get fg() { return colors.escuro ? '#F2C9B8' : '#8A523A'; }, get bg() { return 'rgba(242,201,184,0.42)'; },
+    get cor() { return acento('pessego').tinta; }, get fg() { return acento('pessego').texto; }, get bg() { return acento('pessego').fundo; },
   },
   LIQUIDADO: {
     rotulo: 'Recebido', icone: 'wallet-outline',
     ajuda: 'O parceiro já pagou esta comissão. Nada mais a fazer.',
-    get cor() { return colors.sage; }, get fg() { return colors.sageFg; }, get bg() { return 'rgba(122,158,126,0.16)'; },
+    get cor() { return acento('salvia').tinta; }, get fg() { return acento('salvia').texto; }, get bg() { return acento('salvia').fundo; },
   },
   CONTESTADO: {
     rotulo: 'Contestado', icone: 'alert-circle-outline',
     ajuda: 'A cliente informou que o atendimento não aconteceu; esse valor não será cobrado.',
-    get cor() { return '#B4635A'; }, get fg() { return colors.roseTexto; }, get bg() { return 'rgba(180,99,90,0.11)'; },
+    get cor() { return acento('rosa').tinta; }, get fg() { return acento('rosa').texto; }, get bg() { return acento('rosa').fundo; },
   },
 };
 const ORDEM_STATUS = ['CONCLUIDO', 'CONFIRMADO_USUARIO', 'ELEGIVEL_LIQUIDACAO', 'AGUARDANDO_PAGAMENTO', 'LIQUIDADO', 'CONTESTADO'];
@@ -213,7 +213,7 @@ function StatusPill({ status, compacto }) {
   return (
     <View style={[s.pill, { backgroundColor: i.bg }]}>
       <View style={[s.pillDot, { backgroundColor: i.cor }]} />
-      <Text style={[s.pillTxt, { color: i.fg }, compacto && { fontSize: 10 }]} numberOfLines={2}>{i.rotulo}</Text>
+      <Text style={[s.pillTxt, { color: i.fg }, compacto && { fontSize: 12 }]} numberOfLines={2}>{i.rotulo}</Text>
     </View>
   );
 }
@@ -255,6 +255,7 @@ function Botao({ titulo, icone, onPress, variante = 'primario', disabled, carreg
       style={[prim ? s.btnPrim : s.btnGhost, (disabled || carregando) && { opacity: 0.5 }, style]}
       onPress={onPress} disabled={disabled || carregando} activeOpacity={0.85} accessibilityRole="button"
     >
+      {prim && <Degrade />}
       {carregando
         ? <ActivityIndicator size="small" color={prim ? '#fff' : colors.lav5} />
         : icone ? <Ionicons name={icone} size={15} color={prim ? '#fff' : colors.lav5} /> : null}
@@ -271,8 +272,8 @@ function ModalBase({ visivel, onFechar, titulo, children, largo, bloqueado }) {
           <View style={s.modalHeader}>
             <Text style={s.modalTitulo} numberOfLines={2}>{titulo}</Text>
             <TouchableOpacity onPress={onFechar} disabled={bloqueado} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Fechar">
-              <Ionicons name="close" size={22} color={colors.tm} />
+              accessibilityLabel="Fechar" style={s.fechar}>
+              <Ionicons name="close" size={20} color={colors.td} />
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={s.modalBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -306,8 +307,11 @@ function CaixaValores({ status, titulo, itens, nota }) {
 
 export default function AdminBeneficiosScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
-  const temSidebar = Platform.OS === 'web' || width >= 700;
-  const larguraConteudo = Math.max(280, width - (temSidebar ? SIDEBAR_W : 0) - spacing.lg * 2);
+  // Largura real da área de conteúdo (medida no layout); antes da primeira
+  // medida, estima pela janela menos a barra lateral.
+  const [larguraMedida, setLarguraMedida] = useState(null);
+  const temSidebar = width >= 700;
+  const larguraConteudo = Math.max(280, (larguraMedida ?? (width - (temSidebar ? LARGURA_LATERAL : 0))) - spacing.lg * 2);
   const colsKpi = larguraConteudo >= 880 ? 3 : larguraConteudo >= 330 ? 2 : 1;
   const colsResumo = larguraConteudo >= 760 ? 4 : 2;
   const colsParc = larguraConteudo >= 760 ? 2 : 1;
@@ -696,19 +700,19 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
 
         <View style={[s.grid, s.resumo]}>
           {[
-            { icone: 'trending-up-outline', cor: colors.lav5, bg: colors.lav1, valor: moeda(indicadores.movimentado), rotulo: 'Movimentado nas parceiras', ajuda: `Valor dos serviços em ${plural(indicadores.atendimentos, 'atendimento', 'atendimentos')} (sem contestados).` },
-            { icone: 'heart-outline', cor: colors.sageFg, bg: 'rgba(122,158,126,0.16)', valor: moeda(indicadores.descontoClientes), rotulo: 'Economia das clientes', ajuda: 'Quanto as clientes deixaram de pagar graças aos cupons.' },
-            { icone: 'cash-outline', cor: colors.goldFg, bg: 'rgba(212,180,131,0.2)', valor: moeda(indicadores.comissaoTotal), rotulo: 'Comissão total gerada', ajuda: 'A receber ou já recebida no período (sem contestados).' },
+            { icone: 'trending-up-outline', cor: acento('lilas').tinta, bg: acento('lilas').fundo, valor: moeda(indicadores.movimentado), rotulo: 'Movimentado nas parceiras', ajuda: `Valor dos serviços em ${plural(indicadores.atendimentos, 'atendimento', 'atendimentos')} (sem contestados).` },
+            { icone: 'heart-outline', cor: acento('salvia').tinta, bg: acento('salvia').fundo, valor: moeda(indicadores.descontoClientes), rotulo: 'Economia das clientes', ajuda: 'Quanto as clientes deixaram de pagar graças aos cupons.' },
+            { icone: 'cash-outline', cor: acento('dourado').tinta, bg: acento('dourado').fundo, valor: moeda(indicadores.comissaoTotal), rotulo: 'Comissão total gerada', ajuda: 'A receber ou já recebida no período (sem contestados).' },
           ].map(it => (
             <View key={it.rotulo} style={[s.resumoItem, { width: largura(colsResumo, 10) }]}>
-              <View style={[s.resumoIcone, { backgroundColor: it.bg }]}><Ionicons name={it.icone} size={16} color={it.cor} /></View>
+              <View style={[s.resumoIcone, { backgroundColor: it.bg }]}><Ionicons name={it.icone} size={18} color={it.cor} /></View>
               <Text style={s.resumoValor} numberOfLines={1} adjustsFontSizeToFit>{it.valor}</Text>
               <Text style={s.resumoRotulo}>{it.rotulo}</Text>
               <Text style={s.resumoAjuda}>{it.ajuda}</Text>
             </View>
           ))}
           <View style={[s.resumoItem, { width: largura(colsResumo, 10) }]}>
-            <View style={[s.resumoIcone, { backgroundColor: colors.lav1 }]}><Ionicons name="ticket-outline" size={16} color={colors.lav5} /></View>
+            <View style={[s.resumoIcone, { backgroundColor: acento('pessego').fundo }]}><Ionicons name="ticket-outline" size={18} color={acento('pessego').tinta} /></View>
             {erros.vouchers ? (
               <Text style={s.resumoAjuda}>Não foi possível ler os cupons gerados.</Text>
             ) : !carregado.vouchers ? (
@@ -740,7 +744,7 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
             return (
               <View key={x.p.id} style={[s.parc, { width: largura(colsParc, 10) }, x.pronto > 0 && s.parcDestaque]}>
                 <View style={s.parcTopo}>
-                  <View style={s.parcIcone}><Ionicons name="pricetag-outline" size={17} color={colors.lav5} /></View>
+                  <View style={s.parcIcone}><Ionicons name="pricetag-outline" size={19} color={acento('pessego').tinta} /></View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.parcNome}>{x.p.titulo || 'Parceria sem nome'}</Text>
                     <Text style={s.parcRegra}>
@@ -936,9 +940,11 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminBeneficios">
       <AdminSubTabs grupo="parcerias" atual="AdminBeneficios" />
-      <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+        onLayout={e => { const w = Math.round(e.nativeEvent.layout.width); setLarguraMedida(a => (a === w ? a : w)); }}>
         <View style={s.cabecalho}>
           <View style={{ flex: 1, minWidth: 220 }}>
+            <Text style={s.sobre}>Parcerias</Text>
             <Text style={s.pageTitle}>Cupons e Comissões</Text>
             <Text style={s.pageSub}>
               Acompanhe cada uso de cupom, do atendimento no parceiro até a comissão cair na conta. Só conta como
@@ -1212,246 +1218,203 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
 
 const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 64 },
-  cabecalho: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.md },
-  pageTitle: { fontFamily: fonts.serif, fontSize: 22, color: colors.lav6, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 18 },
+  cabecalho: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.md },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: est.subtitulo(),
 
   carregando: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
-  carregandoTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
+  carregandoTxt: est.legenda(),
 
-  link: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5, textDecorationLine: 'underline' },
+  link: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lilasTexto, textDecorationLine: 'underline' },
   riscado: { textDecorationLine: 'line-through', color: colors.tl },
 
-  aviso: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(122,158,126,0.14)',
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  avisoErro: { backgroundColor: 'rgba(180,99,90,0.1)' },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.sageFg, lineHeight: 18 },
+  aviso: { ...est.aviso('salvia'), alignItems: 'center', marginBottom: spacing.md },
+  avisoErro: { backgroundColor: acento('rosa').fundo },
+  avisoTxt: est.avisoTxt('salvia'),
 
-  erro: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: 'rgba(180,99,90,0.08)',
-    borderWidth: 1, borderColor: 'rgba(180,99,90,0.3)', borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  erroTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.roseTexto, lineHeight: 18 },
+  erro: { ...est.aviso('rosa'), marginBottom: spacing.md },
+  erroTxt: { fontFamily: fonts.body, fontSize: 13.5, color: acento('rosa').texto, lineHeight: 20 },
 
   // Como funciona
-  como: {
-    backgroundColor: colors.lav1, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2,
-    padding: spacing.lg, marginBottom: spacing.lg,
-  },
-  comoTopo: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', marginBottom: spacing.sm },
+  como: { ...est.vidro(26), padding: spacing.lg, marginBottom: spacing.lg },
+  comoTopo: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', marginBottom: spacing.md },
   passosLargo: { flexDirection: 'row', flexWrap: 'wrap' },
   passo: { flexDirection: 'row', gap: spacing.md },
-  passoTrilho: { alignItems: 'center', width: 28 },
+  passoTrilho: { alignItems: 'center', width: 30 },
   passoNum: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.lav3,
+    width: 30, height: 30, borderRadius: 15, backgroundColor: colors.cardSolido, borderWidth: 1.5, borderColor: colors.lav3,
     alignItems: 'center', justifyContent: 'center',
   },
-  passoNumVoce: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
-  passoNumTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav6 },
+  passoNumVoce: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
+  passoNumTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
   passoLinha: { flex: 1, width: 2, backgroundColor: colors.lav2, marginVertical: 2, minHeight: 12 },
   passoCorpo: { flex: 1, paddingBottom: spacing.md },
-  passoQuem: { fontFamily: fonts.bodyBold, fontSize: 9.5, letterSpacing: 1, color: colors.tl, marginTop: 2 },
-  passoTitulo: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.td, marginTop: 1 },
-  passoTexto: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 17, marginTop: 2 },
+  passoQuem: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 1.1, color: colors.tl, marginTop: 2 },
+  passoTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo, marginTop: 1 },
+  passoTexto: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2, lineHeight: 19, marginTop: 2 },
 
   // Filtros
-  filtros: {
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.sm,
-  },
-  filtroRotulo: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1, color: colors.tl, marginBottom: 6, marginTop: 4 },
-  chipsLinha: { flexDirection: 'row', gap: 7, paddingBottom: spacing.sm },
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  chip: {
-    backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 13, paddingVertical: 7,
-  },
-  chipSel: { backgroundColor: colors.lav4, borderColor: colors.lav4 },
-  chipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTxtSel: { fontFamily: fonts.bodyBold, color: '#fff' },
+  filtros: { ...est.vidro(24), padding: 16, marginBottom: spacing.sm },
+  filtroRotulo: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 1.2, color: colors.lilasTexto, marginBottom: 8, marginTop: 4 },
+  chipsLinha: { flexDirection: 'row', gap: 8, paddingBottom: spacing.sm },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipTxt: est.chipTxt(),
+  chipTxtSel: est.chipTxtSel(),
   filtroRodape: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
-    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: 2,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave, paddingTop: spacing.sm, marginTop: 2,
   },
-  filtroResumo: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tm },
+  filtroResumo: { flex: 1, ...est.legenda() },
 
   // Seções
   secaoTopo: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.md },
-  secaoTitulo: { fontFamily: fonts.serif, fontSize: 17, color: colors.lav6 },
-  secaoSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 17, marginTop: 3 },
+  secaoTitulo: { fontFamily: fonts.serif, fontSize: 25, lineHeight: 30, color: colors.titulo },
+  secaoSub: { ...est.legenda(), marginTop: 3 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
 
   // Situação
   pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: radius.full,
-    paddingLeft: 7, paddingRight: 9, paddingVertical: 3, maxWidth: 190,
+    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999,
+    paddingLeft: 8, paddingRight: 10, paddingVertical: 4, maxWidth: 200,
   },
   pillDot: { width: 7, height: 7, borderRadius: 4 },
-  pillTxt: { fontFamily: fonts.bodyBold, fontSize: 10.5, flexShrink: 1 },
+  pillTxt: { fontFamily: fonts.bodyBold, fontSize: 12, flexShrink: 1 },
 
   // Indicadores
-  kpi: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    borderLeftWidth: 4, padding: spacing.md, gap: 2,
-  },
+  kpi: { ...est.vidro(20), borderLeftWidth: 4, padding: spacing.md, gap: 2 },
   kpiTopo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  kpiTitulo: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 12 },
-  kpiValor: { fontFamily: fonts.serif, fontSize: 21, color: colors.td, marginTop: 6 },
-  kpiQtd: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
-  kpiAjuda: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 15, marginTop: 6 },
+  kpiTitulo: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13 },
+  kpiValor: { fontFamily: 'Figtree_800ExtraBold', fontSize: 22, color: colors.titulo, marginTop: 6 },
+  kpiQtd: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2 },
+  kpiAjuda: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tl, lineHeight: 17, marginTop: 6 },
 
   resumo: { marginTop: 10 },
-  resumoItem: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 2,
-  },
-  resumoIcone: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  resumoValor: { fontFamily: fonts.serif, fontSize: 19, color: colors.td },
-  resumoDe: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm },
-  resumoRotulo: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td },
-  resumoAjuda: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 15 },
-  barra: { height: 6, borderRadius: 3, backgroundColor: colors.lav1, overflow: 'hidden', marginVertical: 5 },
-  barraFill: { height: '100%', borderRadius: 3, backgroundColor: colors.lav4 },
+  resumoItem: { ...est.vidro(20), padding: spacing.md, gap: 2 },
+  resumoIcone: { ...est.pilula(38), marginBottom: 6 },
+  resumoValor: { fontFamily: 'Figtree_800ExtraBold', fontSize: 21, color: colors.titulo },
+  resumoDe: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2 },
+  resumoRotulo: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.td },
+  resumoAjuda: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tl, lineHeight: 17 },
+  barra: { height: 8, borderRadius: 4, backgroundColor: colors.bordaSuave, overflow: 'hidden', marginVertical: 6 },
+  barraFill: { height: '100%', borderRadius: 4, backgroundColor: colors.lav4 },
 
   // Por parceria
-  parc: {
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, gap: spacing.md,
-  },
+  parc: { ...est.vidro(24), padding: spacing.lg, gap: spacing.md },
   parcDestaque: { borderColor: colors.lav3 },
   parcTopo: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  parcIcone: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  parcNome: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
-  parcRegra: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, lineHeight: 16, marginTop: 2 },
-  tagInativa: { backgroundColor: colors.bg, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.border },
-  tagInativaTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.tl },
+  parcIcone: { ...est.pilula(40), backgroundColor: acento('pessego').fundo },
+  parcNome: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo },
+  parcRegra: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 18, marginTop: 2 },
+  tagInativa: { backgroundColor: acento('neutro').fundo, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  tagInativaTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: acento('neutro').texto },
   parcMetricas: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   parcMetrica: { width: '50%', paddingRight: 8 },
-  parcMetricaRot: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  parcMetricaVal: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  txtContestado: { fontFamily: fonts.body, fontSize: 11, color: colors.roseTexto },
+  parcMetricaRot: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2 },
+  parcMetricaVal: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  txtContestado: { fontFamily: fonts.body, fontSize: 12.5, color: acento('rosa').texto },
   parcSaldos: { flexDirection: 'row', gap: 8 },
-  parcSaldo: { flex: 1, borderRadius: radius.sm, padding: 10 },
-  parcSaldoRot: { fontFamily: fonts.bodyBold, fontSize: 11 },
-  parcSaldoVal: { fontFamily: fonts.serif, fontSize: 18, marginTop: 2 },
-  parcSaldoSub: { fontFamily: fonts.body, fontSize: 11, opacity: 0.85 },
-  parcNota: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginTop: -4 },
+  parcSaldo: { flex: 1, borderRadius: 16, padding: 12 },
+  parcSaldoRot: { fontFamily: fonts.bodyBold, fontSize: 12.5 },
+  parcSaldoVal: { fontFamily: 'Figtree_800ExtraBold', fontSize: 19, marginTop: 2 },
+  parcSaldoSub: { fontFamily: fonts.body, fontSize: 12.5, opacity: 0.9 },
+  parcNota: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: -4 },
   parcAcoes: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave, paddingTop: spacing.md,
   },
-  parcNada: { flexGrow: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tl },
+  parcNada: { flexGrow: 1, fontFamily: fonts.body, fontSize: 13.5, color: colors.tl },
 
   // Botões
-  btnPrim: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 11,
-  },
-  btnPrimTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: '#fff', textAlign: 'center', flexShrink: 1 },
-  btnGhost: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    backgroundColor: colors.card, borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2,
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  btnGhostTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5, textAlign: 'center', flexShrink: 1 },
+  btnPrim: { ...est.botao(), minHeight: 46, paddingHorizontal: 18 },
+  btnPrimTxt: { ...est.botaoTxt(), fontSize: 14, flexShrink: 1 },
+  btnGhost: { ...est.botaoSec(), minHeight: 44, paddingHorizontal: 18 },
+  btnGhostTxt: { ...est.botaoSecTxt(), fontSize: 14, flexShrink: 1 },
 
   // Cobranças
-  segmento: {
-    flexDirection: 'row', backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border,
-    padding: 3, marginBottom: spacing.md, alignSelf: 'flex-start',
-  },
-  segmentoBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: radius.full },
-  segmentoBtnAtivo: { backgroundColor: colors.card, shadowColor: '#6b5b7a', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-  segmentoTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm },
-  segmentoTxtAtivo: { fontFamily: fonts.bodyBold, color: colors.lav6 },
+  segmento: { ...est.trilho(), marginBottom: spacing.md, backgroundColor: colors.escuro ? colors.card : colors.vidro },
+  segmentoBtn: est.aba(),
+  segmentoBtnAtivo: est.abaSel(),
+  segmentoTxt: est.abaTxt(),
+  segmentoTxtAtivo: est.abaTxtSel(),
   faixa: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-    borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.md,
+    borderRadius: 16, padding: 14, marginBottom: spacing.md,
   },
-  faixaTxt: { flex: 1, minWidth: 200, fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18 },
-  cob: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    borderLeftWidth: 4, padding: spacing.md, gap: 4,
-  },
+  faixaTxt: { flex: 1, minWidth: 200, fontFamily: fonts.body, fontSize: 13.5, lineHeight: 20 },
+  cob: { ...est.vidro(20), borderLeftWidth: 4, padding: spacing.md, gap: 4 },
   cobTopo: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', marginBottom: 2 },
-  cobParceria: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  cobMeta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, lineHeight: 16 },
-  cobValor: { fontFamily: fonts.serif, fontSize: 19, color: colors.td },
+  cobParceria: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  cobMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 18 },
+  cobValor: { fontFamily: 'Figtree_800ExtraBold', fontSize: 20, color: colors.titulo },
   cobAcoes: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-    borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginTop: 6,
+    borderTopWidth: 1, borderTopColor: colors.bordaSuave, paddingTop: spacing.sm, marginTop: 6,
   },
 
   // Utilizações
-  busca: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, marginBottom: spacing.md,
-  },
-  buscaInput: { flex: 1, paddingVertical: 10, fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  contagem: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: spacing.sm },
-  uso: {
-    backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    borderLeftWidth: 4, padding: spacing.md, gap: spacing.sm,
-  },
-  usoContestado: { backgroundColor: 'rgba(180,99,90,0.05)', borderColor: 'rgba(180,99,90,0.3)' },
+  busca: { ...est.campo(), flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0, marginBottom: spacing.md },
+  buscaInput: { flex: 1, paddingVertical: 12, fontFamily: fonts.body, fontSize: 15, color: colors.td },
+  contagem: { ...est.legenda(), marginBottom: spacing.sm },
+  uso: { ...est.vidro(20), borderLeftWidth: 4, padding: spacing.md, gap: spacing.sm },
+  usoContestado: { backgroundColor: acento('rosa').fundo },
   usoTopo: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  usoCodigo: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lav6, letterSpacing: 0.5 },
-  usoMeta: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, marginTop: 1 },
+  usoCodigo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.lav6, letterSpacing: 0.6 },
+  usoMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 1 },
   usoValores: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 },
   usoValor: { width: '50%', paddingRight: 6 },
-  usoValorRot: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl },
-  usoValorNum: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.td },
-  comissao: { color: colors.goldFg },
-  usoDetalhe: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
-  usoDetalheTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.tm, lineHeight: 16 },
+  usoValorRot: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2 },
+  usoValorNum: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  comissao: { color: acento('dourado').texto },
+  usoDetalhe: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', borderTopWidth: 1, borderTopColor: colors.bordaSuave, paddingTop: 8 },
+  usoDetalheTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 18 },
 
   vazio: {
-    alignItems: 'center', gap: 8, padding: spacing.lg, borderRadius: radius.md,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lav2, backgroundColor: colors.card,
+    alignItems: 'center', gap: 8, padding: spacing.lg, borderRadius: 22,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.lav2, backgroundColor: colors.card,
   },
-  vazioTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, textAlign: 'center', lineHeight: 18 },
+  vazioTxt: { ...est.legenda(), textAlign: 'center', fontSize: 14, lineHeight: 20 },
 
   // Modais
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(46,39,64,0.45)', alignItems: 'center', justifyContent: 'center', padding: spacing.md },
-  modalCard: { backgroundColor: colors.card, borderRadius: radius.xl, width: '100%', maxWidth: 440, maxHeight: '92%', overflow: 'hidden' },
+  modalOverlay: { ...est.veu(), alignItems: 'center', justifyContent: 'center', padding: spacing.md },
+  modalCard: { ...est.modal(), width: '100%', maxWidth: 460, maxHeight: '92%', overflow: 'hidden' },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md,
-    paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave,
   },
-  modalTitulo: { flex: 1, fontFamily: fonts.serif, fontSize: 17, color: colors.lav6 },
+  modalTitulo: { flex: 1, ...est.modalTitulo(), fontSize: 23, lineHeight: 28 },
+  fechar: est.fechar(),
   modalBody: { padding: spacing.lg, paddingBottom: spacing.xl },
   modalAcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: spacing.lg, width: '100%' },
-  explica: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 18, marginBottom: spacing.md },
-  campoRotulo: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td, marginTop: spacing.md, marginBottom: 6 },
-  dica: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 6, marginBottom: spacing.md, lineHeight: 15 },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 10, fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
-  caixa: { borderRadius: radius.md, borderWidth: 1, padding: spacing.md, marginBottom: spacing.sm },
-  caixaTitulo: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.7, marginBottom: 8 },
+  explica: { ...est.legenda(), fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
+  campoRotulo: { ...est.rotulo(), marginTop: spacing.md },
+  dica: { ...est.dica(), marginBottom: spacing.md },
+  input: est.campo(),
+  caixa: { borderRadius: 18, borderWidth: 1, padding: spacing.md, marginBottom: spacing.sm },
+  caixaTitulo: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.9, marginBottom: 8 },
   caixaGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 },
   caixaItem: { width: '50%', paddingRight: 6 },
-  caixaRotulo: { fontFamily: fonts.body, fontSize: 11, opacity: 0.85 },
-  caixaValor: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  caixaNota: { fontFamily: fonts.body, fontSize: 11.5, lineHeight: 16, marginTop: 8 },
+  caixaRotulo: { fontFamily: fonts.body, fontSize: 12.5, opacity: 0.9 },
+  caixaValor: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  caixaNota: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, marginTop: 8 },
   listaMini: { marginTop: spacing.xs },
   listaMiniLinha: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave,
   },
-  listaMiniCod: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav6 },
-  listaMiniData: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tm },
-  listaMiniVal: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.goldFg, minWidth: 80, textAlign: 'right' },
+  listaMiniCod: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lav6 },
+  listaMiniData: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2 },
+  listaMiniVal: { fontFamily: fonts.bodyBold, fontSize: 14, color: acento('dourado').texto, minWidth: 84, textAlign: 'right' },
   detalheLinha: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave,
   },
   resultadoIcone: {
-    width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(122,158,126,0.16)',
+    width: 58, height: 58, borderRadius: 29, backgroundColor: acento('salvia').fundo,
     alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm,
   },
-  resultadoValor: { fontFamily: fonts.serif, fontSize: 28, color: colors.lav6, marginBottom: spacing.sm },
-  proximo: { backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.md, width: '100%' },
-  proximoTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lav6, lineHeight: 18 },
+  resultadoValor: { fontFamily: 'Figtree_800ExtraBold', fontSize: 30, color: colors.titulo, marginBottom: spacing.sm },
+  proximo: { ...est.aviso('lilas'), width: '100%' },
+  proximoTxt: est.avisoTxt('lilas'),
 }), { escalar: false });

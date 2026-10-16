@@ -90,6 +90,24 @@ async function obterPrecoPlanoCentavos(planoId) {
   return PLANOS[planoId]?.valor ?? null;
 }
 
+// Preço do plano ANUAL (cobrado uma vez por ano). Prioriza `planos/{id}.precoAnual`
+// (reais) e `configuracoes/precos.plano{id}Anual` (centavos); sem nenhum dos
+// dois, vale 10 mensalidades (dois meses de presente).
+async function obterPrecoAnualCentavos(planoId) {
+  try {
+    const planoSnap = await db.collection('planos').doc(String(planoId)).get();
+    const preco = planoSnap.data()?.precoAnual;
+    if (typeof preco === 'number' && preco > 0) return Math.round(preco * 100);
+  } catch { /* segue para o próximo fallback */ }
+  try {
+    const precosSnap = await db.collection('configuracoes').doc('precos').get();
+    const centavos = precosSnap.data()?.[`plano${planoId}Anual`];
+    if (typeof centavos === 'number' && centavos > 0) return centavos;
+  } catch { /* segue para o cálculo padrão */ }
+  const mensal = await obterPrecoPlanoCentavos(planoId);
+  return mensal ? mensal * 10 : null;
+}
+
 async function obterPrecoPeriodoCentavos() {
   try {
     const precosSnap = await db.collection('configuracoes').doc('precos').get();
@@ -152,9 +170,14 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   const planoId = Number(request.data?.planoId);
   const plano = PLANOS[planoId];
   if (!plano) throw new HttpsError('invalid-argument', 'Plano inválido.');
+  // Assinatura mensal (padrão) ou anual.
+  const anual = request.data?.periodo === 'anual';
 
   const userRef = db.collection('usuarios').doc(uid);
-  const [valorAtual, userSnap] = await Promise.all([obterPrecoPlanoCentavos(planoId), userRef.get()]);
+  const [valorAtual, userSnap] = await Promise.all([
+    anual ? obterPrecoAnualCentavos(planoId) : obterPrecoPlanoCentavos(planoId),
+    userRef.get(),
+  ]);
   if (!valorAtual) throw new HttpsError('failed-precondition', 'Preço do plano não configurado.');
   const userData = userSnap.data() || {};
 
@@ -177,16 +200,16 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
     line_items: [{
       price_data: {
         currency: 'brl',
-        product_data: { name: plano.nome },
+        product_data: { name: anual ? `${plano.nome} (anual)` : plano.nome },
         unit_amount: valorAtual,
-        recurring: { interval: 'month' },
+        recurring: { interval: anual ? 'year' : 'month' },
       },
       quantity: 1,
     }],
     success_url: request.data?.successUrl || `${SITE_URL}/checkout-sucesso.html`,
     cancel_url: request.data?.cancelUrl || `${SITE_URL}/checkout-cancelado.html`,
-    metadata: { uid, planoId: String(planoId), cashbackCentavos: String(cashback?.desconto || 0) },
-    subscription_data: { metadata: { uid, planoId: String(planoId) } },
+    metadata: { uid, planoId: String(planoId), periodo: anual ? 'anual' : 'mensal', cashbackCentavos: String(cashback?.desconto || 0) },
+    subscription_data: { metadata: { uid, planoId: String(planoId), periodo: anual ? 'anual' : 'mensal' } },
     custom_text: {
       submit: { message: 'Você poderá cancelar quando quiser, direto no app.' },
     },
@@ -299,6 +322,7 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
         await definirPlano(session.metadata?.uid, Number(session.metadata?.planoId), {
           stripeSubscriptionId: session.subscription,
           stripeCustomerId: session.customer,
+          periodoAssinatura: session.metadata?.periodo === 'anual' ? 'anual' : 'mensal',
         });
       }
       break;

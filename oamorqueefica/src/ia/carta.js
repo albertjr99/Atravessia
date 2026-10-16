@@ -26,19 +26,21 @@ const LEITURA = {
 };
 
 /**
- * @param {object} p { nome, ano, mes (0-11), checkins, vitorias, diario }
+ * @param {object} p { nome, ano, mes (0-11), checkins, vitorias, diario, experiencias }
+ *   experiencias: memórias do Experimente a vida ({ data, texto, parceria? }).
  * @returns {{ titulo, paragrafos: string[], vazio: boolean, numeros: object }}
  */
-export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diario = [] }) {
+export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diario = [], experiencias = [] }) {
   const prefixo = `${ano}-${String(mes + 1).padStart(2, '0')}`;
   const doMes = (lista) => lista.filter(x => diaDe(x.data).startsWith(prefixo));
   const ck = doMes(checkins).sort((a, b) => diaDe(a.data).localeCompare(diaDe(b.data)));
   const vt = doMes(vitorias);
   const dr = doMes(diario);
+  const ex = doMes(experiencias).filter(x => (x.texto || '').trim());
   const titulo = `Sua carta de ${MESES[mes]}`;
   const saudacao = nome ? `Oi, ${nome},` : 'Oi,';
 
-  if (ck.length === 0 && vt.length === 0 && dr.length === 0) {
+  if (ck.length === 0 && vt.length === 0 && dr.length === 0 && ex.length === 0) {
     return {
       titulo, vazio: true, numeros: { checkins: 0, vitorias: 0, diario: 0 },
       paragrafos: [
@@ -85,8 +87,17 @@ export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diar
   if (dr.length) {
     p.push(`E escreveu no diário ${dr.length} ${dr.length === 1 ? 'vez' : 'vezes'}. Colocar o que sente em palavras é uma forma corajosa de atravessar.`);
   }
+  if (ex.length) {
+    // As sensações boas que ela quis guardar ao experimentar a vida, nas palavras dela.
+    const trechos = ex.slice(0, 3).map(x => {
+      const t = x.texto.trim().replace(/\s+/g, ' ');
+      const curto = t.length > 160 ? `${t.slice(0, 157).trim()}…` : t;
+      return x.parceria ? `"${curto}" (${x.parceria})` : `"${curto}"`;
+    });
+    p.push(`Ao experimentar a vida, você quis guardar na memória: ${trechos.join('; ')}. Que essas sensações boas continuem com você.`);
+  }
   p.push('Que o próximo mês tenha espaço para o que você sente e para o que te faz bem.');
   p.push('Com carinho,\nAtravessIA');
 
-  return { titulo, vazio: false, paragrafos: p, numeros: { checkins: ck.length, dias, vitorias: vt.length, diario: dr.length } };
+  return { titulo, vazio: false, paragrafos: p, numeros: { checkins: ck.length, dias, vitorias: vt.length, diario: dr.length, experiencias: ex.length } };
 }

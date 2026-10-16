@@ -5,7 +5,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, Video, ResizeMode } from 'expo-av';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Disclaimer, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
@@ -147,24 +148,25 @@ export default function AudioPlayerScreen({ route, navigation }) {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
         <Text style={styles.topTitle}>{isVideo ? 'Vídeo' : 'Áudio'}</Text>
         {temAcessoAoAudio ? (
           <TouchableOpacity
             onPress={toggleFavorito}
-            style={styles.favTopBtn}
+            style={styles.backBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel={favoritado ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
           >
             <Ionicons
               name={favoritado ? 'heart' : 'heart-outline'}
-              size={22}
-              color={favoritado ? colors.rose : colors.tm}
+              size={21}
+              color={favoritado ? colors.roseTexto : colors.texto2}
             />
           </TouchableOpacity>
-        ) : <View style={{ width: 36 }} />}
+        ) : <View style={{ width: 44 }} />}
       </View>
 
       <View style={styles.content}>
@@ -178,8 +180,11 @@ export default function AudioPlayerScreen({ route, navigation }) {
             onPlaybackStatusUpdate={onStatus}
           />
         ) : (
-          <View style={styles.artCircle}>
-            <Ionicons name="headset-outline" size={52} color={colors.lav5} />
+          <View style={styles.capa}>
+            <LinearGradient colors={colors.joiaLilas.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={StyleSheet.absoluteFill} />
+            <View style={styles.capaIcone}>
+              <Ionicons name="headset-outline" size={46} color={colors.joiaLilasTexto} />
+            </View>
           </View>
         )}
 
@@ -209,34 +214,37 @@ export default function AudioPlayerScreen({ route, navigation }) {
               }]} />
             </View>
 
-            {/* Controls */}
+            {/* Controls: pílulas de vidro em volta do botão principal */}
             <View style={styles.controls}>
               {/* Restart */}
               <TouchableOpacity
                 onPress={handleReiniciar}
-                style={styles.iconBtn}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.pilula}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Reiniciar"
               >
-                <Ionicons name="refresh" size={20} color={colors.tm} />
+                <Ionicons name="refresh" size={19} color={colors.texto2} />
               </TouchableOpacity>
 
               {/* Skip back 15s */}
               <TouchableOpacity
                 onPress={() => handleSkip(-15000)}
-                style={styles.skipBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.pilula}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Voltar 15 segundos"
               >
-                <Ionicons name="play-back-outline" size={24} color={colors.td} />
+                <Ionicons name="play-back-outline" size={19} color={colors.titulo} />
                 <Text style={styles.skipLabel}>15</Text>
               </TouchableOpacity>
 
               {/* Play / Pause */}
-              <TouchableOpacity style={styles.playBtn} onPress={handlePlayPause} activeOpacity={0.85}>
+              <TouchableOpacity style={styles.playBtn} onPress={handlePlayPause} activeOpacity={0.85} accessibilityLabel={tocando ? 'Pausar' : 'Tocar'}>
+                <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
                 {carregando
                   ? <Ionicons name="hourglass-outline" size={24} color="white" />
                   : <Ionicons
                       name={tocando ? 'pause' : 'play'}
-                      size={26}
+                      size={28}
                       color="white"
                       style={!tocando && { marginLeft: 3 }}
                     />
@@ -246,18 +254,20 @@ export default function AudioPlayerScreen({ route, navigation }) {
               {/* Skip forward 15s */}
               <TouchableOpacity
                 onPress={() => handleSkip(15000)}
-                style={styles.skipBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.pilula}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Avançar 15 segundos"
               >
-                <Ionicons name="play-forward-outline" size={24} color={colors.td} />
+                <Ionicons name="play-forward-outline" size={19} color={colors.titulo} />
                 <Text style={styles.skipLabel}>15</Text>
               </TouchableOpacity>
 
               {/* Speed */}
               <TouchableOpacity
                 onPress={handleVelocidade}
-                style={styles.speedBtn}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={[styles.pilula, styles.speedBtn]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Velocidade"
               >
                 <Text style={styles.speedText}>{velocidade}x</Text>
               </TouchableOpacity>
@@ -267,11 +277,13 @@ export default function AudioPlayerScreen({ route, navigation }) {
 
         {!temAcessoAoAudio ? (
           <TouchableOpacity style={styles.bloqBox} onPress={avisarPlano} activeOpacity={0.85}>
-            <Ionicons name="lock-closed-outline" size={18} color={colors.lav5} />
+            <View style={styles.bloqIcone}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.lilasIcone} />
+            </View>
             <Text style={styles.bloqTxt}>
               A reprodução deste áudio está disponível em outro plano.
             </Text>
-            <Ionicons name="chevron-forward" size={15} color={colors.lav5} />
+            <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
           </TouchableOpacity>
         ) : (
         <>
@@ -284,7 +296,7 @@ export default function AudioPlayerScreen({ route, navigation }) {
           <Ionicons
             name={favoritado ? 'heart' : 'heart-outline'}
             size={18}
-            color={favoritado ? 'white' : colors.rose}
+            color={favoritado ? 'white' : colors.roseTexto}
           />
           <Text style={[styles.favBtnTxt, favoritado && styles.favBtnTxtAtivo]}>
             {favoritado ? 'Salvo nos seus conteúdos' : 'Salvar nos meus conteúdos'}
@@ -309,110 +321,100 @@ export default function AudioPlayerScreen({ route, navigation }) {
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  favTopBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
   bloqBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 9,
-    marginTop: spacing.lg, paddingVertical: 12, paddingHorizontal: 16,
-    borderRadius: radius.lg, backgroundColor: colors.lav1,
-    borderWidth: 1, borderColor: colors.lav2, maxWidth: 320,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: spacing.lg, padding: 12, alignSelf: 'stretch',
+    borderRadius: 20, backgroundColor: colors.card,
+    borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  bloqTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.lav6, lineHeight: 17 },
+  bloqIcone: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  bloqTxt: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.lilasTexto, lineHeight: 18 },
 
   favBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: spacing.lg, paddingVertical: 10, paddingHorizontal: 18,
-    borderRadius: radius.full, backgroundColor: colors.card,
-    borderWidth: 1.5, borderColor: colors.rose,
+    marginTop: spacing.lg, minHeight: 46, paddingHorizontal: 20,
+    borderRadius: radius.full, backgroundColor: colors.vidro,
+    borderWidth: 1, borderColor: colors.escuro ? colors.bordaLuz : '#F0C6D2',
   },
-  favBtnAtivo: { backgroundColor: colors.rose, borderColor: colors.rose },
-  favBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.rose },
-  favBtnTxtAtivo: { color: 'white' },
+  favBtnAtivo: { backgroundColor: colors.roseTexto, borderColor: colors.roseTexto },
+  favBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.roseTexto },
+  favBtnTxtAtivo: { color: colors.escuro ? '#1C1726' : 'white' },
   favHint: {
-    fontFamily: fonts.body, fontSize: 11, color: colors.tl,
-    textAlign: 'center', marginTop: 8, maxWidth: 280, lineHeight: 16,
+    fontFamily: fonts.body, fontSize: 12, color: colors.texto2,
+    textAlign: 'center', marginTop: 8, lineHeight: 17, paddingHorizontal: spacing.lg,
   },
 
   content: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: spacing.xl, paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg, paddingBottom: spacing.lg,
   },
   video: {
-    width: '100%', height: 220, borderRadius: radius.lg,
+    width: '100%', height: 220, borderRadius: 22,
     marginBottom: spacing.lg, backgroundColor: '#000',
   },
-  artCircle: {
-    width: 140, height: 140, borderRadius: 70,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
-    marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.lav2,
-    ...shadow.soft,
+  // Capa do áudio: cartão-joia lilás com cantos arredondados
+  capa: {
+    width: 168, height: 168, borderRadius: 22, overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg,
+    borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 14 }, shadowOpacity: colors.escuro ? 0.4 : 0.22, shadowRadius: 24, elevation: 3,
   },
+  capaIcone: { width: 84, height: 84, borderRadius: 26, backgroundColor: colors.vidroForte, alignItems: 'center', justifyContent: 'center' },
   titulo: {
-    fontFamily: fonts.script, fontSize: 22, color: colors.lav6,
+    fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo,
     textAlign: 'center', marginBottom: 4,
   },
   sub: {
-    fontFamily: fonts.body, fontSize: 12, color: colors.tm,
+    fontFamily: fonts.bodySemi, fontSize: 13, color: colors.lilasTexto,
     textTransform: 'capitalize', marginBottom: spacing.sm,
   },
   desc: {
-    fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic',
-    color: colors.tm, textAlign: 'center', lineHeight: 20,
-    marginBottom: spacing.lg, maxWidth: 300,
+    fontFamily: fonts.quote, fontSize: 18, color: colors.texto2, textAlign: 'center', lineHeight: 25,
+    marginBottom: spacing.md, paddingHorizontal: spacing.md,
   },
 
   playerBox: {
     width: '100%', marginTop: spacing.md,
-    backgroundColor: colors.card, borderRadius: radius.xl,
-    padding: spacing.lg, borderWidth: 1, borderColor: colors.border,
-    ...shadow.card,
+    backgroundColor: colors.card, borderRadius: 26,
+    padding: spacing.lg, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.28 : 0.11, shadowRadius: 20, elevation: 2,
   },
-  timeRow: {
-    flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10,
-  },
-  timeText: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
+  timeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  timeText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2 },
 
   seekTrack: {
-    height: 6, backgroundColor: colors.border, borderRadius: 3,
-    marginBottom: spacing.lg + 4, position: 'relative', overflow: 'visible',
+    height: 6, backgroundColor: colors.lav1, borderRadius: 3,
+    marginBottom: spacing.lg + 6, position: 'relative', overflow: 'visible',
   },
-  seekFill: {
-    height: '100%', backgroundColor: colors.lav4, borderRadius: 3,
-  },
+  seekFill: { height: '100%', backgroundColor: colors.botao, borderRadius: 3 },
   seekThumb: {
     position: 'absolute', top: -(THUMB_SIZE - 6) / 2,
     width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: THUMB_SIZE / 2,
-    backgroundColor: colors.lav4,
-    borderWidth: 2.5, borderColor: colors.white,
-    shadowColor: colors.lav4, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3, shadowRadius: 4, elevation: 3,
+    backgroundColor: colors.botao, borderWidth: 3, borderColor: colors.white,
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2,
   },
 
-  controls: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pilula: {
+    width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidroForte, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 3 }, shadowOpacity: colors.escuro ? 0.2 : 0.07, shadowRadius: 6, elevation: 1,
   },
-  iconBtn: {
-    width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
-  },
-  skipBtn: {
-    width: 44, height: 48, alignItems: 'center', justifyContent: 'center', gap: 1,
-  },
-  skipLabel: {
-    fontFamily: fonts.bodyBold, fontSize: 9, color: colors.td, lineHeight: 11,
-  },
+  skipLabel: { fontFamily: fonts.bodyBold, fontSize: 9, color: colors.titulo, lineHeight: 11, marginTop: -1 },
   playBtn: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center',
-    ...shadow.soft,
+    width: 70, height: 70, borderRadius: 35, overflow: 'hidden',
+    backgroundColor: colors.botao, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 4,
   },
-  speedBtn: {
-    width: 40, height: 40, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav2,
-  },
-  speedText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5 },
+  speedBtn: { backgroundColor: colors.lav1 },
+  speedText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto },
 }));

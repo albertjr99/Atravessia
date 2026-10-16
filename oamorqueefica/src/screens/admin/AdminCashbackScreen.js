@@ -10,6 +10,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { brl } from '../cashback/CashbackScreen';
+import { est, acento, Degrade } from './adminEstilo';
 
 // Cashback: regras do programa, números gerais, crédito manual e estorno.
 // Os créditos e usos só são gravados pelas Cloud Functions.
@@ -112,22 +113,26 @@ export default function AdminCashbackScreen({ navigation }) {
 
   const agora = Date.now();
   const CARDS = [
-    { rotulo: 'Distribuído', valor: resumo.distribuido, cor: colors.lav5 },
-    { rotulo: 'Usado em compras', valor: resumo.usado, cor: colors.sageFg },
-    { rotulo: 'Em aberto', valor: resumo.aberto, cor: colors.td },
-    { rotulo: 'Vencido', valor: resumo.vencido, cor: colors.tl },
+    { rotulo: 'Distribuído', valor: resumo.distribuido, cor: acento('lilas').texto, icone: 'gift-outline', acento: 'lilas' },
+    { rotulo: 'Usado em compras', valor: resumo.usado, cor: acento('salvia').texto, icone: 'bag-check-outline', acento: 'salvia' },
+    { rotulo: 'Em aberto', valor: resumo.aberto, cor: colors.td, icone: 'wallet-outline', acento: 'dourado' },
+    { rotulo: 'Vencido', valor: resumo.vencido, cor: colors.texto2, icone: 'time-outline', acento: 'neutro' },
   ];
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminCashback">
       <AdminSubTabs grupo="parcerias" atual="AdminCashback" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={st.scroll}>
+        <Text style={st.sobre}>Parcerias</Text>
         <Text style={st.pageTitle}>Cashback</Text>
         <Text style={st.pageSub}>Quem usa um cupom de parceria ganha uma parte do valor de volta, para usar como desconto no plano ou no relatório.</Text>
 
         <View style={st.grade}>
           {CARDS.map(c => (
             <View key={c.rotulo} style={st.stat}>
+              <View style={[st.statIcone, { backgroundColor: acento(c.acento).fundo }]}>
+                <Ionicons name={c.icone} size={18} color={acento(c.acento).tinta} />
+              </View>
               <Text style={[st.statN, { color: c.cor }]}>{brl(c.valor)}</Text>
               <Text style={st.statL}>{c.rotulo}</Text>
             </View>
@@ -160,6 +165,7 @@ export default function AdminCashbackScreen({ navigation }) {
           </View>
           <Text style={st.ajuda}>"Desconto máx." é quanto do preço o cashback pode cobrir. Sempre fica ao menos R$ 1,00 a pagar.</Text>
           <TouchableOpacity style={[st.btn, salvandoCfg && { opacity: 0.6 }]} onPress={salvarCfg} disabled={salvandoCfg}>
+            <Degrade />
             {salvandoCfg ? <ActivityIndicator color="white" size="small" /> : <Text style={st.btnTxt}>Salvar regras</Text>}
           </TouchableOpacity>
         </View>
@@ -180,6 +186,7 @@ export default function AdminCashbackScreen({ navigation }) {
             </View>
           </View>
           <TouchableOpacity style={[st.btn, enviando && { opacity: 0.6 }]} onPress={concederCredito} disabled={enviando}>
+            <Degrade />
             {enviando ? <ActivityIndicator color="white" size="small" /> : <Text style={st.btnTxt}>Conceder crédito</Text>}
           </TouchableOpacity>
         </View>
@@ -197,13 +204,15 @@ export default function AdminCashbackScreen({ navigation }) {
                 : m.estornado ? 'Estornado' : vencido ? 'Vencido' : `Saldo ${brl(m.saldoCentavos)} · até ${dataCurta(m.expiraEm?.toMillis?.())}`;
               return (
                 <View key={m.id} style={[st.mov, i > 0 && st.movBorda]}>
-                  <Ionicons name={credito ? 'add-circle-outline' : 'remove-circle-outline'} size={20} color={credito ? colors.sageFg : colors.tm} />
+                  <View style={[st.movIcone, { backgroundColor: acento(credito ? 'salvia' : 'neutro').fundo }]}>
+                    <Ionicons name={credito ? 'add-circle-outline' : 'remove-circle-outline'} size={19} color={acento(credito ? 'salvia' : 'neutro').tinta} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={st.movTit} numberOfLines={1}>{usuarias[m.usuarioId] || 'Usuária'}</Text>
                     <Text style={st.movSub} numberOfLines={2}>{m.descricao || ''}{m.descricao ? ' · ' : ''}{dataCurta(m.criadoEm?.toMillis?.())} · {status}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={[st.movValor, credito && { color: colors.sageFg }]}>{credito ? '+' : '−'} {brl(m.valorCentavos)}</Text>
+                    <Text style={[st.movValor, credito && { color: acento('salvia').texto }]}>{credito ? '+' : '−'} {brl(m.valorCentavos)}</Text>
                     {podeEstornar && (
                       <TouchableOpacity onPress={() => estornar(m)} hitSlop={8}>
                         <Text style={st.estornar}>Estornar</Text>
@@ -221,30 +230,33 @@ export default function AdminCashbackScreen({ navigation }) {
 }
 
 const st = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40, maxWidth: 900, width: '100%', alignSelf: 'center' },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
-  grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  stat: { flexGrow: 1, flexBasis: '45%', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
-  statN: { fontFamily: fonts.bodyBold, fontSize: 19 },
-  statL: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  nota: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, marginTop: 8 },
-  secTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, marginTop: spacing.lg, marginBottom: spacing.sm },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  stat: { ...est.vidro(22), flexGrow: 1, flexBasis: '45%', paddingVertical: 14, paddingHorizontal: 16, gap: 2 },
+  statIcone: { ...est.pilula(38), marginBottom: 8 },
+  statN: { fontFamily: 'Figtree_800ExtraBold', fontSize: 22, letterSpacing: -0.4 },
+  statL: { fontFamily: fonts.bodySemi, fontSize: 13.5, color: colors.texto2, marginTop: 2 },
+  nota: { ...est.legenda(), marginTop: 10, paddingHorizontal: 4 },
+  secTit: { ...est.secao(), marginTop: spacing.xl, marginBottom: 10 },
+  card: { ...est.vidro(26), paddingVertical: 14, paddingHorizontal: 18, gap: 4 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  switchTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
+  switchTxt: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
   linha: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  campo: { flex: 1, minWidth: 110 },
-  label: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.td, marginBottom: 4, marginTop: spacing.sm },
-  input: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  ajuda: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 17, marginTop: 4 },
-  btn: { backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 12, alignItems: 'center', marginTop: spacing.md },
-  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
-  vazio: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  mov: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
-  movBorda: { borderTopWidth: 1, borderTopColor: colors.border },
-  movTit: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.td },
-  movSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 1 },
-  movValor: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.tm },
-  estornar: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.roseTexto || colors.rose },
+  campo: { flex: 1, minWidth: 120 },
+  label: { ...est.rotulo(), marginTop: 10 },
+  input: est.campo(),
+  ajuda: { ...est.legenda(), marginTop: 4 },
+  btn: { ...est.botao(), marginTop: spacing.md },
+  btnTxt: est.botaoTxt(),
+  vazio: est.legenda(),
+  mov: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  movBorda: est.divisoria(),
+  movIcone: est.pilula(38),
+  movTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  movSub: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.texto2, marginTop: 1 },
+  movValor: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.texto2 },
+  estornar: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.roseTexto },
 }), { escalar: false });

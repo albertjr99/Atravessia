@@ -9,9 +9,11 @@ const ilustracao = require('../../../assets/images/il_caminho_jornada.png');
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { planos as planosPadrao } from '../../data';
-import { ScriptTitle, Button, LavandaBg } from '../../components';
+import { Button, LavandaBg } from '../../components';
+import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
@@ -27,6 +29,11 @@ export default function PlanosScreen({ navigation }) {
   const [demorando, setDemorando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [usarCashback, setUsarCashback] = useState(false);
+  // Assinatura mensal ou anual (o anual vale o preço anual do plano ou 10 mensalidades).
+  const [periodo, setPeriodo] = useState('mensal');
+  const anual = periodo === 'anual';
+  const precoAnualDe = (p) => (p?.precoAnual > 0 ? p.precoAnual : (p?.preco || 0) * 10);
+  const reais = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   // Situação de acesso da usuária, para a tela dizer com clareza em que plano
   // ela está e não oferecer a compra do que ela já tem.
@@ -58,7 +65,7 @@ export default function PlanosScreen({ navigation }) {
     const aviso = setTimeout(() => setDemorando(true), 8000);
     try {
       const criarSessaoCheckout = httpsCallable(functions, 'criarSessaoCheckout');
-      const { data } = await criarSessaoCheckout({ planoId, usarCashback });
+      const { data } = await criarSessaoCheckout({ planoId, usarCashback, periodo });
       await abrirPagamento(data.url);
       // O plano é atualizado automaticamente quando o pagamento é confirmado
       // (webhook do Stripe grava em usuarios/{uid}.plano e o app escuta em tempo real).
@@ -98,34 +105,53 @@ export default function PlanosScreen({ navigation }) {
 
   const planosAtivos = planosList.filter(p => !p.emBreve);
   const planosEmBreve = planosList.filter(p => p.emBreve);
-  const coresAtivos = [colors.sage, colors.lav4];
   const selectedPlan = planosList.find(p => p.id === sel);
   const planoAtual = planosList.find(p => p.id === usuario.plano);
   const nomeAtual = planoAtual?.nome || (usuario.plano === 0 ? 'Perceber' : 'seu plano');
+  const corAtual = acessoTotal || cortesiaAtiva ? corAcessoTotal() : corDoPlano(usuario.plano);
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 44 }} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <ScriptTitle size={24}>Planos</ScriptTitle>
+            <Text style={styles.titulo}>Planos</Text>
             <Text style={styles.sub}>Escolha o que faz mais sentido para você agora</Text>
           </View>
-          <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
+          <Moldura source={ilustracao} tamanho={80} />
         </View>
 
-        <View style={styles.atualBox}>
-          <Ionicons name={acessoTotal || cortesiaAtiva ? 'gift-outline' : 'ribbon-outline'} size={20} color={colors.lav5} />
+        {/* Mensal ou anual */}
+        {planosAtivos.some(p => p.preco > 0) && !acessoTotal && (
+          <View style={styles.periodoTrilho} accessibilityRole="tablist">
+            {[['mensal', 'Mensal'], ['anual', 'Anual · 2 meses de presente']].map(([id, rot]) => (
+              <TouchableOpacity
+                key={id}
+                style={[styles.periodoOpcao, periodo === id && styles.periodoAtivo]}
+                onPress={() => setPeriodo(id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: periodo === id }}
+              >
+                <Text style={[styles.periodoTxt, periodo === id && styles.periodoTxtAtivo]} numberOfLines={1}>{rot}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={[styles.atualBox, { backgroundColor: corAtual.fundo }]}>
+          <View style={[styles.atualIcone, { backgroundColor: colors.vidroForte }]}>
+            <Ionicons name={acessoTotal || cortesiaAtiva ? 'gift-outline' : 'ribbon-outline'} size={21} color={corAtual.tinta} />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.atualTit}>
+            <Text style={[styles.atualTit, { color: corAtual.texto }]}>
               {acessoTotal ? 'Você tem acesso total' : cortesiaAtiva ? 'Você está com uma cortesia' : `Seu plano atual: ${nomeAtual}`}
             </Text>
             <Text style={styles.atualSub}>
@@ -140,54 +166,70 @@ export default function PlanosScreen({ navigation }) {
           </View>
         </View>
 
-        {planosAtivos.map((p, idx) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[styles.planCard, sel === p.id && styles.planCardSel, p.destaque && styles.planCardDestaque]}
-            onPress={() => setSel(p.id)}
-            activeOpacity={0.85}
-          >
-            {p.destaque && (
-              <View style={styles.destaqueTag}>
-                <Text style={styles.destaqueText}>Recomendado para começar</Text>
-              </View>
-            )}
-            <View style={styles.planHeader}>
-              <View style={{ flex: 1 }}>
-                <View style={styles.planNomeRow}>
-                  <Text style={styles.planNome}>{p.nome}</Text>
-                  {p.id === usuario.plano && !acessoTotal && (
-                    <View style={styles.seuPlanoTag}><Text style={styles.seuPlanoTxt}>Seu plano</Text></View>
-                  )}
+        {planosAtivos.map((p) => {
+          const cor = corDoPlano(p.id);
+          const escolhido = sel === p.id;
+          return (
+            <TouchableOpacity
+              key={p.id}
+              style={[styles.planCard, escolhido && { borderColor: cor.tinta, borderWidth: 2 }]}
+              onPress={() => setSel(p.id)}
+              activeOpacity={0.9}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: escolhido }}
+            >
+              {/* Faixa do topo com a cor do plano */}
+              <View style={[styles.planTopo, { backgroundColor: cor.fundo }]}>
+                {p.destaque && (
+                  <View style={styles.destaqueTag}>
+                    <Ionicons name="sparkles-outline" size={12} color={colors.lilasTexto} />
+                    <Text style={styles.destaqueText}>Recomendado para começar</Text>
+                  </View>
+                )}
+                <View style={styles.planHeader}>
+                  <View style={[styles.planIcone, { backgroundColor: colors.vidroForte }]}>
+                    <Ionicons name={ICONE_PLANO[p.id] || 'leaf-outline'} size={21} color={cor.tinta} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.planNomeRow}>
+                      <Text style={[styles.planNome, { color: cor.texto }]}>{p.nome}</Text>
+                      {p.id === usuario.plano && !acessoTotal && (
+                        <View style={[styles.seuPlanoTag, { backgroundColor: cor.tinta }]}><Text style={styles.seuPlanoTxt}>Seu plano</Text></View>
+                      )}
+                    </View>
+                    <Text style={styles.planDesc}>{p.descricao}</Text>
+                  </View>
+                  <View style={styles.planPrecoBox}>
+                    <Text style={[styles.planPreco, { color: cor.texto }]}>
+                      {p.preco === 0 ? 'Grátis' : reais(anual ? precoAnualDe(p) : p.preco)}
+                    </Text>
+                    {p.preco > 0 && <Text style={styles.planPrecoPer}>{anual ? '/ano' : '/mês'}</Text>}
+                    {p.preco > 0 && anual && <Text style={styles.planPrecoPer}>{`≈ ${reais(precoAnualDe(p) / 12)}/mês`}</Text>}
+                  </View>
                 </View>
-                <Text style={styles.planDesc}>{p.descricao}</Text>
               </View>
-              <View style={styles.planPrecoBox}>
-                <Text style={[styles.planPreco, { color: coresAtivos[idx] }]}>
-                  {p.preco === 0 ? 'Grátis' : `R$ ${p.preco.toFixed(2).replace('.', ',')}`}
-                </Text>
-                {p.preco > 0 && <Text style={styles.planPrecoPer}>/mês</Text>}
-              </View>
-            </View>
-            {!!p.mensagem && (
-              <View style={styles.planMensagemBox}>
-                <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.lav5} />
-                <Text style={styles.planMensagemTxt}>{p.mensagem}</Text>
-              </View>
-            )}
-            <View style={styles.recursosList}>
-              {p.recursos.map((r, i) => (
-                <View key={i} style={styles.recursoRow}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color={coresAtivos[idx]} />
-                  <Text style={styles.recursoText}>{r}</Text>
+              <View style={styles.planCorpo}>
+                {!!p.mensagem && (
+                  <View style={[styles.planMensagemBox, { borderLeftColor: cor.tinta }]}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={14} color={cor.tinta} />
+                    <Text style={styles.planMensagemTxt}>{p.mensagem}</Text>
+                  </View>
+                )}
+                <View style={styles.recursosList}>
+                  {p.recursos.map((r, i) => (
+                    <View key={i} style={styles.recursoRow}>
+                      <Ionicons name="checkmark-circle" size={17} color={cor.tinta} />
+                      <Text style={styles.recursoText}>{r}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-            <View style={[styles.radioIndicator, sel === p.id && { borderColor: coresAtivos[idx] }]}>
-              {sel === p.id && <View style={[styles.radioInner, { backgroundColor: coresAtivos[idx] }]} />}
-            </View>
-          </TouchableOpacity>
-        ))}
+                <View style={[styles.radioIndicator, escolhido && { borderColor: cor.tinta }]}>
+                  {escolhido && <View style={[styles.radioInner, { backgroundColor: cor.tinta }]} />}
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
 
         {/* Planos em breve */}
         {planosEmBreve.length > 0 && (
@@ -195,13 +237,18 @@ export default function PlanosScreen({ navigation }) {
             <Text style={styles.emBreveTitulo}>Em breve</Text>
             <Text style={styles.emBreveDesc}>Novos planos com ainda mais recursos chegando em breve.</Text>
             <View style={styles.emBreveRow}>
-              {planosEmBreve.map(p => (
-                <View key={p.id} style={styles.emBreveCard}>
-                  <Ionicons name="lock-closed-outline" size={18} color={colors.tl} />
-                  <Text style={styles.emBreveNome}>{p.nome}</Text>
-                  <Text style={styles.emBreveSub}>{p.descricao.split('.')[0]}</Text>
-                </View>
-              ))}
+              {planosEmBreve.map(p => {
+                const cor = corDoPlano(p.id);
+                return (
+                  <View key={p.id} style={[styles.emBreveCard, { backgroundColor: cor.fundo }]}>
+                    <View style={[styles.emBreveIcone, { backgroundColor: colors.vidroForte }]}>
+                      <Ionicons name="lock-closed-outline" size={18} color={cor.tinta} />
+                    </View>
+                    <Text style={[styles.emBreveNome, { color: cor.texto }]}>{p.nome}</Text>
+                    <Text style={styles.emBreveSub}>{p.descricao.split('.')[0]}</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}
@@ -209,12 +256,12 @@ export default function PlanosScreen({ navigation }) {
         <View style={styles.btns}>
           {acessoTotal ? (
             <View style={styles.infoAcao}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.sage} />
+              <Ionicons name="checkmark-circle" size={20} color={colors.sageFg} />
               <Text style={styles.infoAcaoTxt}>Você já tem acesso a todos os planos.</Text>
             </View>
           ) : sel === usuario.plano ? (
             <View style={styles.infoAcao}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.sage} />
+              <Ionicons name="checkmark-circle" size={20} color={colors.sageFg} />
               <Text style={styles.infoAcaoTxt}>
                 {sel === 0 ? 'Você já está no plano gratuito.' : `${nomeAtual} já é o seu plano.`} Toque em outro plano para ver as opções.
               </Text>
@@ -226,30 +273,44 @@ export default function PlanosScreen({ navigation }) {
                 onPress={confirmarCancelamento}
                 variant="ghost"
                 disabled={carregando || cancelando}
+                style={styles.btnSecundario}
               />
             ) : (
-              <Button title="Voltar" onPress={() => navigation.goBack()} variant="ghost" />
+              <Button title="Voltar" onPress={() => navigation.goBack()} variant="ghost" style={styles.btnSecundario} />
             )
           ) : (
             <>
             <UsarCashback ativo={usarCashback} onChange={setUsarCashback} />
-            <Button
-              title={carregando ? 'Abrindo pagamento...' : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
-              onPress={() => assinarPlano(sel)}
-              disabled={carregando}
-            />
+            <Profundo
+              externo={[styles.btnExterno, carregando && { opacity: 0.6 }]}
+              estilo={styles.btnFace}
+              base={colors.botaoBase}
+              sombra={styles.btnHalo}
+              onPress={carregando ? undefined : () => assinarPlano(sel)}
+              accessibilityLabel={`Assinar ${selectedPlan?.nome || ''}`}
+            >
+              <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+              <Ionicons name="lock-closed-outline" size={17} color="white" />
+              <Text style={styles.btnTxt} numberOfLines={2}>
+                {carregando
+                  ? 'Abrindo pagamento...'
+                  : anual
+                    ? `Assinar ${selectedPlan?.nome || ''} anual — ${reais(precoAnualDe(selectedPlan))}/ano`
+                    : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
+              </Text>
+            </Profundo>
             </>
           )}
           <Text style={styles.cancelInfo}>Pagamento seguro pelo Stripe. Cancele quando quiser.</Text>
         </View>
 
-        <View style={{ height: spacing.xxl }} />
+        <View style={{ height: spacing.xxl + insets.bottom }} />
       </ScrollView>
 
       <Modal visible={carregando} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.esperaFundo}>
           <View style={styles.esperaCard}>
-            <ActivityIndicator color={colors.lav4} size="large" />
+            <ActivityIndicator color={colors.lilasIcone} size="large" />
             <Text style={styles.esperaTit}>Preparando seu pagamento seguro…</Text>
             <Text style={styles.esperaSub}>
               {demorando
@@ -263,75 +324,140 @@ export default function PlanosScreen({ navigation }) {
   );
 }
 
+// Cores de cada plano (mesmas em todas as telas e nos painéis):
+// Perceber = sálvia, Acolher = lilás, Compreender = névoa, Evoluir = pêssego,
+// Acesso Total = dourado. Função para acompanhar o tema claro/noturno.
+const ICONE_PLANO = { 0: 'leaf-outline', 1: 'heart-outline', 2: 'compass-outline', 3: 'sunny-outline' };
+function corDoPlano(id) {
+  const n = colors.escuro;
+  switch (id) {
+    case 0: return { fundo: colors.sageFundo, tinta: n ? '#9FD0B0' : colors.sage, texto: colors.sageFg };
+    case 1: return { fundo: colors.lav1, tinta: colors.lilasIcone, texto: colors.lilasTexto };
+    case 2: return { fundo: n ? 'rgba(169,193,236,0.14)' : '#E3EAF7', tinta: n ? '#A9C1EC' : '#6F8CC2', texto: n ? '#C3D4F2' : '#3F5A86' };
+    case 3: return { fundo: n ? 'rgba(242,183,158,0.14)' : '#FCE7DC', tinta: n ? '#F2B79E' : '#D98A69', texto: n ? '#F6C8B4' : '#94492F' };
+    default: return { fundo: colors.lav1, tinta: colors.lilasIcone, texto: colors.lilasTexto };
+  }
+}
+function corAcessoTotal() {
+  const n = colors.escuro;
+  return { fundo: colors.douradoFundo, tinta: n ? '#E5C68B' : '#C9A15A', texto: colors.douradoTitulo };
+}
+
+// Ilustração da marca numa moldura arredondada (sem tintColor).
+function Moldura({ source, tamanho = 80 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={[styles.moldura, { width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26) }]}>
+      <Image source={source} style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }} resizeMode="cover" />
+    </View>
+  );
+}
+
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 26,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
-  headerIlustracao: { width: 80, height: 80, marginLeft: 8, borderRadius: 16 },
-  sub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-  planCard: {
-    marginHorizontal: spacing.lg, marginBottom: spacing.md,
-    backgroundColor: colors.card, borderRadius: radius.xl,
-    borderWidth: 1.5, borderColor: colors.border,
-    padding: spacing.md, ...shadow.soft,
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingBottom: 4 },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
-  planCardSel: { borderColor: colors.lav4, backgroundColor: colors.lav1 },
-  planCardDestaque: { borderColor: colors.lav3 },
+  scroll: { paddingHorizontal: spacing.lg },
+  header: { paddingTop: spacing.sm, paddingBottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titulo: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 42, color: colors.titulo },
+  sub: { fontFamily: fonts.body, fontSize: 15, color: colors.texto2, marginTop: 2, lineHeight: 21 },
+  moldura: { overflow: 'hidden', flexShrink: 0, borderWidth: 1, borderColor: colors.bordaLuz, backgroundColor: colors.cardSolido },
+
+  planCard: { ...vidro(), marginBottom: spacing.lg, overflow: 'hidden' },
+  planTopo: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 },
   destaqueTag: {
-    alignSelf: 'flex-start', backgroundColor: colors.lav1,
-    borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 8,
-    borderWidth: 1, borderColor: colors.lav3,
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    backgroundColor: colors.vidroForte, borderRadius: radius.full,
+    paddingHorizontal: 11, paddingVertical: 4, marginBottom: 12,
   },
-  destaqueText: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav6 },
-  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
-  planNomeRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  planNome: { fontFamily: fonts.script, fontSize: 18, color: colors.lav6 },
-  planSubtitulo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  planDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  planPrecoBox: { alignItems: 'flex-end' },
-  planPreco: { fontFamily: fonts.bodyBold, fontSize: 18 },
-  planPrecoPer: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
+  destaqueText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, letterSpacing: 0.2 },
+  planHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  planIcone: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  planNomeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  planNome: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 32 },
+  planDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2, lineHeight: 18 },
+  planPrecoBox: { alignItems: 'flex-end', alignSelf: 'flex-start', paddingTop: 2 },
+  planPreco: { fontFamily: 'Figtree_800ExtraBold', fontSize: 20 },
+  planPrecoPer: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.texto2 },
+  planCorpo: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16 },
   planMensagemBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 7,
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderLeftWidth: 3, borderLeftColor: colors.lav4,
-    padding: 10, marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: colors.lavVeu, borderRadius: radius.md,
+    borderLeftWidth: 3, padding: 12, marginBottom: spacing.md,
   },
-  planMensagemTxt: {
-    flex: 1, fontFamily: fonts.body, fontSize: 11,
-    color: colors.lav6, lineHeight: 16,
-  },
-  recursosList: { gap: 6, marginBottom: spacing.md },
-  recursoRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  recursoText: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
-  radioIndicator: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.tl, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center' },
-  radioInner: { width: 10, height: 10, borderRadius: 5 },
+  planMensagemTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.titulo, lineHeight: 19 },
+  recursosList: { gap: 9 },
+  recursoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  recursoText: { fontFamily: fonts.body, fontSize: 14, color: colors.titulo, flex: 1, lineHeight: 19 },
+  radioIndicator: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.lav3, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  radioInner: { width: 12, height: 12, borderRadius: 6 },
+
   atualBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md,
-    borderRadius: radius.lg, backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginBottom: spacing.lg, padding: 16,
+    borderRadius: 24, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  atualTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lav6 },
-  atualSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 3, lineHeight: 17 },
-  seuPlanoTag: { marginLeft: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.lav4 },
-  seuPlanoTxt: { fontFamily: fonts.bodyBold, fontSize: 10, color: 'white' },
+  atualIcone: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  atualTit: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 21 },
+  atualSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 3, lineHeight: 19 },
+  seuPlanoTag: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 99 },
+  seuPlanoTxt: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.escuro ? '#1C1726' : 'white' },
   infoAcao: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md,
-    borderRadius: radius.lg, backgroundColor: colors.sageFundo, borderWidth: 1, borderColor: colors.escuro ? '#35503B' : '#D5E6D8',
+    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16,
+    borderRadius: 20, backgroundColor: colors.sageFundo, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  infoAcaoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.sageFg, lineHeight: 18 },
+  infoAcaoTxt: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.sageFg, lineHeight: 19 },
   esperaFundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  esperaCard: { width: '100%', maxWidth: 340, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', gap: 10 },
-  esperaTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td, textAlign: 'center' },
-  esperaSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, textAlign: 'center', lineHeight: 18 },
-  btns: { paddingHorizontal: spacing.lg, gap: 12, marginTop: spacing.sm },
-  cancelInfo: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center' },
-  emBreveSection: { marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
-  emBreveTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: 4 },
-  emBreveDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: spacing.md },
+  esperaCard: { width: '100%', maxWidth: 360, backgroundColor: colors.cardSolido, borderRadius: 26, padding: spacing.xl, alignItems: 'center', gap: 10, borderWidth: 1, borderColor: colors.bordaLuz },
+  esperaTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo, textAlign: 'center' },
+  esperaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, textAlign: 'center', lineHeight: 19 },
+  btns: { gap: 12, marginTop: spacing.xs },
+  btnExterno: { alignSelf: 'stretch' },
+  btnFace: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    minHeight: 54, paddingHorizontal: 22, paddingVertical: 12, overflow: 'hidden',
+  },
+  btnHalo: {
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 4,
+  },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.white, textAlign: 'center', flexShrink: 1 },
+  btnSecundario: { backgroundColor: colors.vidro, borderColor: colors.lav2, minHeight: 50 },
+  cancelInfo: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center' },
+  emBreveSection: { ...vidro(), marginBottom: spacing.lg, padding: 18 },
+  emBreveTitulo: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, marginBottom: 4 },
+  emBreveDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginBottom: spacing.md, lineHeight: 18 },
   emBreveRow: { flexDirection: 'row', gap: 10 },
-  emBreveCard: { flex: 1, alignItems: 'center', gap: 6, padding: spacing.md, backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, opacity: 0.7 },
-  emBreveNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tl },
-  emBreveSub: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
+  emBreveCard: { flex: 1, alignItems: 'center', gap: 6, padding: 14, borderRadius: 20 },
+  emBreveIcone: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  emBreveNome: { fontFamily: fonts.serif, fontSize: 22, lineHeight: 26 },
+  emBreveSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.texto2, textAlign: 'center', lineHeight: 16 },
+  periodoTrilho: {
+    flexDirection: 'row', padding: 4, borderRadius: 999, marginBottom: 14,
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  periodoOpcao: { flex: 1, alignItems: 'center', paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999 },
+  periodoAtivo: {
+    backgroundColor: colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2,
+  },
+  periodoTxt: { fontFamily: 'Figtree_600SemiBold', fontSize: 13.5, color: colors.texto2 },
+  periodoTxtAtivo: { fontFamily: 'Figtree_700Bold', color: colors.lilasTexto },
 }));

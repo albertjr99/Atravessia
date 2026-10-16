@@ -14,24 +14,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { confirmar } from '../../utils/confirm';
-import { urlDeImagem } from '../../utils/imagemUrl';
 import { situacaoCupom } from '../../utils/cupons';
 import { hojeStrBR } from '../../utils/date';
 import { carregarPreferencia, agendarLembretes } from '../../utils/lembreteCheckin';
 import DiarioDoDia from '../../components/DiarioDoDia';
+import CompartilharFrase from '../../components/CompartilharFrase';
 import { escolherEnviarFoto } from '../../utils/fotoPerfil';
 import { brl } from '../cashback/CashbackScreen';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { IA_CONVERSA, IA_DIARIO_CARTA } from '../../config/recursos';
+import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PLANO_ANO } from '../../config/recursos';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
 
-const ilCoracao = require('../../../assets/images/il_coracao_ramos.png');
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// Barra inferior: os mesmos cinco atalhos, com a AtravessIA no meio.
+// Barra inferior: três atalhos de cada lado e a AtravessIA no meio.
 const NAV_ESQUERDA = [
   { name: 'Início', icon: 'home', active: true },
   { name: 'Conteúdos', icon: 'headset', screen: 'Audios' },
@@ -40,12 +39,14 @@ const NAV_ESQUERDA = [
 const NAV_DIREITA = [
   { name: 'Relatórios', icon: 'bar-chart', screen: 'Relatorios' },
   { name: 'Planos', icon: 'diamond', screen: 'Planos' },
+  { name: 'Perfil', icon: 'person-circle', screen: 'Perfil' },
 ];
-const temIA = IA_DIARIO_CARTA || IA_CONVERSA;
+const temIA = IA_DIARIO_CARTA || IA_CONVERSA || IA_PLANO_ANO;
 const atalhosIA = [
   IA_CONVERSA && { icone: 'chatbubbles-outline', rotulo: 'Conversar', tela: 'ConversaIA' },
   IA_DIARIO_CARTA && { icone: 'create-outline', rotulo: 'Diário guiado', tela: 'DiarioGuiado' },
   IA_DIARIO_CARTA && { icone: 'mail-open-outline', rotulo: 'Carta do mês', tela: 'CartaMes' },
+  IA_PLANO_ANO && { icone: 'compass-outline', rotulo: 'Plano do ano', tela: 'PlanoAno' },
 ].filter(Boolean);
 
 function ItemNav({ item, navigation }) {
@@ -86,6 +87,7 @@ export default function HomeScreen({ navigation }) {
   const alturaTopo = (tablet ? 230 : 172) + (temAvisos ? 28 : 0);
   const [reflexaoAberta, setReflexaoAberta] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
+  const [compartilhando, setCompartilhando] = useState(false);
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -162,13 +164,11 @@ export default function HomeScreen({ navigation }) {
     { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', acao: () => navigation.navigate('Onboarding', { revisita: true }) },
     { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', acao: () => navigation.navigate('MeusCupons') },
     { icone: 'heart-outline', rotulo: 'Favoritos', sub: 'O que você guardou com carinho', acao: () => navigation.navigate('Favoritos') },
+    { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', acao: () => navigation.navigate('Sobre') },
+    { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Leve seu serviço para quem atravessa o luto', acao: () => navigation.navigate('SejaParceiro') },
     { icone: 'log-out-outline', rotulo: 'Sair da conta', acao: handleSair, sair: true },
   ];
 
-  // Na tela inicial o cartão só leva ao Experimente a vida: lá o cupom ou o
-  // link são acionados pelo botão de cada parceria (antes qualquer toque aqui
-  // abria o link, até de parcerias de cupom).
-  const handleAbrirParceria = () => navigation.navigate('Parcerias');
   const saudacao = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Bom dia';
@@ -334,7 +334,10 @@ export default function HomeScreen({ navigation }) {
                 <View style={s.fraseTagRow}>
                   <Ionicons name="sunny-outline" size={13} color={colors.lilasIcone} />
                   <Text style={s.fraseTag}>Frase do dia</Text>
-                  <Image source={ilCoracao} style={s.fraseIl} resizeMode="contain" />
+                  <TouchableOpacity style={s.compartilharBtn} onPress={() => setCompartilhando(true)} accessibilityLabel="Compartilhar a frase do dia">
+                    <Ionicons name="share-social-outline" size={16} color={colors.lilasTexto} />
+                    <Text style={s.compartilharTxt}>Compartilhar</Text>
+                  </TouchableOpacity>
                 </View>
                 <Text style={s.fraseTxt}>"{fraseDoDia.texto}"</Text>
                 {fraseDoDia.autor ? <Text style={s.fraseAutor}>— {fraseDoDia.autor}</Text> : null}
@@ -361,67 +364,9 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
 
-          {/* ===== ATRAVESSIA (por ora: diário guiado e carta do mês) ===== */}
-          {(IA_DIARIO_CARTA || IA_CONVERSA) && (
-            <View style={s.sect}>
-              <View style={s.iaCard}>
-                <TouchableOpacity
-                  style={s.iaTopo}
-                  onPress={() => abrirIA('AtravessIA')}
-                  disabled={!IA_CONVERSA}
-                  activeOpacity={0.85}
-                >
-                  <LinearGradient colors={gradienteIA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.iaAvatar}>
-                    <Ionicons name="sparkles" size={20} color="#fff" />
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.iaTit}>AtravessIA</Text>
-                    <Text style={s.iaSub}>
-                      {!iaLiberada
-                        ? 'Disponível a partir do Plano Acolher'
-                        : IA_CONVERSA ? 'Converse, escreva no diário guiado ou leia sua carta do mês' : 'Escreva no diário guiado ou leia sua carta do mês'}
-                    </Text>
-                  </View>
-                  {IA_CONVERSA && <Ionicons name="chevron-forward" size={18} color={colors.tl} />}
-                </TouchableOpacity>
-                <View style={s.iaAtalhos}>
-                  {atalhosIA.map(a => (
-                    <TouchableOpacity key={a.tela} style={[s.iaAtalho, !iaLiberada && s.iaAtalhoBloq]} onPress={() => abrirIA(a.tela)} activeOpacity={0.8}>
-                      <View style={[s.pilula, { backgroundColor: a.tela === 'CartaMes' ? colors.roseFundo : colors.lav1 }]}>
-                        <Ionicons name={iaLiberada ? a.icone : 'lock-closed-outline'} size={17} color={!iaLiberada ? colors.tl : a.tela === 'CartaMes' ? colors.roseTexto : colors.lav5} />
-                      </View>
-                      <Text style={s.iaAtalhoTxt} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{a.rotulo}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* ===== ACESSO RÁPIDO (os mesmos atalhos, numa grade) ===== */}
+          {/* ===== EXPERIMENTE A VIDA e CONTINUE A TRAVESSIA (destaques) ===== */}
+          {/* AtravessIA e os atalhos de Conteúdos, Vitórias e Relatórios ficam no rodapé. */}
           <View style={s.sect}>
-            <Text style={s.sectTitle}>Acesso rápido</Text>
-            <View style={s.perfilGrid}>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Audios')} activeOpacity={0.85}>
-                <View style={[s.pilula, { backgroundColor: colors.sageFundo }]}>
-                  <Ionicons name="headset-outline" size={19} color={colors.sageFg} />
-                </View>
-                <Text style={s.perfilLbl}>Conteúdos</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('PequenasVitorias')} activeOpacity={0.85}>
-                <View style={[s.pilula, { backgroundColor: colors.douradoFundo }]}>
-                  <Ionicons name="star-outline" size={19} color={colors.douradoTitulo} />
-                </View>
-                <Text style={s.perfilLbl}>Pequenas Vitórias</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.perfilCard} onPress={() => navigation.navigate('Relatorios')} activeOpacity={0.85}>
-                <View style={[s.pilula, { backgroundColor: colors.lav1 }]}>
-                  <Ionicons name="bar-chart-outline" size={19} color={colors.lav5} />
-                </View>
-                <Text style={s.perfilLbl}>Relatórios</Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={s.dupla}>
               <Profundo
                 externo={s.vidaExterno}
@@ -497,52 +442,14 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
 
-          {/* ===== PARCERIAS ===== */}
+          {/* ===== PARCERIAS: discreto, sem banners (o destaque é Experimente a vida) ===== */}
           {parcerias.length > 0 && (
-            <View style={s.sect}>
-              <View style={s.sectHeaderRow}>
-                <View style={s.sectTitleRow}>
-                  <Ionicons name="gift-outline" size={14} color={colors.lilasIcone} />
-                  <Text style={s.sectTitle}>Espaço para Parcerias</Text>
-                </View>
-                <TouchableOpacity onPress={() => navigation.navigate('Parcerias')}>
-                  <Text style={s.sectLink}>Ver todas</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: 10, paddingRight: spacing.lg }}>
-                  {parcerias.slice(0, 5).map(p => (
-                    <TouchableOpacity
-                      key={p.id}
-                      style={s.parceriaCard}
-                      onPress={() => handleAbrirParceria(p)}
-                      activeOpacity={0.85}
-                    >
-                      {p.imagemUrl ? (
-                        <Image source={{ uri: urlDeImagem(p.imagemUrl) }} style={s.parceriaImg} resizeMode="cover" />
-                      ) : (
-                        <View style={[s.parceriaImg, s.parceriaImgPlaceholder]}>
-                          <Ionicons name="gift-outline" size={22} color={colors.lav4} />
-                        </View>
-                      )}
-                      <View style={s.parceriaInfo}>
-                        <Text style={s.parceriaTit} numberOfLines={2}>{p.titulo}</Text>
-                        {(p.categorias || []).length > 0 && (
-                          <Text style={s.parceriaCat}>{p.categorias[0]}</Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity
-                    style={s.parceriaVerTodas}
-                    onPress={() => navigation.navigate('Parcerias')}
-                  >
-                    <Ionicons name="arrow-forward-circle-outline" size={28} color={colors.lav4} />
-                    <Text style={s.parceriaVerTodasTxt}>Ver{'\n'}todas</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </View>
+            <TouchableOpacity style={s.parceriasLinha} onPress={() => navigation.navigate('Parcerias')} activeOpacity={0.8}>
+              <Ionicons name="gift-outline" size={16} color={colors.lilasIcone} />
+              <Text style={s.parceriasLinhaTxt}>Espaço para Parcerias</Text>
+              <Text style={s.sectLink}>Ver todas</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.lilasTexto} />
+            </TouchableOpacity>
           )}
 
           {/* Disclaimer */}
@@ -578,6 +485,8 @@ export default function HomeScreen({ navigation }) {
         </Pressable>
       </Modal>
 
+      <CompartilharFrase visivel={compartilhando} frase={fraseDoDia} onFechar={() => setCompartilhando(false)} />
+
       {/* ===== ATRAVESSIA: escolha rápida pelo botão central do rodapé ===== */}
       <Modal visible={iaAberta} transparent animationType="fade" onRequestClose={() => setIaAberta(false)}>
         <Pressable style={s.iaFolhaFundo} onPress={() => setIaAberta(false)}>
@@ -588,13 +497,13 @@ export default function HomeScreen({ navigation }) {
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={s.iaTit}>AtravessIA</Text>
-                <Text style={s.iaSub}>{IA_CONVERSA ? 'Converse, escreva no diário guiado ou leia sua carta do mês' : 'Escreva no diário guiado ou leia sua carta do mês'}</Text>
+                <Text style={s.iaSub}>{IA_CONVERSA ? 'Converse, escreva no diário guiado, leia sua carta do mês ou monte seu plano do ano' : 'Escreva no diário guiado, leia sua carta do mês ou monte seu plano do ano'}</Text>
               </View>
             </View>
             {atalhosIA.map(a => (
               <TouchableOpacity key={a.tela} style={s.iaFolhaItem} onPress={() => { setIaAberta(false); abrirIA(a.tela); }} activeOpacity={0.8}>
-                <View style={[s.pilula, { backgroundColor: a.tela === 'CartaMes' ? colors.roseFundo : colors.lav1 }]}>
-                  <Ionicons name={a.icone} size={17} color={a.tela === 'CartaMes' ? colors.roseTexto : colors.lav5} />
+                <View style={[s.pilula, { backgroundColor: a.tela === 'CartaMes' ? colors.roseFundo : a.tela === 'PlanoAno' ? colors.sageFundo : colors.lav1 }]}>
+                  <Ionicons name={a.icone} size={17} color={a.tela === 'CartaMes' ? colors.roseTexto : a.tela === 'PlanoAno' ? colors.sageFg : colors.lav5} />
                 </View>
                 <Text style={s.iaFolhaRotulo}>{a.rotulo}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.tl} />
@@ -821,7 +730,7 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.escuro ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.65)',
     alignItems: 'center', justifyContent: 'center',
   },
-  vidaBtnTxt: { fontFamily: 'Figtree_700Bold', fontSize: 16, color: colors.titulo },
+  vidaBtnTxt: { fontFamily: 'Figtree_800ExtraBold', fontSize: 17.5, color: colors.titulo },
   vidaBtnSub: { fontFamily: 'Figtree_400Regular', fontSize: 12.5, color: colors.texto2, marginTop: 3, lineHeight: 17 },
 
   // AtravessIA
@@ -949,9 +858,9 @@ const s = criarEstilos(() => ({
   reflexaoCab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   iaAtalhoBloq: { opacity: 0.75 },
   fraseDivisor: { height: 1, backgroundColor: colors.bordaSuave, marginVertical: 16 },
-  dupla: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  dupla: { flexDirection: 'row', gap: 10, marginTop: 4 },
   vidaTile: {
-    flex: 1, minHeight: 128, padding: 14, borderRadius: 24, gap: 12, justifyContent: 'space-between',
+    flex: 1, minHeight: 150, padding: 16, borderRadius: 26, gap: 14, justifyContent: 'space-between',
     backgroundColor: colors.joiaLilas[1], overflow: 'hidden',
     borderWidth: 1, borderColor: colors.escuro ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.7)',
   },
@@ -1010,4 +919,15 @@ const s = criarEstilos(() => ({
     borderRadius: 18, backgroundColor: colors.lavVeu,
   },
   iaFolhaRotulo: { flex: 1, fontFamily: 'Figtree_700Bold', fontSize: 15, color: colors.titulo },
+  parceriasLinha: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'stretch',
+    paddingVertical: 12, paddingHorizontal: 14, marginBottom: 18, borderRadius: 18,
+    backgroundColor: colors.vidroTenue, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  parceriasLinhaTxt: { flex: 1, fontFamily: 'Figtree_600SemiBold', fontSize: 14, color: colors.texto2 },
+  compartilharBtn: {
+    marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999, backgroundColor: colors.lav1,
+  },
+  compartilharTxt: { fontFamily: 'Figtree_700Bold', fontSize: 12.5, color: colors.lilasTexto },
 }));

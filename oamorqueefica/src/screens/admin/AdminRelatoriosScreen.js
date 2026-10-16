@@ -11,6 +11,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { formatDataBR } from '../../utils/date';
 import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
+import { est, acento, corPlano, dadoPlano } from './adminEstilo';
 
 function nDiasAtras(n) {
   const d = new Date();
@@ -19,13 +20,12 @@ function nDiasAtras(n) {
 }
 
 const PLANO_LABELS = ['Perceber', 'Acolher', 'Compreender', 'Evoluir'];
-const PLANO_CORES = [colors.sage, colors.lav4, '#7B5EA7', '#C0843F'];
 const CHART_H = 70;
 
 function MiniBar({ value, max, color, height = 8 }) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
   return (
-    <View style={{ flex: 1, height, backgroundColor: colors.border, borderRadius: height / 2, overflow: 'hidden' }}>
+    <View style={{ flex: 1, height, backgroundColor: colors.bordaSuave, borderRadius: height / 2, overflow: 'hidden' }}>
       <View style={{ width: `${pct}%`, height: '100%', backgroundColor: color || colors.lav4, borderRadius: height / 2 }} />
     </View>
   );
@@ -56,18 +56,21 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
 
   return (
     <View>
+      <Text style={s.sobre}>Relatórios</Text>
       <Text style={s.pageTitle}>Visão Geral</Text>
 
       <View style={s.statsRow}>
         {[
-          { icon: 'people', value: usuarios.length, label: 'Usuárias', color: colors.lav5 },
-          { icon: 'calendar-sharp', value: todosCheckins.length, label: 'Check-ins', color: colors.sageFg },
-          { icon: 'star', value: todasVitorias.length, label: 'Vitórias', color: colors.gold },
-          { icon: 'flash', value: ativasHoje, label: 'Ativas hoje', color: colors.peach2 },
+          { icon: 'people-outline', value: usuarios.length, label: 'Usuárias', acento: 'lilas' },
+          { icon: 'calendar-outline', value: todosCheckins.length, label: 'Check-ins', acento: 'salvia' },
+          { icon: 'star-outline', value: todasVitorias.length, label: 'Vitórias', acento: 'dourado' },
+          { icon: 'flash-outline', value: ativasHoje, label: 'Ativas hoje', acento: 'pessego' },
         ].map(stat => (
           <View key={stat.label} style={s.statCard}>
-            <Ionicons name={stat.icon} size={18} color={stat.color} />
-            <Text style={[s.statVal, { color: stat.color }]}>{stat.value}</Text>
+            <View style={[s.statIcone, { backgroundColor: acento(stat.acento).fundo }]}>
+              <Ionicons name={stat.icon} size={19} color={acento(stat.acento).tinta} />
+            </View>
+            <Text style={s.statVal}>{stat.value}</Text>
             <Text style={s.statLbl}>{stat.label}</Text>
           </View>
         ))}
@@ -96,9 +99,9 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
         <Text style={s.cardTitle}>Distribuição por plano</Text>
         {porPlano.map((p, i) => (
           <View key={i} style={s.planRow}>
-            <View style={[s.planDot, { backgroundColor: PLANO_CORES[i] }]} />
+            <View style={[s.planDot, { backgroundColor: dadoPlano(i) }]} />
             <Text style={s.planNome}>{p.label}</Text>
-            <MiniBar value={p.count} max={maxPlano} color={PLANO_CORES[i]} />
+            <MiniBar value={p.count} max={maxPlano} color={dadoPlano(i)} height={10} />
             <Text style={s.planCount}>{p.count}</Text>
           </View>
         ))}
@@ -106,18 +109,18 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
 
       <View style={s.card}>
         <Text style={s.cardTitle}>Atividade — últimos 14 dias</Text>
-        <View style={{ flexDirection: 'row', height: CHART_H + 24, alignItems: 'flex-end', gap: 3, paddingTop: 8 }}>
+        <View style={{ flexDirection: 'row', height: CHART_H + 34, alignItems: 'flex-end', gap: 4, paddingTop: 8 }}>
           {ultimos14.map((d, i) => {
             const barH = d.value > 0 ? Math.max(Math.round((d.value / maxDia) * CHART_H), 4) : 2;
             return (
               <View key={i} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' }}>
-                {d.value > 0 && <Text style={{ fontSize: 7, color: colors.tl, marginBottom: 2 }}>{d.value}</Text>}
+                {d.value > 0 && <Text style={s.barraValor}>{d.value}</Text>}
                 <View style={{
                   width: '100%', height: barH,
-                  backgroundColor: d.value > 0 ? colors.lav4 : colors.border,
-                  borderRadius: 2,
+                  backgroundColor: d.value > 0 ? dadoPlano(1) : colors.bordaSuave,
+                  borderRadius: 5,
                 }} />
-                <Text style={{ fontSize: 7, color: colors.tl, marginTop: 3 }}>{d.label}</Text>
+                <Text style={s.barraDia}>{d.label}</Text>
               </View>
             );
           })}
@@ -128,7 +131,7 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
 }
 
 // ─── Tab: Funil e retenção ────────────────────────────────────────
-const FUNIL_CORES = [colors.lav3, colors.lav4, '#7B5EA7', colors.sage];
+const FUNIL_CORES = ['#C3B5EC', '#A595DC', '#8B7AC0', '#6E9B7E'];
 
 function IndicadorCard({ valor, rotulo, detalhe, cor = colors.td }) {
   return (
@@ -151,6 +154,7 @@ function AbaFunil({ usuarios, todosCheckins }) {
 
   return (
     <View>
+      <Text style={s.sobre}>Relatórios</Text>
       <Text style={s.pageTitle}>Funil e retenção</Text>
       <Text style={s.funilIntro}>
         Acompanha o caminho de quem se cadastrou no período: se fez o primeiro check-in, se voltou e se assinou um plano.
@@ -178,7 +182,7 @@ function AbaFunil({ usuarios, todosCheckins }) {
             <View key={e.id} style={s.funilEtapa}>
               {i > 0 && (
                 <View style={s.funilPassagem}>
-                  <Ionicons name="arrow-down" size={11} color={destaque ? colors.roseFg : colors.tl} />
+                  <Ionicons name="arrow-down" size={13} color={destaque ? acento('rosa').texto : colors.tl} />
                   <Text style={[s.funilPassagemTxt, destaque && s.funilPassagemDestaque]}>
                     {txt(e.pctAnterior)} seguiram{e.perda > 0 ? ` · ${e.perda} ficaram pelo caminho` : ''}
                   </Text>
@@ -200,7 +204,7 @@ function AbaFunil({ usuarios, todosCheckins }) {
         })}
         {m.maiorQueda && (
           <View style={s.funilAlerta}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={17} color={acento('rosa').texto} />
             <Text style={s.funilAlertaTxt}>
               Maior perda: de "{m.maiorQueda.de}" para "{m.maiorQueda.para}" — só {m.maiorQueda.pctAnterior}% seguiram.
             </Text>
@@ -215,13 +219,13 @@ function AbaFunil({ usuarios, todosCheckins }) {
             valor={txt(m.retencaoD7.pct)}
             rotulo="Retenção D7"
             detalhe={`${m.retencaoD7.retidas} de ${m.retencaoD7.elegiveis} voltaram 7+ dias após o cadastro`}
-            cor={colors.lav5}
+            cor={acento('lilas').texto}
           />
           <IndicadorCard
             valor={txt(m.retencaoD30.pct)}
             rotulo="Retenção D30"
             detalhe={`${m.retencaoD30.retidas} de ${m.retencaoD30.elegiveis} voltaram 30+ dias após o cadastro`}
-            cor={colors.lav5}
+            cor={acento('lilas').texto}
           />
         </View>
       </View>
@@ -244,7 +248,7 @@ function AbaFunil({ usuarios, todosCheckins }) {
             detalhe={m.conversaoPagoEntreQueVoltaram != null
               ? `${m.conversaoPagoEntreQueVoltaram}% entre as que voltaram`
               : 'dos cadastros do período'}
-            cor={colors.sageFg}
+            cor={acento('salvia').texto}
           />
         </View>
       </View>
@@ -276,6 +280,7 @@ function AbaEmocoes({ todosCheckins }) {
 
   return (
     <View>
+      <Text style={s.sobre}>Relatórios</Text>
       <Text style={s.pageTitle}>Emoções</Text>
 
       <View style={s.periodRow}>
@@ -295,21 +300,21 @@ function AbaEmocoes({ todosCheckins }) {
           <Text style={s.cardTitle}>Positivas vs. negativas</Text>
           <View style={s.pvnRow}>
             <View style={s.pvnItem}>
-              <Text style={[s.pvnVal, { color: colors.sageFg }]}>{positivas}</Text>
+              <Text style={[s.pvnVal, { color: acento('salvia').texto }]}>{positivas}</Text>
               <Text style={s.pvnLbl}>Positivas</Text>
             </View>
             <View style={{ flex: 1, gap: 6 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MiniBar value={positivas} max={total} color={colors.sage} />
-                <Text style={[s.pvnPct, { color: colors.sageFg }]}>{Math.round((positivas / total) * 100)}%</Text>
+                <MiniBar value={positivas} max={total} color="#6E9B7E" height={10} />
+                <Text style={[s.pvnPct, { color: acento('salvia').texto }]}>{Math.round((positivas / total) * 100)}%</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MiniBar value={negativas} max={total} color={colors.rose} />
-                <Text style={[s.pvnPct, { color: colors.roseFg }]}>{Math.round((negativas / total) * 100)}%</Text>
+                <MiniBar value={negativas} max={total} color="#C27C78" height={10} />
+                <Text style={[s.pvnPct, { color: acento('rosa').texto }]}>{Math.round((negativas / total) * 100)}%</Text>
               </View>
             </View>
             <View style={s.pvnItem}>
-              <Text style={[s.pvnVal, { color: colors.roseFg }]}>{negativas}</Text>
+              <Text style={[s.pvnVal, { color: acento('rosa').texto }]}>{negativas}</Text>
               <Text style={s.pvnLbl}>Negativas</Text>
             </View>
           </View>
@@ -327,11 +332,11 @@ function AbaEmocoes({ todosCheckins }) {
             return (
               <View key={id} style={{ marginBottom: 10 }}>
                 <View style={s.emoHeader}>
-                  <View style={[s.emoDot, { backgroundColor: emo?.color || colors.lav3 }]} />
+                  <View style={[s.emoDot, { backgroundColor: emo?.dado || emo?.color || colors.lav3 }]} />
                   <Text style={s.emoLabel}>{emo?.label || id}</Text>
                   <Text style={s.emoQtd}>{qtd} · {pct}%</Text>
                 </View>
-                <MiniBar value={qtd} max={maxQtd} color={emo?.color} />
+                <MiniBar value={qtd} max={maxQtd} color={emo?.dado || emo?.color} height={10} />
               </View>
             );
           })
@@ -347,7 +352,7 @@ function AbaEmocoes({ todosCheckins }) {
             return (
               <View key={id} style={s.topRow}>
                 <Text style={s.topMedal}>{medalhas[i]}</Text>
-                <View style={[s.emoDot, { backgroundColor: emo?.color || colors.lav3 }]} />
+                <View style={[s.emoDot, { backgroundColor: emo?.dado || emo?.color || colors.lav3 }]} />
                 <Text style={s.topLabel}>{emo?.label || id}</Text>
                 <Text style={s.topQtd}>{qtd}×</Text>
               </View>
@@ -398,6 +403,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
 
   return (
     <View>
+      <Text style={s.sobre}>Relatórios</Text>
       <Text style={s.pageTitle}>Usuárias ({usuarios.length})</Text>
 
       <View style={s.searchBox}>
@@ -429,7 +435,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
 
       {/* Detail panel */}
       {sel && (
-        <View style={[s.card, { borderColor: colors.lav3, borderWidth: 1.5, marginBottom: spacing.md }]}>
+        <View style={[s.card, s.cardDetalhe]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
               <Text style={s.detailNome}>{sel.nome || '—'}</Text>
@@ -437,16 +443,16 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
               {!!sel.cidade && <Text style={s.detailMeta}>📍 {sel.cidade}</Text>}
             </View>
             <TouchableOpacity onPress={() => setSel(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={20} color={colors.tl} />
+              <Ionicons name="close" size={20} color={colors.td} />
             </TouchableOpacity>
           </View>
 
           <View style={s.detailStatsRow}>
             {[
-              { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: PLANO_CORES[sel.plano || 0] },
-              { val: userCheckins.length, lbl: 'Check-ins', color: colors.lav5 },
-              { val: userVitorias.length, lbl: 'Vitórias', color: colors.gold },
-              { val: diasInativos(sel.id) < 9999 ? `${diasInativos(sel.id)}d` : '—', lbl: 'Inativo', color: colors.peach2 },
+              { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: corPlano(sel.plano || 0).texto },
+              { val: userCheckins.length, lbl: 'Check-ins', color: acento('lilas').texto },
+              { val: userVitorias.length, lbl: 'Vitórias', color: acento('dourado').texto },
+              { val: diasInativos(sel.id) < 9999 ? `${diasInativos(sel.id)}d` : '—', lbl: 'Inativo', color: acento('pessego').texto },
             ].map((it, i) => (
               <View key={i} style={s.detailStatBox}>
                 <Text style={[s.detailStatVal, { color: it.color }]}>{it.val}</Text>
@@ -468,7 +474,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
                 const emo = emocoes.find(e => e.id === c.emocao);
                 return (
                   <View key={i} style={s.histRow}>
-                    <View style={[s.emoDot, { backgroundColor: emo?.color || colors.lav3 }]} />
+                    <View style={[s.emoDot, { backgroundColor: emo?.dado || emo?.color || colors.lav3 }]} />
                     <Text style={s.histLabel}>{emo?.label || c.emocao}</Text>
                     <Text style={s.histData}>{formatDataBR(c.data)}</Text>
                   </View>
@@ -482,7 +488,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
               <Text style={[s.cardTitle, { marginTop: 12 }]}>Últimas vitórias</Text>
               {userVitorias.slice(0, 3).map((v, i) => (
                 <View key={i} style={s.histRow}>
-                  <Ionicons name="star" size={12} color={colors.gold} />
+                  <Ionicons name="star" size={13} color={acento('dourado').tinta} />
                   <Text style={s.histLabel}>{v.label}</Text>
                   <Text style={s.histData}>{formatDataBR(v.data)}</Text>
                 </View>
@@ -500,7 +506,8 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
         <Text style={s.emptyTxt}>Nenhuma usuária encontrada.</Text>
       )}
 
-      {usuariosFiltrados.map(u => {
+      {usuariosFiltrados.length > 0 && <View style={s.lista}>
+      {usuariosFiltrados.map((u, i) => {
         const plano = u.plano || 0;
         const nCheck = todosCheckins.filter(c => c.uid === u.id).length;
         const dias = diasInativos(u.id);
@@ -509,18 +516,18 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
         return (
           <TouchableOpacity
             key={u.id}
-            style={[s.userRow, isSelected && s.userRowSel]}
+            style={[s.userRow, i > 0 && s.userRowDiv, isSelected && s.userRowSel]}
             onPress={() => setSel(isSelected ? null : u)}
             activeOpacity={0.75}
           >
-            <View style={[s.userPlanoBar, { backgroundColor: PLANO_CORES[plano] }]} />
+            <View style={[s.userPlanoBar, { backgroundColor: dadoPlano(plano) }]} />
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={s.userName} numberOfLines={1}>{u.nome || u.email}</Text>
               <Text style={s.userEmail} numberOfLines={1}>{u.email}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 3 }}>
-              <View style={[s.planoBadge, { backgroundColor: PLANO_CORES[plano] + '20' }]}>
-                <Text style={[s.planoBadgeTxt, { color: PLANO_CORES[plano] }]}>{PLANO_LABELS[plano]}</Text>
+              <View style={[s.planoBadge, { backgroundColor: corPlano(plano).fundo }]}>
+                <Text style={[s.planoBadgeTxt, { color: corPlano(plano).texto }]}>{PLANO_LABELS[plano]}</Text>
               </View>
               <Text style={s.userMeta}>
                 {nCheck} check-in{nCheck !== 1 ? 's' : ''}
@@ -530,6 +537,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
           </TouchableOpacity>
         );
       })}
+      </View>}
     </View>
   );
 }
@@ -548,6 +556,7 @@ function AbaEmpresas({ usuarios }) {
 
   return (
     <View>
+      <Text style={s.sobre}>Relatórios</Text>
       <Text style={s.pageTitle}>Empresas</Text>
 
       <View style={s.card}>
@@ -578,13 +587,13 @@ function AbaEmpresas({ usuarios }) {
         <View key={nome} style={s.card}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
             <Text style={s.cardTitle}>{nome}</Text>
-            <View style={{ backgroundColor: colors.gold + '22', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 3 }}>
-              <Text style={{ fontFamily: fonts.bodyBold, fontSize: 11, color: colors.gold }}>{users.length} usuária{users.length !== 1 ? 's' : ''}</Text>
+            <View style={{ backgroundColor: acento('dourado').fundo, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+              <Text style={{ fontFamily: fonts.bodyBold, fontSize: 12, color: acento('dourado').texto }}>{users.length} usuária{users.length !== 1 ? 's' : ''}</Text>
             </View>
           </View>
           {users.map((u, i) => (
             <View key={u.id} style={[s.histRow, i === users.length - 1 && { borderBottomWidth: 0 }]}>
-              <View style={[s.emoDot, { backgroundColor: PLANO_CORES[u.plano || 0] }]} />
+              <View style={[s.emoDot, { backgroundColor: dadoPlano(u.plano || 0) }]} />
               <Text style={[s.histLabel, { flex: 1 }]}>{u.nome || u.email}</Text>
               <Text style={s.histData}>{PLANO_LABELS[u.plano || 0]}</Text>
             </View>
@@ -645,7 +654,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
       <AdminLayout currentScreen="AdminRelatorios">
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <ActivityIndicator color={colors.lav4} size="large" />
-          <Text style={{ fontFamily: fonts.body, fontSize: 12, color: colors.tl }}>Carregando dados...</Text>
+          <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.texto2 }}>Carregando dados...</Text>
         </View>
       </AdminLayout>
     );
@@ -653,6 +662,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
 
   return (
     <AdminLayout currentScreen="AdminRelatorios">
+      <View style={s.tabWrap}>
       <View style={s.tabBar}>
         {[
           { id: 'geral', label: 'Geral', icon: 'stats-chart' },
@@ -667,10 +677,11 @@ export default function AdminRelatoriosScreen({ navigation }) {
             onPress={() => setAba(tab.id)}
             activeOpacity={0.8}
           >
-            <Ionicons name={tab.icon} size={14} color={aba === tab.id ? colors.lav5 : colors.tl} />
-            <Text style={[s.tabTxt, aba === tab.id && s.tabTxtSel]}>{tab.label}</Text>
+            <Ionicons name={`${tab.icon}-outline`} size={17} color={aba === tab.id ? colors.lilasTexto : colors.texto2} />
+            <Text style={[s.tabTxt, aba === tab.id && s.tabTxtSel]} numberOfLines={1}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
+      </View>
       </View>
 
       <ScrollView
@@ -680,7 +691,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
       >
         {erro ? (
           <View style={s.erroBox}>
-            <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={17} color={acento('rosa').texto} />
             <Text style={s.erroTxt}>Não foi possível carregar os dados: {erro}</Text>
           </View>
         ) : null}
@@ -708,156 +719,122 @@ export default function AdminRelatoriosScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  erroBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md },
-  erroTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: spacing.md },
+  scroll: { padding: spacing.lg, paddingTop: 12, paddingBottom: 48 },
+  erroBox: { ...est.aviso('rosa'), alignItems: 'center', marginBottom: spacing.md },
+  erroTxt: est.avisoTxt('rosa'),
+  sobre: est.sobretitulo(),
+  pageTitle: { ...est.titulo(), marginBottom: spacing.md },
 
-  funilIntro: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18, marginTop: -6, marginBottom: spacing.md },
+  funilIntro: { ...est.subtitulo(), marginTop: -8, marginBottom: spacing.md },
   funilEtapa: { marginBottom: 4 },
-  funilPassagem: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 5, paddingLeft: 2 },
-  funilPassagemTxt: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl },
-  funilPassagemDestaque: { fontFamily: fonts.bodyBold, color: colors.roseFg },
-  funilLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 5 },
-  funilTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  funilDesc: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl },
-  funilQtd: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, minWidth: 34, textAlign: 'right' },
-  funilPct: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, minWidth: 38, textAlign: 'right' },
-  funilTrilho: { height: 12, borderRadius: 6, backgroundColor: colors.border, overflow: 'hidden' },
-  funilBarra: { height: '100%', borderRadius: 6 },
-  funilAlerta: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: spacing.md,
-    backgroundColor: colors.erroFundo, borderRadius: radius.md, padding: spacing.sm,
-  },
-  funilAlertaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
-  funilNota: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, lineHeight: 16, marginBottom: spacing.md },
-  indRow: { flexDirection: 'row', gap: 8 },
-  indCard: {
-    flex: 1, backgroundColor: colors.bg, borderRadius: radius.md,
-    padding: 10, alignItems: 'center', gap: 2,
-  },
-  indVal: { fontFamily: fonts.bodyBold, fontSize: 22 },
-  indLbl: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, textAlign: 'center' },
-  indDet: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', lineHeight: 14 },
+  funilPassagem: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingLeft: 2 },
+  funilPassagemTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tl },
+  funilPassagemDestaque: { fontFamily: fonts.bodyBold, color: acento('rosa').texto },
+  funilLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  funilTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  funilDesc: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2 },
+  funilQtd: { fontFamily: 'Figtree_800ExtraBold', fontSize: 20, color: colors.titulo, minWidth: 36, textAlign: 'right' },
+  funilPct: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2, minWidth: 44, textAlign: 'right' },
+  funilTrilho: { height: 14, borderRadius: 7, backgroundColor: colors.bordaSuave, overflow: 'hidden' },
+  funilBarra: { height: '100%', borderRadius: 7 },
+  funilAlerta: { ...est.aviso('rosa'), marginTop: spacing.md, padding: 12 },
+  funilAlertaTxt: { ...est.avisoTxt('rosa'), fontSize: 13 },
+  funilNota: { ...est.dica(), marginBottom: spacing.md, paddingHorizontal: 4 },
+  indRow: { flexDirection: 'row', gap: 10 },
+  indCard: { ...est.tenue(18), flex: 1, padding: 12, alignItems: 'center', gap: 2 },
+  indVal: { fontFamily: 'Figtree_800ExtraBold', fontSize: 24 },
+  indLbl: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.titulo, textAlign: 'center' },
+  indDet: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center', lineHeight: 16 },
 
+  tabWrap: { paddingHorizontal: spacing.lg, paddingTop: 10, paddingBottom: 4 },
   tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingTop: 4,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 4,
+    ...est.trilho(), alignSelf: 'stretch', borderRadius: 22,
+    backgroundColor: colors.escuro ? colors.card : colors.vidro,
+    ...est.sombra(), shadowOpacity: colors.escuro ? 0.25 : 0.07,
   },
-  tabBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 5, paddingVertical: 8, borderRadius: radius.md,
-  },
-  tabBtnSel: { backgroundColor: colors.lav1 },
-  tabTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
-  tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  tabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: 7, paddingHorizontal: 2, borderRadius: 18 },
+  tabBtnSel: est.abaSel(),
+  tabTxt: { fontFamily: fonts.bodySemi, fontSize: 12.5, color: colors.texto2 },
+  tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
 
-  card: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.md,
-  },
-  cardTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
+  card: { ...est.vidro(24), padding: 18, marginBottom: spacing.md },
+  cardDetalhe: { borderColor: colors.lav3, ...est.sombraForte() },
+  cardTitle: { ...est.cartaoTitulo(), marginBottom: 12 },
 
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
-  statCard: {
-    flex: 1, backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 10, alignItems: 'center', gap: 4,
-  },
-  statVal: { fontFamily: fonts.bodyBold, fontSize: 20 },
-  statLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tm, textAlign: 'center' },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: spacing.md },
+  statCard: { ...est.vidro(22), flexGrow: 1, flexBasis: '22%', minWidth: 76, padding: 12, alignItems: 'center', gap: 4 },
+  statIcone: est.pilula(38),
+  statVal: { fontFamily: 'Figtree_800ExtraBold', fontSize: 22, color: colors.titulo },
+  statLbl: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2, textAlign: 'center' },
+  barraValor: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.texto2, marginBottom: 2 },
+  barraDia: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.tl, marginTop: 4 },
 
   engRow: { flexDirection: 'row', alignItems: 'center' },
   engItem: { flex: 1, alignItems: 'center', gap: 2 },
-  engVal: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td },
-  engLbl: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center' },
-  engDiv: { width: 1, height: 36, backgroundColor: colors.border },
+  engVal: { fontFamily: 'Figtree_800ExtraBold', fontSize: 24, color: colors.titulo },
+  engLbl: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2, textAlign: 'center' },
+  engDiv: { width: 1, height: 40, backgroundColor: colors.bordaSuave },
 
-  planRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  planRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   planDot: { width: 10, height: 10, borderRadius: 5 },
-  planNome: { fontFamily: fonts.body, fontSize: 12, color: colors.td, width: 80 },
-  planCount: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td, width: 20, textAlign: 'right' },
+  planNome: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.td, width: 100 },
+  planCount: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, width: 26, textAlign: 'right' },
 
-  periodRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
-  periodBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card,
-  },
-  periodBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  periodTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
-  periodTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  periodRow: { ...est.trilho(), alignSelf: 'stretch', marginBottom: spacing.md, backgroundColor: colors.escuro ? colors.card : colors.vidro },
+  periodBtn: { ...est.aba(), flex: 1, paddingHorizontal: 6 },
+  periodBtnSel: est.abaSel(),
+  periodTxt: { ...est.abaTxt(), fontSize: 13 },
+  periodTxtSel: est.abaTxtSel(),
 
-  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 },
+  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   emoDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  emoLabel: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  emoQtd: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.tm },
+  emoLabel: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.td },
+  emoQtd: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.texto2 },
 
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  topMedal: { fontSize: 16, width: 24 },
-  topLabel: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  topQtd: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.tm },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave },
+  topMedal: { fontSize: 17, width: 26 },
+  topLabel: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.td },
+  topQtd: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.texto2 },
 
-  pvnRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pvnRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   pvnItem: { alignItems: 'center', gap: 2 },
-  pvnVal: { fontFamily: fonts.bodyBold, fontSize: 20 },
-  pvnLbl: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
-  pvnPct: { fontFamily: fonts.bodyBold, fontSize: 10, width: 30, textAlign: 'right' },
+  pvnVal: { fontFamily: 'Figtree_800ExtraBold', fontSize: 22 },
+  pvnLbl: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2 },
+  pvnPct: { fontFamily: fonts.bodyBold, fontSize: 12, width: 38, textAlign: 'right' },
 
-  searchBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.card, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    marginBottom: spacing.sm,
-  },
-  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  searchBox: { ...est.campo(), flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0, borderRadius: 999, marginBottom: spacing.sm },
+  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.td, paddingVertical: 12 },
 
-  ordemRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.md },
-  ordemLbl: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  ordemBtn: {
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card,
-  },
-  ordemBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  ordemTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  ordemTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  ordemRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
+  ordemLbl: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2 },
+  ordemBtn: { ...est.chip(), minHeight: 34, paddingVertical: 6 },
+  ordemBtnSel: est.chipSel(),
+  ordemTxt: { ...est.chipTxt(), fontSize: 13 },
+  ordemTxtSel: est.chipTxtSel(),
 
-  userRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: 8, overflow: 'hidden',
-  },
-  userRowSel: { borderColor: colors.lav4, backgroundColor: colors.lav1 },
-  userPlanoBar: { width: 4, height: 40, borderRadius: 2, flexShrink: 0 },
-  userName: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  userEmail: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  userMeta: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
-  planoBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  planoBadgeTxt: { fontFamily: fonts.bodyBold, fontSize: 10 },
+  lista: { ...est.vidro(24), paddingVertical: 2, marginBottom: spacing.md },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  userRowDiv: est.divisoria(),
+  userRowSel: { backgroundColor: colors.lav1 },
+  userPlanoBar: { width: 4, height: 38, borderRadius: 2, flexShrink: 0 },
+  userName: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  userEmail: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2 },
+  userMeta: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
+  planoBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  planoBadgeTxt: { fontFamily: fonts.bodyBold, fontSize: 12 },
 
-  detailNome: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
-  detailEmail: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginTop: 2 },
-  detailMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 4 },
+  detailNome: { fontFamily: fonts.serif, fontSize: 24, color: colors.titulo },
+  detailEmail: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2, marginTop: 2 },
+  detailMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 4 },
 
-  detailStatsRow: { flexDirection: 'row', gap: 6, marginVertical: spacing.sm },
-  detailStatBox: {
-    flex: 1, backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 8, alignItems: 'center', gap: 2,
-  },
-  detailStatVal: { fontFamily: fonts.bodyBold, fontSize: 14 },
-  detailStatLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl, textAlign: 'center' },
+  detailStatsRow: { flexDirection: 'row', gap: 8, marginVertical: spacing.sm },
+  detailStatBox: { ...est.tenue(16), flex: 1, padding: 10, alignItems: 'center', gap: 2 },
+  detailStatVal: { fontFamily: fonts.bodyBold, fontSize: 15 },
+  detailStatLbl: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2, textAlign: 'center' },
 
-  histRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: colors.border },
-  histLabel: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.td },
-  histData: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.bordaSuave },
+  histLabel: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.td },
+  histData: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2 },
 
-  emptyTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', paddingVertical: spacing.md },
+  emptyTxt: { ...est.legenda(), textAlign: 'center', paddingVertical: spacing.md },
 }), { escalar: false });

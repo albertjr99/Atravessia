@@ -13,6 +13,7 @@ import { confirmar } from '../../utils/confirm';
 import PlayerVideo from '../../components/PlayerVideo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import { est, acento, Degrade } from './adminEstilo';
 
 // Vídeos de apresentação (mesma tela do painel web: admin-web/src/Videos.jsx).
 // Ficam em configuracoes/videos → { jornadas: {...}, parcerias: {...} }.
@@ -119,7 +120,7 @@ function CartaoVideo({ info, dados, aoFocar }) {
   return (
     <View style={s.card}>
       <View style={s.cardTopo}>
-        <Ionicons name="play-circle-outline" size={20} color={colors.lav5} />
+        <View style={s.cardIcone}><Ionicons name="play-circle-outline" size={21} color={acento('nevoa').tinta} /></View>
         <Text style={s.cardTit}>{info.nome}</Text>
         {!!dados?.url && (
           <Text style={[s.tag, dados.ativo === false && s.tagOculto]}>{dados.ativo === false ? 'Oculto' : 'No app'}</Text>
@@ -165,6 +166,7 @@ function CartaoVideo({ info, dados, aoFocar }) {
 
       <View style={s.botoes}>
         <TouchableOpacity style={[s.btn, enviando && { opacity: 0.6 }]} onPress={trocar} disabled={enviando}>
+          <Degrade />
           {enviando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="cloud-upload-outline" size={16} color="white" />}
           <Text style={s.btnTxt}>{enviando ? 'Enviando...' : dados?.url ? 'Trocar vídeo' : 'Enviar vídeo'}</Text>
         </TouchableOpacity>
@@ -174,7 +176,7 @@ function CartaoVideo({ info, dados, aoFocar }) {
               <Text style={s.btnSecTxt}>{dados.ativo === false ? 'Mostrar' : 'Ocultar'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.btnIcone} onPress={remover}>
-              <Ionicons name="trash-outline" size={17} color={colors.peach2} />
+              <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
             </TouchableOpacity>
           </>
         )}
@@ -228,6 +230,7 @@ export default function AdminVideosScreen() {
         keyboardDismissMode="on-drag"
       >
         <View ref={conteudo}>
+        <Text style={s.sobre}>Biblioteca</Text>
         <Text style={s.title}>Vídeos de apresentação</Text>
         <Text style={s.sub}>
           Os vídeos de apresentação tocam sozinhos na primeira vez que a usuária abre a tela; depois ficam no botão “Assistir à apresentação”. O de Produtos fica na tela própria, com o link de compra.
@@ -243,39 +246,32 @@ export default function AdminVideosScreen() {
 
 const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48 },
-  title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, lineHeight: 19, marginBottom: spacing.lg },
-  erro: { fontFamily: fonts.body, fontSize: 12.5, color: colors.roseFg, marginBottom: spacing.md },
-  card: {
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.md, gap: 8,
-  },
-  cardTopo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTit: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
+  sobre: est.sobretitulo(),
+  title: est.titulo(),
+  sub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  erro: { ...est.aviso('rosa'), ...est.avisoTxt('rosa'), marginBottom: spacing.md },
+  card: { ...est.vidro(26), padding: 18, marginBottom: spacing.md, gap: 8 },
+  cardTopo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  cardIcone: { ...est.pilula(40), backgroundColor: acento('nevoa').fundo },
+  cardTit: { flex: 1, ...est.cartaoTitulo() },
   tag: {
-    fontFamily: fonts.bodyBold, fontSize: 11, color: colors.sageFg, backgroundColor: colors.sage + '26',
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full, overflow: 'hidden',
+    ...est.etiquetaTxt(), color: acento('salvia').texto, backgroundColor: acento('salvia').fundo,
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: 'hidden',
   },
-  tagOculto: { color: colors.tm, backgroundColor: colors.border },
+  tagOculto: { color: acento('neutro').texto, backgroundColor: acento('neutro').fundo },
   previa: {
-    height: 120, borderRadius: radius.md, backgroundColor: '#17141f',
+    height: 130, borderRadius: 18, backgroundColor: '#1C1726',
     alignItems: 'center', justifyContent: 'center', gap: 6,
   },
-  previaTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
-  vazio: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, paddingVertical: spacing.md, textAlign: 'center' },
-  label: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginTop: 4 },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 12, paddingVertical: 9, fontFamily: fonts.body, fontSize: 13.5, color: colors.td,
-  },
-  botoes: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' },
-  btn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.lav4,
-    borderRadius: radius.full, paddingVertical: 9, paddingHorizontal: 16,
-  },
-  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
-  btnSec: { borderRadius: radius.full, paddingVertical: 9, paddingHorizontal: 14, backgroundColor: colors.lav1 },
-  btnSecTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
-  btnIcone: { padding: 8 },
-  loja: { backgroundColor: colors.lav1, borderRadius: radius.md, padding: spacing.md, gap: 6 },
+  previaTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
+  vazio: { ...est.legenda(), paddingVertical: spacing.md, textAlign: 'center' },
+  label: { ...est.rotulo(), marginTop: 8, marginBottom: 2 },
+  input: est.campo(),
+  botoes: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' },
+  btn: { ...est.botao(), minHeight: 46, paddingHorizontal: 18 },
+  btnTxt: est.botaoTxt(),
+  btnSec: { ...est.botaoSec(), minHeight: 44, paddingHorizontal: 16 },
+  btnSecTxt: est.botaoSecTxt(),
+  btnIcone: est.botaoIcone(),
+  loja: { ...est.tenue(18), padding: spacing.md, gap: 6 },
 }), { escalar: false });

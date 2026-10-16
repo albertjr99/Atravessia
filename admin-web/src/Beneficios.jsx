@@ -136,32 +136,32 @@ const STATUS = {
   CONCLUIDO: {
     rotulo: 'Aguardando a cliente confirmar',
     ajuda: 'O parceiro registrou o atendimento. Falta a cliente confirmar no app que ele aconteceu.',
-    cor: '#C6A46E', fg: '#7A5C2E', bg: 'rgba(198,164,110,.16)',
+    cor: 'var(--acento-dourado-tinta)', fg: 'var(--acento-dourado-texto)', bg: 'var(--acento-dourado-fundo)',
   },
   CONFIRMADO_USUARIO: {
     rotulo: 'Em prazo de contestação',
     ajuda: 'A cliente confirmou. Esperamos 24 horas por segurança; depois fica pronto para cobrar sozinho.',
-    cor: '#8FA5C6', fg: '#46597A', bg: 'rgba(185,200,223,.34)',
+    cor: 'var(--acento-nevoa-tinta)', fg: 'var(--acento-nevoa-texto)', bg: 'var(--acento-nevoa-fundo)',
   },
   ELEGIVEL_LIQUIDACAO: {
     rotulo: 'Pronto para cobrar',
     ajuda: 'Tudo certo com este atendimento. Ele entra na próxima cobrança que você gerar para o parceiro.',
-    cor: '#8B7AC0', fg: '#5C4F8A', bg: '#EDE9F5',
+    cor: 'var(--acento-lilas-tinta)', fg: 'var(--acento-lilas-texto)', bg: 'var(--acento-lilas-fundo)',
   },
   AGUARDANDO_PAGAMENTO: {
     rotulo: 'Cobrado, aguardando pagamento',
     ajuda: 'Já faz parte de uma cobrança enviada ao parceiro. Quando ele pagar, registre o recebimento.',
-    cor: '#D39A7C', fg: '#8A523A', bg: 'rgba(242,201,184,.42)',
+    cor: 'var(--acento-pessego-tinta)', fg: 'var(--acento-pessego-texto)', bg: 'var(--acento-pessego-fundo)',
   },
   LIQUIDADO: {
     rotulo: 'Recebido',
     ajuda: 'O parceiro já pagou esta comissão. Nada mais a fazer.',
-    cor: '#7A9E7E', fg: '#43614A', bg: 'rgba(122,158,126,.16)',
+    cor: 'var(--acento-salvia-tinta)', fg: 'var(--acento-salvia-texto)', bg: 'var(--acento-salvia-fundo)',
   },
   CONTESTADO: {
     rotulo: 'Contestado',
     ajuda: 'A cliente informou que o atendimento não aconteceu; esse valor não será cobrado.',
-    cor: '#B4635A', fg: '#94463E', bg: 'rgba(180,99,90,.11)',
+    cor: 'var(--cor-erro)', fg: 'var(--cor-erro)', bg: 'var(--cor-erro-fundo)',
   },
 };
 const ORDEM_STATUS = ['CONCLUIDO', 'CONFIRMADO_USUARIO', 'ELEGIVEL_LIQUIDACAO', 'AGUARDANDO_PAGAMENTO', 'LIQUIDADO', 'CONTESTADO'];
@@ -169,7 +169,7 @@ const ORDEM_STATUS = ['CONCLUIDO', 'CONFIRMADO_USUARIO', 'ELEGIVEL_LIQUIDACAO', 
 const infoStatus = (s) => STATUS[s] || {
   rotulo: s ? `Situação: ${s}` : 'Sem situação',
   ajuda: 'Situação não reconhecida por esta tela.',
-  cor: '#9C979F', fg: '#6E6B73', bg: 'var(--surface-2)',
+  cor: 'var(--cor-texto-3)', fg: 'var(--cor-texto-2)', bg: 'var(--cor-superficie-2)',
 };
 const varsStatus = (s) => {
   const i = infoStatus(s);

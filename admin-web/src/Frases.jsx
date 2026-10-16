@@ -4,7 +4,7 @@ import { db } from './firebase';
 import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
-import { IconClose, IconEdit, IconEye, IconEyeOff, IconQuote, IconSpark, IconTrash } from './Icons';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconQuote, IconSpark, IconTrash, IconSearch } from './Icons';
 
 const VAZIO = { texto: '', autor: '', reflexao: '' };
 
@@ -106,13 +106,13 @@ export default function Frases({ showToast }) {
       </div>
 
       <div className="search-bar">
-        <span></span>
+        <IconSearch size={18} />
         <input
           value={busca}
           onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por frase, autor ou reflexão..."
         />
-        {busca && <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}></button>}
+        {busca && <button className="search-limpar" onClick={() => setBusca('')} aria-label="Limpar"><IconClose size={16} /></button>}
       </div>
 
       <div className="filter-row">

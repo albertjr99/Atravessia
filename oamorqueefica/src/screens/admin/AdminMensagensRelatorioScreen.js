@@ -8,6 +8,7 @@ import { emocoes } from '../../data';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import { est, acento, Degrade } from './adminEstilo';
 
 export default function AdminMensagensRelatorioScreen() {
   const [mensagens, setMensagens] = useState({});
@@ -41,18 +42,20 @@ export default function AdminMensagensRelatorioScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={sty.scroll}
       >
+        <Text style={sty.sobre}>Comunicação</Text>
         <Text style={sty.pageTitle}>Mensagens dos Relatórios</Text>
         <Text style={sty.pageSub}>
           Personalize a mensagem exibida nos relatórios mensais para cada emoção predominante.
           Deixe vazio para usar o texto padrão do app.
         </Text>
 
-        {emocoes.map(emo => (
-          <View key={emo.id} style={sty.emoBlock}>
+        <View style={sty.lista}>
+        {emocoes.map((emo, i) => (
+          <View key={emo.id} style={[sty.emoBlock, i > 0 && sty.emoDiv]}>
             <View style={sty.emoHeader}>
-              <View style={[sty.emoDot, { backgroundColor: emo.color }]} />
+              <View style={[sty.emoDot, { backgroundColor: emo.dado || emo.color }]} />
               <Text style={sty.emoLabel}>{emo.label}</Text>
-              <Text style={[sty.emoType, emo.positiva && { color: colors.sage }]}>
+              <Text style={[sty.emoType, emo.positiva && sty.emoTypePos]}>
                 {emo.positiva ? 'positiva' : 'negativa'}
               </Text>
             </View>
@@ -67,12 +70,14 @@ export default function AdminMensagensRelatorioScreen() {
             />
           </View>
         ))}
+        </View>
 
         <TouchableOpacity
           style={[sty.saveBtn, salvando && { opacity: 0.6 }]}
           onPress={handleSalvar}
           disabled={salvando}
         >
+          <Degrade />
           <Text style={sty.saveBtnTxt}>{salvando ? 'Salvando...' : 'Salvar mensagens'}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -81,31 +86,22 @@ export default function AdminMensagensRelatorioScreen() {
 }
 
 const sty = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: {
-    fontFamily: fonts.body, fontSize: 13, color: colors.tm,
-    marginBottom: spacing.lg, lineHeight: 20,
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  lista: { ...est.vidro(26), paddingVertical: 4 },
+  emoBlock: { paddingVertical: 14, paddingHorizontal: 16 },
+  emoDiv: est.divisoria(),
+  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  emoDot: { width: 12, height: 12, borderRadius: 6 },
+  emoLabel: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, flex: 1 },
+  emoType: {
+    ...est.etiquetaTxt(), color: acento('rosa').texto, backgroundColor: acento('rosa').fundo,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden',
   },
-  emoBlock: {
-    marginBottom: spacing.md, backgroundColor: colors.card,
-    borderRadius: radius.lg, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
-  emoDot: { width: 10, height: 10, borderRadius: 5 },
-  emoLabel: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, flex: 1 },
-  emoType: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.sm, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-    minHeight: 80, textAlignVertical: 'top',
-  },
-  saveBtn: {
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingVertical: 14, alignItems: 'center', marginTop: spacing.md,
-  },
-  saveBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
+  emoTypePos: { color: acento('salvia').texto, backgroundColor: acento('salvia').fundo },
+  input: { ...est.campo(), minHeight: 84, textAlignVertical: 'top', lineHeight: 21 },
+  saveBtn: { ...est.botao(), marginTop: spacing.lg },
+  saveBtnTxt: est.botaoTxt(),
 }), { escalar: false });

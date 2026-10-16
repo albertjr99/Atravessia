@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Dimensions, Alert, Platform, Image, TextInput, Modal,
+  useWindowDimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +18,7 @@ import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
+import { Profundo } from '../../components/Efeitos';
 import { functions, db } from '../../services/firebase';
 import { LOGO_RELATORIO } from '../../utils/logoRelatorio';
 import UsarCashback from '../cashback/UsarCashback';
@@ -23,6 +26,7 @@ import UsarCashback from '../cashback/UsarCashback';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const logo = require('../../../assets/images/travessia_logo.png');
+const ilVazio = require('../../../assets/images/il_coracao_ramos.png');
 const CHART_W = SCREEN_W - 48;
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -38,7 +42,7 @@ function DonutChart({ data, size = 160, thickness = 30, total, label }) {
   return (
     <View style={{ alignItems: 'center' }}>
       <Svg width={size} height={size}>
-        {/* Fundo cinza */}
+        {/* Trilho */}
         <Circle cx={cx} cy={cx} r={r} stroke={colors.lav1} strokeWidth={thickness} fill="none" />
         {data.map((seg, i) => {
           const dash = (seg.value / tot) * circumference;
@@ -56,8 +60,8 @@ function DonutChart({ data, size = 160, thickness = 30, total, label }) {
       </Svg>
       {/* Total no centro */}
       <View style={{ position: 'absolute', top: 0, left: 0, width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav4 }}>{total}</Text>
-        <Text style={{ fontFamily: fonts.body, fontSize: 9, color: colors.tl }}>{label}</Text>
+        <Text style={{ fontFamily: 'Figtree_800ExtraBold', fontSize: Math.round(size * 0.19), lineHeight: Math.round(size * 0.22), color: colors.titulo }}>{total}</Text>
+        <Text style={{ fontFamily: fonts.bodyMedium, fontSize: size >= 120 ? 12 : 11, color: colors.texto2 }}>{label}</Text>
       </View>
     </View>
   );
@@ -79,26 +83,28 @@ function CalendarGrid({ year, month, checkinsByDate, onDayPress }) {
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {cells.map((d, i) => {
-          if (!d) return <View key={`e${i}`} style={cs.cell} />;
+          if (!d) return <View key={`e${i}`} style={cs.cellVazia} />;
           const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           const emo = checkinsByDate[key];
           const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
           const isFuture = new Date(year, month, d) > today;
           const cellStyle = [
             cs.cell,
-            emo && { backgroundColor: emo.color + '55' },
-            isToday && { borderWidth: 1.5, borderColor: colors.lav4 },
-            isFuture && { opacity: 0.3 },
+            emo && { backgroundColor: dadoEmo(emo, 0) + (colors.escuro ? '59' : '4D') },
+            isToday && cs.cellHoje,
+            isFuture && { opacity: 0.35 },
           ];
-          const dayText = <Text style={[cs.dayNum, emo && { color: emo.color }, isToday && { fontFamily: fonts.bodyBold }]}>{d}</Text>;
+          const dayText = <Text style={[cs.dayNum, emo && { color: tintaEmo(emo), fontFamily: fonts.bodySemi }, isToday && { fontFamily: fonts.bodyBold }]}>{d}</Text>;
           if (emo && onDayPress && !isFuture) {
             return (
-              <TouchableOpacity key={d} style={cellStyle} onPress={() => onDayPress(key)} activeOpacity={0.7}>
-                {dayText}
-              </TouchableOpacity>
+              <View key={d} style={cs.cellCaixa}>
+                <TouchableOpacity style={cellStyle} onPress={() => onDayPress(key)} activeOpacity={0.7}>
+                  {dayText}
+                </TouchableOpacity>
+              </View>
             );
           }
-          return <View key={d} style={cellStyle}>{dayText}</View>;
+          return <View key={d} style={cs.cellCaixa}><View style={cellStyle}>{dayText}</View></View>;
         })}
       </View>
     </View>
@@ -106,13 +112,23 @@ function CalendarGrid({ year, month, checkinsByDate, onDayPress }) {
 }
 
 const cs = criarEstilos(() => ({
-  cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 4 },
-  dayLabel: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 9, color: colors.lav4 },
-  dayNum: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
+  cellVazia: { width: `${100 / 7}%`, aspectRatio: 1 },
+  cellCaixa: { width: `${100 / 7}%`, aspectRatio: 1, padding: 2.5 },
+  cell: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+  cellHoje: { borderWidth: 2, borderColor: colors.botao },
+  dayLabel: { flex: 1, textAlign: 'center', fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lilasTexto },
+  dayNum: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.texto2 },
 }));
 
 // ── Helpers de dados ──────────────────────────────────────────────────────────
 function getEmoObj(id) { return emocoes.find(e => e.id === id); }
+
+// Paleta de emoções "Luz de Vidro": `dado` (fatias, barras, legendas),
+// `bg` (véu claro) e `color` (tinta do ícone/texto). No noturno, o véu vira a
+// cor do dado translúcida e a tinta fica mais clara para continuar legível.
+function dadoEmo(e, i = 0) { return e?.dado || e?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length]; }
+function tintaEmo(e) { return (colors.escuro ? (e?.dado || e?.color) : e?.color) || colors.lilasIcone; }
+function veuEmo(e) { return colors.escuro ? `${dadoEmo(e)}33` : (e?.bg || colors.lav1); }
 
 function calcMes(checkins, year, month) {
   return checkins.filter(c => {
@@ -208,22 +224,45 @@ function calcAreaData(lista) {
     const sorted = contagemEmo(items);
     const total = items.length;
     const donut = sorted.map(([id, v], i) => ({
-      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[(li * 4 + i) % EMO_CHART_COLORS.length],
+      id, value: v, color: dadoEmo(getEmoObj(id), li * 4 + i),
     }));
     return { ...loc, sorted, total, donut };
   });
 }
 
-function AreaDonutCard({ area }) {
+// Celular: carrossel de áreas; tablet: as 4 áreas lado a lado, ocupando a largura.
+function AreasDaVida({ areas, largo }) {
+  if (largo) {
+    return (
+      <View style={areaStyles.linha}>
+        {areas.map(area => <AreaDonutCard key={area.id} area={area} largo />)}
+      </View>
+    );
+  }
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={areaStyles.carrossel}
+      contentContainerStyle={areaStyles.carrosselConteudo}
+    >
+      {areas.map(area => <AreaDonutCard key={area.id} area={area} />)}
+    </ScrollView>
+  );
+}
+
+function AreaDonutCard({ area, largo }) {
   const empty = area.total === 0;
   const chartData = empty ? [{ value: 1, color: colors.lav2 }] : area.donut;
   return (
-    <View style={areaStyles.card}>
+    <View style={[areaStyles.card, largo && areaStyles.cardLargo]}>
       <View style={areaStyles.header}>
-        <Ionicons name={area.icon} size={13} color={colors.lav5} />
+        <View style={areaStyles.icone}>
+          <Ionicons name={area.icon} size={15} color={colors.lilasIcone} />
+        </View>
         <Text style={areaStyles.name} numberOfLines={2}>{area.label}</Text>
       </View>
-      <DonutChart data={chartData} size={90} thickness={16} total={empty ? 0 : area.total} label="reg." />
+      <DonutChart data={chartData} size={largo ? 110 : 96} thickness={largo ? 18 : 16} total={empty ? 0 : area.total} label="reg." />
       <View style={areaStyles.breakdown}>
         {empty ? (
           <Text style={areaStyles.empty}>Sem registros</Text>
@@ -247,44 +286,52 @@ function AreaDonutCard({ area }) {
 }
 
 const areaStyles = criarEstilos(() => ({
-  card: { width: 155, backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center', gap: 6 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
-  name: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, flex: 1 },
-  breakdown: { alignSelf: 'stretch', gap: 3 },
-  emoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  dot: { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
-  emoName: { flex: 1, fontFamily: fonts.body, fontSize: 10, color: colors.td },
-  emoPct: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.tm },
-  empty: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', paddingVertical: 4 },
-  total: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, alignSelf: 'flex-end' },
+  carrossel: { marginHorizontal: -18 },
+  carrosselConteudo: { gap: 10, paddingVertical: 10, paddingHorizontal: 18 },
+  linha: { flexDirection: 'row', gap: 12, paddingVertical: 10 },
+  // Bloco tênue dentro do cartão de vidro (sem borda dentro de borda).
+  card: { width: 158, backgroundColor: colors.lavVeu, borderRadius: 20, padding: 12, alignItems: 'center', gap: 8 },
+  cardLargo: { width: undefined, flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'stretch' },
+  icone: { width: 28, height: 28, borderRadius: 10, backgroundColor: colors.vidroForte, alignItems: 'center', justifyContent: 'center' },
+  name: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.titulo, flex: 1 },
+  breakdown: { alignSelf: 'stretch', gap: 4 },
+  emoRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  emoName: { flex: 1, fontFamily: fonts.body, fontSize: 10.5, color: colors.titulo },
+  emoPct: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.texto2 },
+  empty: { fontFamily: fonts.body, fontSize: 10.5, color: colors.texto2, textAlign: 'center', paddingVertical: 4 },
+  total: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lilasTexto, alignSelf: 'flex-end' },
 }));
 
 // ── Pequenas Vitórias: ícone + cor por tema da conquista ─────────────────────
+// `cor` = tinta no tema claro; `noite` = tom claro para o noturno (paleta d2).
 const VIT_ICONES = [
-  { re: /hidrat|água|agua|bebi/i,                     icon: 'water-outline',          cor: '#5B9BD5' },
-  { re: /medit|respir|calma|pausa/i,                  icon: 'flower-outline',         cor: '#8B7AC0' },
-  { re: /caminh|andei|exerc|corri|treino|academia/i,  icon: 'walk-outline',           cor: '#7A9E7E' },
-  { re: /dorm|sono|descans|repous/i,                  icon: 'moon-outline',           cor: '#6C7BA8' },
-  { re: /li |livro|leitur|estud/i,                    icon: 'book-outline',           cor: '#C08A5E' },
-  { re: /gratid|grato|grata|agradec/i,                icon: 'heart-outline',          cor: '#D4A89A' },
-  { re: /amig|encontr|social|convers|visit/i,         icon: 'people-outline',         cor: '#D9A441' },
-  { re: /aliment|comi|refei|cozinh/i,                 icon: 'restaurant-outline',     cor: '#B5893F' },
-  { re: /música|musica|cant|dan[çc]/i,                icon: 'musical-notes-outline',  cor: '#A85FA8' },
-  { re: /sa[íi] de casa|passe|rua|ar livre|natur/i,   icon: 'sunny-outline',          cor: '#E0A33E' },
-  { re: /apoio|rede|terapia|psic[óo]l/i,              icon: 'chatbubbles-outline',    cor: '#5FA8A0' },
-  { re: /jornada|conclu|termin|finaliz/i,             icon: 'compass-outline',        cor: '#7B6BAF' },
-  { re: /banho|cuid|autocuid|arrum/i,                 icon: 'sparkles-outline',       cor: '#C77FA6' },
-  { re: /chor|senti|emo[çc]/i,                        icon: 'rainy-outline',          cor: '#8FA8C4' },
+  { re: /hidrat|água|agua|bebi/i,                     icon: 'water-outline',          cor: '#4C6C9E', noite: '#A9C1EC' },
+  { re: /medit|respir|calma|pausa/i,                  icon: 'flower-outline',         cor: '#6A55BE', noite: '#BCAAF8' },
+  { re: /caminh|andei|exerc|corri|treino|academia/i,  icon: 'walk-outline',           cor: '#3F7A5E', noite: '#9FD0B0' },
+  { re: /dorm|sono|descans|repous/i,                  icon: 'moon-outline',           cor: '#56698C', noite: '#A9C1EC' },
+  { re: /li |livro|leitur|estud/i,                    icon: 'book-outline',           cor: '#A8582E', noite: '#F2B79E' },
+  { re: /gratid|grato|grata|agradec/i,                icon: 'heart-outline',          cor: '#A84868', noite: '#F2A2BC' },
+  { re: /amig|encontr|social|convers|visit/i,         icon: 'people-outline',         cor: '#9A6B1F', noite: '#E5C68B' },
+  { re: /aliment|comi|refei|cozinh/i,                 icon: 'restaurant-outline',     cor: '#94593F', noite: '#F2B79E' },
+  { re: /música|musica|cant|dan[çc]/i,                icon: 'musical-notes-outline',  cor: '#8A4F9E', noite: '#D9B4F0' },
+  { re: /sa[íi] de casa|passe|rua|ar livre|natur/i,   icon: 'sunny-outline',          cor: '#9A6B1F', noite: '#E5C68B' },
+  { re: /apoio|rede|terapia|psic[óo]l/i,              icon: 'chatbubbles-outline',    cor: '#3F7A6E', noite: '#93D1C4' },
+  { re: /jornada|conclu|termin|finaliz/i,             icon: 'compass-outline',        cor: '#524197', noite: '#CFC2FF' },
+  { re: /banho|cuid|autocuid|arrum/i,                 icon: 'sparkles-outline',       cor: '#A84868', noite: '#F2A2BC' },
+  { re: /chor|senti|emo[çc]/i,                        icon: 'rainy-outline',          cor: '#4C6C9E', noite: '#A9C1EC' },
 ];
 
 const VIT_FALLBACK_CORES = [
-  colors.lav4, colors.rose, colors.sage, colors.gold, '#5B9BD5', '#C08A5E',
+  { cor: '#6A55BE', noite: '#BCAAF8' }, { cor: '#A8582E', noite: '#F2B79E' }, { cor: '#3F7A5E', noite: '#9FD0B0' },
+  { cor: '#9A6B1F', noite: '#E5C68B' }, { cor: '#4C6C9E', noite: '#A9C1EC' }, { cor: '#A84868', noite: '#F2A2BC' },
 ];
 
 function estiloVitoria(label, idx) {
   const achou = VIT_ICONES.find(v => v.re.test(label || ''));
-  if (achou) return achou;
-  return { icon: 'star-outline', cor: VIT_FALLBACK_CORES[idx % VIT_FALLBACK_CORES.length] };
+  const base = achou || { icon: 'star-outline', ...VIT_FALLBACK_CORES[idx % VIT_FALLBACK_CORES.length] };
+  return { icon: base.icon, cor: colors.escuro ? base.noite : base.cor };
 }
 
 // Agrupa as vitórias por rótulo e conta em quantos DIAS distintos cada uma ocorreu,
@@ -314,8 +361,8 @@ function VitoriasDestaque({ itens }) {
     <View style={vitStyles.wrap}>
       {itens.map((v, i) => (
         <View key={`${v.label}-${i}`} style={vitStyles.item}>
-          <View style={[vitStyles.iconBox, { backgroundColor: v.cor + '1F' }]}>
-            <Ionicons name={v.icon} size={17} color={v.cor} />
+          <View style={[vitStyles.iconBox, { backgroundColor: v.cor + (colors.escuro ? '29' : '1A') }]}>
+            <Ionicons name={v.icon} size={18} color={v.cor} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={vitStyles.label} numberOfLines={2}>{v.label}</Text>
@@ -331,29 +378,29 @@ function VitoriasDestaque({ itens }) {
 
 const vitStyles = criarEstilos(() => ({
   wrap: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    marginTop: 10, rowGap: 10, columnGap: 8,
+    flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between',
+    marginTop: 10, rowGap: 10,
   },
+  // Blocos tênues dentro do cartão de vidro (sem borda dentro de borda).
   item: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    width: '48%',
-    backgroundColor: colors.card, borderRadius: 12,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 9, paddingHorizontal: 9,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    width: '48.5%',
+    backgroundColor: colors.lavVeu, borderRadius: 18,
+    paddingVertical: 10, paddingHorizontal: 10,
   },
   iconBox: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 38, height: 38, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  label: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, lineHeight: 14 },
-  dias: { fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+  label: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.titulo, lineHeight: 16 },
+  dias: { fontFamily: fonts.bodySemi, fontSize: 11, marginTop: 2 },
 }));
 
 // ── Cores para emoções no gráfico ─────────────────────────────────────────────
+// Paleta de dados d2 (sem oliva nem mostarda), usada quando a emoção não tem cor própria.
 const EMO_CHART_COLORS = [
-  colors.lav4, colors.rose, colors.sage, colors.gold,
-  colors.azulNevoa, colors.peach, '#CDB9A6', colors.lav3,
-  '#B0C4B1', colors.lav6, colors.lav5, '#D8B4B6',
+  '#A595DC', '#E39A72', '#6E9B7E', '#C9A15A', '#7F9BCB', '#D682A0',
+  '#8EA3C8', '#B98A7A', '#8FA89A', '#C27C78', '#9A90AE', '#C7A07E',
 ];
 
 // ── Gerador de HTML para PDF ─────────────────────────────────────────────────
@@ -991,6 +1038,10 @@ function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
+  // Tablet: rosca maior e áreas da vida lado a lado.
+  const { width: larguraTela } = useWindowDimensions();
+  const largo = larguraTela >= 700;
+  const tamanhoRosca = largo ? 200 : 148;
   const { checkins, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
@@ -1025,7 +1076,7 @@ export default function RelatoriosScreen({ navigation, route }) {
     const sorted = contagemEmo(lista);
     const total = lista.length;
     const donut = sorted.map(([id, v], i) => ({
-      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
+      id, value: v, color: dadoEmo(getEmoObj(id), i),
     }));
     const byDate = checkinsByDate(lista);
     const dominante = sorted[0]?.[0];
@@ -1042,7 +1093,7 @@ export default function RelatoriosScreen({ navigation, route }) {
     const sorted = contagemEmo(lista);
     const total = lista.length;
     const donut = sorted.map(([id, v], i) => ({
-      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
+      id, value: v, color: dadoEmo(getEmoObj(id), i),
     }));
 
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10)));
@@ -1135,7 +1186,7 @@ export default function RelatoriosScreen({ navigation, route }) {
     const sorted = contagemEmo(lista);
     const total = lista.length;
     const donut = sorted.map(([id, v], i) => ({
-      id, value: v, color: getEmoObj(id)?.color || EMO_CHART_COLORS[i % EMO_CHART_COLORS.length],
+      id, value: v, color: dadoEmo(getEmoObj(id), i),
     }));
     const dominante = sorted[0]?.[0];
     const uniqueDays = new Set(lista.map(c => c.data?.slice(0, 10))).size;
@@ -1210,38 +1261,39 @@ export default function RelatoriosScreen({ navigation, route }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Relatórios</Text>
+        <Text style={s.topTitle} numberOfLines={1}>Relatórios</Text>
         <TouchableOpacity
           onPress={handleExportar}
           disabled={exportando}
-          style={[s.exportBtn, exportando && { opacity: 0.5 }]}
+          style={[s.backBtn, exportando && { opacity: 0.5 }]}
+          accessibilityLabel="Exportar relatório em PDF"
         >
-          <Ionicons name={exportando ? 'hourglass-outline' : 'download-outline'} size={18} color={colors.lav5} />
+          <Ionicons name={exportando ? 'hourglass-outline' : 'download-outline'} size={20} color={colors.lilasIcone} />
         </TouchableOpacity>
       </View>
 
-      {/* Abas */}
+      {/* Abas: trilho de vidro com a ativa em branco */}
       <View style={s.tabRow}>
-        <TouchableOpacity style={[s.tab, tab === 'mensal' && s.tabSel]} onPress={() => setTab('mensal')}>
+        <TouchableOpacity style={[s.tab, tab === 'mensal' && s.tabSel]} onPress={() => setTab('mensal')} accessibilityState={{ selected: tab === 'mensal' }}>
           <Text style={[s.tabTxt, tab === 'mensal' && s.tabTxtSel]}>Mensal</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab === 'anual' && s.tabSel]} onPress={() => setTab('anual')}>
-          <Ionicons name={tab === 'anual' ? 'calendar' : 'calendar-outline'} size={13} color={tab === 'anual' ? colors.lav4 : colors.tl} style={{ marginRight: 4 }} />
+        <TouchableOpacity style={[s.tab, tab === 'anual' && s.tabSel]} onPress={() => setTab('anual')} accessibilityState={{ selected: tab === 'anual' }}>
+          <Ionicons name={tab === 'anual' ? 'calendar' : 'calendar-outline'} size={14} color={tab === 'anual' ? colors.lilasTexto : colors.texto2} />
           <Text style={[s.tabTxt, tab === 'anual' && s.tabTxtSel]}>Anual</Text>
-          {!temAcesso(1) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
+          {!temAcesso(1) && <Ionicons name="lock-closed" size={11} color={colors.texto2} />}
         </TouchableOpacity>
-        <TouchableOpacity style={[s.tab, tab === 'personalizado' && s.tabSel]} onPress={() => setTab('personalizado')}>
-          <Ionicons name={tab === 'personalizado' ? 'options' : 'options-outline'} size={13} color={tab === 'personalizado' ? colors.lav4 : colors.tl} style={{ marginRight: 4 }} />
+        <TouchableOpacity style={[s.tab, tab === 'personalizado' && s.tabSel]} onPress={() => setTab('personalizado')} accessibilityState={{ selected: tab === 'personalizado' }}>
+          <Ionicons name={tab === 'personalizado' ? 'options' : 'options-outline'} size={14} color={tab === 'personalizado' ? colors.lilasTexto : colors.texto2} />
           <Text style={[s.tabTxt, tab === 'personalizado' && s.tabTxtSel]}>Período</Text>
-          {!temAcesso(1) && <Ionicons name="lock-closed" size={10} color={colors.tl} style={{ marginLeft: 4 }} />}
+          {!temAcesso(1) && <Ionicons name="lock-closed" size={11} color={colors.texto2} />}
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + insets.bottom, paddingHorizontal: spacing.lg }}>
 
         {/* ═══════════════════════════════════ RELATÓRIO MENSAL ══════════════════ */}
         {tab === 'mensal' && (
@@ -1251,38 +1303,35 @@ export default function RelatoriosScreen({ navigation, route }) {
               <Image source={logo} style={s.reportLogo} resizeMode="contain" />
               <Text style={s.reportTitle}>RELATÓRIO MENSAL</Text>
               <View style={s.reportMes}>
-                <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
+                <Ionicons name="calendar-outline" size={14} color={colors.lilasTexto} />
                 <Text style={s.reportMesTxt}>{MONTH_NAMES[calMes].toUpperCase()}/{calAno}</Text>
               </View>
               <Text style={s.reportSub}>Seu resumo emocional do mês</Text>
             </View>
 
             {mesal.total === 0 ? (
-              <View style={s.emptyBox}>
-                <Ionicons name="heart-outline" size={40} color={colors.lav3} />
+              <View style={[s.card, s.emptyBox]}>
+                <Moldura source={ilVazio} tamanho={96} />
                 <Text style={s.emptyTxt}>Ainda não há check-ins este mês.</Text>
                 <Text style={s.emptyHint}>Faça seu primeiro check-in para ver seu relatório.</Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('CheckIn')}>
-                  <Text style={s.emptyBtnTxt}>Fazer check-in agora</Text>
-                </TouchableOpacity>
+                <BotaoLuz titulo="Fazer check-in agora" onPress={() => navigation.navigate('CheckIn')} style={s.btnCentro} />
               </View>
             ) : (
               <>
                 {/* Seção 1 — Suas emoções no mês */}
                 <View style={s.card}>
-                  <Text style={s.sectionLabel}>1</Text>
-                  <Text style={s.cardTit}>Suas emoções no mês</Text>
+                  <TituloCartao num="1">Suas emoções no mês</TituloCartao>
                   <View style={s.donutRow}>
-                    <DonutChart data={mesal.donut} size={150} thickness={28} total={mesal.total} label="registros" />
-                    <View style={s.donutLegend}>
+                    <DonutChart data={mesal.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={mesal.total} label="registros" />
+                    <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                       {mesal.sorted.slice(0, 6).map(([id, v], i) => {
                         const emo = getEmoObj(id);
                         const pct = Math.round((v / mesal.total) * 100);
                         return (
                           <View key={id} style={s.legendRow}>
-                            <View style={[s.legendDot, { backgroundColor: emo?.color || EMO_CHART_COLORS[i] }]} />
+                            <View style={[s.legendDot, { backgroundColor: dadoEmo(emo, i) }]} />
                             <Text style={s.legendTxt} numberOfLines={1}>{emo?.label || id}</Text>
-                            <Text style={[s.legendPct, { color: emo?.color || EMO_CHART_COLORS[i] }]}>{pct}%</Text>
+                            <Text style={[s.legendPct, { color: emo ? tintaEmo(emo) : colors.titulo }]}>{pct}%</Text>
                           </View>
                         );
                       })}
@@ -1295,13 +1344,8 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {/* Seção 2 — Suas emoções nas áreas da vida */}
                 <View style={s.card}>
-                  <Text style={s.sectionLabel}>2</Text>
-                  <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
-                    {mesal.areaData.map(area => (
-                      <AreaDonutCard key={area.id} area={area} />
-                    ))}
-                  </ScrollView>
+                  <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
+                  <AreasDaVida areas={mesal.areaData} largo={largo} />
                   <Text style={s.areasSummaryTxt}>
                     A soma dos registros nas áreas é{' '}
                     <Text style={s.registrosBold}>{mesal.areaData.reduce((acc, a) => acc + a.total, 0)}</Text> dias
@@ -1312,10 +1356,9 @@ export default function RelatoriosScreen({ navigation, route }) {
                 {/* Seção 3 — Pequenas Vitórias */}
                 {vitoriasMes.length > 0 && (
                   <View style={s.card}>
-                    <Text style={s.sectionLabel}>3</Text>
-                    <Text style={s.cardTit}>
+                    <TituloCartao num="3">
                       {tituloVitorias(agruparVitorias(vitoriasMes).length)}
-                    </Text>
+                    </TituloCartao>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasMes)} />
                     {vitoriasMes.length > 0 && (
                       <Text style={s.vitMore}>
@@ -1328,23 +1371,20 @@ export default function RelatoriosScreen({ navigation, route }) {
                 {/* Calendário emocional — Plan 1+ */}
                 {temPlano1 && (
                   <View style={s.card}>
-                    <Text style={s.cardTit}>Calendário emocional</Text>
+                    <TituloCartao>Calendário emocional</TituloCartao>
                     <Text style={s.cardSub}>Toque num dia marcado para ver o check-in</Text>
                     <View style={s.calNavRow}>
-                      <TouchableOpacity style={s.calNavBtn} onPress={() => handleCalNav(-1)}>
-                        <Ionicons name="chevron-back" size={18} color={colors.lav4} />
+                      <TouchableOpacity style={s.calNavBtn} onPress={() => handleCalNav(-1)} accessibilityLabel="Mês anterior">
+                        <Ionicons name="chevron-back" size={18} color={colors.lilasIcone} />
                       </TouchableOpacity>
                       <Text style={s.calNavTitle}>{MONTH_NAMES[calMes]} {calAno}</Text>
                       <TouchableOpacity
-                        style={s.calNavBtn}
+                        style={[s.calNavBtn, (calAno === year && calMes >= month) && { opacity: 0.45 }]}
                         onPress={() => handleCalNav(1)}
                         disabled={calAno === year && calMes >= month}
+                        accessibilityLabel="Próximo mês"
                       >
-                        <Ionicons
-                          name="chevron-forward"
-                          size={18}
-                          color={(calAno === year && calMes >= month) ? colors.lav2 : colors.lav4}
-                        />
+                        <Ionicons name="chevron-forward" size={18} color={colors.lilasIcone} />
                       </TouchableOpacity>
                     </View>
                     <View style={{ marginTop: 8 }}>
@@ -1355,8 +1395,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                         const emo = getEmoObj(id);
                         return (
                           <View key={id} style={s.legendRow}>
-                            <View style={[s.legendDot, { backgroundColor: emo?.color || EMO_CHART_COLORS[i] }]} />
-                            <Text style={s.legendTxt}>{emo?.label || id}</Text>
+                            <View style={[s.legendDot, { backgroundColor: dadoEmo(emo, i) }]} />
+                            <Text style={s.legendTxtCurto}>{emo?.label || id}</Text>
                           </View>
                         );
                       })}
@@ -1368,7 +1408,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                 <View style={[s.card, s.msgCard]}>
                   <Text style={s.msgTxt}>{mensagem(mesal.dominante)}</Text>
                   <View style={s.msgRodape}>
-                    <Ionicons name="leaf-outline" size={12} color={colors.lav3} />
+                    <Ionicons name="leaf-outline" size={13} color={colors.lilasTexto} />
                     <Text style={s.msgRodapeTxt}>Atravessia</Text>
                   </View>
                 </View>
@@ -1381,16 +1421,16 @@ export default function RelatoriosScreen({ navigation, route }) {
         {tab === 'anual' && (
           <>
             {!temAcesso(1) ? (
-              <View style={s.lockedAnnual}>
-                <Ionicons name="bar-chart-outline" size={48} color={colors.lav3} />
+              <View style={[s.card, s.lockedAnnual]}>
+                <View style={s.periodoIconWrap}>
+                  <Ionicons name="bar-chart-outline" size={34} color={colors.lilasIcone} />
+                </View>
                 <Text style={s.lockedAnnualTit}>Relatório Anual</Text>
                 <Text style={s.lockedAnnualDesc}>
                   Veja sua jornada emocional completa do ano — emoções ao longo do ano, distribuição por trimestre, constância e muito mais.
                 </Text>
                 <Text style={s.lockedAnnualBadge}>Disponível no Plano Acolher</Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
-                  <Text style={s.emptyBtnTxt}>Ver planos</Text>
-                </TouchableOpacity>
+                <BotaoLuz titulo="Ver planos" onPress={() => navigation.navigate('Planos')} style={s.btnCentro} />
               </View>
             ) : (
               <>
@@ -1399,7 +1439,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                   <Image source={logo} style={s.reportLogo} resizeMode="contain" />
                   <Text style={s.reportTitle}>RELATÓRIO ANUAL</Text>
                   <View style={s.reportMes}>
-                    <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
+                    <Ionicons name="calendar-outline" size={14} color={colors.lilasTexto} />
                     <Text style={s.reportMesTxt}>{year}</Text>
                   </View>
                   <Text style={s.reportSub}>Sua jornada emocional do ano</Text>
@@ -1408,13 +1448,15 @@ export default function RelatoriosScreen({ navigation, route }) {
                 {/* Tiles de estatística */}
                 <View style={s.tilesRow}>
                   {[
-                    { icon: 'calendar-outline', v: anual.total, lbl: 'check-ins realizados', color: colors.lav4 },
-                    { icon: 'heart-outline', v: anual.uniqueDays, lbl: 'dias com registro', color: colors.rose },
-                    { icon: 'star-outline', v: `${anual.consistencia}%`, lbl: 'de constância', color: colors.gold },
+                    { icon: 'calendar-outline', v: anual.total, lbl: 'check-ins realizados', acento: acentoLilas() },
+                    { icon: 'heart-outline', v: anual.uniqueDays, lbl: 'dias com registro', acento: acentoPessego() },
+                    { icon: 'star-outline', v: `${anual.consistencia}%`, lbl: 'de constância', acento: acentoDourado() },
                   ].map((t, i) => (
                     <View key={i} style={s.tile}>
-                      <Ionicons name={t.icon} size={18} color={t.color} />
-                      <Text style={[s.tileNum, { color: t.color }]}>{t.v}</Text>
+                      <View style={[s.tileIcone, { backgroundColor: t.acento.fundo }]}>
+                        <Ionicons name={t.icon} size={18} color={t.acento.tinta} />
+                      </View>
+                      <Text style={[s.tileNum, { color: t.acento.texto }]}>{t.v}</Text>
                       <Text style={s.tileLbl}>{t.lbl}</Text>
                     </View>
                   ))}
@@ -1422,19 +1464,18 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {/* 1. Emoções do ano */}
                 <View style={s.card}>
-                  <Text style={s.cardNum}>1</Text>
-                  <Text style={s.cardTit}>Emoções do ano</Text>
+                  <TituloCartao num="1">Emoções do ano</TituloCartao>
                   <View style={s.donutRow}>
-                    <DonutChart data={anual.donut} size={140} thickness={26} total={anual.total} label="registros" />
-                    <View style={s.donutLegend}>
+                    <DonutChart data={anual.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={anual.total} label="registros" />
+                    <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                       {anual.sorted.slice(0, 7).map(([id, v], i) => {
                         const emo = getEmoObj(id);
                         const pct = Math.round((v / anual.total) * 100);
                         return (
                           <View key={id} style={s.legendRow}>
-                            <View style={[s.legendDot, { backgroundColor: emo?.color || EMO_CHART_COLORS[i] }]} />
+                            <View style={[s.legendDot, { backgroundColor: dadoEmo(emo, i) }]} />
                             <Text style={s.legendTxt} numberOfLines={1}>{emo?.label || id}</Text>
-                            <Text style={[s.legendPct, { color: emo?.color || EMO_CHART_COLORS[i] }]}>{pct}%</Text>
+                            <Text style={[s.legendPct, { color: emo ? tintaEmo(emo) : colors.titulo }]}>{pct}%</Text>
                           </View>
                         );
                       })}
@@ -1444,13 +1485,8 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {/* Suas emoções nas áreas da vida — anual */}
                 <View style={s.card}>
-                  <Text style={s.sectionLabel}>2</Text>
-                  <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
-                    {anual.areaData.map(area => (
-                      <AreaDonutCard key={area.id} area={area} />
-                    ))}
-                  </ScrollView>
+                  <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
+                  <AreasDaVida areas={anual.areaData} largo={largo} />
                   <Text style={s.areasSummaryTxt}>
                     Total de registros por área ao longo do ano.
                   </Text>
@@ -1458,13 +1494,12 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {/* 3. Distribuição por trimestre */}
                 <View style={s.card}>
-                  <Text style={s.cardNum}>3</Text>
-                  <Text style={s.cardTit}>Distribuição por trimestre</Text>
+                  <TituloCartao num="3">Distribuição por trimestre</TituloCartao>
                   {['1º Trimestre','2º Trimestre','3º Trimestre','4º Trimestre'].map((label, i) => (
                     <View key={i} style={s.trimRow}>
                       <Text style={s.trimLabel}>{label}</Text>
                       <View style={s.trimTrack}>
-                        <View style={[s.trimFill, { width: `${anual.trimPct[i]}%`, backgroundColor: [colors.lav4, colors.rose, colors.sage, colors.gold][i] }]} />
+                        <View style={[s.trimFill, { width: `${anual.trimPct[i]}%`, backgroundColor: TRIM_CORES[i] }]} />
                       </View>
                       <Text style={s.trimPct}>{anual.trimPct[i]}%</Text>
                     </View>
@@ -1473,10 +1508,9 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {vitoriasAno.length > 0 && (
                   <View style={s.card}>
-                    <Text style={s.sectionLabel}>⭐</Text>
-                    <Text style={s.cardTit}>
+                    <TituloCartao num="⭐">
                       {tituloVitorias(agruparVitorias(vitoriasAno).length)}
-                    </Text>
+                    </TituloCartao>
                     <VitoriasDestaque itens={agruparVitorias(vitoriasAno)} />
                     {vitoriasAno.length > 0 && (
                       <Text style={s.vitMore}>
@@ -1488,13 +1522,12 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                 {/* 3. Mensagem anual */}
                 <View style={[s.card, s.msgCard]}>
-                  <Text style={s.cardNum}>3</Text>
-                  <Text style={s.cardTit}>Mensagem para você</Text>
+                  <TituloCartao num="3">Mensagem para você</TituloCartao>
                   <Text style={s.msgTxt}>
                     Você atravessou altos e baixos, dias leves e dias desafiadores. Cada emoção registrada mostra sua coragem de olhar para dentro. Que o próximo ano seja cheio de leveza, autoconhecimento e cuidado com você.
                   </Text>
                   <View style={s.msgRodape}>
-                    <Ionicons name="leaf-outline" size={12} color={colors.lav3} />
+                    <Ionicons name="leaf-outline" size={13} color={colors.lilasTexto} />
                     <Text style={s.msgRodapeTxt}>Atravessia</Text>
                   </View>
                 </View>
@@ -1508,7 +1541,7 @@ export default function RelatoriosScreen({ navigation, route }) {
           <>
             {/* Datas — sempre visíveis */}
             <View style={s.card}>
-              <Text style={s.cardTit}>Defina o período</Text>
+              <TituloCartao>Defina o período</TituloCartao>
               <Text style={s.cardSub}>Selecione o intervalo de datas para gerar o relatório</Text>
               <View style={s.dateRow}>
                 <View style={{ flex: 1 }}>
@@ -1523,7 +1556,9 @@ export default function RelatoriosScreen({ navigation, route }) {
                     maxLength={10}
                   />
                 </View>
-                <Ionicons name="arrow-forward" size={16} color={colors.tl} style={{ marginTop: 20 }} />
+                <View style={s.dateSeta}>
+                  <Ionicons name="arrow-forward" size={16} color={colors.lilasIcone} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.dateLabel}>Fim</Text>
                   <TextInput
@@ -1540,9 +1575,9 @@ export default function RelatoriosScreen({ navigation, route }) {
             </View>
 
             {!(perfil?.periodoCreditos > 0) ? (
-              <View style={s.lockedAnnual}>
+              <View style={[s.card, s.lockedAnnual]}>
                 <View style={s.periodoIconWrap}>
-                  <Ionicons name="calendar-outline" size={36} color={colors.lav4} />
+                  <Ionicons name="calendar-outline" size={34} color={colors.lilasIcone} />
                 </View>
                 <Text style={s.lockedAnnualTit}>Relatório por Período</Text>
                 <Text style={s.lockedAnnualDesc}>
@@ -1553,22 +1588,19 @@ export default function RelatoriosScreen({ navigation, route }) {
                 {!temAcesso(1) ? (
                   <>
                     <Text style={s.pricingTitle}>Para acessar, assine um plano primeiro</Text>
-                    <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Planos')}>
-                      <Text style={s.emptyBtnTxt}>Ver planos</Text>
-                    </TouchableOpacity>
+                    <BotaoLuz titulo="Ver planos" onPress={() => navigation.navigate('Planos')} style={s.btnCentro} />
                   </>
                 ) : (
                   <View style={s.stripeWrap}>
                     <View style={s.stripePriceCard}>
-                      <Ionicons name="calendar-outline" size={28} color={colors.lav4} />
-                      <Text style={[s.stripePriceTxt, { color: colors.lav4 }]}>{precoPeriodoTxt}</Text>
+                      <Text style={s.stripePriceTxt}>{precoPeriodoTxt}</Text>
                       <Text style={s.stripePriceSub}>por relatório gerado</Text>
                     </View>
                     <View style={[s.periodoStatus, periodo.ok ? s.periodoStatusOk : null]}>
                       <Ionicons
                         name={periodo.ok ? 'checkmark-circle' : 'information-circle-outline'}
-                        size={16}
-                        color={periodo.ok ? colors.sage : colors.lav5}
+                        size={18}
+                        color={periodo.ok ? colors.sageFg : colors.lilasTexto}
                       />
                       <Text style={[s.periodoStatusTxt, periodo.ok && { color: colors.sageFg }]}>
                         {periodo.ok
@@ -1577,16 +1609,12 @@ export default function RelatoriosScreen({ navigation, route }) {
                       </Text>
                     </View>
                     <UsarCashback ativo={usarCashback} onChange={setUsarCashback} />
-                    <TouchableOpacity
-                      style={[s.stripeBtn, { backgroundColor: colors.lav4 }, (comprando || !periodo.ok) && { opacity: 0.45 }]}
+                    <BotaoLuz
+                      titulo={comprando ? 'Abrindo pagamento...' : `Obter 1 relatório por ${precoPeriodoTxt}`}
+                      iconeEsq="card-outline"
                       onPress={handleDesbloquear}
-                      disabled={comprando || !periodo.ok}
-                    >
-                      <Ionicons name="card-outline" size={16} color="white" />
-                      <Text style={s.stripeBtnTxt}>
-                        {comprando ? 'Abrindo pagamento...' : `Obter 1 relatório por ${precoPeriodoTxt}`}
-                      </Text>
-                    </TouchableOpacity>
+                      desabilitado={comprando || !periodo.ok}
+                    />
                     <Text style={s.stripeHint}>
                       Após o pagamento, volte aqui. Seu crédito será liberado automaticamente.
                     </Text>
@@ -1595,11 +1623,8 @@ export default function RelatoriosScreen({ navigation, route }) {
               </View>
             ) : (
               <>
-                <View style={{ paddingHorizontal: spacing.lg, marginBottom: spacing.md }}>
-                  <TouchableOpacity style={s.gerarBtn} onPress={handleGerarRange}>
-                    <Ionicons name="bar-chart-outline" size={15} color="white" />
-                    <Text style={s.gerarBtnTxt}>Gerar relatório</Text>
-                  </TouchableOpacity>
+                <View style={{ marginBottom: spacing.lg }}>
+                  <BotaoLuz titulo="Gerar relatório" iconeEsq="bar-chart-outline" onPress={handleGerarRange} />
                 </View>
 
                 {rangeData && (
@@ -1608,38 +1633,39 @@ export default function RelatoriosScreen({ navigation, route }) {
                       <Image source={logo} style={s.reportLogo} resizeMode="contain" />
                       <Text style={s.reportTitle}>RELATÓRIO PERSONALIZADO</Text>
                       <View style={s.reportMes}>
-                        <Ionicons name="calendar-outline" size={14} color={colors.lav4} />
+                        <Ionicons name="calendar-outline" size={14} color={colors.lilasTexto} />
                         <Text style={s.reportMesTxt}>{rangeInicio} → {rangeFim}</Text>
                       </View>
                     </View>
 
                     <View style={s.tilesRow}>
                       {[
-                        { icon: 'calendar-outline', v: rangeData.total, lbl: 'check-ins no período', color: colors.lav4 },
-                        { icon: 'today-outline', v: rangeData.uniqueDays, lbl: 'dias com registro', color: colors.rose },
+                        { icon: 'calendar-outline', v: rangeData.total, lbl: 'check-ins no período', acento: acentoLilas() },
+                        { icon: 'today-outline', v: rangeData.uniqueDays, lbl: 'dias com registro', acento: acentoPessego() },
                       ].map((t, i) => (
-                        <View key={i} style={[s.tile, { minWidth: '30%' }]}>
-                          <Ionicons name={t.icon} size={18} color={t.color} />
-                          <Text style={[s.tileNum, { color: t.color }]}>{t.v}</Text>
+                        <View key={i} style={s.tile}>
+                          <View style={[s.tileIcone, { backgroundColor: t.acento.fundo }]}>
+                            <Ionicons name={t.icon} size={18} color={t.acento.tinta} />
+                          </View>
+                          <Text style={[s.tileNum, { color: t.acento.texto }]}>{t.v}</Text>
                           <Text style={s.tileLbl}>{t.lbl}</Text>
                         </View>
                       ))}
                     </View>
 
                     <View style={s.card}>
-                      <Text style={s.cardNum}>1</Text>
-                      <Text style={s.cardTit}>Emoções no período</Text>
+                      <TituloCartao num="1">Emoções no período</TituloCartao>
                       <View style={s.donutRow}>
-                        <DonutChart data={rangeData.donut} size={140} thickness={26} total={rangeData.total} label="registros" />
-                        <View style={s.donutLegend}>
+                        <DonutChart data={rangeData.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={rangeData.total} label="registros" />
+                        <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                           {rangeData.sorted.slice(0, 7).map(([id, v], i) => {
                             const emo = getEmoObj(id);
                             const pct = Math.round((v / rangeData.total) * 100);
                             return (
                               <View key={id} style={s.legendRow}>
-                                <View style={[s.legendDot, { backgroundColor: emo?.color || EMO_CHART_COLORS[i] }]} />
+                                <View style={[s.legendDot, { backgroundColor: dadoEmo(emo, i) }]} />
                                 <Text style={s.legendTxt} numberOfLines={1}>{emo?.label || id}</Text>
-                                <Text style={[s.legendPct, { color: emo?.color || EMO_CHART_COLORS[i] }]}>{pct}%</Text>
+                                <Text style={[s.legendPct, { color: emo ? tintaEmo(emo) : colors.titulo }]}>{pct}%</Text>
                               </View>
                             );
                           })}
@@ -1650,13 +1676,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                     {/* Áreas da vida — período */}
                     {rangeData.areaData && (
                       <View style={s.card}>
-                        <Text style={s.sectionLabel}>2</Text>
-                        <Text style={s.cardTit}>Suas emoções nas áreas da vida</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 8 }}>
-                          {rangeData.areaData.map(area => (
-                            <AreaDonutCard key={area.id} area={area} />
-                          ))}
-                        </ScrollView>
+                        <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
+                        <AreasDaVida areas={rangeData.areaData} largo={largo} />
                         <Text style={s.areasSummaryTxt}>
                           Total de registros por área no período selecionado.
                         </Text>
@@ -1665,17 +1686,16 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                     {rangeData.dominante && (
                       <View style={s.card}>
-                        <Text style={s.cardNum}>3</Text>
-                        <Text style={s.cardTit}>Emoção predominante</Text>
+                        <TituloCartao num="3">Emoção predominante</TituloCartao>
                         {(() => {
                           const emo = getEmoObj(rangeData.dominante);
                           return (
                             <View style={s.predominRow}>
-                              <View style={[s.predominCircle, { backgroundColor: emo?.bg || colors.lav1 }]}>
-                                <Ionicons name={`${emo?.icon || 'heart'}-outline`} size={28} color={emo?.color || colors.lav4} />
+                              <View style={[s.predominCircle, { backgroundColor: veuEmo(emo) }]}>
+                                <Ionicons name={`${emo?.icon || 'heart'}-outline`} size={28} color={tintaEmo(emo)} />
                               </View>
                               <View style={{ flex: 1 }}>
-                                <Text style={[s.predominNome, { color: emo?.color || colors.lav4 }]}>{emo?.label || rangeData.dominante}</Text>
+                                <Text style={[s.predominNome, { color: tintaEmo(emo) }]}>{emo?.label || rangeData.dominante}</Text>
                                 <Text style={s.predominDesc}>foi a emoção mais presente no período.</Text>
                               </View>
                             </View>
@@ -1686,10 +1706,9 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                     {vitoriasRange.length > 0 && (
                       <View style={s.card}>
-                        <Text style={s.sectionLabel}>⭐</Text>
-                        <Text style={s.cardTit}>
+                        <TituloCartao num="⭐">
                           {tituloVitorias(agruparVitorias(vitoriasRange).length)}
-                        </Text>
+                        </TituloCartao>
                         <VitoriasDestaque itens={agruparVitorias(vitoriasRange)} />
                         {vitoriasRange.length > 0 && (
                           <Text style={s.vitMore}>
@@ -1700,10 +1719,10 @@ export default function RelatoriosScreen({ navigation, route }) {
                     )}
 
                     <View style={[s.card, s.msgCard]}>
-                      <Text style={s.cardTit}>Mensagem para você</Text>
+                      <TituloCartao>Mensagem para você</TituloCartao>
                       <Text style={s.msgTxt}>Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando.</Text>
                       <View style={s.msgRodape}>
-                        <Ionicons name="leaf-outline" size={12} color={colors.lav3} />
+                        <Ionicons name="leaf-outline" size={13} color={colors.lilasTexto} />
                         <Text style={s.msgRodapeTxt}>Atravessia</Text>
                       </View>
                     </View>
@@ -1732,7 +1751,9 @@ export default function RelatoriosScreen({ navigation, route }) {
               const emo = getEmoObj(c.emocao);
               return (
                 <View key={i} style={s.modalRow}>
-                  <View style={[s.legendDot, { backgroundColor: emo?.color || colors.lav3, width: 12, height: 12 }]} />
+                  <View style={[s.modalGota, { backgroundColor: veuEmo(emo) }]}>
+                    <Ionicons name={`${emo?.icon || 'heart'}-outline`} size={16} color={tintaEmo(emo)} />
+                  </View>
                   <Text style={s.modalEmo}>{emo?.label || c.emocao}</Text>
                 </View>
               );
@@ -1747,162 +1768,192 @@ export default function RelatoriosScreen({ navigation, route }) {
   );
 }
 
+// ── Peças visuais "Luz de Vidro" ─────────────────────────────────────────────
+const TRIM_CORES = ['#A595DC', '#E39A72', '#6E9B7E', '#C9A15A'];
+const acentoLilas = () => ({ fundo: colors.lav1, tinta: colors.lilasIcone, texto: colors.lilasTexto });
+const acentoPessego = () => ({
+  fundo: colors.escuro ? 'rgba(242,183,158,0.14)' : '#FCE7DC',
+  tinta: colors.escuro ? '#F2B79E' : '#D98A69',
+  texto: colors.roseFg,
+});
+const acentoDourado = () => ({ fundo: colors.douradoFundo, tinta: colors.escuro ? '#E5C68B' : '#C9A15A', texto: colors.douradoTitulo });
+
+// Título de cartão com o número da seção numa pílula.
+function TituloCartao({ num, children }) {
+  return (
+    <View style={s.tituloLinha}>
+      {num ? <View style={s.numPilula}><Text style={s.numTxt}>{num}</Text></View> : null}
+      <Text style={s.cardTit}>{children}</Text>
+    </View>
+  );
+}
+
+// Ilustração da marca numa moldura arredondada (sem tintColor).
+function Moldura({ source, tamanho = 96 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={[s.moldura, { width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26) }]}>
+      <Image source={source} style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }} resizeMode="cover" />
+    </View>
+  );
+}
+
+// Botão principal: degradê lilás com degrau que afunda ao toque.
+function BotaoLuz({ titulo, onPress, icone, iconeEsq, desabilitado, style }) {
+  return (
+    <Profundo
+      externo={[s.btnExterno, style, desabilitado && { opacity: 0.45 }]}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={desabilitado ? undefined : onPress}
+      accessibilityLabel={titulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {iconeEsq ? <Ionicons name={iconeEsq} size={17} color="white" /> : null}
+      <Text style={s.btnTxt} numberOfLines={2}>{titulo}</Text>
+      {icone ? <Ionicons name={icone} size={17} color="white" /> : null}
+    </Profundo>
+  );
+}
+
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  exportBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.lav1 },
-
-  tabRow: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: colors.lav1, borderRadius: radius.full, padding: 4 },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: radius.full, gap: 4 },
-  tabSel: { backgroundColor: colors.card },
-  tabTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
-  tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lav4 },
-
-  reportLogo: { width: 48, height: 48, marginBottom: 8, borderRadius: 12 },
-  reportHeader: { alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  reportTitle: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.lav6, letterSpacing: 1 },
-  reportMes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  reportMesTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav4 },
-  reportSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 4 },
-
-  card: {
-    marginHorizontal: spacing.lg, marginBottom: spacing.md,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingHorizontal: spacing.lg, paddingBottom: 10 },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
-  vitRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
-  vitTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
-  vitMore: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 4 },
-  cardNum: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav3, marginBottom: 2 },
-  cardTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: 4 },
-  cardSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginBottom: 4 },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo },
 
-  donutRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 8 },
-  donutLegend: { flex: 1, gap: 6 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
-  legendTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11, color: colors.td },
-  legendPct: { fontFamily: fonts.bodyBold, fontSize: 11 },
-
-  calLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: 0.5, borderTopColor: colors.border },
-
-  intensScale: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 },
-  intensNum: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
-
-  predominRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10 },
-  predominCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  predominNome: { fontFamily: fonts.bodyBold, fontSize: 18 },
-  predominDesc: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2 },
-
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 4 },
-  statNum: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.lav4 },
-  statLbl: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textAlign: 'center', marginTop: 2 },
-  statDivider: { width: 1, height: 40, backgroundColor: colors.border },
-
-  msgCard: { backgroundColor: colors.lav1, borderColor: colors.lav2 },
-  msgTxt: { fontFamily: fonts.quote, fontSize: 14, fontStyle: 'italic', color: colors.lav6, lineHeight: 22, marginTop: 8 },
-  msgRodape: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, justifyContent: 'flex-end' },
-  msgRodapeTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.lav3 },
-
-  lockedCard: { backgroundColor: colors.bg, borderStyle: 'dashed', opacity: 0.9 },
-  lockedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  lockedTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, flex: 1 },
-  lockedBtn: { alignSelf: 'flex-start' },
-  lockedBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav4 },
-
-  emptyBox: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: spacing.xl },
-  emptyTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginTop: 12, textAlign: 'center' },
-  emptyHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 4, textAlign: 'center' },
-  emptyBtn: { marginTop: 20, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: 24, paddingVertical: 12 },
-  emptyBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.white },
-
-  tilesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  tile: { flex: 1, minWidth: '45%', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, gap: 4 },
-  tileNum: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.lav4 },
-  tileLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl, textAlign: 'center' },
-
-
-  trimRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
-  trimLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.td, width: 90 },
-  trimTrack: { flex: 1, height: 8, backgroundColor: colors.lav1, borderRadius: 4, overflow: 'hidden' },
-  trimFill: { height: '100%', borderRadius: 4 },
-  trimPct: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.td, width: 32, textAlign: 'right' },
-
-  pricingTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginTop: spacing.lg, marginBottom: spacing.sm, textAlign: 'center' },
-  pricingCards: { alignSelf: 'stretch', flexDirection: 'row', gap: 8, marginBottom: spacing.sm, marginTop: 4 },
-  pricingCard: {
-    flex: 1, alignItems: 'center', padding: 10, paddingTop: 16, borderRadius: radius.lg,
-    borderWidth: 1.5, backgroundColor: colors.card, position: 'relative',
+  tabRow: {
+    flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.md,
+    backgroundColor: colors.vidro, borderRadius: radius.full, padding: 4,
+    borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  pricingCardSel: { backgroundColor: colors.lav1 },
-  pricingBadge: { position: 'absolute', top: -10, alignSelf: 'center', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
-  pricingBadgeTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: 'white' },
-  pricingIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  pricingCardNome: { fontFamily: fonts.bodyBold, fontSize: 10, textAlign: 'center', marginBottom: 4 },
-  pricingPrecoWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 1 },
-  pricingPreco: { fontFamily: fonts.bodyBold, fontSize: 15 },
-  pricingPer: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
-  pricingDesc: { fontFamily: fonts.body, fontSize: 9, color: colors.tm, textAlign: 'center', marginTop: 6, lineHeight: 13 },
-  dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginVertical: spacing.md },
-  dateLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: 4 },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 42, borderRadius: radius.full, gap: 5 },
+  tabSel: {
+    backgroundColor: colors.escuro ? colors.lav2 : colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 3 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 8, elevation: 2,
+  },
+  tabTxt: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.texto2 },
+  tabTxtSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+
+  reportLogo: { width: 54, height: 54, marginBottom: 10, borderRadius: 16 },
+  reportHeader: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  reportTitle: { fontFamily: 'Figtree_800ExtraBold', fontSize: 17, color: colors.titulo, letterSpacing: 1.6, textAlign: 'center' },
+  reportMes: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8,
+    backgroundColor: colors.lav1, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 5,
+  },
+  reportMesTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, letterSpacing: 0.5 },
+  reportSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, marginTop: 8 },
+
+  card: { ...vidro(), marginBottom: spacing.md, padding: 18 },
+  tituloLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  numPilula: { width: 28, height: 28, borderRadius: 10, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  numTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto },
+  vitMore: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 10 },
+  cardTit: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 24, color: colors.titulo },
+  cardSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginBottom: 4 },
+  moldura: { overflow: 'hidden', borderWidth: 1, borderColor: colors.bordaLuz, backgroundColor: colors.cardSolido },
+
+  donutRow: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
+  donutLegend: { flex: 1, gap: 8 },
+  donutLegendLargo: { maxWidth: 420, gap: 10 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  legendDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  legendTxt: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.titulo },
+  legendTxtCurto: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.titulo },
+  legendPct: { fontFamily: fonts.bodyBold, fontSize: 13 },
+
+  calLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.bordaSuave },
+
+  predominRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12 },
+  predominCircle: { width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
+  predominNome: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 32 },
+  predominDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
+
+  msgCard: { backgroundColor: colors.lavVeu },
+  msgTxt: { fontFamily: fonts.quote, fontSize: 20, color: colors.lilasTexto, lineHeight: 28, marginTop: 6 },
+  msgRodape: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 12, justifyContent: 'flex-end' },
+  msgRodapeTxt: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.lilasTexto },
+
+  emptyBox: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: spacing.xl, gap: 4 },
+  emptyTxt: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.titulo, marginTop: 14, textAlign: 'center' },
+  emptyHint: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2, textAlign: 'center' },
+
+  tilesRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.md },
+  tile: { ...vidro(), flex: 1, alignItems: 'center', borderRadius: 22, paddingVertical: 14, paddingHorizontal: 6, gap: 4 },
+  tileIcone: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  tileNum: { fontFamily: 'Figtree_800ExtraBold', fontSize: 26, lineHeight: 30 },
+  tileLbl: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.texto2, textAlign: 'center' },
+
+  trimRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 6 },
+  trimLabel: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.titulo, width: 104 },
+  trimTrack: { flex: 1, height: 10, backgroundColor: colors.lav1, borderRadius: 5, overflow: 'hidden' },
+  trimFill: { height: '100%', borderRadius: 5 },
+  trimPct: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.titulo, width: 40, textAlign: 'right' },
+
+  pricingTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.titulo, marginTop: spacing.lg, marginBottom: spacing.sm, textAlign: 'center' },
+  dateRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: spacing.md },
+  dateSeta: { width: 32, height: 48, alignItems: 'center', justifyContent: 'center' },
+  dateLabel: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2, marginBottom: 6 },
   dateInput: {
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.sm, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
+    backgroundColor: colors.cardSolido, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border, minHeight: 48,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.titulo,
   },
-  gerarBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingVertical: 13,
-  },
-  gerarBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
 
-  lockedAnnual: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: spacing.xl },
-  lockedAnnualTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginTop: 16 },
-  lockedAnnualDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', lineHeight: 20, marginTop: 8 },
-  lockedAnnualBadge: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav4, marginTop: 16, backgroundColor: colors.lav1, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full },
+  lockedAnnual: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 },
+  lockedAnnualTit: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo, marginTop: 14, textAlign: 'center' },
+  lockedAnnualDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21, marginTop: 8 },
+  lockedAnnualBadge: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, marginTop: 16, backgroundColor: colors.lav1, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full, overflow: 'hidden' },
+  btnCentro: { alignSelf: 'center', minWidth: 230, marginTop: 20 },
 
-  periodoIconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  periodoIconWrap: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
   stripeWrap: { alignSelf: 'stretch', marginTop: spacing.lg, gap: 12 },
-  stripePriceCard: {
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, alignItems: 'center', gap: 6,
-  },
-  stripePriceTxt: { fontFamily: fonts.bodyBold, fontSize: 32, letterSpacing: 0.5 },
-  stripePriceSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  periodoStatus: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%',
-    padding: 10, borderRadius: radius.md, backgroundColor: colors.lav1, marginBottom: 10,
-  },
+  stripePriceCard: { backgroundColor: colors.lavVeu, borderRadius: 20, padding: spacing.lg, alignItems: 'center', gap: 4 },
+  stripePriceTxt: { fontFamily: 'Figtree_800ExtraBold', fontSize: 34, lineHeight: 40, color: colors.lilasTexto },
+  stripePriceSub: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2 },
+  periodoStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 16, backgroundColor: colors.lav1 },
   periodoStatusOk: { backgroundColor: colors.sageFundo },
-  periodoStatusTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.lav6, lineHeight: 17 },
-  stripeBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: radius.full, paddingVertical: 14,
-  },
-  stripeBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-  stripeHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', lineHeight: 17 },
+  periodoStatusTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lilasTexto, lineHeight: 18 },
+  stripeHint: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center', lineHeight: 17 },
 
-  sectionLabel: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, marginBottom: 2 },
-  registrosTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 10, lineHeight: 18 },
-  registrosBold: { fontFamily: fonts.bodyBold, color: colors.lav5 },
-  areasSummaryTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: 4, lineHeight: 16 },
-  vitCardsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  vitCardItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, width: '47%', backgroundColor: colors.bg, borderRadius: 10, padding: 8, borderWidth: 1, borderColor: colors.border },
-  vitCardTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11, color: colors.td, lineHeight: 15 },
-  calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 4 },
-  calNavBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
+  btnExterno: { alignSelf: 'stretch' },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 54, paddingHorizontal: 22, paddingVertical: 10, overflow: 'hidden' },
+  btnHalo: { shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 4 },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.white, textAlign: 'center', flexShrink: 1 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  modalCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, width: '100%', maxWidth: 320, gap: 8 },
-  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
+  registrosTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 14, lineHeight: 19 },
+  registrosBold: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+  areasSummaryTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2, lineHeight: 17 },
+  calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 4 },
+  calNavBtn: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.lav1 },
+  calNavTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo },
+
+  modalOverlay: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  modalCard: { backgroundColor: colors.cardSolido, borderRadius: 24, padding: spacing.lg, width: '100%', maxWidth: 340, gap: 8, borderWidth: 1, borderColor: colors.bordaLuz },
+  modalTitle: { fontFamily: fonts.serif, fontSize: 26, color: colors.titulo, marginBottom: 4 },
   modalRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
-  modalEmo: { fontFamily: fonts.body, fontSize: 14, color: colors.td },
-  modalCloseBtn: { marginTop: 8, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24, backgroundColor: colors.lav1, borderRadius: radius.full },
-  modalCloseTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
+  modalGota: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  modalEmo: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.titulo },
+  modalCloseBtn: { marginTop: 8, alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 28, backgroundColor: colors.lav1, borderRadius: radius.full },
+  modalCloseTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
 }));
