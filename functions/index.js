@@ -889,8 +889,15 @@ exports.responderConfirmacaoResgate = onCall(async (request) => {
   if (confirmar && dadosResgate) {
     try {
       const cfg = await configCashback();
-      const valor = Math.floor((dadosResgate.valorOriginalCentavos || 0) * (cfg.percentual / 100));
-      if (cfg.ativo && valor >= 1) {
+      // Cada parceria pode ter o cashback desligado ou um percentual próprio.
+      let cbParceria = null;
+      if (dadosResgate.parceriaId) {
+        try { cbParceria = (await db.collection('parcerias').doc(String(dadosResgate.parceriaId)).get()).data()?.cashback || null; } catch { /* usa o geral */ }
+      }
+      const pct = Number.isFinite(Number(cbParceria?.percentual)) && cbParceria?.percentual !== null
+        ? Math.max(0, Math.min(50, Number(cbParceria.percentual))) : cfg.percentual;
+      const valor = Math.floor((dadosResgate.valorOriginalCentavos || 0) * (pct / 100));
+      if (cfg.ativo && cbParceria?.ativo !== false && valor >= 1) {
         const criado = await creditarCashback(uid, valor, {
           origem: 'cupom',
           descricao: `Cupom ${dadosResgate.parceriaNome || 'de parceria'}`,

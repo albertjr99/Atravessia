@@ -69,6 +69,7 @@ function novoForm() {
     percentualBeneficio: '10',
     percentualComissao: '3',
     validadeDiasVoucher: '30',
+    cashbackAtivo: true, cashbackPercentual: '', cashbackCondicoes: '',
   };
 }
 
@@ -119,6 +120,9 @@ export default function Parcerias({ showToast }) {
       percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
       percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
       validadeDiasVoucher: item.validadeDiasVoucher != null ? String(item.validadeDiasVoucher) : '30',
+      cashbackAtivo: item.cashback?.ativo !== false,
+      cashbackPercentual: item.cashback?.percentual != null ? String(item.cashback.percentual).replace('.', ',') : '',
+      cashbackCondicoes: item.cashback?.condicoes || '',
     });
     setEditId(item.id);
     setShowModal(true);
@@ -149,7 +153,8 @@ export default function Parcerias({ showToast }) {
     }
     setSaving(true);
     try {
-      const { percentualBeneficio, percentualComissao, validadeDiasVoucher, ...resto } = form;
+      const { percentualBeneficio, percentualComissao, validadeDiasVoucher, cashbackAtivo, cashbackPercentual, cashbackCondicoes, ...resto } = form;
+      const pctCashback = parseFloat(String(cashbackPercentual).replace(',', '.'));
       const data = {
         ...resto,
         link: linkFinal,
@@ -166,6 +171,12 @@ export default function Parcerias({ showToast }) {
         data.percentualComissao = parseFloat(percentualComissao) || 0;
         data.percentualDescontoCliente = descontoClienteCalculado;
         data.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
+        // Cashback desta parceria: liga/desliga, percentual próprio (vazio = o geral) e condições.
+        data.cashback = {
+          ativo: cashbackAtivo !== false,
+          percentual: Number.isFinite(pctCashback) ? Math.max(0, Math.min(50, pctCashback)) : null,
+          condicoes: (cashbackCondicoes || '').trim(),
+        };
         // Mantém o token existente ao editar; só gera um novo se nunca teve.
         if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) {
           data.tokenPainel = gerarTokenPainel();
@@ -483,6 +494,25 @@ export default function Parcerias({ showToast }) {
                       onChange={e => set('validadeDiasVoucher', e.target.value)}
                       placeholder="30" />
                     <span className="field-hint">A usuária pode gerar quantos cupons quiser; cada um vale para um único atendimento.</span>
+                  </div>
+
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--cor-borda)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600 }}>
+                      <input type="checkbox" checked={form.cashbackAtivo} onChange={e => set('cashbackAtivo', e.target.checked)} style={{ width: 16, height: 16 }} />
+                      Esta parceria dá cashback
+                    </label>
+                    {form.cashbackAtivo && (
+                      <div className="field-row" style={{ marginTop: 10 }}>
+                        <div className="field-group">
+                          <label>Cashback desta parceria (%)</label>
+                          <input value={form.cashbackPercentual} onChange={e => set('cashbackPercentual', e.target.value)} inputMode="decimal" placeholder="Vazio = percentual geral do Cashback" />
+                        </div>
+                        <div className="field-group">
+                          <label>Condições (aparece para a usuária)</label>
+                          <input value={form.cashbackCondicoes} onChange={e => set('cashbackCondicoes', e.target.value)} placeholder="Ex.: válido em serviços acima de R$ 100" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

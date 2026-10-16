@@ -329,7 +329,7 @@ const styles = criarEstilos(() => ({
   heroContent: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 18, paddingHorizontal: spacing.lg },
   logo: { width: 76, height: 76, borderRadius: 20 },
   logoTablet: { width: 92, height: 92, borderRadius: 24 },
-  appName: { fontFamily: fonts.serif, fontSize: 46, lineHeight: 54, color: colors.lav6, letterSpacing: 0.4, marginTop: 12 },
+  appName: { fontFamily: 'Marca', fontSize: 46, lineHeight: 54, color: colors.lav6, letterSpacing: 0.4, marginTop: 12 },
   appNameTablet: { fontSize: 54, lineHeight: 62 },
   tagline: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.texto2, marginTop: 2, textAlign: 'center' },
 

@@ -369,7 +369,7 @@ const ph = StyleSheet.create({
     alignItems: 'center',
   },
   appBarTitle: {
-    fontFamily: 'Titulo',
+    fontFamily: 'Marca',
     fontSize: 17,
     color: '#45358A',
   },
@@ -445,7 +445,7 @@ const pw = StyleSheet.create({
     paddingBottom: 4,
   },
   homeGreet: {
-    fontFamily: 'Titulo',
+    fontFamily: 'Marca',
     fontSize: 15,
     color: '#2A2433',
   },

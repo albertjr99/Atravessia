@@ -176,7 +176,7 @@ const s = criarEstilos(() => ({
   scrollLargo: { paddingHorizontal: 28, paddingTop: 26 },
   pageHeader: { marginBottom: 18, paddingHorizontal: 4 },
   sobretitulo: { ...est.sobretitulo(), fontFamily: 'Figtree_800ExtraBold', letterSpacing: 1.8 },
-  pageTitle: { fontFamily: fonts.serif, fontSize: 36, lineHeight: 42, color: colors.titulo, marginTop: 2 },
+  pageTitle: { fontFamily: 'Marca', fontSize: 36, lineHeight: 42, color: colors.titulo, marginTop: 2 },
   pageTitleLargo: { fontSize: 40, lineHeight: 46 },
   pageSub: { ...est.subtitulo(), fontSize: 15.5 },
   avisoBox: { ...est.aviso('dourado'), marginBottom: spacing.md },

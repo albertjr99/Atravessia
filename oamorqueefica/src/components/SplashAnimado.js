@@ -151,7 +151,7 @@ const s = criarEstilos(() => ({
   logo: { width: 132, height: 132, borderRadius: 34 },
   // Marca em Cormorant Garamond itálico 600, na tinta lilás forte
   nome: {
-    fontFamily: 'Titulo',
+    fontFamily: 'Marca',
     fontSize: 50, lineHeight: 60, color: colors.lav6,
     marginTop: 20, letterSpacing: 0.6,
   },

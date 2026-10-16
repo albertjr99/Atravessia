@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import MemoriaExperiencia from '../../components/MemoriaExperiencia';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, ActivityIndicator,
   Modal, Pressable, useWindowDimensions,
@@ -77,6 +76,10 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
   const longa = descricao.length > DESCRICAO_LONGA || descricao.includes('\n');
   const local = rotuloLocal(p);
   const imagem = urlDeImagem(p.imagemUrl);
+  // Cashback desta parceria (definido no painel); some se o cashback estiver escondido.
+  const { cashbackVisivel, cfgCashback } = useApp();
+  const temCashback = ehCupom && cashbackVisivel && p.cashback?.ativo !== false;
+  const pctCashback = p.cashback?.percentual != null ? Number(p.cashback.percentual) : cfgCashback?.percentual;
 
   // O cartão em si não é tocável: só o botão gera o cupom ou abre o link.
   return (
@@ -113,6 +116,16 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
               <Text style={s.verMaisTxt}>{aberto ? 'ver menos' : 'ver mais'}</Text>
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {temCashback && pctCashback > 0 && (
+        <View style={s.cashbackLinha}>
+          <Ionicons name="wallet-outline" size={14} color={colors.sageFg} />
+          <Text style={s.cashbackTxt}>
+            {`${String(pctCashback).replace('.', ',')}% de cashback`}
+            {p.cashback?.condicoes ? <Text style={s.cashbackCond}>{` · ${p.cashback.condicoes}`}</Text> : null}
+          </Text>
         </View>
       )}
 
@@ -376,7 +389,14 @@ export default function ParceriasScreen({ navigation }) {
 
         {/* Memória da experiência (opcional): aparece na Carta do mês */}
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
-          <MemoriaExperiencia parcerias={parcerias} />
+          <TouchableOpacity style={s.memoriaBtn} onPress={() => navigation.navigate('GuardarMemoria')} activeOpacity={0.85} accessibilityRole="button">
+            <View style={s.memoriaIcone}><Ionicons name="sparkles-outline" size={20} color={colors.joiaPessegoTexto} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.memoriaTit}>Guardar na memória</Text>
+              <Text style={s.memoriaSub}>Que sensação boa você gostaria de guardar? (opcional)</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.joiaPessegoTexto} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -547,4 +567,17 @@ const s = criarEstilos(() => ({
     fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.lilasTexto, backgroundColor: colors.lav1,
     borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 2, overflow: 'hidden',
   },
+  memoriaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 22,
+    backgroundColor: colors.joiaPessego[1], borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  memoriaIcone: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)' },
+  memoriaTit: { fontFamily: 'Figtree_700Bold', fontSize: 16, color: colors.joiaPessegoTexto },
+  memoriaSub: { fontFamily: 'Figtree_400Regular', fontSize: 13, color: colors.texto2, marginTop: 2 },
+  cashbackLinha: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10,
+    paddingVertical: 7, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.sageFundo,
+  },
+  cashbackTxt: { flex: 1, fontFamily: 'Figtree_700Bold', fontSize: 12.5, color: colors.sageFg },
+  cashbackCond: { fontFamily: 'Figtree_500Medium', color: colors.sageFg },
 }));

@@ -9,8 +9,8 @@ import { brl } from './CashbackScreen';
 // saldo. O desconto final (respeitando os limites) é calculado pelo servidor
 // e aparece já aplicado na página do Stripe.
 export default function UsarCashback({ ativo, onChange }) {
-  const { cashback } = useApp();
-  if (!(cashback?.saldoCentavos > 0)) return null;
+  const { cashback, cashbackVisivel } = useApp();
+  if (!cashbackVisivel || !(cashback?.saldoCentavos > 0)) return null;
   return (
     <TouchableOpacity style={[s.caixa, ativo && s.caixaAtiva]} onPress={() => onChange(!ativo)} activeOpacity={0.85}
       accessibilityRole="switch" accessibilityState={{ checked: ativo }}>

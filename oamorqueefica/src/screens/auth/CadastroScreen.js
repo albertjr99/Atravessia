@@ -292,7 +292,7 @@ const styles = criarEstilos(() => ({
   scroll: { flexGrow: 1 },
   heroContent: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 16, paddingHorizontal: spacing.lg },
   logo: { width: 66, height: 66, borderRadius: 18 },
-  appName: { fontFamily: fonts.serif, fontSize: 42, lineHeight: 50, color: colors.lav6, letterSpacing: 0.4, marginTop: 10 },
+  appName: { fontFamily: 'Marca', fontSize: 42, lineHeight: 50, color: colors.lav6, letterSpacing: 0.4, marginTop: 10 },
   tagline: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.texto2, marginTop: 2, textAlign: 'center' },
 
   // Formulário num cartão de vidro forte

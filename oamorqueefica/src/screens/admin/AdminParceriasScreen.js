@@ -61,6 +61,10 @@ export default function AdminParceriasScreen({ navigation }) {
   // desconto). A opção "valor final" foi retirada — o backend também só aceita
   // 'valor_original'.
   const [validadeDiasVoucher, setValidadeDiasVoucher] = useState('30');
+  // Cashback desta parceria (só cupom): liga/desliga, percentual próprio e condições.
+  const [cashbackAtivo, setCashbackAtivo] = useState(true);
+  const [cashbackPercentual, setCashbackPercentual] = useState('');
+  const [cashbackCondicoes, setCashbackCondicoes] = useState('');
 
   const descontoClienteCalculado = Math.max(
     0, (parseFloat(percentualBeneficio) || 0) - (parseFloat(percentualComissao) || 0)
@@ -151,6 +155,7 @@ export default function AdminParceriasScreen({ navigation }) {
     setEstado(''); setCidade(''); setAtendimentoOnline(false);
     setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
     setValidadeDiasVoucher('30');
+    setCashbackAtivo(true); setCashbackPercentual(''); setCashbackCondicoes('');
   };
 
   const editar = (p) => {
@@ -167,6 +172,9 @@ export default function AdminParceriasScreen({ navigation }) {
     setPercentualBeneficio(p.percentualBeneficio != null ? String(p.percentualBeneficio) : '10');
     setPercentualComissao(p.percentualComissao != null ? String(p.percentualComissao) : '3');
     setValidadeDiasVoucher(p.validadeDiasVoucher != null ? String(p.validadeDiasVoucher) : '30');
+    setCashbackAtivo(p.cashback?.ativo !== false);
+    setCashbackPercentual(p.cashback?.percentual != null ? String(p.cashback.percentual).replace('.', ',') : '');
+    setCashbackCondicoes(p.cashback?.condicoes || '');
     rolagem.current?.scrollTo({ y: 0, animated: true });
   };
 
@@ -210,6 +218,12 @@ export default function AdminParceriasScreen({ navigation }) {
         dados.percentualDescontoCliente = descontoClienteCalculado;
         dados.baseCalculoComissao = 'valor_original';
         dados.validadeDiasVoucher = parseInt(validadeDiasVoucher, 10) || 30;
+        const pctCb = parseFloat(String(cashbackPercentual).replace(',', '.'));
+        dados.cashback = {
+          ativo: cashbackAtivo !== false,
+          percentual: Number.isFinite(pctCb) ? Math.max(0, Math.min(50, pctCb)) : null,
+          condicoes: cashbackCondicoes.trim(),
+        };
         // Ao editar, mantém o token do painel do parceiro.
         if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) dados.tokenPainel = gerarTokenPainel();
       }
@@ -466,6 +480,21 @@ export default function AdminParceriasScreen({ navigation }) {
                 placeholder="30" placeholderTextColor={colors.tl}
               />
               <Text style={s.hint}>A usuária pode gerar quantos cupons quiser; cada um vale para um único atendimento.</Text>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md }}>
+                <Text style={[s.formLabel, { flex: 1, marginTop: 0 }]}>Esta parceria dá cashback</Text>
+                <Switch value={cashbackAtivo} onValueChange={setCashbackAtivo} trackColor={{ true: colors.lav4 }} />
+              </View>
+              {cashbackAtivo && (
+                <>
+                  <Text style={s.formLabel}>Cashback desta parceria (%)</Text>
+                  <TextInput style={s.input} keyboardType="decimal-pad" value={cashbackPercentual} onChangeText={setCashbackPercentual}
+                    placeholder="Vazio = percentual geral do Cashback" placeholderTextColor={colors.tl} />
+                  <Text style={s.formLabel}>Condições (aparece para a usuária)</Text>
+                  <TextInput style={s.input} value={cashbackCondicoes} onChangeText={setCashbackCondicoes}
+                    placeholder="Ex.: válido em serviços acima de R$ 100" placeholderTextColor={colors.tl} />
+                </>
+              )}
             </View>
           )}
 

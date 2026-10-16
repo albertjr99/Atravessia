@@ -516,6 +516,16 @@ export function AppProvider({ children }) {
       (snap) => setRecursosIA(normalizarRecursosIA(snap.exists() ? snap.data() : null)),
       () => {});
   }, [uid]);
+  // Cashback: as administradoras podem esconder da área da usuária (configuracoes/cashback).
+  const [cfgCashback, setCfgCashback] = useState({ ativo: true, exibirUsuario: true, percentual: 1 });
+  useEffect(() => {
+    if (!uid) return undefined;
+    return onSnapshot(doc(db, 'configuracoes', 'cashback'), (snap) => {
+      const c = snap.data() || {};
+      setCfgCashback({ ativo: c.ativo !== false, exibirUsuario: c.exibirUsuario !== false, percentual: Number(c.percentual ?? 1) || 0 });
+    }, () => {});
+  }, [uid]);
+  const cashbackVisivel = cfgCashback.ativo && cfgCashback.exibirUsuario;
   const iaAtiva = (chave) => !!recursosIA[chave]?.ativo;
   const podeUsarIA = (chave) => iaAtiva(chave) && temAcesso(recursosIA[chave]?.planoMinimo ?? 1);
 
@@ -683,6 +693,7 @@ export function AppProvider({ children }) {
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
       recursosIA, iaAtiva, podeUsarIA,
+      cashbackVisivel, cfgCashback,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje, conteudosLiberados,
     }}>
       {children}

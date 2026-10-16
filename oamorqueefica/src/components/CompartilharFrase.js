@@ -20,7 +20,7 @@ export default function CompartilharFrase({ visivel, frase, onFechar }) {
 
   const mensagem = `"${frase.texto}"${frase.autor ? ` — ${frase.autor}` : ''}\n\n`
     + 'Recebi esta frase no Atravessia, um app de acolhimento para quem atravessa o luto. '
-    + `Baixe grátis: ${LINK_PLAY_STORE}`;
+    + `Conheça o Atravessia: ${LINK_PLAY_STORE}`;
 
   const compartilhar = async () => {
     setEnviando(true);
@@ -61,8 +61,7 @@ export default function CompartilharFrase({ visivel, frase, onFechar }) {
               {!!frase.autor && <Text style={s.autor}>— {frase.autor}</Text>}
               <View style={s.rodape}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.rodapeTit}>Baixe o Atravessia</Text>
-                  <Text style={s.rodapeSub}>Acolhimento para quem atravessa o luto. Grátis na Google Play.</Text>
+                  <Text style={s.rodapeTit}>Conheça o Atravessia</Text>
                 </View>
                 <View style={s.qr}>
                   <QRCode value={LINK_PLAY_STORE} size={58} color="#2A2433" backgroundColor="#FFFFFF" />
@@ -96,9 +95,9 @@ const s = criarEstilos(() => ({
   lavanda: { position: 'absolute', top: -14, right: -24, width: 150, height: 150, opacity: 0.35 },
   marca: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 40, height: 40, borderRadius: 12 },
-  marcaNome: { fontFamily: 'Titulo', fontSize: 30, color: '#45358A' },
+  marcaNome: { fontFamily: 'Marca', fontSize: 30, color: '#45358A' },
   sobretitulo: { fontFamily: 'Figtree_700Bold', fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', color: '#524197', marginTop: 26 },
-  frase: { fontFamily: 'Titulo', fontSize: 27, lineHeight: 35, color: '#2A2433', marginTop: 10 },
+  frase: { fontFamily: 'MarcaLeve', fontSize: 27, lineHeight: 35, color: '#2A2433', marginTop: 10 },
   autor: { fontFamily: 'Figtree_500Medium', fontSize: 14, color: '#534C60', marginTop: 10 },
   rodape: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 26, padding: 12, borderRadius: 20,
