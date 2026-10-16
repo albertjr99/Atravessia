@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { pareceNome, primeiroNome } from '../../utils/nome';
 import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
@@ -96,7 +97,7 @@ export default function AdminHomeScreen({ navigation }) {
 
         <View style={s.pageHeader}>
           <Text style={s.sobretitulo}>Dashboard</Text>
-          <Text style={[s.pageTitle, largo && s.pageTitleLargo]}>{saudacaoAdmin(perfil?.apelido || perfil?.nome)}</Text>
+          <Text style={[s.pageTitle, largo && s.pageTitleLargo]}>{saudacaoAdmin(pareceNome(perfil?.apelido) ? perfil.apelido : primeiroNome(perfil?.nome))}</Text>
           <Text style={s.pageSub}>Bem-vinda ao painel Atravessia</Text>
         </View>
 

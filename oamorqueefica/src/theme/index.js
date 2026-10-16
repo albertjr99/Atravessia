@@ -240,8 +240,18 @@ function escalarFonte(fs) {
   return fs + 2;
 }
 
-function ajustarEstilo(estilo) {
-  if (!estilo || typeof estilo !== 'object' || Array.isArray(estilo)) return estilo;
+// Fontes itálicas (Cormorant Garamond) avançam para fora da caixa do texto e o
+// Android corta a última letra ("Atravessi" em vez de "Atravessia"). Uma folga
+// à direita resolve sem mudar o desenho.
+function folgaItalico(estilo) {
+  if (typeof estilo.fontFamily !== 'string' || !estilo.fontFamily.includes('Italic')) return estilo;
+  if (estilo.padding != null || estilo.paddingHorizontal != null || estilo.paddingRight != null) return estilo;
+  return { ...estilo, paddingRight: Math.ceil((estilo.fontSize || 16) * 0.18) };
+}
+
+function ajustarEstilo(entrada) {
+  if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) return entrada;
+  const estilo = folgaItalico(entrada);
   if (typeof estilo.fontSize !== 'number') return estilo;
   const novo = escalarFonte(estilo.fontSize);
   const r = { ...estilo, fontSize: novo };
@@ -264,7 +274,11 @@ export function criarEstilos(fabrica, { escalar = true } = {}) {
     if (!cache || versao !== tema.versao) {
       const bruto = fabrica();
       const ajustado = {};
-      Object.keys(bruto).forEach(k => { ajustado[k] = escalar ? ajustarEstilo(bruto[k]) : bruto[k]; });
+      Object.keys(bruto).forEach(k => {
+        const v = bruto[k];
+        if (escalar) ajustado[k] = ajustarEstilo(v);
+        else ajustado[k] = v && typeof v === 'object' && !Array.isArray(v) ? folgaItalico(v) : v;
+      });
       cache = StyleSheet.create(ajustado);
       versao = tema.versao;
     }
