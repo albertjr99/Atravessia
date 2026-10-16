@@ -21,7 +21,7 @@ import DiarioDoDia from '../../components/DiarioDoDia';
 import CompartilharFrase from '../../components/CompartilharFrase';
 import { escolherEnviarFoto } from '../../utils/fotoPerfil';
 import { brl } from '../cashback/CashbackScreen';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { RECURSOS_IA, NOME_PLANO } from '../../config/recursosIA';
 
@@ -90,12 +90,18 @@ export default function HomeScreen({ navigation }) {
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo ou o link.
-  const [temProdutos, setTemProdutos] = useState(false);
+  // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo, o link
+  // ou algum item ativo de divulgação (coleção produtosItens).
+  const [temProdutosVideo, setTemProdutos] = useState(false);
   useEffect(() => onSnapshot(doc(db, 'configuracoes', 'videos'), (snap) => {
     const p = snap.exists() ? snap.data()?.produtos : null;
     setTemProdutos(!!p && p.ativo !== false && !!(p.url || p.link));
   }, (e) => console.warn('[Home] produtos:', e?.message)), []);
+  const [temProdutosItens, setTemProdutosItens] = useState(false);
+  useEffect(() => onSnapshot(query(collection(db, 'produtosItens'), where('ativo', '==', true), limit(1)),
+    (snap) => setTemProdutosItens(!snap.empty),
+    (e) => console.warn('[Home] produtosItens:', e?.message)), []);
+  const temProdutos = temProdutosVideo || temProdutosItens;
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
   // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.

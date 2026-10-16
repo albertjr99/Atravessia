@@ -41,5 +41,28 @@ service firebase.storage {
                    && request.resource.size < 500 * 1024 * 1024
                    && request.resource.contentType.matches('video/.*');
     }
+
+    // Mesmo critério de isAdmin() em firestore.rules: e-mails das
+    // administradoras ou role 'admin' no perfil (leitura do Firestore).
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email in [
+          'carla.zambi.psi@gmail.com',
+          'larissapjaniques@gmail.com'
+        ] ||
+        firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Produtos Atravessia: imagens (até 10 MB) e vídeos (até 500 MB) dos itens
+    // de divulgação. Leitura para quem está logada; envio e exclusão só admin.
+    match /produtos/{file} {
+      allow read: if request.auth != null;
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin() && (
+        (request.resource.contentType.matches('image/.*') && request.resource.size < 10 * 1024 * 1024) ||
+        (request.resource.contentType.matches('video/.*') && request.resource.size < 500 * 1024 * 1024)
+      );
+    }
   }
 }

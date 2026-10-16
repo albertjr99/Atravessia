@@ -19,6 +19,7 @@ import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { ProximoPasso } from '../../components/DiarioDoDia';
+import { BotaoFavoritar, AvisoRapido, useAvisoRapido, acaoDoConteudo } from '../../components/Favoritar';
 import { useAuth } from '../../hooks/AuthContext';
 import { vibrarLeve, vibrarSucesso } from '../../utils/vibrar';
 import {
@@ -76,18 +77,27 @@ function BotaoLuz({ titulo, onPress, icone, style }) {
 }
 
 function ConteudoCard({ c, onPress, isFav, onFav }) {
+  const acao = acaoDoConteudo(c, false);
   return (
     <TouchableOpacity style={s.cCard} onPress={onPress} activeOpacity={0.85}>
-      <View style={s.cThumb}>
-        <Ionicons name={TIPO_ICONE[c.tipo] || 'document-outline'} size={21} color={colors.lilasIcone} />
+      <View style={s.cLinha}>
+        <View style={s.cThumb}>
+          <Ionicons name={TIPO_ICONE[c.tipo] || 'document-outline'} size={21} color={colors.lilasIcone} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={s.cTit} numberOfLines={2}>{c.titulo}</Text>
+          {c.descricao ? <Text style={s.cDesc} numberOfLines={2}>{c.descricao}</Text> : null}
+        </View>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={s.cTit} numberOfLines={2}>{c.titulo}</Text>
-        {c.descricao ? <Text style={s.cDesc} numberOfLines={2}>{c.descricao}</Text> : null}
+      {/* Rodapé: o que o toque abre (ex.: "Ler texto completo") + Favoritar. */}
+      <View style={s.cRodape}>
+        <View style={s.cAcao}>
+          <Ionicons name={acao.icone} size={15} color={colors.lilasTexto} />
+          <Text style={s.cAcaoTxt} numberOfLines={1}>{acao.rotulo}</Text>
+          <Ionicons name="chevron-forward" size={13} color={colors.lilasTexto} />
+        </View>
+        <BotaoFavoritar favoritado={isFav} onPress={onFav} />
       </View>
-      <TouchableOpacity onPress={onFav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={s.favPilula}>
-        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={19} color={isFav ? colors.roseTexto : colors.tl} />
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 }
@@ -208,10 +218,23 @@ export default function CheckInScreen({ navigation, route }) {
   // Favoritar o áudio guardando o id REAL do documento. Antes era salvo como
   // `audio-<id>`, um id sintético que não existia em nenhuma coleção — por isso
   // o áudio favoritado nunca aparecia na aba Conteúdos.
-  const toggleFavAudio = (audio) => {
-    if (!audio?.id) return;
-    isFavorito(audio.id) ? removerFavorito(audio.id) : adicionarFavorito(audio);
+  const { aviso, mostrar, fechar } = useAvisoRapido();
+  // Favoritar/desfavoritar com aviso curto, para ficar claro o que o coração faz.
+  const alternarFavorito = (item) => {
+    if (!item?.id) return;
+    if (isFavorito(item.id)) {
+      removerFavorito(item.id);
+      mostrar({ texto: 'Tirado dos seus Favoritos', icone: 'heart-outline' });
+    } else {
+      adicionarFavorito(item);
+      mostrar({
+        texto: 'Guardado nos seus Favoritos',
+        icone: 'heart',
+        acao: { rotulo: 'Ver', onPress: () => navigation.navigate('Favoritos') },
+      });
+    }
   };
+  const toggleFavAudio = alternarFavorito;
 
   const temPlano1 = temAcesso(1);
 
@@ -340,7 +363,7 @@ export default function CheckInScreen({ navigation, route }) {
             {conteudoExibido && (
               <View style={s.sugestaoBloco}>
                 <Text style={s.sugestaoTit}>Conteúdo para você</Text>
-                <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
+                <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => alternarFavorito(conteudoExibido)} />
                 <View style={s.sugestaoAcoes}>
                   {podeTrocarConteudo && (
                     <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
@@ -358,6 +381,7 @@ export default function CheckInScreen({ navigation, route }) {
             <ProximoPasso navigation={navigation} depoisDe="checkin" />
             <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
           </ScrollView>
+          <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
         </SafeAreaView>
       );
     }
@@ -375,7 +399,7 @@ export default function CheckInScreen({ navigation, route }) {
           {conteudoExibido && (
             <View style={s.sugestaoBloco}>
               <Text style={s.sugestaoTit}>Conteúdo para você agora</Text>
-              <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => isFavorito(conteudoExibido.id) ? removerFavorito(conteudoExibido.id) : adicionarFavorito(conteudoExibido)} />
+              <ConteudoCard c={conteudoExibido} onPress={() => handleAbrirConteudo(conteudoExibido)} isFav={isFavorito(conteudoExibido.id)} onFav={() => alternarFavorito(conteudoExibido)} />
               <View style={s.sugestaoAcoes}>
                 {podeTrocarConteudo && (
                   <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
@@ -400,17 +424,7 @@ export default function CheckInScreen({ navigation, route }) {
               <View style={s.recTagRow}>
                 <Text style={s.recTag}>Acolhimento</Text>
                 {temPlano1 ? (
-                  <TouchableOpacity
-                    onPress={() => toggleFavAudio(audioRec)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={s.favPilula}
-                  >
-                    <Ionicons
-                      name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
-                      size={19}
-                      color={isFavorito(audioRec.id) ? colors.roseTexto : colors.tl}
-                    />
-                  </TouchableOpacity>
+                  <BotaoFavoritar favoritado={isFavorito(audioRec.id)} onPress={() => toggleFavAudio(audioRec)} />
                 ) : (
                   <View style={s.recLockTag}>
                     <Ionicons name="lock-closed" size={11} color={colors.lilasTexto} />
@@ -420,7 +434,7 @@ export default function CheckInScreen({ navigation, route }) {
               </View>
 
               {temPlano1 && !isFavorito(audioRec.id) && (
-                <Text style={s.recFavHint}>Toque no ♡ para salvar em Conteúdos</Text>
+                <Text style={s.recFavHint}>Toque em ♡ Favoritar para guardar nos seus Favoritos</Text>
               )}
 
               <TouchableOpacity onPress={handleOuvirAudio} activeOpacity={0.85}>
@@ -486,6 +500,7 @@ export default function CheckInScreen({ navigation, route }) {
 
           <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
         </ScrollView>
+        <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
       </SafeAreaView>
     );
   }
@@ -739,9 +754,15 @@ const s = criarEstilos(() => ({
   localLabelSel: { color: colors.lilasTexto, fontFamily: fonts.bodyBold },
   sugestaoBloco: { width: '100%', marginTop: 18, gap: 8 },
   sugestaoTit: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 4 },
-  cCard: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  cCard: { ...vidro(), gap: 10, padding: 14 },
+  cLinha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cRodape: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.bordaSuave,
+  },
+  cAcao: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cAcaoTxt: { flexShrink: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
   cThumb: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  favPilula: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.roseFundo },
   cTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
   cDesc: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2, lineHeight: 17 },
 }));

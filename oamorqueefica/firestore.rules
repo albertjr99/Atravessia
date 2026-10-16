@@ -60,6 +60,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Produtos Atravessia — itens de divulgação (texto, imagem, link, vídeo) — leitura para todas, escrita só admin
+    match /produtosItens/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Notificações editoriais — leitura para todas, escrita só admin
     match /notificacoesEditoriais/{docId} {
       allow read: if isSignedIn();
