@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { functions } from './firebase';
 import { httpsCallable } from 'firebase/functions';
-import { IconSpark, IconCheck, IconAlert, IconGift } from './Icons';
+import { IconCheck, IconAlert, IconGift, Logo } from './Icons';
 
 // Página avulsa, sem login: aberta pelo parceiro a partir do QR code ou do
 // link do cupom (?t=<tokenSeguro>) ou do link do painel de extrato
@@ -20,9 +20,9 @@ function Shell({ children }) {
   return (
     <div className="login-wrap">
       <div className="login-card" style={{ maxWidth: 460 }}>
-        <div className="login-logo"><IconSpark size={22} /></div>
-        <h1 className="login-title">Atravessia · Parceiros</h1>
-        <p className="login-sub">Validação de cupons e acompanhamento de comissões</p>
+        <div className="login-logo"><Logo size={64} respira /></div>
+        <h1 className="login-title" style={{ fontSize: 36 }}>Atravessia · Parceiros</h1>
+        <p className="login-sub normal">Validação de cupons e acompanhamento de comissões</p>
         {children}
       </div>
     </div>
@@ -88,7 +88,7 @@ function TelaVoucher({ token }) {
   if (resultado) {
     return (
       <div>
-        <div className="empty-icon" style={{ color: '#4A6B4E' }}><IconCheck size={30} /></div>
+        <div className="empty-icon" style={{ background: 'var(--acento-salvia-fundo)', color: 'var(--cor-sucesso)' }}><IconCheck size={30} /></div>
         <p style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-dark)', marginBottom: 18 }}>
           Atendimento confirmado!
         </p>
@@ -111,7 +111,7 @@ function TelaVoucher({ token }) {
     <div>
       <div className="card" style={{ padding: 16, marginBottom: 18 }}>
         <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 4 }}>{cupom.parceriaNome}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--primary-700)' }}>{cupom.codigoPublico}</div>
+        <div style={{ fontSize: 22, fontWeight: 750, letterSpacing: '.02em', color: 'var(--primary-700)', fontVariantNumeric: 'tabular-nums' }}>{cupom.codigoPublico}</div>
         {/* A cliente costuma estar olhando esta tela junto com o parceiro: só o
             desconto dela aparece aqui. A comissão fica no extrato do parceiro. */}
         <div className="field-hint" style={{ marginTop: 8 }}>
@@ -138,7 +138,7 @@ function TelaVoucher({ token }) {
 
       {erro && <p style={{ color: 'var(--danger)', fontSize: 12.5, marginBottom: 12 }}>{erro}</p>}
 
-      <button className="btn-primary" style={{ width: '100%', padding: '12px 0' }} onClick={confirmar} disabled={enviando}>
+      <button className="btn-primary btn-largo" onClick={confirmar} disabled={enviando}>
         {enviando ? 'Confirmando…' : 'Confirmar atendimento'}
       </button>
     </div>
@@ -192,7 +192,7 @@ function TelaExtrato({ tokenPainel }) {
       <div className="card" style={{ padding: 16, marginBottom: 18, textAlign: 'center' }}>
         <div style={{ fontSize: 12, color: 'var(--text-light)' }}>{extrato.parceriaNome}</div>
         <div style={{ fontSize: 12, color: 'var(--text-light)', marginTop: 8 }}>Comissão pendente</div>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--primary-700)' }}>
+        <div style={{ fontSize: 30, fontWeight: 750, color: 'var(--primary-700)', fontVariantNumeric: 'tabular-nums' }}>
           {centavosParaTexto(extrato.totalComissaoPendente * 100)}
         </div>
       </div>

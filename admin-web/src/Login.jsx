@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { auth } from './firebase';
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
-import { IconSpark, IconEye, IconEyeOff } from './Icons';
+import { IconEye, IconEyeOff, Logo } from './Icons';
 
 export default function Login({ showToast }) {
   const [email, setEmail] = useState('');
@@ -35,7 +35,7 @@ export default function Login({ showToast }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="login-logo"><IconSpark size={24} /></div>
+        <div className="login-logo"><Logo size={68} respira /></div>
         <h1 className="login-title">Atravessia</h1>
         <p className="login-sub">Painel administrativo</p>
 
@@ -69,7 +69,7 @@ export default function Login({ showToast }) {
                   position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--text-light)', display: 'grid', placeItems: 'center',
-                  width: 30, height: 30, borderRadius: 6,
+                  width: 34, height: 34, borderRadius: '50%',
                 }}
               >
                 {verSenha ? <IconEyeOff size={17} /> : <IconEye size={17} />}
@@ -78,28 +78,18 @@ export default function Login({ showToast }) {
           </div>
 
           <button
-            type="submit" className="btn-primary" disabled={carregando}
-            style={{ width: '100%', padding: '12px', marginTop: 4 }}
+            type="submit" className="btn-primary btn-largo" disabled={carregando}
+            style={{ marginTop: 4 }}
           >
             {carregando ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
 
-        <button
-          type="button" onClick={recuperar}
-          style={{
-            display: 'block', margin: '16px auto 0',
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12.5, color: 'var(--primary-600)', textDecoration: 'underline',
-          }}
-        >
+        <button type="button" onClick={recuperar} className="login-link">
           Esqueci minha senha
         </button>
 
-        <p style={{
-          textAlign: 'center', fontSize: 11, color: 'var(--text-light)',
-          marginTop: 24, marginBottom: 0,
-        }}>
+        <p className="login-nota">
           Acesso restrito às administradoras
         </p>
       </div>

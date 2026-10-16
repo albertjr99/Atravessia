@@ -9,8 +9,16 @@ import { calcularMetricasFunil, planoNumero } from './metricasFunil';
 // Abas: Geral · Funil · Emoções · Usuárias · Empresas. Mesmos cálculos do app.
 
 const PLANO_LABELS = ['Perceber', 'Acolher', 'Compreender', 'Evoluir'];
-const PLANO_CORES = ['#7A9E7E', '#8B7AC0', '#7B5EA7', '#C0843F'];
-const COR = { lav5: '#7B6BAF', lav4: '#8B7AC0', lav3: '#B8ABD9', sage: '#7A9E7E', sageFg: '#3F5440', gold: '#D4B483', peach2: '#D4A89A', rose: '#D4A89A', roseFg: '#6b4a42' };
+// Cores pelos tokens (--plano-*, acentos e paleta de emoções).
+const PLANO_CORES = ['var(--plano-perceber)', 'var(--plano-acolher)', 'var(--plano-compreender)', 'var(--plano-evoluir)'];
+const PLANO_CHAVES = ['perceber', 'acolher', 'compreender', 'evoluir'];
+const PLANO_FUNDO = PLANO_CHAVES.map(k => `var(--plano-${k}-fundo)`);
+const PLANO_TEXTO = PLANO_CHAVES.map(k => `var(--plano-${k}-texto)`);
+const COR = {
+  lav5: 'var(--cor-texto-marca)', lav4: 'var(--cor-primaria)', lav3: 'var(--lilas-300)',
+  sage: 'var(--emo-empaz-dado)', sageFg: 'var(--acento-salvia-texto)', gold: 'var(--acento-dourado-tinta)',
+  peach2: 'var(--acento-pessego-tinta)', rose: 'var(--emo-culpado-dado)', roseFg: 'var(--acento-pessego-texto)',
+};
 
 function MiniBar({ value, max, color, height = 8 }) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
@@ -112,7 +120,7 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
 }
 
 // ─── Aba: Funil e retenção ────────────────────────────────────────
-const FUNIL_CORES = [COR.lav3, COR.lav4, '#7B5EA7', COR.sage];
+const FUNIL_CORES = [COR.lav3, COR.lav4, 'var(--plano-compreender)', COR.sage];
 
 function Indicador({ valor, rotulo, detalhe, cor }) {
   return (
@@ -422,7 +430,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
                         </div>
                       </td>
                       <td>
-                        <span className="badge" style={{ background: PLANO_CORES[plano] + '20', color: PLANO_CORES[plano] }}>{PLANO_LABELS[plano]}</span>
+                        <span className="badge" style={{ background: PLANO_FUNDO[plano], color: PLANO_TEXTO[plano] }}>{PLANO_LABELS[plano]}</span>
                       </td>
                       <td style={{ textAlign: 'right' }}>{nCheck}</td>
                       <td style={{ textAlign: 'right', color: 'var(--text-mid)' }}>{dias < 9999 ? `${dias}d` : '—'}</td>
@@ -447,7 +455,7 @@ function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
 
             <div className="aln-detalhe-stats">
               {[
-                { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: PLANO_CORES[sel.plano || 0] },
+                { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: PLANO_TEXTO[sel.plano || 0] },
                 { val: userCheckins.length, lbl: 'Check-ins', color: COR.lav5 },
                 { val: userVitorias.length, lbl: 'Vitórias', color: COR.gold },
                 { val: diasInativos(sel.id) < 9999 ? `${diasInativos(sel.id)}d` : '—', lbl: 'Inativo', color: COR.peach2 },

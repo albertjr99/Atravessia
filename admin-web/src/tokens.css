@@ -1,0 +1,404 @@
+/* ==========================================================================
+   Atravessia · Direção D2 · "LUZ DE VIDRO"
+   Tokens de design (tema claro + noturno). Fonte única para:
+   - admin-web (React + Vite): importar este arquivo no topo do App.css;
+   - app (Expo/React Native): espelhar 1:1 em src/theme/index.js
+     (CLARO/ESCURO), mantendo os nomes curtos entre colchetes [rn: ...].
+   Pares de contraste (WCAG 2.x) estão calculados no spec.md, seção 3.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   0. Fontes
+   Figtree (UI, sans arredondada) + Cormorant Garamond itálico (acento emocional).
+   Web: Google Fonts. App: @expo-google-fonts/figtree + cormorant-garamond.
+   -------------------------------------------------------------------------- */
+/* @import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&family=Cormorant+Garamond:ital,wght@0,500..600;1,400..600&display=swap"); */
+
+:root,
+:root[data-theme="claro"] {
+  color-scheme: light;
+
+  /* ------------------------------------------------------------------------
+     1. PRIMITIVOS (não usar direto nas telas; use os papéis da seção 2)
+     ------------------------------------------------------------------------ */
+  /* Lilás Travessia — âncora da marca: #8B7AC0 (500) */
+  --lilas-50:  #F6F3FD;
+  --lilas-100: #ECE6FA;
+  --lilas-200: #DCD2F5;
+  --lilas-300: #C3B5EC;
+  --lilas-400: #A595DC;
+  --lilas-500: #8B7AC0;   /* Lilás Travessia (oficial) */
+  --lilas-600: #7A65CB;   /* topo do botão principal (branco 4,61:1) */
+  --lilas-700: #524197;   /* texto/links lilás (7,3:1 no fundo · 4,7:1 até no pico da aurora) */
+  --lilas-750: #5A46AD;   /* base do degradê do botão (branco 6,3:1) */
+  --lilas-800: #45358A;   /* títulos fortes, “base” do botão com profundidade */
+  --lilas-900: #2E2360;
+
+  /* Pêssego (aurora quente, Experimente a vida, alertas gentis) */
+  --pessego-50:  #FEF5F0;
+  --pessego-100: #FCE7DC;
+  --pessego-200: #F8D2C0;
+  --pessego-300: #F2B9A0;
+  --pessego-500: #D98A69;
+  --pessego-700: #94492F;
+
+  /* Sálvia (aurora fresca, sucesso, cashback, Perceber) */
+  --salvia-50:  #F1F7F3;
+  --salvia-100: #E1EEE5;
+  --salvia-200: #C3DDCC;
+  --salvia-300: #9EC4AB;
+  --salvia-500: #6E9B7E;
+  --salvia-700: #3D6A4E;
+
+  /* Dourado (Produtos Atravessia, Acesso Total, aviso) */
+  --dourado-100: #F7EBD3;
+  --dourado-300: #E2C48E;
+  --dourado-500: #C9A15A;
+  --dourado-700: #765619;
+
+  /* Névoa azul e Rosa (só emoções / dados) */
+  --nevoa-100: #E3EAF7;
+  --nevoa-300: #B5C6E6;
+  --nevoa-700: #3F5A86;
+  --rosa-100:  #F9E1E9;
+  --rosa-300:  #E8A9BE;
+  --rosa-700:  #9C4463;
+
+  /* Neutros ameixa (nunca cinza puro: o cinza “morto” some sobre a aurora) */
+  --tinta-900: #2A2433;
+  --tinta-700: #534C60;
+  --tinta-600: #5F586C;
+  --tinta-400: #9C95A8;
+  --tinta-200: #E4DEE6;
+  --tinta-100: #F1ECEE;
+  --porcelana: #F6F1EE;
+
+  /* ------------------------------------------------------------------------
+     2. PAPÉIS — TEMA CLARO
+     ------------------------------------------------------------------------ */
+  /* Fundo e aurora ------------------------------------------------------- */
+  --cor-fundo:            var(--porcelana);          /* [rn: bg] */
+  --aurora-lilas:         rgba(197, 178, 243, 0.85); /* #C5B2F3 */
+  --aurora-pessego:       rgba(248, 205, 184, 0.85); /* #F8CDB8 */
+  --aurora-salvia:        rgba(195, 221, 204, 0.85); /* #C3DDCC */
+  --aurora-nevoa:         rgba(203, 216, 242, 0.70); /* #CBD8F2 */
+  --aurora:                                           /* fundo de tela inteira */
+    radial-gradient(70% 38% at 8% 4%,   var(--aurora-lilas)   0%, transparent 70%),
+    radial-gradient(60% 32% at 100% 22%, var(--aurora-pessego) 0%, transparent 70%),
+    radial-gradient(65% 34% at 0% 58%,  var(--aurora-salvia)  0%, transparent 70%),
+    radial-gradient(70% 36% at 100% 88%, var(--aurora-lilas)  0%, transparent 72%),
+    var(--cor-fundo);
+  --aquarela-veu:         transparent;               /* [rn: headerVeu] */
+  --grao-opacidade:       0.05;                      /* textura de papel sobre a aurora */
+
+  /* Superfícies ---------------------------------------------------------- */
+  --cor-superficie:       #FFFCFA;                   /* cartão opaco (tabelas, formulários) [rn: card] */
+  --cor-superficie-2:     #FAF6F4;                   /* área rebaixada, cabeçalho de tabela */
+  --cor-superficie-vidro: rgba(255, 255, 255, 0.62); /* cartão de vidro padrão [rn: vidro] */
+  --cor-vidro-forte:      rgba(255, 255, 255, 0.80); /* barra inferior, topo fixo, menus [rn: vidroForte] */
+  --cor-vidro-tenue:      rgba(255, 255, 255, 0.40); /* tiles dentro de cartão de vidro */
+  --vidro-desfoque:       22px;                      /* expo-blur intensity ≈ 40 */
+  --vidro-saturacao:      160%;
+  --cor-veu-modal:        rgba(42, 36, 51, 0.36);    /* [rn: sobreposicao] */
+
+  /* Texto ----------------------------------------------------------------- */
+  --cor-texto:            var(--tinta-900);          /* [rn: td/titulo]  13,4:1 fundo · 8,6:1 no pico da aurora */
+  --cor-texto-2:          var(--tinta-700);          /* [rn: tm/texto2]   7,3:1 fundo · 4,65:1 no pico da aurora */
+  --cor-texto-3:          var(--tinta-600);          /* [rn: tl] legendas 6,0:1 fundo · 5,5:1 vidro — SÓ sobre vidro/superfície; sobre a aurora nua use texto-2 */
+  --cor-texto-inverso:    #FFFFFF;
+  --cor-texto-marca:      var(--lilas-700);          /* links, “Ver todas”, sobretítulos — passa até no pico da aurora */
+
+  /* Primária -------------------------------------------------------------- */
+  --cor-primaria:         var(--lilas-500);          /* ícones, anéis, gráficos (não-texto ≥3:1) */
+  --cor-primaria-forte:   var(--lilas-800);          /* títulos de destaque, base 3D */
+  --cor-primaria-suave:   var(--lilas-100);          /* fundo de pílula de ícone, aba ativa */
+  --cor-primaria-veu:     rgba(139, 122, 192, 0.14);
+  --grad-primaria:        linear-gradient(180deg, var(--lilas-600) 0%, var(--lilas-750) 100%);
+  --grad-primaria-base:   var(--lilas-800);          /* “degrau” do botão com profundidade */
+  --grad-aurora-icone:    linear-gradient(135deg, #B9A6F0 0%, #F3B9A5 100%); /* pílula da AtravessIA, anel do avatar */
+
+  /* Acentos (fundo · tinta do ícone · texto) — texto de acento só sobre vidro/superfície/fundo do acento */
+  --acento-lilas-fundo:   var(--lilas-100);   --acento-lilas-tinta:   var(--lilas-600);   --acento-lilas-texto:   var(--lilas-700);
+  --acento-pessego-fundo: var(--pessego-100); --acento-pessego-tinta: var(--pessego-500); --acento-pessego-texto: var(--pessego-700);
+  --acento-salvia-fundo:  var(--salvia-100);  --acento-salvia-tinta:  var(--salvia-500);  --acento-salvia-texto:  var(--salvia-700);
+  --acento-dourado-fundo: var(--dourado-100); --acento-dourado-tinta: var(--dourado-500); --acento-dourado-texto: var(--dourado-700);
+  --acento-nevoa-fundo:   var(--nevoa-100);   --acento-nevoa-tinta:   #6F8CC2;            --acento-nevoa-texto:   var(--nevoa-700);
+  --acento-rosa-fundo:    var(--rosa-100);    --acento-rosa-tinta:    #C76F8E;            --acento-rosa-texto:    var(--rosa-700);
+
+  /* Cartões-joia (pares do Início) ---------------------------------------- */
+  --joia-lilas:           linear-gradient(150deg, #EEE7FC 0%, #D9CBF6 100%);
+  --joia-lilas-base:      #BDAAE9;
+  --joia-pessego:         linear-gradient(150deg, #FEF0E8 0%, #F7D3C1 100%);
+  --joia-pessego-base:    #E9B49C;
+  --joia-dourado:         linear-gradient(150deg, #FBF3E2 0%, #F1DDB4 100%);
+  --joia-dourado-base:    #DDBD84;
+
+  /* Estados ---------------------------------------------------------------- */
+  --cor-sucesso:          #2F6145;  --cor-sucesso-fundo: #E3F1E8;   /* 5,9:1 no vidro */
+  --cor-aviso:            #7E5410;  --cor-aviso-fundo:   #FBEFD9;   /* 5,4:1 no vidro */
+  --cor-erro:             #A93B4B;  --cor-erro-fundo:    #FBE6E8;   /* 5,0:1 no vidro */
+  --cor-badge-alerta:     #C9435C;  /* sino: branco 4,7:1 */
+  --cor-badge-ok:         #3E7A55;  /* cupons: branco 5,1:1 */
+
+  /* Bordas ----------------------------------------------------------------- */
+  --cor-borda:            rgba(42, 36, 51, 0.08);    /* divisórias internas */
+  --cor-borda-forte:      rgba(42, 36, 51, 0.14);    /* campos, tabelas */
+  --cor-borda-luz:        rgba(255, 255, 255, 0.85); /* “borda de luz” do vidro (topo) */
+  --cor-borda-luz-baixo:  rgba(255, 255, 255, 0.30); /* … e embaixo */
+  --borda-luz:            linear-gradient(180deg, var(--cor-borda-luz), var(--cor-borda-luz-baixo));
+  --cor-foco:             var(--lilas-600);
+  --anel-foco:            0 0 0 3px rgba(122, 101, 203, 0.38);
+
+  /* Elevação (sombras com tinta ameixa — nunca preto puro) ----------------- */
+  --sombra-0:   none;
+  --sombra-1:   0 1px 2px rgba(58, 40, 110, 0.05), 0 6px 16px -6px rgba(58, 40, 110, 0.10);           /* tiles */
+  --sombra-2:   0 2px 4px rgba(58, 40, 110, 0.05), 0 16px 36px -12px rgba(58, 40, 110, 0.18);         /* cartões de vidro */
+  --sombra-3:   0 4px 8px rgba(58, 40, 110, 0.06), 0 28px 60px -18px rgba(58, 40, 110, 0.28);         /* herói, barra inferior, gaveta */
+  --sombra-brilho: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(255, 255, 255, 0.25);  /* luz interna do vidro */
+  --sombra-botao:  0 10px 24px -8px rgba(91, 72, 168, 0.55);                                          /* halo do botão principal */
+
+  /* Raios ------------------------------------------------------------------ */
+  --raio-xs:   8px;    /* badges, marcadores */
+  --raio-sm:   12px;   /* campos, chips quadrados, miniaturas */
+  --raio-md:   16px;   /* tiles internos, pílulas de ícone quadradas */
+  --raio-lg:   22px;   /* cartões */
+  --raio-xl:   28px;   /* cartão herói, folhas, barra lateral flutuante */
+  --raio-2xl:  36px;   /* barra inferior em cápsula */
+  --raio-pill: 999px;
+
+  /* Espaçamento (base 4) --------------------------------------------------- */
+  --esp-1: 4px;  --esp-2: 8px;  --esp-3: 12px; --esp-4: 16px; --esp-5: 20px;
+  --esp-6: 24px; --esp-7: 32px; --esp-8: 40px; --esp-9: 56px; --esp-10: 72px;
+  --margem-tela: 16px;       /* celular; tablet 24px; web 32px */
+  --vao-bento:   12px;       /* espaço entre tiles do bento */
+
+  /* Tipografia ------------------------------------------------------------- */
+  --fonte-ui:       "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --fonte-emocao:   "Cormorant Garamond", "Cormorant", Georgia, serif;   /* sempre itálico, ≥ 20px */
+  --fonte-numeros:  "Figtree", system-ui, sans-serif;                    /* font-variant-numeric: tabular-nums */
+
+  /* Escala (tamanho / altura de linha / peso / família) */
+  --tx-display:   600 italic 40px/1.05 var(--fonte-emocao);  /* marca “Atravessia” */
+  --tx-h1:        600 italic 32px/1.10 var(--fonte-emocao);  /* saudação, títulos emocionais */
+  --tx-h2:        600 italic 26px/1.15 var(--fonte-emocao);  /* “Como estou me sentindo hoje?” */
+  --tx-citacao:   500 italic 24px/1.30 var(--fonte-emocao);  /* Frase do dia */
+  --tx-h3:        700 20px/1.25 var(--fonte-ui);             /* título de seção */
+  --tx-titulo:    650 17px/1.30 var(--fonte-ui);             /* título de cartão */
+  --tx-corpo:     400 16px/1.50 var(--fonte-ui);
+  --tx-corpo-2:   400 15px/1.45 var(--fonte-ui);
+  --tx-rotulo:    600 14px/1.30 var(--fonte-ui);             /* botões secundários, abas */
+  --tx-legenda:   500 13px/1.35 var(--fonte-ui);
+  --tx-micro:     600 12px/1.30 var(--fonte-ui);             /* menor tamanho permitido */
+  --tx-sobretitulo: 700 12px/1.20 var(--fonte-ui);           /* + letter-spacing .09em, maiúsculas */
+  --tx-numero:    700 32px/1.00 var(--fonte-numeros);        /* números do painel */
+  --tx-numero-sm: 700 22px/1.00 var(--fonte-numeros);
+  --tracking-sobretitulo: 0.09em;
+
+  /* Movimento -------------------------------------------------------------- */
+  --mov-instante:  90ms;     /* afundar o botão */
+  --mov-rapido:    160ms;    /* hover, troca de aba */
+  --mov-base:      260ms;    /* abrir “Seu dia”, chips */
+  --mov-lento:     420ms;    /* entrada de cartões */
+  --mov-escalonar: 45ms;     /* atraso entre cartões na entrada */
+  --mov-respira:   8000ms;   /* logo que respira (4 s + 4 s) */
+  --mov-aurora:    36s;      /* deriva da aurora (ida e volta) */
+  --curva-suave:   cubic-bezier(0.22, 0.61, 0.36, 1);
+  --curva-saida:   cubic-bezier(0.4, 0, 1, 1);
+  --curva-mola:    cubic-bezier(0.34, 1.4, 0.64, 1);       /* só em escala ≤ 1.04 */
+  --profundidade-botao: 5px;                                /* altura do degrau 3D */
+
+  /* Emoções (5 positivas do Início + base para Relatórios) ---------------- */
+  /*            véu (fundo da pílula)      tinta (ícone; ≥3:1 no véu)  dado (rosca/barra) */
+  --emo-grato-veu:        #F6E9CC;  --emo-grato-tinta:       #9A6B1F;  --emo-grato-dado:       #C9A15A;
+  --emo-empaz-veu:        #DCEFE3;  --emo-empaz-tinta:       #3F7A5E;  --emo-empaz-dado:       #6E9B7E;
+  --emo-esperancoso-veu:  #DFE7F6;  --emo-esperancoso-tinta: #4C6C9E;  --emo-esperancoso-dado: #7F9BCB;
+  --emo-alegre-veu:       #FBE3D4;  --emo-alegre-tinta:      #A8582E;  --emo-alegre-dado:      #E39A72;
+  --emo-amoroso-veu:      #F8DDE7;  --emo-amoroso-tinta:     #A84868;  --emo-amoroso-dado:     #D682A0;
+  /* negativas (Relatórios): mesma família fria/terrosa, sem oliva nem mostarda */
+  --emo-triste-dado:      #8EA3C8;  --emo-saudade-dado:      #A595DC;  --emo-sozinho-dado:     #8FA89A;
+  --emo-medo-dado:        #7C8FB0;  --emo-culpado-dado:      #B98A7A;  --emo-ansioso-dado:     #C7A07E;
+  --emo-raiva-dado:       #C27C78;  --emo-desanimado-dado:   #9A90AE;
+
+  /* Planos (mesma cor em todas as telas do app e dos painéis) ------------- */
+  --plano-perceber:       var(--salvia-500);
+  --plano-acolher:        var(--lilas-500);
+  --plano-compreender:    #6F8CC2;
+  --plano-evoluir:        var(--pessego-500);
+  --plano-acesso-total:   var(--dourado-500);
+  --plano-perceber-fundo: var(--salvia-100);   --plano-perceber-texto: var(--salvia-700);
+  --plano-acolher-fundo:  var(--lilas-100);    --plano-acolher-texto:  var(--lilas-700);
+  --plano-compreender-fundo: var(--nevoa-100); --plano-compreender-texto: var(--nevoa-700);
+  --plano-evoluir-fundo:  var(--pessego-100);  --plano-evoluir-texto:  var(--pessego-700);
+  --plano-total-fundo:    var(--dourado-100);  --plano-total-texto:    var(--dourado-700);
+
+  /* Painel (admin) --------------------------------------------------------- */
+  --painel-lateral-largura: 264px;
+  --painel-previa-largura:  312px;
+  --painel-lateral-fundo:   rgba(255, 255, 255, 0.55);
+  --painel-item-ativo:      rgba(255, 255, 255, 0.92);
+}
+
+/* ==========================================================================
+   TEMA NOTURNO
+   Mesmo bloco aplicado (a) pela preferência do sistema quando a pessoa não
+   forçou o claro e (b) quando o app/painel força data-theme="escuro".
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="claro"]) {
+    color-scheme: dark;
+    --cor-fundo:            #110E18;
+    --aurora-lilas:         rgba(75, 58, 140, 0.60);
+    --aurora-pessego:       rgba(106, 58, 64, 0.50);
+    --aurora-salvia:        rgba(34, 80, 63, 0.50);
+    --aurora-nevoa:         rgba(44, 62, 104, 0.45);
+    --aquarela-veu:         linear-gradient(180deg, rgba(17,14,24,0.45) 0%, rgba(17,14,24,0.70) 60%, #110E18 100%);
+    --grao-opacidade:       0.06;
+    --cor-superficie:       #1C1726;
+    --cor-superficie-2:     #171320;
+    --cor-superficie-vidro: rgba(30, 25, 43, 0.62);
+    --cor-vidro-forte:      rgba(26, 21, 38, 0.84);
+    --cor-vidro-tenue:      rgba(255, 255, 255, 0.05);
+    --cor-veu-modal:        rgba(5, 3, 10, 0.60);
+    --cor-texto:            #F4F0FA;
+    --cor-texto-2:          #CDC5DC;
+    --cor-texto-3:          #ABA2BE;
+    --cor-texto-marca:      #BCAAF8;
+    --cor-primaria:         #A996F0;
+    --cor-primaria-forte:   #D9CFFF;
+    --cor-primaria-suave:   rgba(169, 150, 240, 0.16);
+    --cor-primaria-veu:     rgba(169, 150, 240, 0.12);
+    --grad-primaria:        linear-gradient(180deg, #7560CC 0%, #5541A8 100%);
+    --grad-primaria-base:   #3A2C80;
+    --grad-aurora-icone:    linear-gradient(135deg, #7E69D6 0%, #B4716A 100%);
+    --acento-lilas-fundo:   rgba(169,150,240,0.16); --acento-lilas-tinta:   #BCAAF8; --acento-lilas-texto:   #CFC2FF;
+    --acento-pessego-fundo: rgba(242,183,158,0.14); --acento-pessego-tinta: #F2B79E; --acento-pessego-texto: #F6C8B4;
+    --acento-salvia-fundo:  rgba(159,208,176,0.14); --acento-salvia-tinta:  #9FD0B0; --acento-salvia-texto:  #B7DEC4;
+    --acento-dourado-fundo: rgba(229,198,139,0.14); --acento-dourado-tinta: #E5C68B; --acento-dourado-texto: #EED6A6;
+    --acento-nevoa-fundo:   rgba(169,193,236,0.14); --acento-nevoa-tinta:   #A9C1EC; --acento-nevoa-texto:   #C3D4F2;
+    --acento-rosa-fundo:    rgba(242,162,188,0.14); --acento-rosa-tinta:    #F2A2BC; --acento-rosa-texto:    #F6BDD0;
+    --joia-lilas:           radial-gradient(180px 120px at 0% 0%, rgba(255,255,255,0.08), transparent 70%), linear-gradient(150deg, rgba(126,105,214,0.42) 0%, rgba(74,58,140,0.55) 100%);
+    --joia-lilas-base:      #2C2257;
+    --joia-pessego:         radial-gradient(180px 120px at 0% 0%, rgba(255,255,255,0.08), transparent 70%), linear-gradient(150deg, rgba(214,140,128,0.32) 0%, rgba(112,60,84,0.52) 100%);
+    --joia-pessego-base:    #3A2130;
+    --joia-dourado:         radial-gradient(180px 120px at 0% 0%, rgba(255,240,200,0.10), transparent 70%), linear-gradient(150deg, rgba(226,186,110,0.30) 0%, rgba(104,74,40,0.52) 100%);
+    --joia-dourado-base:    #3A2E15;
+    --cor-sucesso:          #8FD1A6;  --cor-sucesso-fundo: rgba(143,209,166,0.14);
+    --cor-aviso:            #EBC27A;  --cor-aviso-fundo:   rgba(235,194,122,0.14);
+    --cor-erro:             #F29AA6;  --cor-erro-fundo:    rgba(242,154,166,0.14);
+    --cor-badge-alerta:     #C9435C;
+    --cor-badge-ok:         #3E7A55;
+    --cor-borda:            rgba(255, 255, 255, 0.07);
+    --cor-borda-forte:      rgba(255, 255, 255, 0.13);
+    --cor-borda-luz:        rgba(255, 255, 255, 0.16);
+    --cor-borda-luz-baixo:  rgba(255, 255, 255, 0.03);
+    --cor-foco:             #BCAAF8;
+    --anel-foco:            0 0 0 3px rgba(188, 170, 248, 0.40);
+    --sombra-1:   0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+    --sombra-2:   0 2px 4px rgba(0, 0, 0, 0.30), 0 18px 40px -14px rgba(0, 0, 0, 0.60);
+    --sombra-3:   0 4px 8px rgba(0, 0, 0, 0.35), 0 30px 64px -18px rgba(0, 0, 0, 0.70);
+    --sombra-brilho: inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+    --sombra-botao:  0 12px 28px -8px rgba(117, 96, 204, 0.55);
+    --emo-grato-veu:       rgba(229,194,126,0.16); --emo-grato-tinta:       #E8C27E;
+    --emo-empaz-veu:       rgba(147,209,174,0.16); --emo-empaz-tinta:       #93D1AE;
+    --emo-esperancoso-veu: rgba(169,193,236,0.16); --emo-esperancoso-tinta: #A9C1EC;
+    --emo-alegre-veu:      rgba(244,176,140,0.16); --emo-alegre-tinta:      #F4B08C;
+    --emo-amoroso-veu:     rgba(242,162,188,0.16); --emo-amoroso-tinta:     #F2A2BC;
+    --plano-perceber-fundo: rgba(159,208,176,0.14); --plano-perceber-texto: #B7DEC4;
+    --plano-acolher-fundo:  rgba(169,150,240,0.16); --plano-acolher-texto:  #CFC2FF;
+    --plano-compreender-fundo: rgba(169,193,236,0.14); --plano-compreender-texto: #C3D4F2;
+    --plano-evoluir-fundo:  rgba(242,183,158,0.14); --plano-evoluir-texto:  #F6C8B4;
+    --plano-total-fundo:    rgba(229,198,139,0.14); --plano-total-texto:    #EED6A6;
+    --painel-lateral-fundo: rgba(28, 23, 40, 0.66);
+    --painel-item-ativo:    rgba(255, 255, 255, 0.08);
+  }
+}
+
+:root[data-theme="escuro"] {
+  color-scheme: dark;
+  --cor-fundo:            #110E18;
+  --aurora-lilas:         rgba(75, 58, 140, 0.60);
+  --aurora-pessego:       rgba(106, 58, 64, 0.50);
+  --aurora-salvia:        rgba(34, 80, 63, 0.50);
+  --aurora-nevoa:         rgba(44, 62, 104, 0.45);
+  --aquarela-veu:         linear-gradient(180deg, rgba(17,14,24,0.45) 0%, rgba(17,14,24,0.70) 60%, #110E18 100%);
+  --grao-opacidade:       0.06;
+  --cor-superficie:       #1C1726;
+  --cor-superficie-2:     #171320;
+  --cor-superficie-vidro: rgba(30, 25, 43, 0.62);
+  --cor-vidro-forte:      rgba(26, 21, 38, 0.84);
+  --cor-vidro-tenue:      rgba(255, 255, 255, 0.05);
+  --cor-veu-modal:        rgba(5, 3, 10, 0.60);
+  --cor-texto:            #F4F0FA;
+  --cor-texto-2:          #CDC5DC;
+  --cor-texto-3:          #ABA2BE;
+  --cor-texto-marca:      #BCAAF8;
+  --cor-primaria:         #A996F0;
+  --cor-primaria-forte:   #D9CFFF;
+  --cor-primaria-suave:   rgba(169, 150, 240, 0.16);
+  --cor-primaria-veu:     rgba(169, 150, 240, 0.12);
+  --grad-primaria:        linear-gradient(180deg, #7560CC 0%, #5541A8 100%);
+  --grad-primaria-base:   #3A2C80;
+  --grad-aurora-icone:    linear-gradient(135deg, #7E69D6 0%, #B4716A 100%);
+  --acento-lilas-fundo:   rgba(169,150,240,0.16); --acento-lilas-tinta:   #BCAAF8; --acento-lilas-texto:   #CFC2FF;
+  --acento-pessego-fundo: rgba(242,183,158,0.14); --acento-pessego-tinta: #F2B79E; --acento-pessego-texto: #F6C8B4;
+  --acento-salvia-fundo:  rgba(159,208,176,0.14); --acento-salvia-tinta:  #9FD0B0; --acento-salvia-texto:  #B7DEC4;
+  --acento-dourado-fundo: rgba(229,198,139,0.14); --acento-dourado-tinta: #E5C68B; --acento-dourado-texto: #EED6A6;
+  --acento-nevoa-fundo:   rgba(169,193,236,0.14); --acento-nevoa-tinta:   #A9C1EC; --acento-nevoa-texto:   #C3D4F2;
+  --acento-rosa-fundo:    rgba(242,162,188,0.14); --acento-rosa-tinta:    #F2A2BC; --acento-rosa-texto:    #F6BDD0;
+  --joia-lilas:           radial-gradient(180px 120px at 0% 0%, rgba(255,255,255,0.08), transparent 70%), linear-gradient(150deg, rgba(126,105,214,0.42) 0%, rgba(74,58,140,0.55) 100%);
+  --joia-lilas-base:      #2C2257;
+  --joia-pessego:         radial-gradient(180px 120px at 0% 0%, rgba(255,255,255,0.08), transparent 70%), linear-gradient(150deg, rgba(214,140,128,0.32) 0%, rgba(112,60,84,0.52) 100%);
+  --joia-pessego-base:    #3A2130;
+  --joia-dourado:         radial-gradient(180px 120px at 0% 0%, rgba(255,240,200,0.10), transparent 70%), linear-gradient(150deg, rgba(226,186,110,0.30) 0%, rgba(104,74,40,0.52) 100%);
+  --joia-dourado-base:    #3A2E15;
+  --cor-sucesso:          #8FD1A6;  --cor-sucesso-fundo: rgba(143,209,166,0.14);
+  --cor-aviso:            #EBC27A;  --cor-aviso-fundo:   rgba(235,194,122,0.14);
+  --cor-erro:             #F29AA6;  --cor-erro-fundo:    rgba(242,154,166,0.14);
+  --cor-badge-alerta:     #C9435C;
+  --cor-badge-ok:         #3E7A55;
+  --cor-borda:            rgba(255, 255, 255, 0.07);
+  --cor-borda-forte:      rgba(255, 255, 255, 0.13);
+  --cor-borda-luz:        rgba(255, 255, 255, 0.16);
+  --cor-borda-luz-baixo:  rgba(255, 255, 255, 0.03);
+  --cor-foco:             #BCAAF8;
+  --anel-foco:            0 0 0 3px rgba(188, 170, 248, 0.40);
+  --sombra-1:   0 1px 2px rgba(0, 0, 0, 0.30), 0 6px 16px -6px rgba(0, 0, 0, 0.45);
+  --sombra-2:   0 2px 4px rgba(0, 0, 0, 0.30), 0 18px 40px -14px rgba(0, 0, 0, 0.60);
+  --sombra-3:   0 4px 8px rgba(0, 0, 0, 0.35), 0 30px 64px -18px rgba(0, 0, 0, 0.70);
+  --sombra-brilho: inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 -1px 0 rgba(255, 255, 255, 0.02);
+  --sombra-botao:  0 12px 28px -8px rgba(117, 96, 204, 0.55);
+  --emo-grato-veu:       rgba(229,194,126,0.16); --emo-grato-tinta:       #E8C27E;
+  --emo-empaz-veu:       rgba(147,209,174,0.16); --emo-empaz-tinta:       #93D1AE;
+  --emo-esperancoso-veu: rgba(169,193,236,0.16); --emo-esperancoso-tinta: #A9C1EC;
+  --emo-alegre-veu:      rgba(244,176,140,0.16); --emo-alegre-tinta:      #F4B08C;
+  --emo-amoroso-veu:     rgba(242,162,188,0.16); --emo-amoroso-tinta:     #F2A2BC;
+  --plano-perceber-fundo: rgba(159,208,176,0.14); --plano-perceber-texto: #B7DEC4;
+  --plano-acolher-fundo:  rgba(169,150,240,0.16); --plano-acolher-texto:  #CFC2FF;
+  --plano-compreender-fundo: rgba(169,193,236,0.14); --plano-compreender-texto: #C3D4F2;
+  --plano-evoluir-fundo:  rgba(242,183,158,0.14); --plano-evoluir-texto:  #F6C8B4;
+  --plano-total-fundo:    rgba(229,198,139,0.14); --plano-total-texto:    #EED6A6;
+  --painel-lateral-fundo: rgba(28, 23, 40, 0.66);
+  --painel-item-ativo:    rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   REDUZIR MOVIMENTO — tudo para; a aurora fica parada e o logo não respira.
+   (No app: AccessibilityInfo.isReduceMotionEnabled, já usado em Efeitos.js.)
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mov-instante: 0ms;
+    --mov-rapido:   0ms;
+    --mov-base:     0ms;
+    --mov-lento:    0ms;
+    --mov-escalonar: 0ms;
+    --mov-respira:  0ms;
+    --mov-aurora:   0s;
+  }
+}
+
+/* Sem suporte a backdrop-filter: o vidro vira superfície translúcida mais opaca. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --cor-superficie-vidro: rgba(255, 252, 250, 0.90); --cor-vidro-forte: rgba(255, 252, 250, 0.96); }
+  :root[data-theme="escuro"] { --cor-superficie-vidro: rgba(30, 25, 43, 0.94); --cor-vidro-forte: rgba(26, 21, 38, 0.97); }
+}

@@ -4,7 +4,7 @@ import {
   collection, doc, onSnapshot,
   serverTimestamp, setDoc,
 } from 'firebase/firestore';
-import { IconClose, IconSpark } from './Icons';
+import { IconClose, IconSpark, IconCheck } from './Icons';
 
 const PLANOS_PADRAO = [
   {
@@ -53,6 +53,7 @@ function formVazio(plano) {
     nome: plano?.nome || '',
     subtitulo: plano?.subtitulo || '',
     preco: plano?.preco?.toString() || '0',
+    precoAnual: plano?.precoAnual ? plano.precoAnual.toString() : '',
     precoLabel: plano?.precoLabel || '',
     descricao: plano?.descricao || '',
     mensagem: plano?.mensagem || '',
@@ -99,6 +100,8 @@ export default function Planos({ showToast }) {
         nome: form.nome.trim(),
         subtitulo: form.subtitulo.trim(),
         preco: parseFloat(form.preco) || 0,
+        // Plano anual: vazio = 10 mensalidades (dois meses de presente).
+        precoAnual: parseFloat(form.precoAnual) || 0,
         precoLabel: form.precoLabel.trim(),
         descricao: form.descricao.trim(),
         mensagem: form.mensagem.trim(),
@@ -167,19 +170,10 @@ export default function Planos({ showToast }) {
           {planos.map(p => (
             <div
               key={p.id}
-              style={{
-                background: 'var(--card)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: 20, position: 'relative',
-                borderTop: p.destaque ? '3px solid var(--primary)' : undefined,
-              }}
+              className={`card plano-card ${p.destaque ? 'plano-destaque' : ''}`}
             >
               {p.destaque && (
-                <div style={{
-                  position: 'absolute', top: -1, left: 16,
-                  background: 'var(--primary)', color: 'white',
-                  fontSize: 10, fontWeight: 700, padding: '2px 10px',
-                  borderRadius: '0 0 8px 8px', letterSpacing: 0.5,
-                }}>RECOMENDADO
+                <div className="plano-selo">RECOMENDADO
                 </div>
               )}
 
@@ -189,7 +183,7 @@ export default function Planos({ showToast }) {
                   <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>{p.subtitulo}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{p.precoLabel}</div>
+                  <div style={{ fontSize: 17, fontWeight: 750, color: 'var(--cor-texto-marca)', fontVariantNumeric: 'tabular-nums' }}>{p.precoLabel}</div>
                   {p.emBreve && <span className="badge badge-inactive">Em breve</span>}
                 </div>
               </div>
@@ -199,19 +193,15 @@ export default function Planos({ showToast }) {
               </p>
 
               {p.mensagem && (
-                <div style={{
-                  background: '#F4F1FB', borderLeft: '3px solid var(--primary)',
-                  borderRadius: 6, padding: '8px 10px', marginBottom: 10,
-                  fontSize: 11, color: '#5B3D9E', lineHeight: 1.5,
-                }}>
+                <div className="plano-mensagem">
                   {p.mensagem}
                 </div>
               )}
 
               <div style={{ marginBottom: 14 }}>
                 {(p.recursos || []).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 3, fontSize: 11, color: 'var(--text-dark)' }}>
-                    <span style={{ color: 'var(--sage)', flexShrink: 0 }}></span>
+                  <div key={i} style={{ display: 'flex', gap: 7, marginBottom: 5, fontSize: 12.5, color: 'var(--text-dark)', lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--sage)', flexShrink: 0, marginTop: 2 }}><IconCheck size={13} /></span>
                     <span>{r}</span>
                   </div>
                 ))}
@@ -266,6 +256,17 @@ export default function Planos({ showToast }) {
                     value={form.preco}
                     onChange={e => set('preco', e.target.value)}
                     placeholder="0"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="field-group">
+                  <label>Preço anual (número)</label>
+                  <input
+                    type="number"
+                    value={form.precoAnual}
+                    onChange={e => set('precoAnual', e.target.value)}
+                    placeholder={form.preco > 0 ? `Vazio = ${(parseFloat(form.preco) * 10).toFixed(2)} (10 mensalidades)` : '0'}
                     min="0"
                     step="0.01"
                   />

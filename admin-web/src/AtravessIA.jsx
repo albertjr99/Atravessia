@@ -9,9 +9,9 @@ import { calcularMetricasFunil, planoNumero } from './metricasFunil';
 // dados em linguagem simples e assistente de conteúdo. Inteligência própria
 // do app, sem custo por uso.
 const NIVEL = {
-  atencao: { cor: '#8C4A3F', fundo: 'rgba(212,168,154,.18)', rotulo: 'Atenção' },
-  sugestao: { cor: '#7A5A22', fundo: 'rgba(212,180,131,.2)', rotulo: 'Sugestão' },
-  info: { cor: 'var(--primary-600, #5C4F8A)', fundo: 'var(--primary-lav, #EDE9F5)', rotulo: 'Informação' },
+  atencao: { cor: 'var(--acento-pessego-texto)', fundo: 'var(--acento-pessego-fundo)', rotulo: 'Atenção' },
+  sugestao: { cor: 'var(--acento-dourado-texto)', fundo: 'var(--acento-dourado-fundo)', rotulo: 'Sugestão' },
+  info: { cor: 'var(--primary-600)', fundo: 'var(--primary-lav)', rotulo: 'Informação' },
 };
 
 function Leitura() {
@@ -102,7 +102,7 @@ function Assistente({ showToast }) {
       </div>
       {rascunhos.map((r, i) => (
         <div key={`${i}-${r.texto}`} className="card" style={{ display: 'grid', gap: 8 }}>
-          {r.titulo && <strong style={{ color: 'var(--primary-600, #5C4F8A)' }}>{r.titulo}</strong>}
+          {r.titulo && <strong style={{ color: 'var(--primary-600)' }}>{r.titulo}</strong>}
           <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{r.texto}</p>
           {r.reflexao && <p style={{ margin: 0, fontSize: 13, color: 'var(--text-mid)' }}>Reflexão: {r.reflexao}</p>}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

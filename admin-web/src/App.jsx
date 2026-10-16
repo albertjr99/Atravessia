@@ -24,10 +24,13 @@ import Mensagens from './Mensagens';
 import Relatorios from './Relatorios';
 import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
+import Institucional from './Institucional';
 import Preview from './Preview';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
-  IconBell, IconChart, IconTag, IconEdit, IconMenu, IconLogout, IconSpark,
+  IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
+  Logo,
+  IconDoc,
 } from './Icons';
 import './alinhamento.css';
 
@@ -78,7 +81,7 @@ const NAV_GRUPOS = [
     itens: [
       { id: 'usuarias', Icon: IconUsers, label: 'Usuárias', sub: 'Planos e acessos' },
       {
-        id: 'comunicacao', Icon: IconBell, label: 'Comunicação',
+        id: 'comunicacao', Icon: IconMegaphone, label: 'Comunicação',
         abas: [
           { id: 'notificacoes', label: 'Notificações' },
           { id: 'mensagens', label: 'Mensagens' },
@@ -91,7 +94,8 @@ const NAV_GRUPOS = [
     titulo: 'Configuração',
     itens: [
       { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Cards dos planos e valores' },
-      { id: 'perfil', Icon: IconEdit, label: 'Meu perfil', sub: 'Nome e foto' },
+      { id: 'institucional', Icon: IconDoc, label: 'Sobre e parcerias', sub: 'Sobre o app · Seja nosso parceiro' },
+      { id: 'perfil', Icon: IconPerson, label: 'Meu perfil', sub: 'Nome e foto' },
     ],
   },
 ];
@@ -117,11 +121,14 @@ const SCREENS = {
   relatorios:      Relatorios,
   precos:          PrecosPlanos,
   perfil:          Perfil,
+  institucional:   Institucional,
 };
 
 const TODOS_ITENS = NAV_GRUPOS.flatMap(g => g.itens);
 const itemDaTela = (tela) =>
   TODOS_ITENS.find(it => (it.abas ? it.abas.some(a => a.id === tela) : it.id === tela));
+// Grupo do menu ao qual o item pertence — vira o sobretítulo da página.
+const grupoDoItem = (item) => NAV_GRUPOS.find(g => g.itens.includes(item));
 
 export default function App() {
   const [user, setUser] = useState(undefined);
@@ -212,6 +219,7 @@ export default function App() {
 
   const Screen = SCREENS[screen] || Dashboard;
   const itemAtual = itemDaTela(screen);
+  const grupoAtual = grupoDoItem(itemAtual);
   const nomeCompleto = perfil?.nome || perfil?.email?.split('@')[0] || 'Administradora';
   const primeiroNome = nomeCompleto.split(' ')[0];
   const inicial = primeiroNome.charAt(0).toUpperCase();
@@ -221,7 +229,7 @@ export default function App() {
       <div className="admin-root">
         <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
           <div className="sidebar-brand">
-            <span className="sidebar-logo"><IconSpark size={20} /></span>
+            <Logo size={44} respira className="sidebar-logo" />
             <div>
               <div className="sidebar-app-name">Atravessia</div>
               <div className="sidebar-badge">Painel administrativo</div>
@@ -233,13 +241,16 @@ export default function App() {
             onClick={() => navigate('perfil')}
             title="Editar meu perfil"
           >
-            {perfil?.fotoUrl
-              ? <img className="avatar" src={perfil.fotoUrl} alt={primeiroNome} />
-              : <div className="avatar">{inicial}</div>}
+            <span className="avatar-anel">
+              {perfil?.fotoUrl
+                ? <img className="avatar" src={perfil.fotoUrl} alt={primeiroNome} />
+                : <span className="avatar">{inicial}</span>}
+            </span>
             <div style={{ minWidth: 0 }}>
               <div className="sidebar-profile-name">{primeiroNome}</div>
               <div className="sidebar-profile-sub">Administradora</div>
             </div>
+            <span className="sidebar-profile-edit"><IconEdit size={17} /></span>
           </div>
 
           <nav className="sidebar-nav">
@@ -252,7 +263,7 @@ export default function App() {
                     className={`nav-item ${itemAtual?.id === id ? 'active' : ''}`}
                     onClick={() => navigate(id)}
                   >
-                    <span className="nav-icon"><Icon size={17} /></span>
+                    <span className="nav-icon"><Icon size={18} /></span>
                     <span style={{ minWidth: 0 }}>
                       <span className="nav-label" style={{ display: 'block' }}>{label}</span>
                       {(sub || abas) && (
@@ -269,7 +280,7 @@ export default function App() {
 
           <div className="sidebar-footer">
             <button className="logout-btn" onClick={handleLogout}>
-              <IconLogout size={15} />
+              <IconLogout size={19} />
               <span>Encerrar sessão</span>
             </button>
           </div>
@@ -278,10 +289,20 @@ export default function App() {
         <main className="content-area">
           <div className="mobile-header">
             <button onClick={() => setMobileOpen(v => !v)} aria-label="Abrir menu">
-              <IconMenu size={22} />
+              <IconMenu size={24} />
             </button>
+            <Logo size={30} />
             <span className="mobile-header-title">Atravessia</span>
           </div>
+
+          {itemAtual && (
+            <div className="page-top">
+              <div className="migalha">
+                {grupoAtual && <><span>{grupoAtual.titulo}</span><span aria-hidden="true">·</span></>}
+                <b>{itemAtual.label}</b>
+              </div>
+            </div>
+          )}
 
           {itemAtual?.abas && (
             <div className="subtabs">
@@ -301,15 +322,14 @@ export default function App() {
         </main>
 
         <div className="preview-panel">
-          <Preview currentScreen={screen} />
+          <div className="preview-scroll">
+            <Preview currentScreen={screen} />
+          </div>
         </div>
       </div>
 
       {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(46,39,64,.44)', zIndex: 90 }}
-        />
+        <div className="menu-veu" onClick={() => setMobileOpen(false)} />
       )}
 
       {toast && (

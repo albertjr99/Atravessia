@@ -6,6 +6,38 @@ import {
 } from 'firebase/firestore';
 import { IconAlert, IconClose, IconCompass, IconEdit, IconTrash } from './Icons';
 import { ordenarPor } from './emocoes';
+import svg_heart from 'ionicons/dist/svg/heart-outline.svg?raw';
+import svg_leaf from 'ionicons/dist/svg/leaf-outline.svg?raw';
+import svg_sunny from 'ionicons/dist/svg/sunny-outline.svg?raw';
+import svg_moon from 'ionicons/dist/svg/moon-outline.svg?raw';
+import svg_compass from 'ionicons/dist/svg/compass-outline.svg?raw';
+import svg_book from 'ionicons/dist/svg/book-outline.svg?raw';
+import svg_flame from 'ionicons/dist/svg/flame-outline.svg?raw';
+import svg_walk from 'ionicons/dist/svg/walk-outline.svg?raw';
+import svg_shield from 'ionicons/dist/svg/shield-outline.svg?raw';
+import svg_sparkles from 'ionicons/dist/svg/sparkles-outline.svg?raw';
+import svg_flower from 'ionicons/dist/svg/flower-outline.svg?raw';
+import svg_infinite from 'ionicons/dist/svg/infinite-outline.svg?raw';
+
+const SVG_ICONE = {
+  'heart-outline': svg_heart,
+  'leaf-outline': svg_leaf,
+  'sunny-outline': svg_sunny,
+  'moon-outline': svg_moon,
+  'compass-outline': svg_compass,
+  'book-outline': svg_book,
+  'flame-outline': svg_flame,
+  'walk-outline': svg_walk,
+  'shield-outline': svg_shield,
+  'sparkles-outline': svg_sparkles,
+  'flower-outline': svg_flower,
+  'infinite-outline': svg_infinite,
+};
+
+// Ícone Ionicons real (o mesmo que o app mostra), na cor do texto.
+function IconeJornada({ id, size = 19 }) {
+  return <span className="ic" style={{ width: size, height: size }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: SVG_ICONE[id] || SVG_ICONE['compass-outline'] }} />;
+}
 
 // Porte de oamorqueefica/src/screens/admin/AdminJornadasScreen.js
 // Coleção `jornadas`: titulo, descricao, icone (nome Ionicons usado pelo app),
@@ -18,10 +50,15 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_CORES = { 0: '#7A9E7E', 1: '#8B7AC0', 2: '#7B5EA7', 3: '#C0843F' };
+// Cores dos planos pelos tokens (--plano-*), iguais em todas as telas.
+const PLANO_CHAVE = { 0: 'perceber', 1: 'acolher', 2: 'compreender', 3: 'evoluir' };
+const corPlano = (p) => {
+  const k = PLANO_CHAVE[p] || 'acolher';
+  return { fundo: `var(--plano-${k}-fundo)`, texto: `var(--plano-${k}-texto)` };
+};
 
-// Os nomes são os do Ionicons (renderizados no app). No painel web mostramos
-// um símbolo equivalente só para identificação visual.
+// Os nomes são os do Ionicons (renderizados no app); o painel web mostra o
+// mesmo ícone (o campo `simbolo` fica só como referência).
 const ICONES = [
   { id: 'heart-outline',    simbolo: '♡', nome: 'Coração' },
   { id: 'leaf-outline',     simbolo: '❦', nome: 'Folha' },
@@ -141,18 +178,18 @@ export default function Jornadas({ showToast }) {
         <div className="list-grid">
           {jornadas.map(j => {
             const planoObj = PLANOS.find(p => p.id === j.plano);
-            const cor = PLANO_CORES[j.plano] ?? '#8B7AC0';
+            const cor = corPlano(j.plano);
             const ic = iconeInfo(j.icone);
             return (
               <div key={j.id} className={`list-card ${j.ativa ? '' : 'inactive'}`}>
-                <div className="aln-icone-circulo" style={{ background: cor + '22', color: cor }} title={ic.nome}>
-                  {ic.simbolo}
+                <div className="aln-icone-circulo" style={{ background: cor.fundo, color: cor.texto }} title={ic.nome}>
+                  <IconeJornada id={ic.id} />
                 </div>
                 <div className="list-card-body">
                   <div className="list-card-title">{j.titulo}</div>
                   {j.descricao && <div className="list-card-desc">{j.descricao}</div>}
                   <div className="list-card-badges">
-                    {planoObj && <span className="badge" style={{ background: cor + '22', color: cor }}>{planoObj.label}</span>}
+                    {planoObj && <span className="badge" style={{ background: cor.fundo, color: cor.texto }}>{planoObj.label}</span>}
                     <span className={`badge ${j.ativa ? 'badge-perceber' : 'badge-inactive'}`}>{j.ativa ? 'Ativa' : 'Inativa'}</span>
                     <span className="badge badge-inactive">Ordem: {j.ordem ?? 0}</span>
                   </div>
@@ -200,7 +237,7 @@ export default function Jornadas({ showToast }) {
                       onClick={() => setF('icone', ic.id)}
                       title={ic.nome}
                     >
-                      {ic.simbolo}
+                      <IconeJornada id={ic.id} size={20} />
                     </button>
                   ))}
                 </div>

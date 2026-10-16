@@ -50,13 +50,16 @@ import ConteudoScreen from '../screens/conteudos/ConteudoScreen';
 import LembreteScreen from '../screens/perfil/LembreteScreen';
 import ProdutosScreen from '../screens/produtos/ProdutosScreen';
 import AparenciaScreen from '../screens/perfil/AparenciaScreen';
-import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PAINEL } from '../config/recursos';
+import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PAINEL, IA_PLANO_ANO } from '../config/recursos';
+import PlanoAnoScreen from '../screens/atravessia/PlanoAnoScreen';
 import AtravessIAScreen from '../screens/atravessia/AtravessIAScreen';
 import ConversaIAScreen from '../screens/atravessia/ConversaIAScreen';
 import DiarioGuiadoScreen from '../screens/atravessia/DiarioGuiadoScreen';
 import CartaMesScreen from '../screens/atravessia/CartaMesScreen';
 import CashbackScreen from '../screens/cashback/CashbackScreen';
 import IndicacoesScreen from '../screens/indicacoes/IndicacoesScreen';
+import PerfilScreen from '../screens/perfil/PerfilScreen';
+import { SobreScreen, SejaParceiroScreen } from '../screens/institucional/TextoInstitucionalScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { useTema } from '../hooks/TemaContext';
@@ -112,6 +115,10 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       )}
       <Stack.Screen name="Cashback" component={CashbackScreen} />
       <Stack.Screen name="Indicacoes" component={IndicacoesScreen} />
+      {IA_PLANO_ANO && <Stack.Screen name="PlanoAno" component={PlanoAnoScreen} />}
+      <Stack.Screen name="Perfil" component={PerfilScreen} />
+      <Stack.Screen name="Sobre" component={SobreScreen} />
+      <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
     </Stack.Navigator>
   );
 }

@@ -5,7 +5,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { IconAudio, IconClose, IconEdit, IconEye, IconEyeOff, IconPlay, IconSpark, IconTrash } from './Icons';
+import { IconAudio, IconClose, IconEdit, IconEye, IconEyeOff, IconPlay, IconSpark, IconTrash, IconTime, IconUpload } from './Icons';
 
 const EMOCOES = [
   { id: 'triste', label: 'Triste' }, { id: 'saudade', label: 'Saudade' },
@@ -164,13 +164,13 @@ export default function Audios({ showToast }) {
                 {item.descricao && <div className="audio-card-desc">{item.descricao}</div>}
                 <div className="audio-card-badges">
                   <span className="badge">{PLANOS.find(p => p.id === item.plano)?.label || `Plano ${item.plano}`}</span>
-                  {item.duracao && <span className="badge" style={{ background: '#F0EDEB', color: 'var(--text-mid)' }}> {item.duracao}</span>}
+                  {item.duracao && <span className="badge badge-inactive"><IconTime size={12} /> {item.duracao}</span>}
                   {item.ativo === false && <span className="badge badge-inactive">Inativo</span>}
                 </div>
                 {item.emocoes?.length > 0 && (
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
                     {item.emocoes.map(e => (
-                      <span key={e} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: '#FFF8E0', color: '#7A5C00' }}>
+                      <span key={e} className="emo-chip">
                         {EMOCOES.find(em => em.id === e)?.label || e}
                       </span>
                     ))}
@@ -223,7 +223,7 @@ export default function Audios({ showToast }) {
                 <label>Fazer upload do arquivo de áudio</label>
                 <label className="file-upload-area" htmlFor="audio-file">
                   <input id="audio-file" type="file" accept="audio/*" onChange={handleFileChange} />
-                  <div className="file-upload-icon"></div>
+                  <div className="file-upload-icon"><IconUpload size={24} /></div>
                   <div className="file-upload-text">Clique para selecionar o arquivo</div>
                   <div className="file-upload-sub">MP3, M4A, WAV (máx. 50MB)</div>
                 </label>

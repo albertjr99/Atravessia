@@ -176,21 +176,21 @@ export default function Vitorias({ showToast }) {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
-                    style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--primary-mid)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                    className="vitoria-edit-input"
                     value={editLabel}
                     onChange={e => setEditLabel(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                     autoFocus
                   />
-                  <button className="btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={saveEdit}> Salvar</button>
-                  <button className="btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }} onClick={cancelEdit}>Cancelar</button>
+                  <button className="btn-primary" style={{ padding: '7px 16px', fontSize: 13, minHeight: 36 }} onClick={saveEdit}> Salvar</button>
+                  <button className="btn-ghost" style={{ padding: '7px 16px', fontSize: 13, minHeight: 36 }} onClick={cancelEdit}>Cancelar</button>
                   </div>
                   <SeletorIcone valor={editIcone} onChange={setEditIcone} />
                 </div>
               ) : (
                 <>
                   <div className="vitoria-label">
-                    <IconeVitoria id={item.icone} size={18} />
+                    <span className="vitoria-pilula"><IconeVitoria id={item.icone} size={18} cor="var(--acento-dourado-tinta)" /></span>
                     <span>{item.label}</span>
                     {item.ativo === false && <span className="badge badge-inactive" style={{ marginLeft: 8 }}>Inativo</span>}
                   </div>

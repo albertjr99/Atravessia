@@ -1,30 +1,31 @@
 // Emoções do check-in — cópia fiel de `emocoes` em
-// oamorqueefica/src/data/index.js (mesmos ids, rótulos, cores e ordem).
+// oamorqueefica/src/data/index.js (mesmos ids, rótulos e ordem). As cores
+// seguem a paleta de emoções dos tokens D2 (--emo-*-dado), sem oliva/mostarda.
 // Se o app mudar essa lista, atualize aqui também.
 export const EMOCOES = [
-  { id: 'triste',      label: 'Triste',      positiva: false, color: '#8FA3BF', nomeRelatorio: 'a tristeza' },
-  { id: 'saudade',     label: 'Com saudade', positiva: false, color: '#B8A6C9', nomeRelatorio: 'a saudade' },
-  { id: 'sozinho',     label: 'Sozinho',     positiva: false, color: '#7a9870', nomeRelatorio: 'o isolamento' },
-  { id: 'medo',        label: 'Com medo',    positiva: false, color: '#7088A0', nomeRelatorio: 'o medo' },
-  { id: 'culpado',     label: 'Culpado',     positiva: false, color: '#B0876A', nomeRelatorio: 'a culpa' },
-  { id: 'ansioso',     label: 'Ansioso',     positiva: false, color: '#B89870', nomeRelatorio: 'a ansiedade' },
-  { id: 'raiva',       label: 'Com raiva',   positiva: false, color: '#B0A060', nomeRelatorio: 'a raiva' },
-  { id: 'desanimado',  label: 'Desanimado',  positiva: false, color: '#9088A0', nomeRelatorio: 'o desânimo' },
-  { id: 'grato',       label: 'Grato',       positiva: true,  color: '#D4B483' },
-  { id: 'tranquilo',   label: 'Em paz',      positiva: true,  color: '#70A890' },
-  { id: 'esperancoso', label: 'Esperançoso', positiva: true,  color: '#A8B8A0' },
-  { id: 'alegre',      label: 'Alegre',      positiva: true,  color: '#C8A840' },
-  { id: 'amoroso',     label: 'Amoroso',     positiva: true,  color: '#C07090' },
+  { id: 'triste',      label: 'Triste',      positiva: false, color: '#8EA3C8', nomeRelatorio: 'a tristeza' },
+  { id: 'saudade',     label: 'Com saudade', positiva: false, color: '#A595DC', nomeRelatorio: 'a saudade' },
+  { id: 'sozinho',     label: 'Sozinho',     positiva: false, color: '#8FA89A', nomeRelatorio: 'o isolamento' },
+  { id: 'medo',        label: 'Com medo',    positiva: false, color: '#7C8FB0', nomeRelatorio: 'o medo' },
+  { id: 'culpado',     label: 'Culpado',     positiva: false, color: '#B98A7A', nomeRelatorio: 'a culpa' },
+  { id: 'ansioso',     label: 'Ansioso',     positiva: false, color: '#C7A07E', nomeRelatorio: 'a ansiedade' },
+  { id: 'raiva',       label: 'Com raiva',   positiva: false, color: '#C27C78', nomeRelatorio: 'a raiva' },
+  { id: 'desanimado',  label: 'Desanimado',  positiva: false, color: '#9A90AE', nomeRelatorio: 'o desânimo' },
+  { id: 'grato',       label: 'Grato',       positiva: true,  color: '#C9A15A' },
+  { id: 'tranquilo',   label: 'Em paz',      positiva: true,  color: '#6E9B7E' },
+  { id: 'esperancoso', label: 'Esperançoso', positiva: true,  color: '#7F9BCB' },
+  { id: 'alegre',      label: 'Alegre',      positiva: true,  color: '#E39A72' },
+  { id: 'amoroso',     label: 'Amoroso',     positiva: true,  color: '#D682A0' },
 ];
 
 export const emocaoPorId = (id) => EMOCOES.find(e => e.id === id);
 
 // Planos (níveis de acesso), mesma numeração usada no app.
 export const PLANOS_NIVEIS = [
-  { id: 0, label: 'Perceber (grátis)', curto: 'Perceber', cor: '#7A9E7E' },
+  { id: 0, label: 'Perceber (grátis)', curto: 'Perceber', cor: '#6E9B7E' },
   { id: 1, label: 'Acolher',           curto: 'Acolher',  cor: '#8B7AC0' },
-  { id: 2, label: 'Compreender',       curto: 'Compreender', cor: '#7B5EA7' },
-  { id: 3, label: 'Evoluir',           curto: 'Evoluir',  cor: '#C0843F' },
+  { id: 2, label: 'Compreender',       curto: 'Compreender', cor: '#6F8CC2' },
+  { id: 3, label: 'Evoluir',           curto: 'Evoluir',  cor: '#D98A69' },
 ];
 
 // Datas de check-in são strings 'YYYY-MM-DD' no fuso de Brasília.

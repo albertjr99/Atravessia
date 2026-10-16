@@ -4,7 +4,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   serverTimestamp, updateDoc,
 } from 'firebase/firestore';
-import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash } from './Icons';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift } from './Icons';
 import { UFS, formatarCidade, rotuloLocal, urlDeImagem, idDoDrive } from './parceriaUtils';
 
 // Caixa de texto que cresce com o conteúdo: quem digita vê o texto inteiro,
@@ -55,8 +55,8 @@ const brl = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 function tipoBtnStyle(ativo) {
   return {
     flex: 1, textAlign: 'left', cursor: 'pointer', padding: '12px 14px',
-    borderRadius: 10, border: `1.5px solid ${ativo ? 'var(--primary)' : 'var(--border)'}`,
-    background: ativo ? 'var(--primary-lav, #EDE9F5)' : 'var(--card)',
+    borderRadius: 16, border: `1.5px solid ${ativo ? 'var(--primary)' : 'var(--border-strong)'}`,
+    background: ativo ? 'var(--primary-lav)' : 'var(--surface)',
     color: 'var(--text-dark)', fontFamily: 'inherit',
   };
 }
@@ -239,19 +239,17 @@ export default function Parcerias({ showToast }) {
           {lista.map(item => (
             <div key={item.id} className="card" style={{
               display: 'flex', gap: 16, alignItems: 'flex-start',
-              opacity: item.ativo === false ? 0.55 : 1,
-              borderLeft: item.ativo === false ? '3px solid var(--border)' : '3px solid var(--primary)',
+              opacity: item.ativo === false ? 0.6 : 1,
             }}>
               {item.imagemUrl ? (
                 <img src={urlDeImagem(item.imagemUrl)} alt={item.titulo}
-                  style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+                  style={{ width: 72, height: 72, borderRadius: 16, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--sombra-1)' }} />
               ) : (
                 <div style={{
-                  width: 72, height: 72, borderRadius: 10, flexShrink: 0,
-                  background: 'var(--lav-light, #F0EDFB)',
+                  width: 72, height: 72, borderRadius: 16, flexShrink: 0,
+                  background: 'var(--acento-lilas-fundo)', color: 'var(--acento-lilas-tinta)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 28,
-                }}></div>
+                }}><IconGift size={28} /></div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-dark)', marginBottom: 4 }}>
@@ -269,7 +267,7 @@ export default function Parcerias({ showToast }) {
                 {item.link && (
                   <a href={normalizarUrl(item.link) || item.link}
                     target="_blank" rel="noreferrer"
-                    style={{ fontSize: 11, color: 'var(--primary)', wordBreak: 'break-all' }}>
+                    style={{ fontSize: 12, color: 'var(--primary-600)', wordBreak: 'break-all' }}>
                     {item.link}
                   </a>
                 )}
@@ -277,8 +275,8 @@ export default function Parcerias({ showToast }) {
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
                     {item.categorias.map(c => (
                       <span key={c} style={{
-                        fontSize: 10, padding: '2px 8px', borderRadius: 999,
-                        background: '#EDE9FB', color: '#5B3D9E',
+                        fontSize: 11, fontWeight: 650, padding: '3px 9px', borderRadius: 999,
+                        background: 'var(--acento-lilas-fundo)', color: 'var(--acento-lilas-texto)',
                       }}>
                         {CATEGORIAS.find(cat => cat.id === c)?.label || c}
                       </span>
@@ -286,8 +284,8 @@ export default function Parcerias({ showToast }) {
                     {item.tipoBeneficio === 'cupom' && (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-                        background: 'rgba(198,164,110,.18)', color: '#8A6A33',
+                        fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                        background: 'var(--acento-dourado-fundo)', color: 'var(--acento-dourado-texto)',
                       }}>
                         <IconTag size={10} /> Cupom · {item.percentualComissao || 0}% comissão
                       </span>
@@ -371,7 +369,7 @@ export default function Parcerias({ showToast }) {
               {form.imagemUrl && (
                 <div style={{ marginBottom: 12 }}>
                   <img src={urlDeImagem(form.imagemUrl)} alt="Prévia da imagem"
-                    style={{ height: 80, maxWidth: 220, borderRadius: 8, objectFit: 'contain', background: '#fff', border: '1px solid var(--border)' }}
+                    style={{ height: 80, maxWidth: 220, borderRadius: 12, objectFit: 'contain', background: '#fff', border: '1px solid var(--border)' }}
                     onError={e => { e.currentTarget.style.opacity = 0.25; }} />
                 </div>
               )}
@@ -444,7 +442,7 @@ export default function Parcerias({ showToast }) {
 
               {form.tipoBeneficio === 'cupom' && (
                 <div style={{
-                  background: 'var(--primary-lav, #EDE9F5)', borderRadius: 12,
+                  background: 'var(--primary-lav)', borderRadius: 16,
                   padding: 14, marginBottom: 16,
                 }}>
                   <div className="field-row">
@@ -463,15 +461,15 @@ export default function Parcerias({ showToast }) {
                         placeholder="3" />
                     </div>
                   </div>
-                  <p style={{ fontSize: 12, color: '#5B3D9E', margin: '0 0 12px' }}>
+                  <p style={{ fontSize: 12.5, color: 'var(--acento-lilas-texto)', margin: '0 0 12px' }}>
                     Desconto que chega à usuária: <strong>{descontoClienteCalculado.toFixed(1)}%</strong>
                     {'  ·  '}Comissão da Atravessia: <strong>{form.percentualComissao || 0}% do valor original</strong>
                   </p>
 
                   <p style={{
-                    fontSize: 12, color: '#5B3D9E', lineHeight: 1.55, margin: '0 0 12px',
+                    fontSize: 12.5, color: 'var(--acento-lilas-texto)', lineHeight: 1.55, margin: '0 0 12px',
                     background: 'var(--surface)', border: '1px solid var(--primary-200)',
-                    borderRadius: 8, padding: '8px 10px',
+                    borderRadius: 12, padding: '9px 12px',
                   }}>
                     A comissão é calculada sobre o valor original do serviço (antes do desconto).
                     {' '}Ex.: num serviço de {brl(100)}, a usuária paga {brl(Math.max(0, 100 - descontoClienteCalculado))} e

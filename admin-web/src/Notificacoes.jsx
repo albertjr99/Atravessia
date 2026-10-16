@@ -4,6 +4,7 @@ import { db } from './firebase';
 import {
   collection, addDoc, getDocs, serverTimestamp, onSnapshot, doc, updateDoc,
 } from 'firebase/firestore';
+import { IconCheck } from './Icons';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo', desc: 'Mensagem motivacional' },
@@ -159,7 +160,7 @@ export default function Notificacoes({ showToast }) {
                   <td><span className="badge">{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</span></td>
                   <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.texto}</td>
                   <td style={{ color: 'var(--text-light)', whiteSpace: 'nowrap' }}>{timeAgo(n.enviadoEm || n.criadoEm)}</td>
-                  <td>{n.lida ? '' : ''}</td>
+                  <td style={{ color: 'var(--sage)' }}>{n.lida ? <IconCheck size={16} aria-label="Lida" /> : ''}</td>
                 </tr>
               ))}
             </tbody>

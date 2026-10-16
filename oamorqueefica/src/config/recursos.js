@@ -10,3 +10,6 @@
 export const IA_DIARIO_CARTA = true;
 export const IA_CONVERSA = false;
 export const IA_PAINEL = false;
+// - IA_PLANO_ANO: plano de ação para o ano que começa, montado a partir do
+//   histórico da pessoa (no aparelho, sem custo). Plano Acolher em diante.
+export const IA_PLANO_ANO = true;

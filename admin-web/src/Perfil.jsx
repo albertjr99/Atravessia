@@ -121,15 +121,15 @@ export default function Perfil({ showToast, perfil }) {
               alt={form.nome}
               style={{
                 width: 88, height: 88, borderRadius: '50%', objectFit: 'cover',
-                border: '2px solid var(--primary-200)',
+                boxShadow: '0 0 0 3px var(--cor-superficie), 0 0 0 5px var(--lilas-300)',
               }}
             />
           ) : (
             <div style={{
               width: 88, height: 88, borderRadius: '50%',
-              background: 'linear-gradient(140deg, var(--primary), var(--primary-700))',
+              background: 'var(--cor-primaria-suave)', boxShadow: '0 0 0 3px var(--cor-superficie), 0 0 0 5px var(--lilas-300)',
               display: 'grid', placeItems: 'center',
-              color: '#fff', fontSize: 32, fontWeight: 600,
+              color: 'var(--cor-primaria-forte)', font: '600 italic 44px/1 var(--fonte-emocao)',
             }}>
               {inicial}
             </div>

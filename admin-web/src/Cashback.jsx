@@ -163,7 +163,7 @@ export default function Cashback({ showToast }) {
                   <strong>{usuarias[m.usuarioId] || 'Usuária'}</strong>
                   <span>{m.descricao ? `${m.descricao} · ` : ''}{dataCurta(m.criadoEm?.toMillis?.())} · {status}</span>
                 </div>
-                <div className="cb-mov-valor" style={{ color: credito ? 'var(--sage-dark, #3F5440)' : 'var(--text-mid)' }}>{credito ? '+' : '−'} {brl(m.valorCentavos)}</div>
+                <div className="cb-mov-valor" style={{ color: credito ? 'var(--sage-dark)' : 'var(--text-mid)' }}>{credito ? '+' : '−'} {brl(m.valorCentavos)}</div>
                 {podeEstornar ? <button className="btn-ghost" onClick={() => estornar(m)}>Estornar</button> : <span style={{ width: 84 }} />}
               </div>
             );
