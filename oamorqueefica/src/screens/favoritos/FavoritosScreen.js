@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Image,
@@ -10,6 +10,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
+import { BotaoFavoritar, AvisoRapido, useAvisoRapido, DicaFavoritos, acaoDoConteudo } from '../../components/Favoritar';
 
 const ilVazio = require('../../../assets/images/il_coracao_ramos.png');
 
@@ -25,10 +26,16 @@ const TIPO_ICONE = {
 // Ícone do botão de ação à direita do cartão.
 const acaoIconeDe = (tipo) => {
   if (tipo === 'imagem') return 'image-outline';
-  if (tipo === 'texto') return 'document-text-outline';
+  if (tipo === 'texto') return 'book-outline';
   if (tipo === 'documento' || tipo === 'link') return 'open-outline';
   return 'play';
 };
+
+// Plano mínimo do conteúdo. Itens sem o campo `plano` (ou com ele em texto)
+// são gratuitos, como no painel. Antes `temAcesso(undefined)` dava falso: o
+// cartão aparecia bloqueado e o toque num texto mostrava "Conteúdo Premium"
+// em vez de abrir o texto completo.
+const planoDe = (item) => Number(item?.plano) || 0;
 
 // Rótulo exibido quando o item não tem descrição (o antigo `grupo` deixou de existir).
 const TIPO_LABEL = { imagem: 'Imagem', texto: 'Texto', link: 'Link', documento: 'Documento', audio: 'Áudio', video: 'Vídeo' };
@@ -47,11 +54,32 @@ const corDaCategoria = () => ({
 
 export default function FavoritosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { favoritos, removerFavorito, temAcesso, colecoesComFalha } = useApp();
+  const { favoritos, removerFavorito, adicionarFavorito, temAcesso, colecoesComFalha } = useApp();
+  const { aviso, mostrar, fechar } = useAvisoRapido();
+  // "Desfazer" roda depois que a lista já mudou: usa sempre a versão atual.
+  const adicionarRef = useRef(adicionarFavorito);
+  adicionarRef.current = adicionarFavorito;
+
+  // Tirar dos Favoritos com aviso e opção de desfazer (o toque no coração
+  // preenchido era fácil de fazer sem querer e o item sumia sem explicação).
+  const desfavoritar = (item) => {
+    removerFavorito(item.conteudoId || item.id);
+    mostrar({
+      texto: 'Tirado dos seus Favoritos',
+      icone: 'heart-outline',
+      acao: {
+        rotulo: 'Desfazer',
+        onPress: () => {
+          adicionarRef.current({ ...item, id: item.id || item.conteudoId });
+          mostrar({ texto: 'Guardado nos seus Favoritos', icone: 'heart' });
+        },
+      },
+    });
+  };
   const semBiblioteca = colecoesComFalha?.length > 0;
 
   const handleItem = (item) => {
-    if (!temAcesso(item.plano)) {
+    if (!temAcesso(planoDe(item))) {
       Alert.alert(
         'Conteúdo Premium',
         `Este conteúdo requer um plano superior. Deseja ver os planos?`,
@@ -76,7 +104,7 @@ export default function FavoritosScreen({ navigation }) {
           tipo: item.tipo,
           url: item.url,
           texto: item.texto,
-          plano: item.plano,
+          plano: planoDe(item),
         },
       });
       return;
@@ -94,7 +122,7 @@ export default function FavoritosScreen({ navigation }) {
         titulo: item.titulo,
         descricao: item.descricao,
         categoria: item.grupo || item.categoria,
-        plano: item.plano,
+        plano: planoDe(item),
         tipo: item.tipo,
         url: item.url,
       },
@@ -124,12 +152,13 @@ export default function FavoritosScreen({ navigation }) {
             </Text>
           </View>
         ) : null}
+        {favoritos.length > 0 ? <DicaFavoritos /> : null}
         {favoritos.length === 0 ? (
           <View style={s.emptyWrap}>
             <Moldura source={ilVazio} tamanho={120} />
             <Text style={s.emptyTit}>Nenhum favorito ainda</Text>
             <Text style={s.emptySub}>
-              Toque no ícone de coração em qualquer conteúdo para salvá-lo aqui.
+              Toque em ♡ Favoritar em qualquer conteúdo para guardá-lo aqui.
             </Text>
             <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Audios')}>
               <Text style={s.emptyBtnTxt}>Explorar conteúdos</Text>
@@ -140,9 +169,10 @@ export default function FavoritosScreen({ navigation }) {
           <>
             <Text style={s.countLabel}>{favoritos.length} conteúdo{favoritos.length !== 1 ? 's' : ''} salvo{favoritos.length !== 1 ? 's' : ''}</Text>
             {favoritos.map(item => {
-              const bloqueado = !temAcesso(item.plano);
+              const bloqueado = !temAcesso(planoDe(item));
               const cat = corDaCategoria()[item.grupo] || corDaCategoria().acolhimento;
               const acaoIcone = acaoIconeDe(item.tipo);
+              const acao = acaoDoConteudo(item, bloqueado);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -150,36 +180,39 @@ export default function FavoritosScreen({ navigation }) {
                   onPress={() => handleItem(item)}
                   activeOpacity={0.8}
                 >
-                  <View style={[s.thumb, { backgroundColor: bloqueado ? cores().pessegoFundo : cat.bg }]}>
-                    <Ionicons
-                      name={bloqueado ? 'lock-closed-outline' : (TIPO_ICONE[item.tipo] || 'document-outline')}
-                      size={22}
-                      color={bloqueado ? colors.roseFg : cat.color}
-                    />
+                  <View style={s.itemLinha}>
+                    <View style={[s.thumb, { backgroundColor: bloqueado ? cores().pessegoFundo : cat.bg }]}>
+                      <Ionicons
+                        name={bloqueado ? 'lock-closed-outline' : (TIPO_ICONE[item.tipo] || 'document-outline')}
+                        size={22}
+                        color={bloqueado ? colors.roseFg : cat.color}
+                      />
+                    </View>
+                    <View style={s.info}>
+                      <Text style={s.titulo}>{item.titulo}</Text>
+                      {item.descricao ? (
+                        <Text style={s.desc} numberOfLines={2}>{item.descricao}</Text>
+                      ) : (
+                        <Text style={s.grupo}>{item.grupo || TIPO_LABEL[item.tipo] || ''}</Text>
+                      )}
+                    </View>
+                    <View style={[s.playBtn, bloqueado && { backgroundColor: cores().pessegoTinta }]}>
+                      {!bloqueado && <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />}
+                      <Ionicons
+                        name={bloqueado ? 'lock-closed' : acaoIcone}
+                        size={14} color="white"
+                        style={!bloqueado && acaoIcone === 'play' ? { marginLeft: 2 } : undefined}
+                      />
+                    </View>
                   </View>
-                  <View style={s.info}>
-                    <Text style={s.titulo}>{item.titulo}</Text>
-                    {item.descricao ? (
-                      <Text style={s.desc} numberOfLines={1}>{item.descricao}</Text>
-                    ) : (
-                      <Text style={s.grupo}>{item.grupo || TIPO_LABEL[item.tipo] || ''}</Text>
-                    )}
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => removerFavorito(item.conteudoId)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={s.favBtn}
-                    accessibilityLabel="Remover dos favoritos"
-                  >
-                    <Ionicons name="heart" size={19} color={colors.roseTexto} />
-                  </TouchableOpacity>
-                  <View style={[s.playBtn, bloqueado && { backgroundColor: cores().pessegoTinta }]}>
-                    {!bloqueado && <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />}
-                    <Ionicons
-                      name={bloqueado ? 'lock-closed' : acaoIcone}
-                      size={14} color="white"
-                      style={!bloqueado && acaoIcone === 'play' ? { marginLeft: 2 } : undefined}
-                    />
+                  {/* Rodapé: o que o toque no cartão faz + coração com rótulo. */}
+                  <View style={s.itemRodape}>
+                    <View style={s.acaoDica}>
+                      <Ionicons name={acao.icone} size={15} color={colors.lilasTexto} />
+                      <Text style={s.acaoDicaTxt} numberOfLines={1}>{acao.rotulo}</Text>
+                      {!bloqueado ? <Ionicons name="chevron-forward" size={13} color={colors.lilasTexto} /> : null}
+                    </View>
+                    <BotaoFavoritar favoritado onPress={() => desfavoritar(item)} />
                   </View>
                 </TouchableOpacity>
               );
@@ -188,6 +221,7 @@ export default function FavoritosScreen({ navigation }) {
         )}
         <View style={{ height: 40 + insets.bottom }} />
       </ScrollView>
+      <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
     </SafeAreaView>
   );
 }
@@ -234,14 +268,20 @@ const s = criarEstilos(() => ({
   avisoBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.erroFundo, borderRadius: 18, padding: 14, marginBottom: spacing.md },
   avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.roseTexto, lineHeight: 18 },
   countLabel: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, marginBottom: spacing.md, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 4 },
-  item: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 12 },
+  item: { ...vidro(), gap: 10, padding: 14, marginBottom: 12 },
+  itemLinha: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  itemRodape: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.bordaSuave,
+  },
+  acaoDica: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  acaoDicaTxt: { flexShrink: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
   itemBloqueado: { opacity: 0.7 },
   thumb: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   info: { flex: 1 },
   titulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo, lineHeight: 20 },
   desc: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2, marginTop: 2, lineHeight: 18 },
   grupo: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2, marginTop: 2, textTransform: 'capitalize' },
-  favBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.roseFundo },
   playBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' },
   emptyWrap: { ...vidro(), alignItems: 'center', paddingVertical: 32, paddingHorizontal: 24, gap: 10, marginTop: 8 },
   emptyTit: { fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo, textAlign: 'center', marginTop: 6 },

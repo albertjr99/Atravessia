@@ -44,7 +44,7 @@ const NAV_GRUPOS = [
       {
         icon: 'library', iconOff: 'library-outline',
         label: 'Biblioteca', sub: 'Áudios de check-in · Frases · Outros conteúdos',
-        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos', 'AdminVideos'],
+        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos', 'AdminVideos', 'AdminProdutos'],
       },
       {
         icon: 'compass', iconOff: 'compass-outline',
@@ -74,6 +74,7 @@ const NAV_GRUPOS = [
     titulo: 'Configuração',
     itens: [
       { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços e planos', screen: 'AdminPrecos' },
+      { icon: 'sparkles', iconOff: 'sparkles-outline', label: 'Funções da AtravessIA', screen: 'AdminRecursosIA' },
       { icon: 'document-text', iconOff: 'document-text-outline', label: 'Sobre e parcerias', screen: 'AdminInstitucional' },
       { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
     ],

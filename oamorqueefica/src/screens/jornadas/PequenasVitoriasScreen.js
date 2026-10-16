@@ -28,8 +28,46 @@ const MESES = [
 ];
 const DIAS_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
-// Datas gravadas como 'AAAA-MM-DD' (ou ISO completo, em registros antigos).
-const diaDe = (data) => (typeof data === 'string' ? data.slice(0, 10) : '');
+const TZ = 'America/Sao_Paulo';
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/;
+const diaBrasilia = (date) => (
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString('sv-SE', { timeZone: TZ })
+    : ''
+);
+
+// Dia (AAAA-MM-DD, horário de Brasília) de um valor de data em qualquer formato
+// já gravado: 'AAAA-MM-DD', 'DD/MM/AAAA', ISO com hora (ex.: '...T02:10:00.000Z'),
+// Timestamp do Firestore, Date ou milissegundos.
+function diaDoValor(valor) {
+  if (valor == null || valor === '') return '';
+  if (typeof valor === 'string') {
+    const t = valor.trim();
+    if (RE_DIA.test(t)) return t;
+    const br = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+    // ISO com fuso (Z ou ±hh:mm): converte para o dia de Brasília. Antes o
+    // texto era cortado nos 10 primeiros caracteres, que é o dia em UTC — uma
+    // vitória registrada depois das 21h caía no dia (e às vezes no mês) seguinte.
+    if (/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:?\d{2})$/i.test(t)) return diaBrasilia(new Date(t));
+    // ISO sem fuso: a data escrita já é a local.
+    if (/^\d{4}-\d{2}-\d{2}[T ]/.test(t)) return t.slice(0, 10);
+    return diaBrasilia(new Date(t));
+  }
+  if (typeof valor === 'number') return diaBrasilia(new Date(valor));
+  if (valor instanceof Date) return diaBrasilia(valor);
+  if (typeof valor.toDate === 'function') return diaBrasilia(valor.toDate());
+  if (typeof valor.seconds === 'number') return diaBrasilia(new Date(valor.seconds * 1000));
+  return '';
+}
+
+// Dia da vitória. Registros sem `data` legível (Timestamp, formato antigo ou
+// ausente) eram descartados do agrupamento e ficavam fora dos meses; agora
+// todos passam pelo mesmo cálculo, com `criadoEm` como reserva.
+const diaDe = (v) => {
+  const dia = diaDoValor(v?.data);
+  return RE_DIA.test(dia) ? dia : diaDoValor(v?.criadoEm);
+};
 const diaUTC = (iso) => {
   const [a, m, d] = iso.split('-').map(Number);
   return Date.UTC(a, m - 1, d);
@@ -51,34 +89,32 @@ function rotuloDoMes(chave) {
   return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${a}`;
 }
 
-// Organiza o histórico: dias recentes (últimos 7) abertos e o resto agrupado
-// por mês, recolhido. Assim a tela continua leve mesmo com muitas vitórias.
+// Organiza o histórico: TODOS os dias agrupados por mês (do mais recente ao
+// mais antigo). Antes os últimos 7 dias ficavam soltos, fora dos meses, e o
+// resto do mesmo mês ficava dentro do grupo — o mês atual aparecia partido.
+// Agora o mês atual (e o de dias recentes) já vem aberto e os outros, recolhidos.
 function organizarHistorico(vitorias, hoje) {
   const porDia = new Map();
   vitorias.forEach(v => {
-    const dia = diaDe(v.data);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return;
+    const dia = diaDe(v);
+    if (!RE_DIA.test(dia)) return;
     if (!porDia.has(dia)) porDia.set(dia, []);
     porDia.get(dia).push(v);
   });
   const dias = [...porDia.keys()].sort().reverse();
 
-  const recentes = [];
   const meses = new Map();
   dias.forEach(dia => {
-    const item = { dia, itens: porDia.get(dia) };
-    if (diasEntre(dia, hoje) < 7) recentes.push(item);
-    else {
-      const mes = dia.slice(0, 7);
-      if (!meses.has(mes)) meses.set(mes, []);
-      meses.get(mes).push(item);
-    }
+    const mes = dia.slice(0, 7);
+    if (!meses.has(mes)) meses.set(mes, { mes, dias: [], total: 0, recente: false });
+    const grupo = meses.get(mes);
+    const itens = porDia.get(dia);
+    grupo.dias.push({ dia, itens });
+    grupo.total += itens.length;
+    if (diasEntre(dia, hoje) < 7) grupo.recente = true;
   });
   return {
-    recentes,
-    meses: [...meses.entries()].map(([mes, lista]) => ({
-      mes, dias: lista, total: lista.reduce((n, d) => n + d.itens.length, 0),
-    })),
+    meses: [...meses.values()].map(g => ({ ...g, abertoPadrao: g.recente || g.mes === hoje.slice(0, 7) })),
     diasComVitoria: dias.length,
   };
 }
@@ -131,10 +167,10 @@ export default function PequenasVitoriasScreen({ navigation }) {
     );
   }
 
-  const registradosHoje = vitorias.filter(v => diaDe(v.data) === hoje).map(v => v.label);
+  const registradosHoje = vitorias.filter(v => diaDe(v) === hoje).map(v => v.label);
   const semana = vitorias.filter(v => {
-    const dia = diaDe(v.data);
-    return /^\d{4}-\d{2}-\d{2}$/.test(dia) && diasEntre(dia, hoje) < 7;
+    const dia = diaDe(v);
+    return RE_DIA.test(dia) && diasEntre(dia, hoje) >= 0 && diasEntre(dia, hoje) < 7;
   }).length;
 
   const registrar = (label) => {
@@ -147,7 +183,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
   // Toque por engano: a vitória de hoje pode ser desfeita. Dias anteriores
   // ficam como estão.
   const pedirRemocao = (label) => {
-    const registro = [...vitorias].reverse().find(v => diaDe(v.data) === hoje && v.label === label);
+    const registro = [...vitorias].reverse().find(v => diaDe(v) === hoje && v.label === label);
     if (!registro) return;
     confirmar(
       'Desfazer esta vitória?',
@@ -336,15 +372,15 @@ export default function PequenasVitoriasScreen({ navigation }) {
             </View>
           ) : (
             <>
-              {historico.recentes.map(renderDia)}
-
-              {historico.meses.map(({ mes, dias, total }) => {
-                const aberto = !!mesesAbertos[mes];
+              {historico.meses.map(({ mes, dias, total, abertoPadrao }) => {
+                const aberto = mesesAbertos[mes] ?? abertoPadrao;
                 return (
                   <View key={mes} style={styles.mesBloco}>
                     <TouchableOpacity
                       style={styles.mesTopo}
-                      onPress={() => setMesesAbertos(m => ({ ...m, [mes]: !m[mes] }))}
+                      onPress={() => setMesesAbertos(m => ({ ...m, [mes]: !(m[mes] ?? abertoPadrao) }))}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: aberto }}
                       activeOpacity={0.8}
                     >
                       <View style={styles.mesIcone}>

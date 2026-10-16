@@ -9,6 +9,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminPlanosCards from './AdminPlanosCards';
+import AdminAssinaturaCard from './AdminAssinaturaCard';
 import { est, dadoPlano, acento, Degrade } from './adminEstilo';
 
 const PLANOS_INFO = [
@@ -254,6 +255,7 @@ export default function AdminPrecosScreen() {
         <Text style={s.hint}>
           Atenção: alterar os preços aqui não reconfigura automaticamente os produtos no Stripe. Os valores são usados pelas Cloud Functions para criar novos checkouts.
         </Text>
+        <AdminAssinaturaCard />
       </ScrollView>
     </AdminLayout>
   );

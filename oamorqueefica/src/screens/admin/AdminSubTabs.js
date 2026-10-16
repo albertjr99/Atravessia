@@ -14,7 +14,8 @@ export const GRUPOS_SUBTABS = {
     { label: 'Áudios Check-in', screen: 'AdminAudios' },
     { label: 'Frases', screen: 'AdminFrases' },
     { label: 'Outros conteúdos', screen: 'AdminOutrosConteudos' },
-    { label: 'Vídeos', screen: 'AdminVideos' },
+    { label: 'Apresentações', screen: 'AdminVideos' },
+    { label: 'Produtos Atravessia', screen: 'AdminProdutos' },
   ],
   jornada: [
     { label: 'Travessia', screen: 'AdminTravessia' },

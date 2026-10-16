@@ -21,9 +21,9 @@ import DiarioDoDia from '../../components/DiarioDoDia';
 import CompartilharFrase from '../../components/CompartilharFrase';
 import { escolherEnviarFoto } from '../../utils/fotoPerfil';
 import { brl } from '../cashback/CashbackScreen';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { IA_CONVERSA, IA_DIARIO_CARTA, IA_PLANO_ANO } from '../../config/recursos';
+import { RECURSOS_IA, NOME_PLANO } from '../../config/recursosIA';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -41,13 +41,6 @@ const NAV_DIREITA = [
   { name: 'Planos', icon: 'diamond', screen: 'Planos' },
   { name: 'Perfil', icon: 'person-circle', screen: 'Perfil' },
 ];
-const temIA = IA_DIARIO_CARTA || IA_CONVERSA || IA_PLANO_ANO;
-const atalhosIA = [
-  IA_CONVERSA && { icone: 'chatbubbles-outline', rotulo: 'Conversar', tela: 'ConversaIA' },
-  IA_DIARIO_CARTA && { icone: 'create-outline', rotulo: 'Diário guiado', tela: 'DiarioGuiado' },
-  IA_DIARIO_CARTA && { icone: 'mail-open-outline', rotulo: 'Carta do mês', tela: 'CartaMes' },
-  IA_PLANO_ANO && { icone: 'compass-outline', rotulo: 'Plano do ano', tela: 'PlanoAno' },
-].filter(Boolean);
 
 function ItemNav({ item, navigation }) {
   return (
@@ -70,12 +63,17 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
     usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes, temAcesso,
+    recursosIA, iaAtiva, podeUsarIA,
   } = useApp();
-  // A AtravessIA (diário guiado e carta do mês) é do Plano Acolher em diante.
-  const iaLiberada = temAcesso(1);
+  // Funções da AtravessIA ligadas no painel; cada uma com o seu plano mínimo.
+  const atalhosIA = RECURSOS_IA.filter(r => iaAtiva(r.chave));
+  const temIA = atalhosIA.length > 0;
+  const algumaIALiberada = atalhosIA.some(r => podeUsarIA(r.chave));
   const abrirIA = (tela) => {
-    if (iaLiberada) { navigation.navigate(tela); return; }
-    Alert.alert('Disponível no Plano Acolher', 'O diário guiado e a carta do mês fazem parte dos planos pagos, a partir do Plano Acolher. Deseja conhecer os planos?', [
+    const r = RECURSOS_IA.find(x => x.tela === tela);
+    if (!r || podeUsarIA(r.chave)) { navigation.navigate(tela); return; }
+    const plano = NOME_PLANO[recursosIA[r.chave]?.planoMinimo ?? 1] || 'Acolher';
+    Alert.alert(`Disponível no Plano ${plano}`, `${r.rotulo} faz parte do Plano ${plano} em diante. Deseja conhecer os planos?`, [
       { text: 'Agora não', style: 'cancel' },
       { text: 'Ver planos', onPress: () => navigation.navigate('Planos') },
     ]);
@@ -84,19 +82,26 @@ export default function HomeScreen({ navigation }) {
   const tablet = larguraTela >= 600;
   // Com avisos, o cartão de vidro sobe e fica por cima da aquarela; o topo cresce um pouco para caber.
   const temAvisos = cashback?.saldoCentavos > 0 || notificacoes.some(n => !n.lida);
-  const alturaTopo = (tablet ? 230 : 172) + (temAvisos ? 28 : 0);
+  // O logo fica logo abaixo dos botões do topo, com respiro até a saudação.
+  const alturaTopo = (tablet ? 250 : 196) + (temAvisos ? 28 : 0);
   const [reflexaoAberta, setReflexaoAberta] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
   const [compartilhando, setCompartilhando] = useState(false);
   const { sair, firebaseUser, perfil, atualizarPerfil } = useAuth();
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo ou o link.
-  const [temProdutos, setTemProdutos] = useState(false);
+  // "Produtos Atravessia" só aparece depois que o painel publicar o vídeo, o link
+  // ou algum item ativo de divulgação (coleção produtosItens).
+  const [temProdutosVideo, setTemProdutos] = useState(false);
   useEffect(() => onSnapshot(doc(db, 'configuracoes', 'videos'), (snap) => {
     const p = snap.exists() ? snap.data()?.produtos : null;
     setTemProdutos(!!p && p.ativo !== false && !!(p.url || p.link));
   }, (e) => console.warn('[Home] produtos:', e?.message)), []);
+  const [temProdutosItens, setTemProdutosItens] = useState(false);
+  useEffect(() => onSnapshot(query(collection(db, 'produtosItens'), where('ativo', '==', true), limit(1)),
+    (snap) => setTemProdutosItens(!snap.empty),
+    (e) => console.warn('[Home] produtosItens:', e?.message)), []);
+  const temProdutos = temProdutosVideo || temProdutosItens;
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
   // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.
@@ -156,7 +161,6 @@ export default function HomeScreen({ navigation }) {
   const inicial = (usuario.apelido || usuario.nome || 'A').trim().charAt(0).toUpperCase();
 
   const itensMenu = [
-    ...(IA_CONVERSA ? [{ icone: 'sparkles-outline', rotulo: 'AtravessIA', sub: 'Conversa, diário guiado e carta do mês', acao: () => navigation.navigate('AtravessIA') }] : []),
     { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', acao: () => navigation.navigate('Cashback') },
     { icone: 'image-outline', rotulo: 'Foto do perfil', sub: perfil?.photoURL ? 'Trocar ou remover sua foto' : 'Personalize sua área com uma foto', acao: tocarFoto },
     { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
@@ -165,7 +169,7 @@ export default function HomeScreen({ navigation }) {
     { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', acao: () => navigation.navigate('MeusCupons') },
     { icone: 'heart-outline', rotulo: 'Favoritos', sub: 'O que você guardou com carinho', acao: () => navigation.navigate('Favoritos') },
     { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', acao: () => navigation.navigate('Sobre') },
-    { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Leve seu serviço para quem atravessa o luto', acao: () => navigation.navigate('SejaParceiro') },
+    { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Saiba como', acao: () => navigation.navigate('SejaParceiro') },
     { icone: 'log-out-outline', rotulo: 'Sair da conta', acao: handleSair, sair: true },
   ];
 
@@ -226,7 +230,7 @@ export default function HomeScreen({ navigation }) {
             <Ionicons name="menu-outline" size={20} color={colors.lilasIcone} />
           </TouchableOpacity>
           {/* Logo + nome do app */}
-          <View style={[s.headerBottom, temAvisos && s.headerBottomAvisos]}>
+          <View style={[s.headerBottom, { top: insets.top + (tablet ? 84 : 70) }]}>
             <LogoRespira source={logo} style={[s.headerLogo, tablet && s.headerLogoTablet]} />
             <Text style={[s.appTitle, tablet && s.appTitleTablet]}>Atravessia</Text>
           </View>
@@ -497,7 +501,7 @@ export default function HomeScreen({ navigation }) {
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={s.iaTit}>AtravessIA</Text>
-                <Text style={s.iaSub}>{IA_CONVERSA ? 'Converse, escreva no diário guiado, leia sua carta do mês ou monte seu plano do ano' : 'Escreva no diário guiado, leia sua carta do mês ou monte seu plano do ano'}</Text>
+                <Text style={s.iaSub}>{atalhosIA.map(a => a.rotulo).join(' · ')}</Text>
               </View>
             </View>
             {atalhosIA.map(a => (
@@ -505,8 +509,11 @@ export default function HomeScreen({ navigation }) {
                 <View style={[s.pilula, { backgroundColor: a.tela === 'CartaMes' ? colors.roseFundo : a.tela === 'PlanoAno' ? colors.sageFundo : colors.lav1 }]}>
                   <Ionicons name={a.icone} size={17} color={a.tela === 'CartaMes' ? colors.roseTexto : a.tela === 'PlanoAno' ? colors.sageFg : colors.lav5} />
                 </View>
-                <Text style={s.iaFolhaRotulo}>{a.rotulo}</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.tl} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.iaFolhaRotulo}>{a.rotulo}</Text>
+                  {!podeUsarIA(a.chave) && <Text style={s.iaSub}>{`Plano ${NOME_PLANO[recursosIA[a.chave]?.planoMinimo ?? 1]} em diante`}</Text>}
+                </View>
+                <Ionicons name={podeUsarIA(a.chave) ? 'chevron-forward' : 'lock-closed-outline'} size={16} color={colors.tl} />
               </TouchableOpacity>
             ))}
           </Pressable>
@@ -528,7 +535,7 @@ export default function HomeScreen({ navigation }) {
           <View style={[s.iaBotaoLinha, { bottom: Math.max(insets.bottom, 8) + 14 }]} pointerEvents="box-none">
           <TouchableOpacity
             style={s.iaBotao}
-            onPress={() => (iaLiberada ? setIaAberta(true) : abrirIA('DiarioGuiado'))}
+            onPress={() => (algumaIALiberada ? setIaAberta(true) : abrirIA(atalhosIA[0]?.tela))}
             activeOpacity={0.85}
             accessibilityRole="button"
             accessibilityLabel="AtravessIA"
@@ -623,11 +630,11 @@ const s = criarEstilos(() => ({
   headerLogoTablet: { width: 76, height: 76, borderRadius: 18 },
   appTitleTablet: { fontSize: 50 },
   headerBottom: {
-    position: 'absolute', bottom: 12, left: 0, right: 0,
+    position: 'absolute', left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   appTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontFamily: 'Titulo',
     fontSize: 38, color: colors.escuro ? colors.titulo : '#45358A',
     letterSpacing: 0.3,
   },
@@ -635,20 +642,20 @@ const s = criarEstilos(() => ({
   body: { paddingHorizontal: 16 },
 
   // Saudação
-  greetSect: { marginTop: 22, marginBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  greetSect: { marginTop: 30, marginBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 58, height: 58, borderRadius: 29, backgroundColor: colors.cardSolido,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarImg: { width: 54, height: 54, borderRadius: 27 },
-  avatarInicial: { fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 30, color: colors.lav6 },
+  avatarInicial: { fontFamily: 'Titulo', fontSize: 30, color: colors.lav6 },
   avatarBadge: {
     position: 'absolute', right: -2, bottom: -2, width: 22, height: 22, borderRadius: 11,
     backgroundColor: colors.lav4, borderWidth: 2, borderColor: colors.bg,
     alignItems: 'center', justifyContent: 'center',
   },
   greetName: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontFamily: 'Titulo',
     fontSize: 31, lineHeight: 36, color: colors.titulo,
   },
   greetSub: {
@@ -674,7 +681,7 @@ const s = criarEstilos(() => ({
     color: colors.lilasTexto, letterSpacing: 1.2, textTransform: 'uppercase',
   },
   fraseTxt: {
-    fontFamily: 'CormorantGaramond_500Medium_Italic',
+    fontFamily: 'TituloLeve',
     fontSize: 25, color: colors.titulo, lineHeight: 33, textAlign: 'center',
   },
   fraseAutor: {
@@ -805,7 +812,7 @@ const s = criarEstilos(() => ({
     borderWidth: 1, borderColor: colors.bordaSuave,
   },
   reflexaoTxt: {
-    fontFamily: 'CormorantGaramond_500Medium_Italic',
+    fontFamily: 'TituloLeve',
     fontSize: 18, color: colors.lilasTexto, lineHeight: 26, marginTop: 4,
   },
 
@@ -890,7 +897,7 @@ const s = criarEstilos(() => ({
   pilula: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   avatarAnel: { width: 64, height: 64, borderRadius: 32, padding: 3 },
   checkinTit: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic', fontSize: 25, lineHeight: 30,
+    fontFamily: 'Titulo', fontSize: 25, lineHeight: 30,
     color: colors.titulo, textAlign: 'center',
   },
   btnGradiente: { ...StyleSheet.absoluteFillObject, borderRadius: 999 },

@@ -31,7 +31,7 @@
 .aln-opcional { font-size: 11px; color: var(--text-light); font-weight: 400; }
 .aln-separador { height: 1px; background: var(--cor-borda-forte); margin: 0 6px; max-width: 1168px; }
 .aln-subtitulo {
-  font: 600 italic 30px/1.1 var(--fonte-emocao);
+  font: 700 24px/1.1 var(--fonte-emocao);
   color: var(--cor-texto);
   margin: 0 0 6px;
 }

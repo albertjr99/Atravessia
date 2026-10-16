@@ -22,6 +22,8 @@ const ALVOS = [
   { id: 'todos', label: 'Todas as usuárias' },
   { id: 'plano1', label: 'Somente Acolher (pago)' },
   { id: 'gratis', label: 'Somente Perceber (grátis)' },
+  { id: 'plano2', label: 'Somente Compreender (futuro)' },
+  { id: 'plano3', label: 'Somente Evoluir (futuro)' },
 ];
 
 export default function AdminNotificacoesScreen({ navigation }) {

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
+import { normalizarRecursosIA } from '../config/recursosIA';
 import { pareceNome, primeiroNome } from '../utils/nome';
 import { indiceFraseDoDia, agendarFrasesDoDia } from '../utils/fraseNotificacao';
 import {
@@ -507,6 +508,17 @@ export function AppProvider({ children }) {
 
   const temAcesso = (planoNecessario) => usuario.acessoTotal || cortesiaAtivaAgora() || usuario.plano >= planoNecessario;
 
+  // Funções da AtravessIA ligadas no painel e plano mínimo de cada uma.
+  const [recursosIA, setRecursosIA] = useState(() => normalizarRecursosIA(null));
+  useEffect(() => {
+    if (!uid) return undefined;
+    return onSnapshot(doc(db, 'configuracoes', 'recursosIA'),
+      (snap) => setRecursosIA(normalizarRecursosIA(snap.exists() ? snap.data() : null)),
+      () => {});
+  }, [uid]);
+  const iaAtiva = (chave) => !!recursosIA[chave]?.ativo;
+  const podeUsarIA = (chave) => iaAtiva(chave) && temAcesso(recursosIA[chave]?.planoMinimo ?? 1);
+
   // ---- Regras de liberação diária de conteúdo (Plano 1: 1 áudio de acolhimento/dia; Plano 2+: +1 complementar/dia) ----
   const liberadoHoje = (grupo) => conteudosLiberados.some(c => c.grupo === grupo && c.data === hojeStr());
 
@@ -615,9 +627,12 @@ export function AppProvider({ children }) {
     const idsResgatesPendentes = new Set(resgatesAguardandoConfirmacao.map(r => r.id));
     const temPlanoPago = usuario.acessoTotal || usuario.plano >= 1;
     const editoriais = notificacoesEditoriais.filter(n => {
-      // Alvo (todos / plano1 / gratis), definido no painel administrativo.
+      // Alvo (todos / plano1 / gratis / plano2 / plano3), definido no painel administrativo.
       if (n.alvo === 'plano1' && !temPlanoPago) return false;
       if (n.alvo === 'gratis' && temPlanoPago) return false;
+      // Planos futuros: só quem estiver exatamente nesse plano (ou com acesso total).
+      if (n.alvo === 'plano2' && !(usuario.acessoTotal || usuario.plano === 2)) return false;
+      if (n.alvo === 'plano3' && !(usuario.acessoTotal || usuario.plano === 3)) return false;
 
       // Some assim que o atendimento é confirmado ou contestado.
       if (n.tipo === 'confirmar_resgate') return idsResgatesPendentes.has(n.resgateId);
@@ -667,6 +682,7 @@ export function AppProvider({ children }) {
       gerarVoucherBeneficio, responderConfirmacaoResgate,
       jornadasComProgresso, concluirAtividadeJornada,
       temAcesso,
+      recursosIA, iaAtiva, podeUsarIA,
       podeLiberarNovo, liberarConteudo, jaLiberado, liberadoHoje, conteudosLiberados,
     }}>
       {children}

@@ -369,7 +369,7 @@ const ph = StyleSheet.create({
     alignItems: 'center',
   },
   appBarTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontFamily: 'Titulo',
     fontSize: 17,
     color: '#45358A',
   },
@@ -445,7 +445,7 @@ const pw = StyleSheet.create({
     paddingBottom: 4,
   },
   homeGreet: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontFamily: 'Titulo',
     fontSize: 15,
     color: '#2A2433',
   },
@@ -476,7 +476,7 @@ const pw = StyleSheet.create({
     marginBottom: 5,
   },
   fraseTexto: {
-    fontFamily: 'CormorantGaramond_500Medium_Italic',
+    fontFamily: 'TituloLeve',
     fontSize: 11,
     color: '#2A2433',
     lineHeight: 15,
@@ -559,7 +559,7 @@ const pw = StyleSheet.create({
     gap: 8,
   },
   defaultTitle: {
-    fontFamily: 'CormorantGaramond_600SemiBold_Italic',
+    fontFamily: 'Titulo',
     fontSize: 16,
     color: '#2A2433',
     marginTop: 4,

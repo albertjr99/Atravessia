@@ -172,6 +172,10 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   if (!plano) throw new HttpsError('invalid-argument', 'Plano inválido.');
   // Assinatura mensal (padrão) ou anual.
   const anual = request.data?.periodo === 'anual';
+  // As administradoras escolhem quais formas ficam disponíveis (configuracoes/assinatura).
+  const cfgAssinatura = (await db.collection('configuracoes').doc('assinatura').get()).data() || {};
+  if (anual && cfgAssinatura.anualAtivo === false) throw new HttpsError('failed-precondition', 'A assinatura anual não está disponível no momento.');
+  if (!anual && cfgAssinatura.mensalAtivo === false) throw new HttpsError('failed-precondition', 'A assinatura mensal não está disponível no momento.');
 
   const userRef = db.collection('usuarios').doc(uid);
   const [valorAtual, userSnap] = await Promise.all([

@@ -129,7 +129,7 @@ export default function Perfil({ showToast, perfil }) {
               width: 88, height: 88, borderRadius: '50%',
               background: 'var(--cor-primaria-suave)', boxShadow: '0 0 0 3px var(--cor-superficie), 0 0 0 5px var(--lilas-300)',
               display: 'grid', placeItems: 'center',
-              color: 'var(--cor-primaria-forte)', font: '600 italic 44px/1 var(--fonte-emocao)',
+              color: 'var(--cor-primaria-forte)', font: '700 35px/1 var(--fonte-emocao)',
             }}>
               {inicial}
             </div>

@@ -17,7 +17,7 @@ import { est, acento, Degrade } from './adminEstilo';
 
 // Vídeos de apresentação (mesma tela do painel web: admin-web/src/Videos.jsx).
 // Ficam em configuracoes/videos → { jornadas: {...}, parcerias: {...} }.
-const VIDEOS = [
+export const VIDEOS = [
   { chave: 'jornadas', nome: 'Continue a travessia', tituloPadrao: 'Conheça o Continue a travessia' },
   { chave: 'parcerias', nome: 'Experimente a vida', tituloPadrao: 'Conheça o Experimente a vida' },
   // Não abre sozinho: fica na tela "Produtos Atravessia" (cartão na tela inicial).
@@ -64,7 +64,7 @@ function Campo({ aoFocar, ...props }) {
   return <TextInput ref={ref} {...props} onFocus={(e) => { aoFocar?.(ref); props.onFocus?.(e); }} />;
 }
 
-function CartaoVideo({ info, dados, aoFocar }) {
+export function CartaoVideo({ info, dados, aoFocar }) {
   const { width } = useWindowDimensions();
   const [titulo, setTitulo] = useState(dados?.titulo || info.tituloPadrao);
   const [enviando, setEnviando] = useState(false);
