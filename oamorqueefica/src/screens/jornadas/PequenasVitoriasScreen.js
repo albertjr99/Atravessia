@@ -5,11 +5,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ilustracao = require('../../../assets/images/il_broto.png');
+const ilVazio = require('../../../assets/images/il_mulher_flores.png');
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { ScriptTitle, QuoteText, LavandaBg } from '../../components';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { LavandaBg } from '../../components';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR } from '../../utils/date';
@@ -112,12 +114,18 @@ export default function PequenasVitoriasScreen({ navigation }) {
       <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <LavandaBg />
         <View style={styles.lockWrap}>
-          <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
-          <Text style={styles.lockTitle}>Disponível no Plano Acolher</Text>
-          <Text style={styles.lockSub}>Registre suas conquistas cotidianas e acompanhe sua reconstrução.</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Planos')} style={styles.lockBtn}>
-            <Text style={styles.lockBtnText}>Ver planos</Text>
-          </TouchableOpacity>
+          <View style={styles.lockCard}>
+            <Moldura source={ilustracao} tamanho={104} />
+            <View style={styles.lockChip}>
+              <Ionicons name="lock-closed" size={12} color={colors.lilasTexto} />
+              <Text style={styles.lockTitle}>Disponível no Plano Acolher</Text>
+            </View>
+            <Text style={styles.lockSub}>Registre suas conquistas cotidianas e acompanhe sua reconstrução.</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Planos')} style={styles.lockBtn} activeOpacity={0.85}>
+              <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+              <Text style={styles.lockBtnText}>Ver planos</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -174,13 +182,13 @@ export default function PequenasVitoriasScreen({ navigation }) {
       <View style={styles.diaItens}>
         {itens.map(v => (dia === hoje ? (
           <TouchableOpacity key={v.id} style={styles.diaItem} onPress={() => pedirRemocao(v.label)} activeOpacity={0.8}>
-            <Ionicons name="star" size={11} color={colors.gold} />
+            <Ionicons name="star" size={12} color={colors.escuro ? '#E5C68B' : '#C9A15A'} />
             <Text style={styles.diaItemTxt}>{v.label}</Text>
-            <Ionicons name="close" size={12} color={colors.tl} />
+            <Ionicons name="close" size={13} color={colors.texto2} />
           </TouchableOpacity>
         ) : (
           <View key={v.id} style={styles.diaItem}>
-            <Ionicons name="star" size={11} color={colors.gold} />
+            <Ionicons name="star" size={12} color={colors.escuro ? '#E5C68B' : '#C9A15A'} />
             <Text style={styles.diaItemTxt}>{v.label}</Text>
           </View>
         )))}
@@ -192,12 +200,12 @@ export default function PequenasVitoriasScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Pequenas Vitórias</Text>
-        <View style={{ width: 32 }} />
+        <Text style={styles.topTitle} numberOfLines={1}>Pequenas Vitórias</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
@@ -208,12 +216,12 @@ export default function PequenasVitoriasScreen({ navigation }) {
         <View style={styles.coluna}>
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <ScriptTitle size={22}>Cada passo importa</ScriptTitle>
-              <QuoteText style={{ marginTop: 6 }}>
+              <Text style={styles.titulo}>Cada passo importa</Text>
+              <Text style={styles.citacao}>
                 "As grandes reconstruções começam em passos quase invisíveis."
-              </QuoteText>
+              </Text>
             </View>
-            <Image source={ilustracao} style={styles.headerIlustracao} resizeMode="contain" />
+            <Moldura source={ilustracao} tamanho={76} />
           </View>
 
           {/* Resumo */}
@@ -249,7 +257,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
                     <Ionicons
                       name={jaRegistrada ? 'checkmark-circle' : iconeDaVitoria(v)}
                       size={15}
-                      color={jaRegistrada ? colors.sageFg : colors.lav5}
+                      color={jaRegistrada ? colors.sageFg : colors.lilasIcone}
                     />
                     <Text
                       style={[styles.chipText, jaRegistrada && styles.chipTextFeito]}
@@ -276,7 +284,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
                 <Text style={styles.verMaisTxt}>
                   {verTodasOpcoes ? 'Mostrar menos' : `Ver mais ${ocultas} ${ocultas === 1 ? 'opção' : 'opções'}`}
                 </Text>
-                <Ionicons name={verTodasOpcoes ? 'chevron-up' : 'chevron-down'} size={14} color={colors.lav5} />
+                <Ionicons name={verTodasOpcoes ? 'chevron-up' : 'chevron-down'} size={15} color={colors.lilasTexto} />
               </TouchableOpacity>
             ) : null}
 
@@ -293,19 +301,20 @@ export default function PequenasVitoriasScreen({ navigation }) {
                   onSubmitEditing={handleAdicionarCustom}
                   returnKeyType="done"
                 />
-                <TouchableOpacity onPress={handleAdicionarCustom} style={styles.customBtnOk}>
-                  <Ionicons name="checkmark" size={16} color="white" />
+                <TouchableOpacity onPress={handleAdicionarCustom} style={styles.customBtnOk} accessibilityLabel="Registrar">
+                  <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                  <Ionicons name="checkmark" size={18} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => { setMostraInputCustom(false); setTextoCustom(''); }}
                   style={styles.customBtnCancel}
                 >
-                  <Ionicons name="close" size={16} color={colors.tl} />
+                  <Ionicons name="close" size={18} color={colors.texto2} />
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity style={styles.personalizar} onPress={() => setMostraInputCustom(true)} activeOpacity={0.85}>
-                <Ionicons name="create-outline" size={15} color={colors.lav5} />
+                <Ionicons name="create-outline" size={16} color={colors.lilasTexto} />
                 <Text style={styles.personalizarTxt}>Escrever uma vitória minha</Text>
               </TouchableOpacity>
             )}
@@ -319,7 +328,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
           <Text style={styles.secTit}>Seu caminho de vitórias</Text>
           {vitorias.length === 0 ? (
             <View style={styles.vazio}>
-              <Ionicons name="star-outline" size={26} color={colors.lav4} />
+              <Moldura source={ilVazio} tamanho={112} />
               <Text style={styles.vazioTit}>Sua primeira vitória está a um toque</Text>
               <Text style={styles.vazioTxt}>
                 Levantar da cama, beber água, pedir ajuda: o que você registrar aparece aqui, organizado por dia.
@@ -338,12 +347,14 @@ export default function PequenasVitoriasScreen({ navigation }) {
                       onPress={() => setMesesAbertos(m => ({ ...m, [mes]: !m[mes] }))}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="calendar-outline" size={15} color={colors.lav5} />
+                      <View style={styles.mesIcone}>
+                        <Ionicons name="calendar-outline" size={16} color={colors.lilasIcone} />
+                      </View>
                       <Text style={styles.mesTitulo}>{rotuloDoMes(mes)}</Text>
                       <Text style={styles.mesQtd}>
                         {total === 1 ? '1 vitória' : `${total} vitórias`} · {dias.length === 1 ? '1 dia' : `${dias.length} dias`}
                       </Text>
-                      <Ionicons name={aberto ? 'chevron-up' : 'chevron-down'} size={16} color={colors.tl} />
+                      <Ionicons name={aberto ? 'chevron-up' : 'chevron-down'} size={17} color={colors.texto2} />
                     </TouchableOpacity>
                     {aberto && <View style={styles.mesDias}>{dias.map(renderDia)}</View>}
                   </View>
@@ -357,106 +368,129 @@ export default function PequenasVitoriasScreen({ navigation }) {
   );
 }
 
+
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
+// Ilustração da marca numa moldura arredondada (sem tintColor).
+function Moldura({ source, tamanho = 120 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={{
+      width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26), overflow: 'hidden',
+      borderWidth: 1, borderColor: colors.bordaLuz, backgroundColor: colors.cardSolido, flexShrink: 0,
+    }}>
+      <Image source={source} style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }} resizeMode="cover" />
+    </View>
+  );
+}
+
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  coluna: { width: '100%', paddingHorizontal: spacing.lg },
-
-  header: { paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center' },
-  headerIlustracao: { width: 72, height: 72, marginLeft: 8, borderRadius: 16 },
-
-  resumo: {
-    flexDirection: 'row', backgroundColor: colors.lav1, borderRadius: radius.xl,
-    paddingVertical: spacing.md, marginBottom: spacing.md,
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  coluna: { width: '100%', paddingHorizontal: spacing.lg, paddingTop: 8 },
+
+  header: { paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titulo: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo },
+  citacao: { fontFamily: fonts.quote, fontSize: 18, lineHeight: 25, color: colors.texto2, marginTop: 4 },
+
+  resumo: { ...vidro(), flexDirection: 'row', paddingVertical: 16, marginBottom: spacing.md },
   resumoItem: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
-  resumoBorda: { borderLeftWidth: 1, borderLeftColor: colors.lav2 },
-  resumoValor: { fontFamily: fonts.serif, fontSize: 24, color: colors.lav6 },
-  resumoRotulo: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1, textAlign: 'center' },
+  resumoBorda: { borderLeftWidth: 1, borderLeftColor: colors.bordaSuave },
+  resumoValor: { fontFamily: 'Figtree_800ExtraBold', fontSize: 28, lineHeight: 32, color: colors.lilasTexto },
+  resumoRotulo: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2, marginTop: 2, textAlign: 'center' },
 
-  cartao: {
-    backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg,
-    borderWidth: 1, borderColor: colors.border, marginBottom: spacing.lg, ...shadow.card,
-  },
-  cartaoTit: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  cartaoSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 2, marginBottom: spacing.md },
+  cartao: { ...vidro(), padding: 18, marginBottom: spacing.lg },
+  cartaoTit: { fontFamily: fonts.bodyBold, fontSize: 18, lineHeight: 24, color: colors.titulo },
+  cartaoSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2, marginBottom: spacing.md },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
-    backgroundColor: colors.bg, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 7, paddingHorizontal: 11,
+    flexDirection: 'row', alignItems: 'center', gap: 7, maxWidth: '100%',
+    backgroundColor: colors.lavVeu, borderRadius: radius.full,
+    borderWidth: 1, borderColor: 'transparent',
+    minHeight: 40, paddingVertical: 7, paddingHorizontal: 13,
   },
-  chipFeito: { backgroundColor: colors.sage + '26', borderColor: colors.sage },
-  chipText: { flexShrink: 1, fontFamily: fonts.body, fontSize: 12, color: colors.td },
+  chipFeito: { backgroundColor: colors.sageFundo, borderColor: colors.escuro ? 'rgba(159,208,176,0.35)' : '#BFDCC9' },
+  chipText: { flexShrink: 1, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.titulo },
   chipTextFeito: { color: colors.sageFg, fontFamily: fonts.bodyBold },
 
-  dicaDesfazer: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, marginTop: 8 },
+  dicaDesfazer: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 10 },
   verMais: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 8, marginTop: 4 },
-  verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
+  verMaisTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
 
   personalizar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lav3, backgroundColor: colors.lav1,
-    borderRadius: radius.full, paddingVertical: 10, marginTop: spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lav3, backgroundColor: colors.vidro,
+    borderRadius: radius.full, minHeight: 46, marginTop: spacing.md,
   },
-  personalizarTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
-  customRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md },
+  personalizarTxt: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lilasTexto },
+  customRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.md },
   customInput: {
-    flex: 1, backgroundColor: colors.bg, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.lav3,
-    paddingVertical: 9, paddingHorizontal: 14,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
+    flex: 1, backgroundColor: colors.cardSolido, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border, minHeight: 48,
+    paddingVertical: 10, paddingHorizontal: 14,
+    fontFamily: fonts.body, fontSize: 14, color: colors.titulo,
   },
   customBtnOk: {
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.botao, borderRadius: 24, overflow: 'hidden',
+    width: 46, height: 46, alignItems: 'center', justifyContent: 'center',
   },
   customBtnCancel: {
-    backgroundColor: colors.bg, borderRadius: radius.full,
-    width: 34, height: 34, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.vidro, borderRadius: 24,
+    width: 46, height: 46, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.bordaLuz,
   },
 
-  secTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: spacing.sm },
+  secTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, marginBottom: spacing.sm, paddingHorizontal: 4 },
 
-  diaCard: {
-    backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm,
-  },
-  diaTopo: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 },
-  diaTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
-  diaQtd: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
+  diaCard: { ...vidro(), borderRadius: 22, padding: 16, marginBottom: 10 },
+  diaTopo: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
+  diaTitulo: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.titulo },
+  diaQtd: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.lilasTexto },
   diaItens: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   diaItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: '100%',
-    backgroundColor: colors.bg, borderRadius: radius.full,
-    paddingVertical: 5, paddingHorizontal: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
+    backgroundColor: colors.douradoFundo, borderRadius: radius.full,
+    paddingVertical: 6, paddingHorizontal: 11,
   },
-  diaItemTxt: { flexShrink: 1, fontFamily: fonts.body, fontSize: 12, color: colors.td },
+  diaItemTxt: { flexShrink: 1, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.douradoTitulo },
 
-  mesBloco: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, marginBottom: spacing.sm, overflow: 'hidden',
-  },
-  mesTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md },
-  mesTitulo: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  mesQtd: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  mesDias: { paddingHorizontal: spacing.sm, paddingBottom: spacing.xs, backgroundColor: colors.bg },
+  mesBloco: { ...vidro(), borderRadius: 22, marginBottom: 10, overflow: 'hidden' },
+  mesTopo: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
+  mesIcone: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  mesTitulo: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.titulo },
+  mesQtd: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2 },
+  mesDias: { paddingHorizontal: 10, paddingBottom: 6, borderTopWidth: 1, borderTopColor: colors.bordaSuave, paddingTop: 10 },
 
-  vazio: {
-    alignItems: 'center', gap: 6, padding: spacing.xl,
-    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
-  },
-  vazioTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, textAlign: 'center' },
-  vazioTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, textAlign: 'center', lineHeight: 18 },
+  vazio: { ...vidro(), alignItems: 'center', gap: 8, padding: spacing.xl },
+  vazioTit: { fontFamily: fonts.serif, fontSize: 24, lineHeight: 30, color: colors.titulo, textAlign: 'center', marginTop: 6 },
+  vazioTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 20 },
 
-  lockWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: 8 },
-  lockTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginTop: 8 },
-  lockSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
-  lockBtn: { marginTop: spacing.md, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  lockWrap: { flex: 1, justifyContent: 'center', padding: spacing.lg },
+  lockCard: { ...vidro(), alignItems: 'center', padding: spacing.xl, gap: 10 },
+  lockChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.lav1, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 5, marginTop: 6 },
+  lockTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
+  lockSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 20 },
+  lockBtn: { marginTop: spacing.sm, backgroundColor: colors.botao, borderRadius: radius.full, overflow: 'hidden', paddingHorizontal: 28, minHeight: 50, justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: colors.botaoBase },
+  lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
 }));

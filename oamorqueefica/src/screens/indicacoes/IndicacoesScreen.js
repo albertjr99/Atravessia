@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StatusBar, Image, Linking, useWindowDimensions,
+  View, Text, ScrollView, TouchableOpacity, StatusBar, Image, Linking, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { urlDeImagem } from '../../utils/imagemUrl';
 import { normalizarUrl } from '../../utils/abrirLink';
@@ -33,10 +35,10 @@ function CartaoIndicacao({ item, onAbrir, largura }) {
       <View style={s.imagemCaixa}>
         {imagem && !erroImg
           ? <Image source={{ uri: imagem }} style={s.imagem} resizeMode="contain" onError={() => setErroImg(true)} />
-          : <Ionicons name="gift-outline" size={34} color={colors.lav3} />}
+          : <View style={s.imagemVazia}><Ionicons name="gift-outline" size={30} color={colors.lilasIcone} /></View>}
       </View>
       <View style={s.corpo}>
-        <Text style={s.categoria}>{rotuloCategoria(item.categoria)}</Text>
+        <View style={s.categoriaChip}><Text style={s.categoria}>{rotuloCategoria(item.categoria)}</Text></View>
         <Text style={s.titulo} numberOfLines={3}>{item.titulo}</Text>
         {!!item.descricao && (
           <>
@@ -49,10 +51,19 @@ function CartaoIndicacao({ item, onAbrir, largura }) {
           </>
         )}
         <View style={{ flex: 1 }} />
-        <TouchableOpacity style={s.botao} onPress={() => onAbrir(item)} activeOpacity={0.85}>
+        <Profundo
+          externo={s.botaoExterno}
+          estilo={s.botao}
+          base={colors.botaoBase}
+          sombra={s.botaoHalo}
+          altura={4}
+          onPress={() => onAbrir(item)}
+          accessibilityLabel="Ver na Amazon"
+        >
+          <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.botaoGrad} />
           <Text style={s.botaoTxt}>Ver na Amazon</Text>
-          <Ionicons name="open-outline" size={14} color="white" />
-        </TouchableOpacity>
+          <Ionicons name="open-outline" size={15} color="white" />
+        </Profundo>
       </View>
     </View>
   );
@@ -85,11 +96,11 @@ export default function IndicacoesScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconeBtn} accessibilityLabel="Voltar">
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Indicações Atravessia</Text>
+        <Text style={s.topTitle} numberOfLines={1}>Indicações Atravessia</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -98,18 +109,20 @@ export default function IndicacoesScreen({ navigation }) {
           <Text style={s.intro}>Escolhemos com carinho livros, objetos e cuidados que podem acompanhar você nessa travessia.</Text>
 
           {categorias.length > 1 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtros}>
-              {[{ id: 'todas', rotulo: 'Todas' }, ...categorias].map(c => (
-                <TouchableOpacity key={c.id} style={[s.filtro, filtro === c.id && s.filtroSel]} onPress={() => setFiltro(c.id)}>
-                  <Text style={[s.filtroTxt, filtro === c.id && s.filtroTxtSel]}>{c.rotulo}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <View style={s.trilho}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtros}>
+                {[{ id: 'todas', rotulo: 'Todas' }, ...categorias].map(c => (
+                  <TouchableOpacity key={c.id} style={[s.filtro, filtro === c.id && s.filtroSel]} onPress={() => setFiltro(c.id)} accessibilityState={{ selected: filtro === c.id }}>
+                    <Text style={[s.filtroTxt, filtro === c.id && s.filtroTxtSel]}>{c.rotulo}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           )}
 
           {lista.length === 0 ? (
             <View style={s.vazio}>
-              <Ionicons name="book-outline" size={34} color={colors.lav3} />
+              <View style={s.vazioIcone}><Ionicons name="book-outline" size={28} color={colors.lilasIcone} /></View>
               <Text style={s.vazioTit}>Em breve</Text>
               <Text style={s.vazioTxt}>Nossas indicações estão sendo preparadas. Volte em breve.</Text>
             </View>
@@ -120,7 +133,7 @@ export default function IndicacoesScreen({ navigation }) {
           )}
 
           <View style={s.aviso}>
-            <Ionicons name="information-circle-outline" size={16} color={colors.lav5} />
+            <Ionicons name="information-circle-outline" size={18} color={colors.lilasIcone} />
             <Text style={s.avisoTxt}>
               Como Associada da Amazon, a Atravessia recebe uma comissão por compras qualificadas feitas por estes links. O preço para você não muda, e isso ajuda a manter o app.
             </Text>
@@ -133,34 +146,55 @@ export default function IndicacoesScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingBottom: 6 },
-  iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   coluna: { width: '100%', gap: spacing.md },
-  intro: { fontFamily: fonts.body, fontSize: 14.5, lineHeight: 21, color: colors.tm, textAlign: 'center' },
-  filtros: { gap: 8 },
-  filtro: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
-  filtroSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  filtroTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  filtroTxtSel: { fontFamily: fonts.bodyBold, color: 'white' },
-  grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  imagemCaixa: { height: 140, backgroundColor: 'white', alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
-  imagem: { width: '86%', height: 124 },
-  corpo: { padding: 12, gap: 4, flex: 1, minHeight: 170 },
-  categoria: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lav5, letterSpacing: 0.6, textTransform: 'uppercase' },
-  titulo: { fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 19, color: colors.td },
-  descricao: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.tm },
-  verMais: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  botao: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8,
-    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 9,
+  intro: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.texto2, textAlign: 'center', paddingHorizontal: 8 },
+  trilho: { borderRadius: radius.full, overflow: 'hidden', backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz },
+  filtros: { padding: 4, gap: 4 },
+  filtro: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 14, borderRadius: radius.full },
+  filtroSel: {
+    backgroundColor: colors.escuro ? colors.lav2 : colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 1,
   },
+  filtroTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2 },
+  filtroTxtSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+  grade: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  // Cartão de vidro do produto (a foto fica sobre branco, como na loja)
+  card: {
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz, overflow: 'hidden',
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 20, elevation: 2,
+  },
+  imagemCaixa: { height: 140, backgroundColor: colors.escuro ? colors.vidroTenue : '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  imagemVazia: { width: 64, height: 64, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  imagem: { width: '86%', height: 124 },
+  corpo: { padding: 12, gap: 6, flex: 1, minHeight: 176 },
+  categoriaChip: { alignSelf: 'flex-start', backgroundColor: colors.lav1, borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 3 },
+  categoria: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lilasTexto, letterSpacing: 0.4 },
+  titulo: { fontFamily: fonts.bodyBold, fontSize: 15, lineHeight: 20, color: colors.titulo },
+  descricao: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.texto2 },
+  verMais: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto },
+  botaoExterno: { marginTop: 8 },
+  botao: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 40, paddingHorizontal: 10, overflow: 'hidden' },
+  botaoGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  botaoHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 6 }, shadowOpacity: colors.escuro ? 0.4 : 0.24, shadowRadius: 10, elevation: 3 },
   botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
   vazio: { alignItems: 'center', gap: 8, padding: spacing.xl },
-  vazioTit: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
-  vazioTxt: { fontFamily: fonts.body, fontSize: 13.5, color: colors.tm, textAlign: 'center' },
-  aviso: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: colors.lav1, borderRadius: radius.md, padding: 12 },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: colors.tm },
+  vazioIcone: { width: 64, height: 64, borderRadius: 22, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  vazioTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo },
+  vazioTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center' },
+  aviso: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: colors.vidroTenue,
+    borderRadius: 18, padding: 14, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: colors.texto2 },
 }));

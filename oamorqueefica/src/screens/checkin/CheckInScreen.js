@@ -2,17 +2,20 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Platform, Image,
-  Animated, Dimensions,
+  Animated, Dimensions, useWindowDimensions,
 } from 'react-native';
 
 const SCREEN_W = Dimensions.get('window').width;
-const CONFETTI_COLORS = [colors.lav4, '#D4A89A', '#7A9E7E', '#D4B483', '#B9C8DF', '#C8B4E0', '#F5D6A0'];
+// Confete nas cores dos dados de emoção (Luz de Vidro).
+const CONFETTI_COLORS = ['#A595DC', '#E39A72', '#6E9B7E', '#C9A15A', '#7F9BCB', '#D682A0', '#F2B9A0'];
 const CONFETTI_COUNT = 20;
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes, audios as audiosEstaticos } from '../../data';
-import { Button, LavandaBg } from '../../components';
+import { LavandaBg } from '../../components';
+import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { ProximoPasso } from '../../components/DiarioDoDia';
@@ -34,18 +37,56 @@ const LOCAIS = [
 
 const TIPO_ICONE = { audio: 'headset-outline', video: 'videocam-outline', documento: 'document-text-outline', link: 'link-outline', imagem: 'image-outline', texto: 'document-text-outline' };
 
+// Cores da "gota" de cada emoção: véu (fundo) e tinta (ícone). No noturno o
+// véu claro vira um véu translúcido da cor do dado, e a tinta fica mais clara.
+const veuEmo = (e) => (colors.escuro ? `${e?.dado || e?.color || '#A595DC'}33` : (e?.bg || colors.lav1));
+const tintaEmo = (e) => (colors.escuro ? (e?.dado || e?.color) : e?.color) || colors.lilasIcone;
+
+// Ilustração da marca numa moldura arredondada (sem tintColor). A imagem é
+// um pouco maior que a moldura para esconder os cantos claros do arquivo.
+function Moldura({ source, tamanho = 72 }) {
+  const extra = Math.round(tamanho * 0.1);
+  return (
+    <View style={[s.moldura, { width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.26) }]}>
+      <Image
+        source={source}
+        style={{ width: tamanho + extra * 2, height: tamanho + extra * 2, margin: -extra }}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
+
+// Botão principal "Luz de Vidro": degradê lilás com degrau que afunda ao toque.
+function BotaoLuz({ titulo, onPress, icone, style }) {
+  return (
+    <Profundo
+      externo={[s.btnExterno, style]}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={onPress}
+      accessibilityLabel={titulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <Text style={s.btnTxt}>{titulo}</Text>
+      {icone ? <Ionicons name={icone} size={18} color="white" /> : null}
+    </Profundo>
+  );
+}
+
 function ConteudoCard({ c, onPress, isFav, onFav }) {
   return (
     <TouchableOpacity style={s.cCard} onPress={onPress} activeOpacity={0.85}>
       <View style={s.cThumb}>
-        <Ionicons name={TIPO_ICONE[c.tipo] || 'document-outline'} size={20} color={colors.lav5} />
+        <Ionicons name={TIPO_ICONE[c.tipo] || 'document-outline'} size={21} color={colors.lilasIcone} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.cTit} numberOfLines={2}>{c.titulo}</Text>
         {c.descricao ? <Text style={s.cDesc} numberOfLines={2}>{c.descricao}</Text> : null}
       </View>
-      <TouchableOpacity onPress={onFav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={18} color={isFav ? '#C06080' : colors.tl} />
+      <TouchableOpacity onPress={onFav} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={s.favPilula}>
+        <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={19} color={isFav ? colors.roseTexto : colors.tl} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -55,6 +96,9 @@ const totalCamadas = (camadas) => (camadas || []).reduce((n, l) => n + (l?.lengt
 
 export default function CheckInScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
+  // Grade de emoções: 4 por linha no celular, até 7 no tablet.
+  const { width: larguraTela } = useWindowDimensions();
+  const colunasEmo = Math.max(4, Math.min(7, Math.floor((larguraTela - 64) / 96)));
   const { adicionarCheckin, checkins, podeLiberarNovo, liberarConteudo, jaLiberado, usuario, conteudos, audiosAcolhimento, adicionarFavorito, removerFavorito, isFavorito, temAcesso, conteudosLiberados, liberadoHoje } = useApp();
   const liberadoHojeAcolhimento = liberadoHoje?.('acolhimento') === true;
   const { firebaseUser, perfil, atualizarPerfil } = useAuth();
@@ -241,16 +285,16 @@ export default function CheckInScreen({ navigation, route }) {
     return (
       <SafeAreaView style={s.safe} edges={['left', 'right']}>
         <LavandaBg />
-        <View style={s.savedWrap}>
-          <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.lav4} />
+        <ScrollView contentContainerStyle={[s.savedWrap, { paddingTop: insets.top + 28 }]} showsVerticalScrollIndicator={false}>
+          <View style={s.celebCircle}>
+            <Ionicons name="checkmark-circle-outline" size={46} color={colors.lilasIcone} />
           </View>
           <Text style={s.savedTit}>Check-in já registrado 💜</Text>
           <Text style={s.savedSub}>Você já registrou seu check-in hoje. Volte amanhã para continuar seu acompanhamento emocional.</Text>
           {/* Sugestão opcional do próximo passo do dia (some com "Agora não"). */}
           <ProximoPasso navigation={navigation} depoisDe="checkin" />
-          <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
-        </View>
+          <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -287,9 +331,9 @@ export default function CheckInScreen({ navigation, route }) {
               );
             })}
           </View>
-          <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
-            <View style={s.celebCircle}>
-              <Ionicons name="sparkles" size={48} color={colors.gold} />
+          <ScrollView contentContainerStyle={[s.savedWrap, { paddingTop: insets.top + 28 }]} showsVerticalScrollIndicator={false}>
+            <View style={[s.celebCircle, s.celebDourado]}>
+              <Ionicons name="sparkles-outline" size={46} color={colors.escuro ? '#E5C68B' : '#9A6B1F'} />
             </View>
             <Text style={s.savedTit}>Que bom saber disso! 💜</Text>
             <Text style={s.savedHint}>Continue se cuidando. Voltamos amanhã para o próximo check-in.</Text>
@@ -300,19 +344,19 @@ export default function CheckInScreen({ navigation, route }) {
                 <View style={s.sugestaoAcoes}>
                   {podeTrocarConteudo && (
                     <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
-                      <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                      <Ionicons name="shuffle" size={14} color={colors.lilasTexto} />
                       <Text style={s.verConteudosLinkTxt}>Ver outra sugestão</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
                     <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
-                    <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+                    <Ionicons name="arrow-forward" size={14} color={colors.lilasTexto} />
                   </TouchableOpacity>
                 </View>
               </View>
             )}
             <ProximoPasso navigation={navigation} depoisDe="checkin" />
-            <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
+            <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
           </ScrollView>
         </SafeAreaView>
       );
@@ -322,9 +366,9 @@ export default function CheckInScreen({ navigation, route }) {
     return (
       <SafeAreaView style={s.safe} edges={['left', 'right']}>
         <LavandaBg />
-        <ScrollView contentContainerStyle={s.savedWrap} showsVerticalScrollIndicator={false}>
-          <View style={[s.celebCircle, { backgroundColor: colors.lav2 }]}>
-            <Ionicons name="heart" size={40} color={colors.lav4} />
+        <ScrollView contentContainerStyle={[s.savedWrap, { paddingTop: insets.top + 28 }]} showsVerticalScrollIndicator={false}>
+          <View style={s.celebCircle}>
+            <Ionicons name="heart-outline" size={42} color={colors.lilasIcone} />
           </View>
           <Text style={s.savedTit}>Check-in registrado</Text>
 
@@ -335,13 +379,13 @@ export default function CheckInScreen({ navigation, route }) {
               <View style={s.sugestaoAcoes}>
                 {podeTrocarConteudo && (
                   <TouchableOpacity style={s.verConteudosLink} onPress={() => trocarSugestao('conteudo')}>
-                    <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                    <Ionicons name="shuffle" size={14} color={colors.lilasTexto} />
                     <Text style={s.verConteudosLinkTxt}>Ver outra sugestão</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity style={s.verConteudosLink} onPress={() => navigation.navigate('Audios')}>
                   <Text style={s.verConteudosLinkTxt}>Ver todos os conteúdos</Text>
-                  <Ionicons name="arrow-forward" size={12} color={colors.lav4} />
+                  <Ionicons name="arrow-forward" size={14} color={colors.lilasTexto} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -359,16 +403,17 @@ export default function CheckInScreen({ navigation, route }) {
                   <TouchableOpacity
                     onPress={() => toggleFavAudio(audioRec)}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={s.favPilula}
                   >
                     <Ionicons
                       name={isFavorito(audioRec.id) ? 'heart' : 'heart-outline'}
-                      size={18}
-                      color={isFavorito(audioRec.id) ? '#C06080' : colors.tl}
+                      size={19}
+                      color={isFavorito(audioRec.id) ? colors.roseTexto : colors.tl}
                     />
                   </TouchableOpacity>
                 ) : (
                   <View style={s.recLockTag}>
-                    <Ionicons name="lock-closed" size={10} color={colors.lav5} />
+                    <Ionicons name="lock-closed" size={11} color={colors.lilasTexto} />
                     <Text style={s.recLockTxt}>Plano Acolher</Text>
                   </View>
                 )}
@@ -383,8 +428,8 @@ export default function CheckInScreen({ navigation, route }) {
                   <View style={s.recThumb}>
                     <Ionicons
                       name={temPlano1 ? 'headset-outline' : 'lock-closed-outline'}
-                      size={22}
-                      color={temPlano1 ? colors.lav4 : colors.tl}
+                      size={23}
+                      color={temPlano1 ? colors.lilasIcone : colors.tl}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -394,9 +439,12 @@ export default function CheckInScreen({ navigation, route }) {
                     </Text>
                   </View>
                   <View style={[s.playBtn, !temPlano1 && s.playBtnBloqueado]}>
+                    {temPlano1 && (
+                      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                    )}
                     <Ionicons
                       name={temPlano1 ? 'play' : 'lock-closed'}
-                      size={14}
+                      size={16}
                       color="white"
                       style={temPlano1 && { marginLeft: 2 }}
                     />
@@ -406,7 +454,7 @@ export default function CheckInScreen({ navigation, route }) {
 
               {temPlano1 && podeTrocarAudio && !audioLiberado && !liberadoHojeAcolhimento && (
                 <TouchableOpacity style={s.trocarAudio} onPress={() => trocarSugestao('audio')}>
-                  <Ionicons name="shuffle" size={13} color={colors.lav4} />
+                  <Ionicons name="shuffle" size={14} color={colors.lilasTexto} />
                   <Text style={s.verConteudosLinkTxt}>Ver outro áudio</Text>
                 </TouchableOpacity>
               )}
@@ -418,7 +466,7 @@ export default function CheckInScreen({ navigation, route }) {
                   activeOpacity={0.8}
                 >
                   <Text style={s.recUpgradeTxt}>Conhecer o Plano Acolher</Text>
-                  <Ionicons name="arrow-forward" size={12} color={colors.lav5} />
+                  <Ionicons name="arrow-forward" size={14} color={colors.lilasTexto} />
                 </TouchableOpacity>
               )}
             </View>
@@ -426,15 +474,17 @@ export default function CheckInScreen({ navigation, route }) {
 
           {!conteudoExibido && !audioRec && !temPlano1 && (
             <TouchableOpacity style={s.upgradeCard} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
-              <Ionicons name="headset-outline" size={20} color={colors.lav4} />
+              <View style={s.cThumb}>
+                <Ionicons name="headset-outline" size={21} color={colors.lilasIcone} />
+              </View>
               <Text style={s.upgradeTxt}>Áudios de acolhimento disponíveis no Plano Acolher</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.lav4} />
+              <Ionicons name="chevron-forward" size={18} color={colors.lilasTexto} />
             </TouchableOpacity>
           )}
 
           <ProximoPasso navigation={navigation} depoisDe="checkin" />
 
-          <Button title="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24, width: '100%' }} />
+          <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
         </ScrollView>
       </SafeAreaView>
     );
@@ -444,59 +494,77 @@ export default function CheckInScreen({ navigation, route }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Check-in emocional</Text>
-        <View style={{ width: 32 }} />
+        <Text style={s.topTitle} numberOfLines={1}>Check-in emocional</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={s.headerBox}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        {/* Pergunta + grade de emoções em "gotas" */}
+        <View style={s.cartao}>
+          <View style={s.headerRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.headerQ}>Como você está se sentindo hoje?</Text>
               <Text style={s.headerSub}>Sua resposta ajuda a te acolher e a receber conteúdos que fazem sentido para você.</Text>
             </View>
-            <Image source={ilustracao} style={s.headerIlustracao} resizeMode="contain" />
+            <Moldura source={ilustracao} tamanho={72} />
           </View>
-        </View>
 
-        {/* Grid de emoções */}
-        <View style={s.emoGrid}>
-          {emocoes.map(e => {
-            const selected = emocaoSel === e.id;
-            return (
-              <TouchableOpacity key={e.id}
-                style={[s.emoCard, selected && { borderColor: e.color, backgroundColor: e.bg + '40' }]}
-                onPress={() => { vibrarLeve(); setEmocaoSel(e.id); }} activeOpacity={0.8}>
-                <View style={[s.emoIcon, { backgroundColor: e.bg }]}>
-                  <Ionicons name={`${e.icon}-outline`} size={24} color={e.color} />
-                </View>
-                <Text style={[s.emoName, selected && { color: e.color, fontFamily: fonts.bodyBold }]} numberOfLines={2} adjustsFontSizeToFit>{e.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          <View style={s.emoGrid}>
+            {emocoes.map(e => {
+              const selected = emocaoSel === e.id;
+              return (
+                <TouchableOpacity
+                  key={e.id}
+                  style={[s.gota, { width: `${100 / colunasEmo}%` }]}
+                  onPress={() => { vibrarLeve(); setEmocaoSel(e.id); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={e.label}
+                >
+                  <View style={[s.gotaAnel, selected && s.gotaAnelSel]}>
+                    <View style={[s.gotaOrbe, { backgroundColor: veuEmo(e) }]}>
+                      <Ionicons name={`${e.icon}-outline`} size={26} color={tintaEmo(e)} />
+                    </View>
+                  </View>
+                  <Text
+                    style={[s.emoName, selected && s.emoNameSel]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {e.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Pergunta sobre onde o sentimento está presente */}
         {emocaoSel && (
-          <View style={s.sect}>
+          <View style={s.cartao}>
             <Text style={s.sectTitle2}>Onde esse sentimento esteve/está mais presente hoje?</Text>
-            <Text style={[s.headerSub, { marginBottom: 10, marginTop: 4 }]}>Opcional — ajuda a personalizar seu acompanhamento.</Text>
+            <Text style={[s.headerSub, { marginBottom: 12, marginTop: 4 }]}>Opcional — ajuda a personalizar seu acompanhamento.</Text>
             <View style={s.localGrid}>
               {LOCAIS.map(l => {
                 const sel = localSel === l.id;
                 return (
                   <TouchableOpacity
                     key={l.id}
-                    style={[s.localCard, sel && { borderColor: colors.lav4, backgroundColor: colors.lav1 }]}
+                    style={[s.localCard, sel && s.localCardSel]}
                     onPress={() => setLocalSel(sel ? null : l.id)}
                     activeOpacity={0.8}
+                    accessibilityState={{ selected: sel }}
                   >
-                    <Ionicons name={l.icon} size={20} color={sel ? colors.lav4 : colors.tl} />
-                    <Text style={[s.localLabel, sel && { color: colors.lav5, fontFamily: fonts.bodyBold }]}>{l.label}</Text>
+                    <View style={[s.localIcone, sel && s.localIconeSel]}>
+                      <Ionicons name={l.icon} size={19} color={sel ? colors.white : colors.lilasIcone} />
+                    </View>
+                    <Text style={[s.localLabel, sel && s.localLabelSel]}>{l.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -508,10 +576,10 @@ export default function CheckInScreen({ navigation, route }) {
             DEPOIS do check-in ser registrado (bloco acima, em `salvo`). */}
 
         {/* Histórico */}
-        <View style={s.sect}>
+        <View style={s.cartao}>
           <View style={s.histHeader}>
             <Text style={s.sectTitle2}>Seu histórico emocional</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Relatorios')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Relatorios')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Text style={s.histLink}>Ver histórico</Text>
             </TouchableOpacity>
           </View>
@@ -525,126 +593,155 @@ export default function CheckInScreen({ navigation, route }) {
                 const yOffset = 0;
                 return (
                   <View key={i} style={[s.histPt, { marginTop: yOffset }]}>
-                    <View style={[s.histDot, { backgroundColor: emoObj?.color || colors.lav3 }]} />
+                    <View style={[s.histDot, { backgroundColor: emoObj?.dado || emoObj?.color || colors.lav3 }]} />
                     <Text style={s.histLbl}>{d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</Text>
                   </View>
                 );
               })}
-              <View style={[s.histPt, { marginTop: 5 }]}>
+              <View style={s.histPt}>
                 <View style={[s.histDot, s.histDotHoje]} />
-                <Text style={[s.histLbl, { color: colors.lav5, fontFamily: fonts.bodyBold }]}>Hoje</Text>
+                <Text style={[s.histLbl, s.histLblHoje]}>Hoje</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={[s.sect, { paddingBottom: 40 }]}>
-          <Button title="Registrar check-in" onPress={handleSalvar} />
+        <View style={{ paddingBottom: 40 + insets.bottom, marginTop: 4 }}>
+          <BotaoLuz titulo="Registrar check-in" onPress={handleSalvar} />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
+const vidro = () => ({
+  backgroundColor: colors.card,
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: colors.bordaLuz,
+  shadowColor: colors.sombra,
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: colors.escuro ? 0.28 : 0.11,
+  shadowRadius: 20,
+  elevation: 2,
+});
+
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: colors.lav1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td },
-  headerBox: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm },
-  headerIlustracao: { width: 72, height: 72, marginLeft: 8, flexShrink: 0, borderRadius: 16 },
-  headerQ: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.td, marginBottom: 6 },
-  headerSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 19 },
-  emoGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg, gap: 10,
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
-  emoCard: {
-    width: '22%', minWidth: 74,
-    backgroundColor: colors.card, borderRadius: 16,
-    paddingVertical: 10, alignItems: 'center', gap: 6,
-    borderWidth: 1.5, borderColor: colors.lav1,
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  scroll: { paddingHorizontal: spacing.lg, paddingTop: 8 },
+
+  cartao: { ...vidro(), padding: 18, marginBottom: 14 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  moldura: {
+    overflow: 'hidden', flexShrink: 0, borderWidth: 1, borderColor: colors.bordaLuz,
+    backgroundColor: colors.cardSolido,
   },
-  emoIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  emoName: { fontFamily: fonts.body, fontSize: 11, color: colors.td, textAlign: 'center' },
-  sect: { paddingHorizontal: spacing.lg, marginTop: 14 },
-  sectTitle2: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  suggCard: {
-    backgroundColor: colors.card, borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: colors.lav1,
-    boxShadow: '0px 2px 10px rgba(184,166,201,0.12)',
+  headerQ: { fontFamily: fonts.serif, fontSize: 26, lineHeight: 31, color: colors.titulo, marginBottom: 6 },
+  headerSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, lineHeight: 20 },
+
+  // Gotas de emoção (como no Início): véu da cor da emoção + ícone na tinta dela
+  emoGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 14 },
+  gota: { alignItems: 'center', gap: 6, paddingHorizontal: 2 },
+  gotaAnel: { padding: 3, borderRadius: 999, borderWidth: 2.5, borderColor: 'transparent' },
+  gotaAnelSel: { borderColor: colors.botao },
+  gotaOrbe: {
+    width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.escuro ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.8)',
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 3 }, shadowOpacity: colors.escuro ? 0.2 : 0.07, shadowRadius: 6, elevation: 1,
   },
-  suggMsg: { fontFamily: fonts.quote, fontSize: 13, fontStyle: 'italic', color: colors.tm, lineHeight: 20 },
-  suggHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  suggTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.td },
-  suggRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  suggThumb: {
-    width: 50, height: 50, borderRadius: 12,
-    backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center',
-  },
-  suggTag: { fontFamily: fonts.body, fontSize: 10, color: colors.tl },
-  suggName: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginTop: 2 },
-  playBtnLg: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center',
-  },
-  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  histLink: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5 },
-  histCard: {
-    backgroundColor: colors.card, borderRadius: 16, padding: 14, paddingBottom: 10,
-    borderWidth: 1, borderColor: colors.lav1, position: 'relative',
-  },
+  emoName: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.titulo, textAlign: 'center', alignSelf: 'stretch' },
+  emoNameSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+
+  sectTitle2: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 22, color: colors.titulo },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8 },
+  histLink: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.lilasTexto },
+  histCard: { position: 'relative', paddingTop: 4 },
   histLine: {
-    position: 'absolute', left: 24, right: 24, top: 22,
-    height: 2, backgroundColor: colors.lav1, borderRadius: 1,
+    position: 'absolute', left: 18, right: 18, top: 10,
+    height: 2, backgroundColor: colors.lav2, borderRadius: 1,
   },
   histRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  histPt: { alignItems: 'center', gap: 4, flex: 1 },
-  histDot: { width: 12, height: 12, borderRadius: 6, zIndex: 1 },
-  histDotHoje: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.lav4, borderWidth: 2, borderColor: colors.lav5 },
-  histLbl: { fontFamily: fonts.body, fontSize: 9, color: colors.tl },
-  playBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
+  histPt: { alignItems: 'center', gap: 6, flex: 1 },
+  histDot: { width: 14, height: 14, borderRadius: 7, zIndex: 1, borderWidth: 2, borderColor: colors.cardSolido },
+  histDotHoje: { width: 16, height: 16, borderRadius: 8, backgroundColor: colors.botao, borderWidth: 3, borderColor: colors.lav2, marginTop: -1 },
+  histLbl: { fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.tl },
+  histLblHoje: { color: colors.lilasTexto, fontFamily: fonts.bodyBold },
+
+  // Botão principal com degradê e profundidade
+  btnExterno: { alignSelf: 'stretch' },
+  btnFace: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    minHeight: 54, paddingHorizontal: 24, overflow: 'hidden',
+  },
+  btnHalo: {
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 4,
+  },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16.5, color: colors.white, letterSpacing: 0.2 },
+
+  playBtn: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: colors.botao, alignItems: 'center', justifyContent: 'center',
+  },
   // flexGrow (e não flex) para o conteúdo continuar rolável quando passa da altura da tela.
-  savedWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  celebCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  savedTit: { fontFamily: fonts.bodyBold, fontSize: 22, color: colors.td, marginBottom: 8, textAlign: 'center' },
-  savedSub: { fontFamily: fonts.quote, fontSize: 16, fontStyle: 'italic', color: colors.tm, marginBottom: 8, textAlign: 'center', lineHeight: 24 },
-  savedHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', lineHeight: 18, marginBottom: 8 },
-  recCard: { width: '100%', backgroundColor: colors.lav1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
-  recCardBloqueado: { backgroundColor: colors.card, borderStyle: 'dashed', borderColor: colors.lav3 },
-  recLockTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.lav1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.lav2 },
-  recLockTxt: { fontFamily: fonts.bodyBold, fontSize: 9, color: colors.lav5 },
+  savedWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingBottom: 40 },
+  celebCircle: {
+    width: 104, height: 104, borderRadius: 52, backgroundColor: colors.lav1,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+    borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 12 }, shadowOpacity: colors.escuro ? 0.35 : 0.18, shadowRadius: 22, elevation: 3,
+  },
+  celebDourado: { backgroundColor: colors.douradoFundo },
+  savedTit: { fontFamily: fonts.serif, fontSize: 32, lineHeight: 38, color: colors.titulo, marginBottom: 8, textAlign: 'center' },
+  savedSub: { fontFamily: fonts.quote, fontSize: 19, color: colors.texto2, marginBottom: 8, textAlign: 'center', lineHeight: 27 },
+  savedHint: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 20, marginBottom: 8 },
+  recCard: { ...vidro(), width: '100%', padding: 18, marginTop: 14 },
+  recCardBloqueado: { borderStyle: 'dashed', borderColor: colors.lav3 },
+  recLockTag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.lav1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  recLockTxt: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lilasTexto },
   playBtnBloqueado: { backgroundColor: colors.tl },
-  recUpgradeLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
-  recUpgradeTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  recTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  recTag: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.lav4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  recFavHint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginBottom: 8 },
+  recUpgradeLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.bordaSuave },
+  recUpgradeTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
+  recTagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  recTag: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, textTransform: 'uppercase', letterSpacing: 1 },
+  recFavHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginBottom: 10 },
   recRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  recThumb: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center' },
-  recTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  recSub: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  upgradeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', backgroundColor: colors.lav1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: colors.lav2, marginTop: 8 },
-  upgradeTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lav4 },
-  sugestaoAcoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
-  trocarAudio: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 10 },
-  verConteudosLink: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: 8 },
-  verConteudosLinkTxt: { fontFamily: fonts.body, fontSize: 11, color: colors.lav4 },
-  localGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  recThumb: { width: 48, height: 48, borderRadius: 16, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  recTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  recSub: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2 },
+  upgradeCard: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', padding: 16, marginTop: 14 },
+  upgradeTxt: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 14, color: colors.lilasTexto, lineHeight: 20 },
+  sugestaoAcoes: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, paddingHorizontal: 4 },
+  trocarAudio: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 12, paddingVertical: 4 },
+  verConteudosLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, paddingVertical: 4 },
+  verConteudosLinkTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.lilasTexto },
+  localGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   localCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.card, borderRadius: 12, borderWidth: 1.5, borderColor: colors.lav1,
-    paddingVertical: 10, paddingHorizontal: 12, width: '48%',
+    backgroundColor: colors.lavVeu, borderRadius: 18, borderWidth: 1.5, borderColor: 'transparent',
+    paddingVertical: 10, paddingHorizontal: 8, width: '48.5%', minHeight: 60,
   },
-  localLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.td, flex: 1 },
-  sugestaoBloco: { width: '100%', marginTop: 16, gap: 8 },
-  sugestaoTit: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  cCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.lav1, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.lav2 },
-  cThumb: { width: 40, height: 40, borderRadius: 10, backgroundColor: colors.lav2, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  cDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
+  localCardSel: { backgroundColor: colors.lav1, borderColor: colors.botao },
+  localIcone: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.vidroForte, alignItems: 'center', justifyContent: 'center' },
+  localIconeSel: { backgroundColor: colors.botao },
+  localLabel: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.titulo, flex: 1, lineHeight: 18 },
+  localLabelSel: { color: colors.lilasTexto, fontFamily: fonts.bodyBold },
+  sugestaoBloco: { width: '100%', marginTop: 18, gap: 8 },
+  sugestaoTit: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lilasTexto, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1, paddingHorizontal: 4 },
+  cCard: { ...vidro(), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  cThumb: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  favPilula: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.roseFundo },
+  cTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  cDesc: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2, lineHeight: 17 },
 }));

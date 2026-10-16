@@ -12,8 +12,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadToStorage } from '../../utils/storageUpload';
 import { confirmar } from '../../utils/confirm';
 import { db, storage } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, corPlano, BotaoAdmin, Degrade } from './adminEstilo';
 import { emocoes as EMOCOES_APP } from '../../data';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -47,7 +47,6 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_COR = { get 0() { return colors.sage; }, get 1() { return colors.lav4; }, 2: '#7B5EA7', 3: '#C0843F' };
 
 const ehAntigo = (item) => !TIPOS_NOVOS.includes(item.tipo);
 const estaAtivo = (item) => item.ativo !== false;
@@ -372,13 +371,13 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
     const semEmocao = !antigo && (item.emocoes || []).length === 0;
 
     return (
-      <Card key={item.id} style={[s.itemCard, largo && s.itemCardLargo, !ativo && s.itemInativo]}>
+      <View key={item.id} style={[s.itemCard, largo && s.itemCardLargo, !ativo && s.itemInativo]}>
         <View style={s.itemTop}>
           {item.tipo === 'imagem' && item.url ? (
             <Image source={{ uri: item.url }} style={s.thumbImg} resizeMode="cover" />
           ) : (
-            <View style={[s.thumb, antigo && { backgroundColor: colors.border }]}>
-              <Ionicons name={tipoInfo.icon} size={22} color={antigo ? colors.tm : colors.lav5} />
+            <View style={[s.thumb, antigo && { backgroundColor: acento('neutro').fundo }]}>
+              <Ionicons name={tipoInfo.icon} size={22} color={antigo ? colors.texto2 : acento('lilas').tinta} />
             </View>
           )}
 
@@ -396,16 +395,16 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
 
             <View style={s.badgeRow}>
               <View style={s.badge}>
-                <Ionicons name={tipoInfo.icon} size={10} color={colors.tm} />
+                <Ionicons name={tipoInfo.icon} size={13} color={colors.texto2} />
                 <Text style={s.badgeTxt}>{tipoInfo.label}</Text>
               </View>
               {antigo ? (
                 <View style={[s.badge, s.badgeAntigo]}>
-                  <Text style={[s.badgeTxt, { color: colors.goldFg }]}>formato antigo</Text>
+                  <Text style={[s.badgeTxt, { color: acento('dourado').texto }]}>formato antigo</Text>
                 </View>
               ) : null}
-              <View style={[s.badge, { backgroundColor: (PLANO_COR[plano] || colors.lav4) + '33' }]}>
-                <Text style={[s.badgeTxt, { color: PLANO_COR[plano] || colors.lav4 }]}>
+              <View style={[s.badge, { backgroundColor: corPlano(plano).fundo }]}>
+                <Text style={[s.badgeTxt, { color: corPlano(plano).texto, fontFamily: fonts.bodyBold }]}>
                   {PLANOS.find(p => p.id === plano)?.label || 'Grátis'}
                 </Text>
               </View>
@@ -420,7 +419,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
           <View style={s.acoes}>
             {!antigo ? (
               <TouchableOpacity onPress={() => abrirEdicao(item)} style={s.acaoBtn} accessibilityLabel="Editar">
-                <Ionicons name="create-outline" size={18} color={colors.lav5} />
+                <Ionicons name="create-outline" size={18} color={colors.lilasIcone} />
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
@@ -428,10 +427,10 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
               style={s.acaoBtn}
               accessibilityLabel={ativo ? 'Desativar' : 'Ativar'}
             >
-              <Ionicons name={ativo ? 'eye-outline' : 'eye-off-outline'} size={18} color={ativo ? colors.lav5 : colors.tl} />
+              <Ionicons name={ativo ? 'eye-outline' : 'eye-off-outline'} size={18} color={ativo ? colors.lilasIcone : colors.tl} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleExcluir(item)} style={s.acaoBtn} accessibilityLabel="Excluir">
-              <Ionicons name="trash-outline" size={18} color={colors.rose} />
+              <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
             </TouchableOpacity>
           </View>
         </View>
@@ -457,7 +456,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
         ) : semEmocao ? (
           <Text style={s.avisoEmocao}>Sem emoção vinculada — não aparece no check-in.</Text>
         ) : null}
-      </Card>
+      </View>
     );
   };
 
@@ -467,17 +466,19 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
+            <Text style={s.sobre}>Biblioteca</Text>
             <Text style={s.pageTitle}>Outros conteúdos</Text>
             <Text style={s.pageSub}>Imagens, links e textos de apoio.</Text>
           </View>
           <TouchableOpacity style={s.addBtn} onPress={abrirNovo} activeOpacity={0.85}>
+            <Degrade />
             <Ionicons name="add" size={16} color="white" />
             <Text style={s.addBtnTxt}>Novo conteúdo</Text>
           </TouchableOpacity>
         </View>
 
         <View style={s.ajuda}>
-          <Ionicons name="information-circle-outline" size={18} color={colors.lav5} />
+          <Ionicons name="information-circle-outline" size={18} color={acento('lilas').texto} />
           <Text style={s.ajudaTxt}>
             Estes conteúdos aparecem para a usuária como sugestão logo depois do check-in, conforme a
             emoção escolhida, e ficam salvos nos Favoritos quando ela toca no coração. Imagem e texto
@@ -490,7 +491,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
             const sel = filtroTipo === f.id;
             return (
               <TouchableOpacity key={f.id} style={[s.chip, sel && s.chipSel]} onPress={() => setFiltroTipo(f.id)}>
-                {f.icon ? <Ionicons name={f.icon} size={12} color={sel ? 'white' : colors.tm} /> : null}
+                {f.icon ? <Ionicons name={f.icon} size={14} color={sel ? colors.lilasTexto : colors.texto2} /> : null}
                 <Text style={[s.chipTxt, sel && s.chipTxtSel]}>{f.label} ({contagem[f.id] ?? 0})</Text>
               </TouchableOpacity>
             );
@@ -499,7 +500,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
 
         {erroLeitura ? (
           <View style={s.erroBox}>
-            <Ionicons name="alert-circle-outline" size={18} color={colors.roseFg} />
+            <Ionicons name="alert-circle-outline" size={18} color={acento('rosa').texto} />
             <Text style={s.erroTxt}>{erroLeitura}</Text>
             <TouchableOpacity onPress={() => setTentativa(t => t + 1)} style={s.erroBtn}>
               <Text style={s.erroBtnTxt}>Tentar novamente</Text>
@@ -510,12 +511,12 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
         {carregando ? (
           <View style={s.vazio}><ActivityIndicator color={colors.lav4} /></View>
         ) : filtrados.length === 0 && !erroLeitura ? (
-          <Card style={s.vazio}>
+          <View style={s.vazio}>
             <Ionicons name="albums-outline" size={32} color={colors.tl} />
             <Text style={s.vazioTxt}>
               {filtroTipo === 'todos' ? 'Nenhum conteúdo cadastrado ainda.' : 'Nenhum conteúdo deste tipo.'}
             </Text>
-          </Card>
+          </View>
         ) : (
           <View style={largo ? s.grid : null}>
             {filtrados.map(renderItem)}
@@ -539,8 +540,8 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
               <View style={s.form}>
                 <View style={s.formHeader}>
                   <Text style={s.formTit}>{editando ? 'Editar conteúdo' : 'Novo conteúdo'}</Text>
-                  <TouchableOpacity onPress={fecharModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="close" size={22} color={colors.tm} />
+                  <TouchableOpacity onPress={fecharModal} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={s.fechar}>
+                    <Ionicons name="close" size={20} color={colors.td} />
                   </TouchableOpacity>
                 </View>
 
@@ -555,8 +556,8 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
                         onPress={() => mudarTipo(t.id)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name={t.icon} size={18} color={sel ? 'white' : colors.lav5} />
-                        <Text style={[s.tipoTxt, sel && { color: 'white' }]}>{t.label}</Text>
+                        <Ionicons name={t.icon} size={18} color={sel ? colors.lilasTexto : colors.texto2} />
+                        <Text style={[s.tipoTxt, sel && { color: colors.lilasTexto }]}>{t.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -580,8 +581,8 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
                       activeOpacity={0.8}
                     >
                       {uploadando
-                        ? <ActivityIndicator size="small" color={colors.lav5} />
-                        : <Ionicons name="image-outline" size={20} color={colors.lav5} />}
+                        ? <ActivityIndicator size="small" color={colors.lilasTexto} />
+                        : <Ionicons name="image-outline" size={20} color={colors.lilasTexto} />}
                       <Text style={s.uploadTxt}>
                         {uploadando ? 'Enviando imagem...' : form.url ? 'Trocar imagem' : 'Escolher imagem *'}
                       </Text>
@@ -665,30 +666,30 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
                   {PLANOS.map(p => (
                     <TouchableOpacity
                       key={p.id}
-                      style={[s.planoOpc, form.plano === p.id && { backgroundColor: PLANO_COR[p.id] + '33', borderColor: PLANO_COR[p.id] }]}
+                      style={[s.planoOpc, form.plano === p.id && { backgroundColor: corPlano(p.id).fundo, borderColor: corPlano(p.id).tinta }]}
                       onPress={() => setForm(f => ({ ...f, plano: p.id }))}
                     >
-                      <Text style={[s.planoTxt, form.plano === p.id && { color: PLANO_COR[p.id] }]}>{p.label}</Text>
+                      <Text style={[s.planoTxt, form.plano === p.id && { color: corPlano(p.id).texto, fontFamily: fonts.bodyBold }]}>{p.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
                 {erroForm ? (
                   <View style={s.erroForm}>
-                    <Ionicons name="alert-circle-outline" size={16} color={colors.roseFg} />
+                    <Ionicons name="alert-circle-outline" size={16} color={acento('rosa').texto} />
                     <Text style={s.erroFormTxt}>{erroForm}</Text>
                   </View>
                 ) : null}
 
                 <View style={s.formBtns}>
-                  <Button
+                  <BotaoAdmin
                     title="Cancelar"
+                    variant="secondary"
                     onPress={fecharModal}
                     disabled={salvando}
-                    style={{ flex: 1, marginRight: spacing.sm, backgroundColor: colors.lav1 }}
-                    textStyle={{ color: colors.lav5 }}
+                    style={{ flex: 1, marginRight: spacing.sm }}
                   />
-                  <Button
+                  <BotaoAdmin
                     title={salvando ? 'Salvando...' : 'Salvar'}
                     onPress={handleSalvar}
                     disabled={salvando || uploadando}
@@ -705,145 +706,100 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  scroll: { padding: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingHorizontal: 14, paddingVertical: 9,
-  },
-  addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  scroll: { padding: spacing.lg, paddingBottom: 32 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: spacing.md },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: est.subtitulo(),
+  addBtn: { ...est.botao(), minHeight: 46, paddingHorizontal: 18 },
+  addBtnTxt: est.botaoTxt(),
 
-  ajuda: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav2,
-    padding: spacing.md, marginBottom: spacing.md,
-  },
-  ajudaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18 },
+  ajuda: { ...est.aviso('lilas'), marginBottom: spacing.md },
+  ajudaTxt: est.avisoTxt('lilas'),
 
   filtroScroll: { marginBottom: spacing.md, flexGrow: 0 },
   filtroRow: { flexDirection: 'row', gap: 8, paddingRight: spacing.md },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: colors.lav1,
-    borderWidth: 1, borderColor: colors.lav2,
-  },
-  chipSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  chipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTxtSel: { color: 'white' },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipTxt: est.chipTxt(),
+  chipTxtSel: est.chipTxtSel(),
 
-  erroBox: {
-    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
-    backgroundColor: colors.erroFundo, borderRadius: radius.md,
-    padding: spacing.md, marginBottom: spacing.md,
-  },
-  erroTxt: { flex: 1, minWidth: 180, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg, lineHeight: 17 },
-  erroBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.rose },
-  erroBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.roseFg },
+  erroBox: { ...est.aviso('rosa'), alignItems: 'center', flexWrap: 'wrap', marginBottom: spacing.md },
+  erroTxt: { ...est.avisoTxt('rosa'), minWidth: 180 },
+  erroBtn: { ...est.botaoSec(), minHeight: 36, paddingHorizontal: 14, borderColor: acento('rosa').tinta },
+  erroBtnTxt: { ...est.botaoSecTxt(), fontSize: 13, color: colors.roseTexto },
 
-  vazio: { alignItems: 'center', gap: 10, paddingVertical: 32 },
-  vazioTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
+  vazio: { ...est.vidro(26), alignItems: 'center', gap: 10, paddingVertical: 32 },
+  vazioTxt: est.legenda(),
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  itemCard: { marginBottom: spacing.sm },
+  itemCard: { ...est.vidro(24), padding: 14, marginBottom: 12 },
   itemCardLargo: { width: '49%' },
   itemInativo: { opacity: 0.55 },
-  itemTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  thumb: {
-    width: 52, height: 52, borderRadius: 12, backgroundColor: colors.lav1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  thumbImg: { width: 52, height: 52, borderRadius: 12, backgroundColor: colors.lav1 },
-  itemTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: 2 },
-  itemDesc: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 3 },
-  itemLink: { fontFamily: fonts.body, fontSize: 11, color: colors.lav5, marginBottom: 3 },
-  itemTrecho: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, fontStyle: 'italic', marginBottom: 3 },
+  itemTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  thumb: { ...est.pilula(54), borderRadius: 16, backgroundColor: acento('lilas').fundo },
+  thumbImg: { width: 54, height: 54, borderRadius: 16, backgroundColor: colors.lav1 },
+  itemTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, marginBottom: 3 },
+  itemDesc: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.texto2, marginBottom: 4 },
+  itemLink: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lilasTexto, marginBottom: 4 },
+  itemTrecho: { fontFamily: fonts.serifItalic, fontSize: 15, color: colors.texto2, marginBottom: 4 },
   badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 2 },
   badge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.lav1, borderRadius: 10,
-    paddingHorizontal: 7, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: acento('neutro').fundo, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 3,
   },
-  badgeAntigo: { backgroundColor: colors.gold + '40' },
-  badgeTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.tm },
-  acoes: { gap: 8 },
-  acaoBtn: { padding: 4 },
-  notaAntigo: {
-    fontFamily: fonts.body, fontSize: 11, color: colors.goldFg, lineHeight: 16,
-    backgroundColor: colors.gold + '22', borderRadius: radius.sm,
-    padding: spacing.sm, marginTop: spacing.sm,
-  },
-  emocaoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
-  emocaoChip: { backgroundColor: colors.lav1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
-  emocaoChipTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.lav5 },
-  avisoEmocao: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: spacing.sm },
+  badgeAntigo: { backgroundColor: acento('dourado').fundo },
+  badgeTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2 },
+  acoes: { gap: 6 },
+  acaoBtn: { ...est.botaoIcone(), width: 38, height: 38 },
+  notaAntigo: { ...est.aviso('dourado'), ...est.avisoTxt('dourado'), fontSize: 13, marginTop: 10, flex: 0 },
+  emocaoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  emocaoChip: { backgroundColor: acento('lilas').fundo, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  emocaoChipTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: acento('lilas').texto },
+  avisoEmocao: { ...est.dica(), marginTop: 10 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalOverlay: { ...est.veu(), justifyContent: 'flex-end' },
   modalOverlayLargo: { justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  modalCard: {
-    backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: spacing.lg, maxHeight: '90%',
-  },
-  modalCardLargo: { width: '100%', maxWidth: 640, borderRadius: 20 },
+  modalCard: { ...est.folha(), padding: spacing.lg, maxHeight: '90%' },
+  modalCardLargo: { width: '100%', maxWidth: 640, borderRadius: 28, borderBottomWidth: 1 },
 
-  form: { marginTop: spacing.sm, gap: spacing.sm, paddingBottom: spacing.sm },
+  form: { marginTop: spacing.xs, gap: spacing.sm, paddingBottom: spacing.sm },
   formHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  formTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  label: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 4, marginTop: 4 },
-  dica: { fontFamily: fonts.body, fontSize: 11, color: colors.tl },
-  input: {
-    backgroundColor: colors.card, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
-  inputDescricao: { minHeight: 60 },
-  inputTexto: { minHeight: 160, maxHeight: 280, lineHeight: 20 },
+  formTit: est.modalTitulo(),
+  fechar: est.fechar(),
+  label: { ...est.rotulo(), marginTop: 6, marginBottom: 0 },
+  dica: { ...est.dica(), marginTop: 0 },
+  input: est.campo(),
+  inputDescricao: { minHeight: 64 },
+  inputTexto: { minHeight: 160, maxHeight: 280, lineHeight: 21 },
   tipoRow: { flexDirection: 'row', gap: 8 },
   tipoOpc: {
-    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 10,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.lav3,
-    backgroundColor: colors.lav1,
+    flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12,
+    borderRadius: 18, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cardSolido,
   },
-  tipoOpcSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  tipoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  previaWrap: {
-    borderRadius: radius.md, overflow: 'hidden',
-    backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2,
-  },
+  tipoOpcSel: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
+  tipoTxt: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.texto2 },
+  previaWrap: { ...est.tenue(18), overflow: 'hidden' },
   previa: { width: '100%', maxHeight: 260 },
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav3, borderStyle: 'dashed',
-    paddingHorizontal: spacing.md, paddingVertical: 14,
+    backgroundColor: colors.lav1, borderRadius: 18,
+    borderWidth: 1.5, borderColor: colors.lav3, borderStyle: 'dashed',
+    paddingHorizontal: spacing.md, paddingVertical: 16,
     justifyContent: 'center',
   },
-  uploadTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.lav5 },
+  uploadTxt: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.lilasTexto },
   emocaoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  emocaoOpc: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  emocaoOpcSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  emocaoOpcTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  emocaoOpcTxtSel: { color: 'white' },
+  emocaoOpc: est.chip(),
+  emocaoOpcSel: est.chipSel(),
+  emocaoOpcTxt: est.chipTxt(),
+  emocaoOpcTxtSel: est.chipTxtSel(),
   planoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planoOpc: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  planoTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  erroForm: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.erroFundo, borderRadius: radius.sm, padding: spacing.sm,
-  },
-  erroFormTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12, color: colors.roseFg },
+  planoOpc: est.chip(),
+  planoTxt: est.chipTxt(),
+  erroForm: { ...est.aviso('rosa'), alignItems: 'center', padding: 12 },
+  erroFormTxt: est.avisoTxt('rosa'),
   formBtns: { flexDirection: 'row', marginTop: spacing.sm },
 }), { escalar: false });

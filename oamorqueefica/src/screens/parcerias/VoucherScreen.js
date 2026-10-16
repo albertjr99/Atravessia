@@ -6,24 +6,54 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Profundo } from '../../components/Efeitos';
 import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 import { situacaoCupom, linkDoCupom } from '../../utils/cupons';
 
 const STATUS_INFO = {
-  GERADO: { label: 'Disponível', cor: colors.lav5, icon: 'ellipse-outline' },
-  APRESENTADO: { label: 'Apresentado', cor: colors.lav5, icon: 'time-outline' },
-  VALIDADO: { label: 'Validado pelo parceiro', cor: colors.gold, icon: 'shield-checkmark-outline' },
-  CONCLUIDO: { label: 'Atendimento registrado — confirme na tela de notificações', cor: colors.gold, icon: 'hourglass-outline' },
-  CONFIRMADO_USUARIO: { label: 'Confirmado — obrigada!', cor: colors.sage, icon: 'checkmark-circle-outline' },
-  ELEGIVEL_LIQUIDACAO: { label: 'Confirmado — obrigada!', cor: colors.sage, icon: 'checkmark-circle-outline' },
-  AGUARDANDO_PAGAMENTO: { label: 'Confirmado — obrigada!', cor: colors.sage, icon: 'checkmark-circle-outline' },
-  LIQUIDADO: { label: 'Confirmado — obrigada!', cor: colors.sage, icon: 'checkmark-circle-outline' },
-  CONTESTADO: { label: 'Você marcou que não aconteceu', cor: colors.peach2, icon: 'close-circle-outline' },
-  CANCELADO: { label: 'Cancelado', cor: colors.tl, icon: 'ban-outline' },
-  EXPIRADO: { label: 'Expirado', cor: colors.tl, icon: 'time-outline' },
+  GERADO: { label: 'Disponível', tom: 'lilas', icon: 'ellipse-outline' },
+  APRESENTADO: { label: 'Apresentado', tom: 'lilas', icon: 'time-outline' },
+  VALIDADO: { label: 'Validado pelo parceiro', tom: 'dourado', icon: 'shield-checkmark-outline' },
+  CONCLUIDO: { label: 'Atendimento registrado — confirme na tela de notificações', tom: 'dourado', icon: 'hourglass-outline' },
+  CONFIRMADO_USUARIO: { label: 'Confirmado — obrigada!', tom: 'salvia', icon: 'checkmark-circle-outline' },
+  ELEGIVEL_LIQUIDACAO: { label: 'Confirmado — obrigada!', tom: 'salvia', icon: 'checkmark-circle-outline' },
+  AGUARDANDO_PAGAMENTO: { label: 'Confirmado — obrigada!', tom: 'salvia', icon: 'checkmark-circle-outline' },
+  LIQUIDADO: { label: 'Confirmado — obrigada!', tom: 'salvia', icon: 'checkmark-circle-outline' },
+  CONTESTADO: { label: 'Você marcou que não aconteceu', tom: 'rosa', icon: 'close-circle-outline' },
+  CANCELADO: { label: 'Cancelado', tom: 'neutro', icon: 'ban-outline' },
+  EXPIRADO: { label: 'Expirado', tom: 'neutro', icon: 'time-outline' },
 };
+
+// Cores do estado (fundo do acento + tinta forte), lidas na hora de desenhar.
+function tomDe(tom) {
+  switch (tom) {
+    case 'salvia': return { fundo: colors.sageFundo, tinta: colors.sageFg };
+    case 'dourado': return { fundo: colors.douradoFundo, tinta: colors.douradoTitulo };
+    case 'rosa': return { fundo: colors.roseFundo, tinta: colors.roseTexto };
+    case 'lilas': return { fundo: colors.lav1, tinta: colors.lilasTexto };
+    default: return { fundo: colors.muted, tinta: colors.texto2 };
+  }
+}
+
+// Botão principal: degradê lilás com "degrau" que afunda ao toque.
+function BotaoLilas({ onPress, children, rotulo, externo, desativado }) {
+  return (
+    <Profundo
+      externo={[externo, desativado && { opacity: 0.6 }]}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={desativado ? undefined : onPress}
+      accessibilityLabel={rotulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.btnGrad} />
+      {children}
+    </Profundo>
+  );
+}
 
 function formatarData(ts) {
   if (!ts) return '';
@@ -50,6 +80,7 @@ export default function VoucherScreen({ route, navigation }) {
   const expirado = situacaoCupom(voucher || { status: 'GERADO' }) === 'expirado';
   const status = expirado ? 'EXPIRADO' : (voucher?.status || 'GERADO');
   const info = STATUS_INFO[status] || STATUS_INFO.GERADO;
+  const tom = tomDe(info.tom);
   const podeApresentar = !expirado && ['GERADO', 'APRESENTADO', 'VALIDADO'].includes(status);
   const desconto = Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
 
@@ -80,12 +111,12 @@ export default function VoucherScreen({ route, navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Seu benefício</Text>
-        <View style={{ width: 36 }} />
+        <Text style={s.topTitle} numberOfLines={1}>Seu benefício</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -94,21 +125,21 @@ export default function VoucherScreen({ route, navigation }) {
           <Text style={s.descontoTxt}>{desconto}% de desconto para você</Text>
         )}
 
-        <View style={[s.statusChip, { borderColor: info.cor }]}>
-          <Ionicons name={info.icon} size={13} color={info.cor} />
-          <Text style={[s.statusTxt, { color: info.cor }]}>{info.label}</Text>
+        <View style={[s.statusChip, { backgroundColor: tom.fundo }]}>
+          <Ionicons name={info.icon} size={15} color={tom.tinta} />
+          <Text style={[s.statusTxt, { color: tom.tinta }]}>{info.label}</Text>
         </View>
 
         <View style={s.qrCard}>
           {!podeApresentar ? (
             <View style={s.qrFallback}>
-              <Ionicons name={info.icon} size={56} color={colors.lav3} />
+              <Ionicons name={info.icon} size={56} color="#8B7AC0" />
             </View>
           ) : Platform.OS !== 'web' && linkValidacao ? (
             <QRCode value={linkValidacao} size={190} color={colors.td} backgroundColor="white" />
           ) : (
             <View style={s.qrFallback}>
-              <Ionicons name="qr-code-outline" size={64} color={colors.lav3} />
+              <Ionicons name="qr-code-outline" size={64} color="#8B7AC0" />
             </View>
           )}
           <Text style={s.codigo}>{codigoPublico}</Text>
@@ -128,46 +159,41 @@ export default function VoucherScreen({ route, navigation }) {
         )}
 
         {status === 'CONCLUIDO' && !!voucher?.resgateId && (
-          <TouchableOpacity
-            style={[s.shareBtn, s.confirmarBtn]}
+          <BotaoLilas
+            externo={s.botaoLargo}
             onPress={() => navigation.navigate('ConfirmarResgate', { resgateId: voucher.resgateId })}
-            activeOpacity={0.85}
+            rotulo="Confirmar o atendimento"
           >
-            <Ionicons name="checkmark-circle-outline" size={16} color="white" />
-            <Text style={[s.shareBtnTxt, { color: 'white' }]}>Confirmar o atendimento</Text>
-          </TouchableOpacity>
+            <Ionicons name="checkmark-circle-outline" size={18} color="white" />
+            <Text style={s.btnTxt}>Confirmar o atendimento</Text>
+          </BotaoLilas>
         )}
 
         {podeGerarNovo && (
-          <TouchableOpacity
-            style={[s.shareBtn, s.confirmarBtn]}
-            onPress={gerarNovo}
-            disabled={gerandoNovo}
-            activeOpacity={0.85}
-          >
+          <BotaoLilas externo={s.botaoLargo} onPress={gerarNovo} desativado={gerandoNovo} rotulo="Gerar um novo cupom">
             {gerandoNovo
               ? <ActivityIndicator size="small" color="white" />
-              : <Ionicons name="add-circle-outline" size={16} color="white" />}
-            <Text style={[s.shareBtnTxt, { color: 'white' }]}>
+              : <Ionicons name="add-circle-outline" size={18} color="white" />}
+            <Text style={s.btnTxt}>
               {gerandoNovo ? 'Gerando...' : 'Gerar um novo cupom'}
             </Text>
-          </TouchableOpacity>
+          </BotaoLilas>
         )}
 
         {podeApresentar && (
           <TouchableOpacity style={s.shareBtn} onPress={compartilhar} activeOpacity={0.85}>
-            <Ionicons name="share-outline" size={16} color={colors.lav5} />
+            <Ionicons name="share-outline" size={18} color={colors.lilasIcone} />
             <Text style={s.shareBtnTxt}>Compartilhar link do benefício</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity style={s.meusBtn} onPress={() => navigation.navigate('MeusCupons')} activeOpacity={0.7}>
-          <Ionicons name="ticket-outline" size={14} color={colors.lav5} />
+          <Ionicons name="ticket-outline" size={16} color={colors.lilasIcone} />
           <Text style={s.meusBtnTxt}>Ver todos os meus cupons</Text>
         </TouchableOpacity>
 
         <View style={s.avisoBox}>
-          <Ionicons name="information-circle-outline" size={16} color={colors.lav5} />
+          <View style={s.avisoIcone}><Ionicons name="notifications-outline" size={18} color={colors.lilasIcone} /></View>
           <Text style={s.avisoTxt}>
             Depois que o parceiro registrar o atendimento, você vai receber uma
             notificação para confirmar que ele realmente aconteceu.
@@ -179,62 +205,72 @@ export default function VoucherScreen({ route, navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  confirmarBtn: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  meusBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md, paddingVertical: 8 },
-  meusBtnTxt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.lav5, textDecorationLine: 'underline' },
-  descontoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.sage, textAlign: 'center', marginTop: 4, marginBottom: 2 },
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.md, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, paddingHorizontal: 22, overflow: 'hidden' },
+  btnGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  btnHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 5 },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnVidro: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 50, paddingHorizontal: 20,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.vidro,
+  },
+  btnVidroTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, alignItems: 'center' },
-
+  botaoLargo: { width: '100%', marginTop: spacing.lg },
+  confirmarBtn: {},
   parceriaNome: {
-    fontFamily: fonts.bodyBold, fontSize: 18, color: colors.td,
-    textAlign: 'center', marginTop: spacing.sm, marginBottom: 10,
+    fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo,
+    textAlign: 'center', marginTop: spacing.md,
   },
+  descontoTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.sageFg, textAlign: 'center', marginTop: 4 },
   statusChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1.5, borderRadius: radius.full,
-    paddingHorizontal: 12, paddingVertical: 5, marginBottom: spacing.lg,
+    flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '100%',
+    borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7, marginTop: 12, marginBottom: spacing.lg,
   },
-  statusTxt: { fontFamily: fonts.bodyBold, fontSize: 11.5 },
+  statusTxt: { fontFamily: fonts.bodyBold, fontSize: 12, flexShrink: 1, textAlign: 'center' },
 
+  // O cartão do QR Code é sempre branco (leitura pelo parceiro): textos escuros fixos.
   qrCard: {
-    backgroundColor: 'white', borderRadius: radius.xl,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: '#FFFFFF', borderRadius: 28,
+    borderWidth: 1, borderColor: colors.bordaLuz,
     paddingVertical: spacing.xl, paddingHorizontal: spacing.lg,
     alignItems: 'center', gap: 10, width: '100%',
-    ...shadow.card,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: colors.escuro ? 0.45 : 0.14, shadowRadius: 26, elevation: 3,
   },
   qrFallback: {
-    width: 190, height: 190, borderRadius: radius.md,
+    width: 190, height: 190, borderRadius: 22,
     backgroundColor: '#F1EDF8', alignItems: 'center', justifyContent: 'center',
   },
-  codigo: {
-    fontFamily: fonts.bodyBold, fontSize: 22, letterSpacing: 2, color: '#4A4B4A', marginTop: 6,
-  },
-  // O cartão do QR Code é sempre branco (leitura pelo parceiro): textos escuros fixos.
-  instrucao: { fontFamily: fonts.body, fontSize: 12, color: '#76737A', textAlign: 'center' },
+  codigo: { fontFamily: fonts.bodyBold, fontSize: 24, letterSpacing: 3, color: '#2A2433', marginTop: 8 },
+  instrucao: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: '#534C60', textAlign: 'center' },
 
-  validade: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, marginTop: spacing.md },
+  validade: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2, marginTop: spacing.md },
 
   shareBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    marginTop: spacing.lg, paddingVertical: 11, paddingHorizontal: 18,
-    borderRadius: radius.full, borderWidth: 1.5, borderColor: colors.lav3,
-    backgroundColor: colors.lav1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
+    marginTop: spacing.md, minHeight: 50, paddingHorizontal: 18,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.vidro,
   },
-  shareBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
+  shareBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
+  meusBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md, minHeight: 44 },
+  meusBtnTxt: { fontFamily: fonts.bodySemi, fontSize: 13.5, color: colors.lilasTexto, textDecorationLine: 'underline' },
 
   avisoBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: colors.lav1, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.lav2,
-    padding: spacing.md, marginTop: spacing.lg, width: '100%',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz,
+    padding: 14, marginTop: spacing.md, width: '100%',
   },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 11.5, color: colors.lav6, lineHeight: 17 },
+  avisoIcone: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 19 },
 }));

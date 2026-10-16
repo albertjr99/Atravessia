@@ -10,6 +10,48 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { vinculosRedeApoio } from '../../data';
 import { Button, Card, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Profundo } from '../../components/Efeitos';
+
+
+// Ilustração em aquarela (cartão de papel sobre fundo branco, sem transparência):
+// ampliada e recortada nas bordas do próprio cartão, para flutuar sobre a aurora.
+function Ilustracao({ source, tamanho, style }) {
+  const raio = Math.round(tamanho * 0.12);
+  const extra = tamanho * 0.08;
+  return (
+    <View style={[{
+      width: tamanho, height: tamanho, borderRadius: raio, backgroundColor: colors.cardSolido,
+      shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.4 : 0.14, shadowRadius: 20, elevation: 3,
+    }, style]}>
+      <View style={[StyleSheet.absoluteFill, { borderRadius: raio, overflow: 'hidden' }]}>
+        <Image
+          source={source}
+          resizeMode="cover"
+          style={{ position: 'absolute', left: -extra, top: -extra, width: tamanho + extra * 2, height: tamanho + extra * 2, opacity: colors.escuro ? 0.9 : 1 }}
+        />
+      </View>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: raio, borderWidth: 1, borderColor: colors.bordaLuz }]} />
+    </View>
+  );
+}
+
+// Botão principal: degradê lilás com "degrau" que afunda ao toque.
+function BotaoLilas({ onPress, children, rotulo, externo, desativado }) {
+  return (
+    <Profundo
+      externo={[externo, desativado && { opacity: 0.6 }]}
+      estilo={styles.btnFace}
+      base={colors.botaoBase}
+      sombra={styles.btnHalo}
+      onPress={desativado ? undefined : onPress}
+      accessibilityLabel={rotulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={styles.btnGrad} />
+      {children}
+    </Profundo>
+  );
+}
 
 export default function RedeApoioScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -22,12 +64,12 @@ export default function RedeApoioScreen({ navigation }) {
       <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <LavandaBg />
         <View style={styles.lockWrap}>
-          <Ionicons name="lock-closed-outline" size={36} color={colors.lav4} />
+          <View style={styles.lockIcone}><Ionicons name="lock-closed-outline" size={30} color={colors.lilasIcone} /></View>
           <Text style={styles.lockTitle}>Disponível no Plano 3</Text>
           <Text style={styles.lockSub}>Cadastre pessoas de confiança para fortalecer sua rede de apoio.</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Planos')} style={styles.lockBtn}>
-            <Text style={styles.lockBtnText}>Ver planos</Text>
-          </TouchableOpacity>
+          <BotaoLilas externo={styles.lockBtn} onPress={() => navigation.navigate('Planos')} rotulo="Ver planos">
+            <Text style={styles.btnTxt}>Ver planos</Text>
+          </BotaoLilas>
         </View>
       </SafeAreaView>
     );
@@ -44,12 +86,12 @@ export default function RedeApoioScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={styles.topTitle}>Rede de Apoio</Text>
-        <View style={{ width: 32 }} />
+        <Text style={styles.topTitle} numberOfLines={1}>Rede de Apoio</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.lista} showsVerticalScrollIndicator={false}>
@@ -59,25 +101,31 @@ export default function RedeApoioScreen({ navigation }) {
 
         {redeApoio.length === 0 ? (
           <View style={styles.empty}>
-            <Image source={ilustracao} style={styles.emptyIlustracao} resizeMode="contain" />
+            <Ilustracao source={ilustracao} tamanho={120} />
             <Text style={styles.emptyText}>Nenhum contato cadastrado ainda.</Text>
           </View>
         ) : (
           redeApoio.map(c => (
-            <Card key={c.id} style={styles.item}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemNome}>{c.nome}</Text>
-                <Text style={styles.itemVinculo}>{c.vinculo}{c.obs ? ` · ${c.obs}` : ''}</Text>
+            <View key={c.id} style={styles.item}>
+              <View style={[styles.itemIcone, { backgroundColor: colors.sageFundo }]}>
+                <Ionicons name="person-outline" size={20} color={colors.sageFg} />
               </View>
-              <TouchableOpacity onPress={() => removerContatoRede(c.id)}>
-                <Ionicons name="trash-outline" size={18} color={colors.tl} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemTitulo}>{c.nome}</Text>
+                <Text style={styles.itemSub}>{c.vinculo}{c.obs ? ` · ${c.obs}` : ''}</Text>
+              </View>
+              <TouchableOpacity onPress={() => removerContatoRede(c.id)} style={styles.lixeira} accessibilityLabel="Remover pessoa">
+                <Ionicons name="trash-outline" size={19} color={colors.tl} />
               </TouchableOpacity>
-            </Card>
+            </View>
           ))
         )}
 
         {redeApoio.length < 3 && (
-          <Button title="Adicionar pessoa" variant="secondary" onPress={() => setModalVisible(true)} style={{ marginTop: spacing.md }} />
+          <TouchableOpacity style={[styles.btnVidro, { marginTop: spacing.sm }]} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
+            <Ionicons name="add" size={19} color={colors.lilasIcone} />
+            <Text style={styles.btnVidroTxt}>Adicionar pessoa</Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
 
@@ -86,8 +134,8 @@ export default function RedeApoioScreen({ navigation }) {
           <View style={styles.modalBox}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nova pessoa</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={22} color={colors.td} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalFechar} accessibilityLabel="Fechar">
+                <Ionicons name="close" size={20} color={colors.lilasTexto} />
               </TouchableOpacity>
             </View>
             <Text style={styles.fieldLabel}>Nome ou apelido</Text>
@@ -106,7 +154,7 @@ export default function RedeApoioScreen({ navigation }) {
                   style={[styles.optCard, form.vinculo === v && styles.optCardSel]}
                   onPress={() => setForm(p => ({ ...p, vinculo: v }))}
                 >
-                  <Text style={[styles.optText, form.vinculo === v && { color: colors.lav6, fontFamily: fonts.bodyBold }]}>{v}</Text>
+                  <Text style={[styles.optText, form.vinculo === v && styles.optTextSel]}>{v}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -118,7 +166,9 @@ export default function RedeApoioScreen({ navigation }) {
               value={form.obs}
               onChangeText={v => setForm(p => ({ ...p, obs: v }))}
             />
-            <Button title="Salvar contato" onPress={handleSalvar} style={{ marginTop: spacing.md }} />
+            <BotaoLilas externo={{ marginTop: spacing.lg }} onPress={handleSalvar} rotulo="Salvar contato">
+              <Text style={styles.btnTxt}>Salvar contato</Text>
+            </BotaoLilas>
           </View>
         </View>
       </Modal>
@@ -128,30 +178,59 @@ export default function RedeApoioScreen({ navigation }) {
 
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, paddingHorizontal: 22, overflow: 'hidden' },
+  btnGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  btnHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 5 },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnVidro: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 50, paddingHorizontal: 20,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.vidro,
+  },
+  btnVidroTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
   lista: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  intro: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, lineHeight: 18, marginBottom: spacing.lg },
-  item: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, marginBottom: spacing.sm },
-  itemNome: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  itemVinculo: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2 },
-  empty: { alignItems: 'center', paddingVertical: spacing.xl, gap: 8 },
-  emptyIlustracao: { width: 100, height: 100 },
-  emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(74,63,85,0.35)', justifyContent: 'flex-end' },
-  modalBox: { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xl },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  fieldLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
+  intro: { fontFamily: fonts.body, fontSize: 15, color: colors.texto2, lineHeight: 23, marginTop: spacing.sm, marginBottom: spacing.lg, textAlign: 'center' },
+  item: {
+    flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, marginBottom: 12,
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 20, elevation: 2,
+  },
+  itemIcone: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  itemSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  lixeira: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', paddingVertical: spacing.lg, gap: 14 },
+  emptyText: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2 },
+  modalOverlay: { flex: 1, backgroundColor: colors.sobreposicao, justifyContent: 'flex-end' },
+  modalBox: {
+    backgroundColor: colors.cardSolido, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: spacing.xl,
+    borderWidth: 1, borderColor: colors.bordaLuz,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  modalTitle: { fontFamily: fonts.serif, fontSize: 26, color: colors.titulo },
+  modalFechar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2, marginBottom: 8, marginTop: 14 },
   grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  optCard: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: 8, paddingHorizontal: 12 },
-  optCardSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  optText: { fontFamily: fonts.body, fontSize: 12, color: colors.td },
-  input: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: 10, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  optCard: { backgroundColor: colors.muted, borderRadius: radius.full, borderWidth: 1, borderColor: 'transparent', minHeight: 40, justifyContent: 'center', paddingHorizontal: 14 },
+  optCardSel: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
+  optText: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.texto2 },
+  optTextSel: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
+  input: {
+    minHeight: 50, backgroundColor: colors.cardSolido, borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, fontFamily: fonts.body, fontSize: 14, color: colors.titulo,
+  },
   lockWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: 8 },
-  lockTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginTop: 8 },
-  lockSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
-  lockBtn: { marginTop: spacing.md, backgroundColor: colors.lav4, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  lockBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  lockIcone: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  lockTitle: { fontFamily: fonts.serif, fontSize: 28, color: colors.titulo, marginTop: 8 },
+  lockSub: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.texto2, textAlign: 'center', maxWidth: 320 },
+  lockBtn: { marginTop: spacing.md, minWidth: 200 },
 }));

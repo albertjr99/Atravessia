@@ -5,8 +5,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, BotaoAdmin } from './adminEstilo';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -65,10 +65,11 @@ export default function AdminNotificacoesScreen({ navigation }) {
     <AdminLayout navigation={navigation} currentScreen="AdminNotificacoes">
       <AdminSubTabs grupo="comunicacao" atual="AdminNotificacoes" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
+        <Text style={styles.sobre}>Comunicação</Text>
         <Text style={styles.pageTitle}>Notificações</Text>
         <Text style={styles.pageSub}>Publique avisos e mensagens para as usuárias do app.</Text>
 
-        <Card style={{ marginBottom: spacing.lg }}>
+        <View style={styles.form}>
           <Text style={styles.formLabel}>Tipo</Text>
           <View style={styles.row}>
             {TIPOS.map(t => (
@@ -96,51 +97,68 @@ export default function AdminNotificacoesScreen({ navigation }) {
             value={texto}
             onChangeText={setTexto}
           />
-          <Button title={enviando ? 'Publicando...' : 'Publicar notificação'} onPress={handlePublicar} style={{ marginTop: spacing.md }} />
-        </Card>
+          <BotaoAdmin title={enviando ? 'Publicando...' : 'Publicar notificação'} onPress={handlePublicar} icone="paper-plane-outline" style={{ marginTop: spacing.lg }} />
+        </View>
 
         <Text style={styles.sectionTitle}>Publicadas</Text>
         {lista.length === 0 && <Text style={styles.emptyText}>Nenhuma notificação publicada ainda.</Text>}
-        {lista.map(n => (
-          <Card key={n.id} style={styles.item}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                <Text style={styles.itemTipo}>{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</Text>
-                {n.alvo && n.alvo !== 'todos' && (
-                  <Text style={[styles.itemTipo, { color: colors.sage }]}>
-                    {ALVOS.find(a => a.id === n.alvo)?.label || n.alvo}
-                  </Text>
-                )}
+        {lista.length > 0 && (
+          <View style={styles.lista}>
+            {lista.map((n, i) => (
+              <View key={n.id} style={[styles.item, i > 0 && styles.itemDiv]}>
+                <View style={styles.itemIcone}>
+                  <Ionicons name="megaphone-outline" size={19} color={acento('pessego').tinta} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <Text style={styles.itemTipo}>{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</Text>
+                    {n.alvo && n.alvo !== 'todos' && (
+                      <Text style={[styles.itemTipo, styles.itemAlvo]}>
+                        {ALVOS.find(a => a.id === n.alvo)?.label || n.alvo}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.itemTexto}>{n.texto}</Text>
+                </View>
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <Switch value={!!n.ativa} onValueChange={() => handleToggle(n)} trackColor={{ true: colors.lav4 }} />
+                  <TouchableOpacity onPress={() => handleRemover(n.id)} style={styles.acaoBtn}>
+                    <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <Text style={styles.itemTexto}>{n.texto}</Text>
-            </View>
-            <View style={{ alignItems: 'center', gap: 8 }}>
-              <Switch value={!!n.ativa} onValueChange={() => handleToggle(n)} trackColor={{ true: colors.lav4 }} />
-              <TouchableOpacity onPress={() => handleRemover(n.id)}>
-                <Ionicons name="trash-outline" size={16} color={colors.peach2} />
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ))}
+            ))}
+          </View>
+        )}
       </ScrollView>
     </AdminLayout>
   );
 }
 
 const styles = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
-  formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  form: { ...est.vidro(26), padding: 18, marginBottom: spacing.xl },
+  formLabel: { ...est.rotulo(), marginTop: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: colors.bg, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, paddingVertical: 6, paddingHorizontal: 10 },
-  chipSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  chipText: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTextSel: { color: colors.lav6, fontFamily: fonts.bodyBold },
-  input: { backgroundColor: colors.bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: 12, fontFamily: fonts.body, fontSize: 13, color: colors.td },
-  sectionTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
-  emptyText: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginBottom: spacing.md },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8, ...shadow.soft },
-  itemTipo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav5, marginBottom: 2 },
-  itemTexto: { fontFamily: fonts.body, fontSize: 13, color: colors.td, lineHeight: 18 },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipText: est.chipTxt(),
+  chipTextSel: est.chipTxtSel(),
+  input: est.campo(),
+  sectionTitle: { ...est.secao(), marginBottom: 10 },
+  emptyText: { ...est.legenda(), marginBottom: spacing.md },
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
+  itemDiv: est.divisoria(),
+  itemIcone: { ...est.pilula(40), backgroundColor: acento('pessego').fundo },
+  itemTipo: {
+    ...est.etiquetaTxt(), color: acento('lilas').texto, backgroundColor: acento('lilas').fundo,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, overflow: 'hidden',
+  },
+  itemAlvo: { color: acento('salvia').texto, backgroundColor: acento('salvia').fundo },
+  itemTexto: { fontFamily: fonts.body, fontSize: 15, color: colors.td, lineHeight: 22 },
+  acaoBtn: { padding: 6 },
 }), { escalar: false });

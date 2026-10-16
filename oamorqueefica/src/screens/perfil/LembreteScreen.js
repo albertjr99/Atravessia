@@ -17,6 +17,28 @@ import {
 
 const ilustracao = require('../../../assets/images/il_onda_coracao.png');
 
+// Ilustração em aquarela (cartão de papel sobre fundo branco, sem transparência):
+// ampliada e recortada nas bordas do próprio cartão, para flutuar sobre a aurora.
+function Ilustracao({ source, tamanho, style }) {
+  const raio = Math.round(tamanho * 0.12);
+  const extra = tamanho * 0.08;
+  return (
+    <View style={[{
+      width: tamanho, height: tamanho, borderRadius: raio, backgroundColor: colors.cardSolido,
+      shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.4 : 0.14, shadowRadius: 20, elevation: 3,
+    }, style]}>
+      <View style={[StyleSheet.absoluteFill, { borderRadius: raio, overflow: 'hidden' }]}>
+        <Image
+          source={source}
+          resizeMode="cover"
+          style={{ position: 'absolute', left: -extra, top: -extra, width: tamanho + extra * 2, height: tamanho + extra * 2, opacity: colors.escuro ? 0.9 : 1 }}
+        />
+      </View>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: raio, borderWidth: 1, borderColor: colors.bordaLuz }]} />
+    </View>
+  );
+}
+
 const SUGESTOES = [
   { hora: 8, minuto: 0, rotulo: 'Manhã' },
   { hora: 12, minuto: 0, rotulo: 'Almoço' },
@@ -116,19 +138,19 @@ export default function LembreteScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Lembrete diário</Text>
-        <View style={{ width: 36 }} />
+        <Text style={s.topTitle} numberOfLines={1}>Lembrete diário</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       {!pref ? (
         <View style={s.carregando}><ActivityIndicator color={colors.lav4} /></View>
       ) : (
         <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
-          <Image source={ilustracao} style={s.ilustracao} resizeMode="contain" />
+          <Ilustracao source={ilustracao} tamanho={124} style={s.ilustracao} />
           <Text style={s.intro}>
             Um lembrete gentil, uma vez por dia, para você tirar um minutinho e registrar como está.
             Se você já tiver feito o check-in, o lembrete daquele dia não aparece.
@@ -136,7 +158,7 @@ export default function LembreteScreen({ navigation }) {
 
           {naWeb && (
             <View style={s.aviso}>
-              <Ionicons name="phone-portrait-outline" size={18} color={colors.lav5} />
+              <Ionicons name="phone-portrait-outline" size={18} color={colors.lilasIcone} />
               <Text style={s.avisoTxt}>Os lembretes funcionam no aplicativo instalado no celular.</Text>
             </View>
           )}
@@ -145,7 +167,7 @@ export default function LembreteScreen({ navigation }) {
           <View style={s.cartao}>
             <View style={s.linha}>
               <View style={s.iconeCirculo}>
-                <Ionicons name={pref.ativo ? 'notifications' : 'notifications-off-outline'} size={19} color={colors.lav5} />
+                <Ionicons name={pref.ativo ? 'notifications-outline' : 'notifications-off-outline'} size={20} color={colors.lilasIcone} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.linhaTit}>Lembrar do check-in</Text>
@@ -155,8 +177,8 @@ export default function LembreteScreen({ navigation }) {
                 value={pref.ativo}
                 onValueChange={alternar}
                 disabled={naWeb}
-                trackColor={{ false: colors.lav2, true: colors.lav3 }}
-                thumbColor={pref.ativo ? colors.lav5 : '#f4f1f8'}
+                trackColor={{ false: colors.lav2, true: colors.botao }}
+                thumbColor={colors.cardSolido}
                 ios_backgroundColor={colors.lav2}
               />
             </View>
@@ -183,11 +205,11 @@ export default function LembreteScreen({ navigation }) {
             <Text style={s.secTit}>Horário</Text>
             <View style={s.relogio}>
               <TouchableOpacity style={s.passoBtn} onPress={() => ajustar(-PASSO_MIN)} accessibilityLabel="15 minutos mais cedo">
-                <Ionicons name="remove" size={22} color={colors.lav5} />
+                <Ionicons name="remove" size={22} color={colors.lilasIcone} />
               </TouchableOpacity>
               <Text style={s.horario}>{formatarHorario(pref.hora, pref.minuto)}</Text>
               <TouchableOpacity style={s.passoBtn} onPress={() => ajustar(PASSO_MIN)} accessibilityLabel="15 minutos mais tarde">
-                <Ionicons name="add" size={22} color={colors.lav5} />
+                <Ionicons name="add" size={22} color={colors.lilasIcone} />
               </TouchableOpacity>
             </View>
             <Text style={s.dica}>Ajuste de 15 em 15 minutos, ou escolha uma sugestão:</Text>
@@ -211,7 +233,7 @@ export default function LembreteScreen({ navigation }) {
 
           {/* Prévia */}
           <View style={s.previa}>
-            <Ionicons name={pref.ativo ? 'time-outline' : 'moon-outline'} size={18} color={colors.lav6} />
+            <View style={s.previaIcone}><Ionicons name={pref.ativo ? 'time-outline' : 'moon-outline'} size={19} color={colors.lilasIcone} /></View>
             <View style={{ flex: 1 }}>
               <Text style={s.previaTxt}>
                 {pref.ativo
@@ -237,7 +259,7 @@ export default function LembreteScreen({ navigation }) {
                 const ok = await testarLembrete();
                 setTeste(ok ? 'Em 10 segundos chega um aviso de teste. Pode sair do app para ver.' : 'Não foi possível enviar o teste. Confira se as notificações estão permitidas.');
               }} activeOpacity={0.85}>
-                <Ionicons name="paper-plane-outline" size={18} color={colors.lav5} />
+                <Ionicons name="paper-plane-outline" size={18} color={colors.lilasIcone} />
                 <Text style={s.ajusteTxt}>Enviar um lembrete de teste</Text>
               </TouchableOpacity>
               {!!teste && <Text style={s.dica}>{teste}</Text>}
@@ -247,11 +269,11 @@ export default function LembreteScreen({ navigation }) {
                     Alguns celulares e tablets Android atrasam avisos para economizar bateria. Se o lembrete não chegar no horário, permita os dois itens abaixo:
                   </Text>
                   <TouchableOpacity style={s.ajusteBtn} onPress={abrirAjusteAlarmes} activeOpacity={0.85}>
-                    <Ionicons name="alarm-outline" size={18} color={colors.lav5} />
+                    <Ionicons name="alarm-outline" size={18} color={colors.lilasIcone} />
                     <Text style={s.ajusteTxt}>Permitir “Alarmes e lembretes”</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.ajusteBtn} onPress={abrirAjusteBateria} activeOpacity={0.85}>
-                    <Ionicons name="battery-charging-outline" size={18} color={colors.lav5} />
+                    <Ionicons name="battery-charging-outline" size={18} color={colors.lilasIcone} />
                     <Text style={s.ajusteTxt}>Tirar a Atravessia da economia de bateria</Text>
                   </TouchableOpacity>
                 </>
@@ -266,69 +288,82 @@ export default function LembreteScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
   carregando: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg },
 
-  ilustracao: { width: 130, height: 130, alignSelf: 'center', borderRadius: 20, marginTop: spacing.sm, marginBottom: spacing.md },
-  intro: { fontFamily: fonts.body, fontSize: 13.5, color: colors.tm, lineHeight: 20, textAlign: 'center', marginBottom: spacing.lg },
+  ilustracao: { alignSelf: 'center', marginTop: spacing.md, marginBottom: spacing.lg },
+  intro: { fontFamily: fonts.body, fontSize: 15, color: colors.texto2, lineHeight: 23, textAlign: 'center', marginBottom: spacing.lg },
 
   cartao: {
-    backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg,
-    borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, ...shadow.card,
+    backgroundColor: colors.card, borderRadius: 24, padding: spacing.lg,
+    borderWidth: 1, borderColor: colors.bordaLuz, marginBottom: spacing.md,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 20, elevation: 2,
   },
   cartaoApagado: { opacity: 0.5 },
   linha: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  iconeCirculo: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: colors.lav1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  linhaTit: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  linhaSub: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, marginTop: 2 },
+  iconeCirculo: { width: 44, height: 44, borderRadius: 15, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  linhaTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo },
+  linhaSub: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2 },
 
-  secTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
+  secTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, marginBottom: spacing.sm },
   relogio: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xl, marginVertical: spacing.sm },
   passoBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.lav1,
-    borderWidth: 1, borderColor: colors.lav2, alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.lav1,
+    alignItems: 'center', justifyContent: 'center',
   },
-  horario: { fontFamily: fonts.serif, fontSize: 40, color: colors.lav6, minWidth: 120, textAlign: 'center' },
-  dica: { fontFamily: fonts.body, fontSize: 12, color: colors.tl, textAlign: 'center', marginTop: spacing.xs, marginBottom: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  horario: { fontFamily: fonts.bodyBold, fontSize: 42, letterSpacing: 1, color: colors.lav6, minWidth: 130, textAlign: 'center' },
+  dica: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: colors.texto2, textAlign: 'center', marginTop: spacing.xs, marginBottom: spacing.md },
+  // Sugestões de horário num trilho de vidro (a escolhida em branco sólido)
+  chips: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 4,
+    backgroundColor: colors.vidro, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz,
+  },
   chip: {
-    flexGrow: 1, flexBasis: '45%', alignItems: 'center', paddingVertical: 10,
-    borderRadius: radius.lg, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.bg,
+    flexGrow: 1, flexBasis: '45%', alignItems: 'center', justifyContent: 'center', minHeight: 56, borderRadius: 18,
   },
-  chipAtivo: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  chipHora: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.lav6 },
-  chipRot: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 1 },
-  chipTxtAtivo: { color: 'white' },
+  chipAtivo: {
+    backgroundColor: colors.escuro ? colors.lav2 : colors.cardSolido,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2,
+  },
+  chipHora: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo },
+  chipRot: { fontFamily: fonts.body, fontSize: 11, color: colors.texto2, marginTop: 1 },
+  chipTxtAtivo: { color: colors.lilasTexto },
 
   previa: {
-    flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start',
-    backgroundColor: colors.lav1, borderRadius: radius.xl, padding: spacing.lg, marginTop: spacing.xs,
+    flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', marginBottom: spacing.md,
+    backgroundColor: colors.lavVeu, borderRadius: 24, padding: spacing.lg, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  previaTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lav6, lineHeight: 20 },
-  previaSub: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, marginTop: 4, lineHeight: 18 },
-  salvo: { fontFamily: fonts.body, fontSize: 11.5, color: colors.sage, marginTop: 6 },
+  previaIcone: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  previaTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.lilasTexto, lineHeight: 22 },
+  previaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 4, lineHeight: 19 },
+  salvo: { fontFamily: fonts.bodySemi, fontSize: 11.5, color: colors.sageFg, marginTop: 6 },
 
   aviso: {
     flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start',
-    backgroundColor: colors.lav1, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md,
+    backgroundColor: colors.card, borderRadius: 20, padding: spacing.md, marginBottom: spacing.md,
+    borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  avisoNegada: { backgroundColor: colors.erroFundo, borderWidth: 1, borderColor: colors.peach },
-  avisoTit: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.roseFg, marginBottom: 2 },
-  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, color: colors.tm, lineHeight: 18 },
+  avisoNegada: { backgroundColor: colors.erroFundo, borderColor: colors.roseFundo },
+  avisoTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.roseTexto, marginBottom: 2 },
+  avisoTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.texto2, lineHeight: 19 },
   avisoBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 8, paddingHorizontal: 14, marginTop: spacing.sm,
+    backgroundColor: colors.botaoForte, borderRadius: radius.full, minHeight: 40, paddingHorizontal: 16, marginTop: spacing.sm,
   },
-  avisoBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: 'white' },
+  avisoBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
   ajusteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 14, marginTop: 10,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.lav1,
+    flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50, paddingHorizontal: 14, marginTop: 10,
+    borderRadius: 16, backgroundColor: colors.lavVeu,
   },
-  ajusteTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lav6 },
+  ajusteTxt: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
 }));

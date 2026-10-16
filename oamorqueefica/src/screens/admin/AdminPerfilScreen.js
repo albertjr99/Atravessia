@@ -6,8 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { uploadToStorage } from '../../utils/storageUpload';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, BotaoAdmin } from './adminEstilo';
 import { useAuth } from '../../hooks/AuthContext';
 import { storage } from '../../services/firebase';
 import AdminLayout from './AdminLayout';
@@ -95,24 +96,27 @@ export default function AdminPerfilScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={s.scroll}
       >
+        <Text style={s.sobre}>Configuração</Text>
         <Text style={s.pageTitle}>Meu Perfil</Text>
         <Text style={s.pageSub}>Atualize sua foto e nome exibidos no painel.</Text>
 
         {/* Avatar */}
-        <Card style={s.avatarCard}>
+        <View style={s.avatarCard}>
           <TouchableOpacity
             style={s.avatarWrap}
             onPress={handleFotoUpload}
             disabled={uploadando}
             activeOpacity={0.8}
           >
-            {photoURL ? (
-              <Image source={{ uri: photoURL }} style={s.avatarImg} />
-            ) : (
-              <View style={s.avatarPlaceholder}>
-                <Text style={s.avatarLetter}>{inicialAtual}</Text>
-              </View>
-            )}
+            <LinearGradient colors={['#B9A6F0', '#F3B9A5', '#A9D3B9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.avatarAnel}>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={s.avatarImg} />
+              ) : (
+                <View style={s.avatarPlaceholder}>
+                  <Text style={s.avatarLetter}>{inicialAtual}</Text>
+                </View>
+              )}
+            </LinearGradient>
             <View style={s.avatarEdit}>
               <Ionicons
                 name={uploadando ? 'hourglass-outline' : 'camera-outline'}
@@ -129,10 +133,10 @@ export default function AdminPerfilScreen({ navigation }) {
           )}
 
           <Text style={s.avatarHint}>Toque para fazer upload de uma foto</Text>
-        </Card>
+        </View>
 
         {/* Link da foto */}
-        <Card style={{ marginBottom: spacing.md }}>
+        <View style={s.card}>
           <Text style={s.formLabel}>Ou cole o link da foto <Text style={s.optional}>(opcional)</Text></Text>
           <TextInput
             style={s.input}
@@ -143,10 +147,10 @@ export default function AdminPerfilScreen({ navigation }) {
             onChangeText={setPhotoURL}
           />
           <Text style={s.hint}>Google Drive, Gravatar, Firebase Storage, etc.</Text>
-        </Card>
+        </View>
 
         {/* Nome */}
-        <Card style={{ marginBottom: spacing.md }}>
+        <View style={s.card}>
           <Text style={s.formLabel}>Nome de exibição <Text style={s.required}>*</Text></Text>
           <TextInput
             style={s.input}
@@ -162,9 +166,9 @@ export default function AdminPerfilScreen({ navigation }) {
             <Text style={s.emailText}>{perfil?.email || '—'}</Text>
           </View>
           <Text style={s.hint}>O e-mail não pode ser alterado aqui.</Text>
-        </Card>
+        </View>
 
-        <Button
+        <BotaoAdmin
           title={salvando ? 'Salvando...' : 'Salvar perfil'}
           onPress={handleSalvar}
           style={{ marginBottom: spacing.lg }}
@@ -175,45 +179,41 @@ export default function AdminPerfilScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  scroll: { padding: spacing.lg, paddingBottom: 40 },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg },
+  scroll: { padding: spacing.lg, paddingBottom: 48 },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  card: { ...est.vidro(26), padding: 18, paddingTop: 6, marginBottom: spacing.md },
 
-  avatarCard: { alignItems: 'center', gap: 8, marginBottom: spacing.md, paddingVertical: spacing.lg },
+  avatarCard: { ...est.vidro(26), alignItems: 'center', gap: 10, marginBottom: spacing.md, paddingVertical: 24 },
   avatarWrap: { position: 'relative' },
-  avatarImg: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: colors.lav3 },
+  avatarAnel: { width: 104, height: 104, borderRadius: 52, padding: 4, alignItems: 'center', justifyContent: 'center' },
+  avatarImg: { width: 96, height: 96, borderRadius: 48 },
   avatarPlaceholder: {
     width: 96, height: 96, borderRadius: 48,
-    backgroundColor: colors.lav4,
+    backgroundColor: colors.cardSolido,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: colors.lav3,
   },
-  avatarLetter: { fontFamily: fonts.bodyBold, fontSize: 40, color: 'white' },
+  avatarLetter: { fontFamily: fonts.serif, fontSize: 48, color: colors.lav6 },
   avatarEdit: {
-    position: 'absolute', bottom: 2, right: 2,
-    width: 26, height: 26, borderRadius: 13,
+    position: 'absolute', bottom: 4, right: 4,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: colors.botaoForte,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'white',
+    borderWidth: 2, borderColor: colors.cardSolido,
   },
-  avatarHint: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, textAlign: 'center' },
-  uploadLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'center', marginTop: 4 },
+  avatarHint: { ...est.legenda(), textAlign: 'center' },
+  uploadLabel: { ...est.dica(), textAlign: 'center' },
 
-  formLabel: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 6, marginTop: spacing.sm },
-  required: { color: colors.rose },
-  optional: { color: colors.tl, fontSize: 11 },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
+  formLabel: est.rotulo(),
+  required: est.obrigatorio(),
+  optional: { color: colors.tl, fontSize: 12.5, fontFamily: fonts.body },
+  input: est.campo(),
   emailBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav2,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
+    ...est.tenue(14), minHeight: 48,
+    paddingHorizontal: 14, paddingVertical: 12,
   },
-  emailText: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  hint: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 4 },
+  emailText: { fontFamily: fonts.body, fontSize: 15, color: colors.texto2 },
+  hint: est.dica(),
 }), { escalar: false });

@@ -6,7 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, Degrade } from './adminEstilo';
 
 const PLANOS_PADRAO = [
   {
@@ -143,7 +144,7 @@ export default function AdminPlanosCards() {
 
       {planos.length === 0 ? (
         <TouchableOpacity style={s.criarBtn} onPress={criarPadrao} activeOpacity={0.85}>
-          <Ionicons name="add-circle-outline" size={18} color={colors.lav5} />
+          <Ionicons name="add-circle-outline" size={18} color={colors.lilasTexto} />
           <Text style={s.criarTxt}>Criar os 4 planos padrão para começar</Text>
         </TouchableOpacity>
       ) : (
@@ -160,7 +161,7 @@ export default function AdminPlanosCards() {
                 {(p.recursos || []).length} recurso(s){p.mensagem ? ' · com mensagem' : ''}
               </Text>
             </View>
-            <Ionicons name="create-outline" size={18} color={colors.lav4} />
+            <Ionicons name="create-outline" size={19} color={colors.lilasIcone} />
           </TouchableOpacity>
         ))
       )}
@@ -174,8 +175,8 @@ export default function AdminPlanosCards() {
           <View style={s.modalCard}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>Editar — {editando?.nome}</Text>
-              <TouchableOpacity onPress={fechar} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={22} color={colors.tm} />
+              <TouchableOpacity onPress={fechar} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={s.fechar}>
+                <Ionicons name="close" size={20} color={colors.td} />
               </TouchableOpacity>
             </View>
 
@@ -247,6 +248,7 @@ export default function AdminPlanosCards() {
                   <Text style={s.btnGhostTxt}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.btnPrim, salvando && { opacity: 0.6 }]} onPress={salvar} disabled={salvando}>
+                  <Degrade />
                   <Text style={s.btnPrimTxt}>{salvando ? 'Salvando...' : 'Salvar'}</Text>
                 </TouchableOpacity>
               </View>
@@ -261,73 +263,56 @@ export default function AdminPlanosCards() {
 }
 
 const s = criarEstilos(() => ({
-  card: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.lg,
-  },
-  cardTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: 4 },
-  cardHint: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginBottom: spacing.md, lineHeight: 16 },
+  card: { ...est.vidro(26), padding: 18, marginBottom: spacing.md },
+  cardTitle: { ...est.cartaoTitulo(), marginBottom: 4 },
+  cardHint: { ...est.legenda(), marginBottom: spacing.md },
 
   criarBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: radius.md,
+    paddingVertical: 16, borderRadius: 18,
     borderWidth: 1.5, borderColor: colors.lav3, borderStyle: 'dashed',
     backgroundColor: colors.lav1,
   },
-  criarTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav5 },
+  criarTxt: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.lilasTexto },
 
   planoRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 13, borderTopWidth: 1, borderTopColor: colors.bordaSuave,
   },
   planoTitRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  planoNome: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td },
-  tagDestaque: { backgroundColor: colors.lav1, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
-  tagDestaqueTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: colors.lav5, letterSpacing: 0.5 },
-  tagBreve: { backgroundColor: colors.border, borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 2 },
-  tagBreveTxt: { fontFamily: fonts.bodyBold, fontSize: 8, color: colors.tm, letterSpacing: 0.5 },
-  planoDesc: { fontFamily: fonts.body, fontSize: 11, color: colors.tm, marginTop: 2, lineHeight: 15 },
-  planoMeta: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 3 },
+  planoNome: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo },
+  tagDestaque: { backgroundColor: acento('lilas').fundo, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  tagDestaqueTxt: { fontFamily: fonts.bodyBold, fontSize: 11, color: acento('lilas').texto, letterSpacing: 0.6 },
+  tagBreve: { backgroundColor: acento('neutro').fundo, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  tagBreveTxt: { fontFamily: fonts.bodyBold, fontSize: 11, color: acento('neutro').texto, letterSpacing: 0.6 },
+  planoDesc: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2, marginTop: 3, lineHeight: 19 },
+  planoMeta: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.tl, marginTop: 3 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: spacing.lg, maxHeight: '92%',
-  },
+  modalOverlay: { ...est.veu(), justifyContent: 'flex-end' },
+  modalCard: { ...est.folha(), padding: spacing.lg, maxHeight: '92%' },
   modalHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    marginBottom: spacing.sm,
   },
-  modalTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, flex: 1 },
+  modalTitle: { ...est.modalTitulo(), flex: 1 },
+  fechar: est.fechar(),
 
   fieldRow: { flexDirection: 'row', gap: spacing.sm },
-  label: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 5, marginTop: spacing.sm },
-  input: {
-    backgroundColor: colors.card, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 11,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
-  inputMulti: { minHeight: 64, textAlignVertical: 'top' },
-  inputLista: { minHeight: 120, textAlignVertical: 'top' },
-  hint: { fontFamily: fonts.body, fontSize: 10.5, color: colors.tl, marginTop: 4 },
+  label: est.rotulo(),
+  input: est.campo(),
+  inputMulti: { minHeight: 72, textAlignVertical: 'top' },
+  inputLista: { minHeight: 130, textAlignVertical: 'top' },
+  hint: est.dica(),
 
   switchRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginTop: spacing.md,
   },
-  switchLbl: { fontFamily: fonts.body, fontSize: 13, color: colors.td, flex: 1 },
+  switchLbl: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.td, flex: 1 },
 
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
-  btnGhost: {
-    flex: 1, paddingVertical: 13, borderRadius: radius.md, alignItems: 'center',
-    borderWidth: 1, borderColor: colors.border,
-  },
-  btnGhostTxt: { fontFamily: fonts.body, fontSize: 14, color: colors.tm },
-  btnPrim: {
-    flex: 1, paddingVertical: 13, borderRadius: radius.md, alignItems: 'center',
-    backgroundColor: colors.lav4,
-  },
-  btnPrimTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: 'white' },
+  btnGhost: { ...est.botaoSec(), flex: 1 },
+  btnGhostTxt: est.botaoSecTxt(),
+  btnPrim: { ...est.botao(), flex: 1 },
+  btnPrimTxt: est.botaoTxt(),
 }), { escalar: false });

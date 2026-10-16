@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
-import { ScriptTitle, ProgressBar, LavandaBg } from '../../components';
+import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { ProgressBar, LavandaBg } from '../../components';
 import { useApp } from '../../hooks/AppContext';
 
 const tipoIcone = {
@@ -43,20 +43,20 @@ export default function JornadaDetalheScreen({ route, navigation }) {
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.titulo} />
         </TouchableOpacity>
         <Text style={styles.topTitle}>Jornada</Text>
-        <View style={{ width: 32 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ScriptTitle size={22}>{jornada.titulo}</ScriptTitle>
+          <Text style={styles.titulo}>{jornada.titulo}</Text>
           <Text style={styles.desc}>{jornada.descricao}</Text>
           <View style={{ marginTop: spacing.md }}>
-            <ProgressBar progress={progresso} color={colors.lav4} />
+            <ProgressBar progress={progresso} color={colors.botao} />
             <Text style={styles.progressText}>{jornada.atividadesConcluidas} de {jornada.totalAtividades} etapas concluídas</Text>
           </View>
         </View>
@@ -71,11 +71,11 @@ export default function JornadaDetalheScreen({ route, navigation }) {
                 onPress={() => handleAtividade(a, idx)}
                 activeOpacity={0.85}
               >
-                <View style={[styles.itemIcon, a.concluida && { backgroundColor: colors.sage + '40' }]}>
+                <View style={[styles.itemIcon, a.concluida && { backgroundColor: colors.sageFundo }]}>
                   <Ionicons
                     name={a.concluida ? 'checkmark' : disponivel ? tipoIcone[a.tipo] : 'lock-closed-outline'}
-                    size={16}
-                    color={a.concluida ? colors.sageFg : colors.lav5}
+                    size={19}
+                    color={a.concluida ? colors.sageFg : colors.lilasIcone}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -95,21 +95,32 @@ export default function JornadaDetalheScreen({ route, navigation }) {
 
 const styles = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
-  header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  desc: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: 6, lineHeight: 18 },
-  progressText: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, marginTop: 6 },
-  lista: { paddingHorizontal: spacing.lg, gap: 8 },
-  item: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
-    ...shadow.soft,
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
   },
-  itemBloqueado: { opacity: 0.55 },
-  itemIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td },
-  itemTipo: { fontFamily: fonts.body, fontSize: 10, color: colors.tl, textTransform: 'capitalize', marginTop: 1 },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, lineHeight: 34, color: colors.titulo },
+  header: { ...{
+    backgroundColor: colors.card, borderRadius: 24, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.28 : 0.11, shadowRadius: 20, elevation: 2,
+  }, marginHorizontal: spacing.lg, marginTop: spacing.sm, marginBottom: spacing.md, padding: 18 },
+  titulo: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo },
+  desc: { fontFamily: fonts.body, fontSize: 15, color: colors.texto2, marginTop: 6, lineHeight: 21 },
+  progressText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.lilasTexto, marginTop: 8 },
+  lista: { paddingHorizontal: spacing.lg, gap: 10 },
+  item: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.card, borderRadius: 22,
+    borderWidth: 1, borderColor: colors.bordaLuz, padding: 14,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 8 }, shadowOpacity: colors.escuro ? 0.25 : 0.09, shadowRadius: 16, elevation: 2,
+  },
+  itemBloqueado: { opacity: 0.6 },
+  itemIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  itemTitulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  itemTipo: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.texto2, textTransform: 'capitalize', marginTop: 1 },
 }));

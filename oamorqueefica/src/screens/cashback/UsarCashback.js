@@ -14,7 +14,7 @@ export default function UsarCashback({ ativo, onChange }) {
   return (
     <TouchableOpacity style={[s.caixa, ativo && s.caixaAtiva]} onPress={() => onChange(!ativo)} activeOpacity={0.85}
       accessibilityRole="switch" accessibilityState={{ checked: ativo }}>
-      <View style={s.icone}><Ionicons name="wallet-outline" size={19} color={colors.sageFg} /></View>
+      <View style={s.icone}><Ionicons name="wallet-outline" size={20} color={colors.sageFg} /></View>
       <View style={{ flex: 1 }}>
         <Text style={s.tit}>Usar meu cashback</Text>
         <Text style={s.sub}>Saldo de {brl(cashback.saldoCentavos)}. O desconto aparece na página de pagamento.</Text>
@@ -26,11 +26,11 @@ export default function UsarCashback({ ativo, onChange }) {
 
 const s = criarEstilos(() => ({
   caixa: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 12,
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: 12,
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz,
   },
   caixaAtiva: { borderColor: colors.sage, backgroundColor: colors.sageFundo },
-  icone: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.sageFundo, alignItems: 'center', justifyContent: 'center' },
-  tit: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.td },
-  sub: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 17, color: colors.tm, marginTop: 1 },
+  icone: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.sageFundo, alignItems: 'center', justifyContent: 'center' },
+  tit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  sub: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.texto2, marginTop: 2 },
 }));

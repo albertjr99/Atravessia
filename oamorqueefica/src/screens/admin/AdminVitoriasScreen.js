@@ -12,6 +12,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import { est, acento, Degrade } from './adminEstilo';
 import { ICONES_VITORIA, iconeDaVitoria } from '../../data/iconesVitoria';
 
 function SeletorIcone({ valor, onChange }) {
@@ -27,7 +28,7 @@ function SeletorIcone({ valor, onChange }) {
             onPress={() => onChange(ic.id)}
             accessibilityLabel={ic.nome}
           >
-            <Ionicons name={`${ic.id}-outline`} size={19} color={sel ? colors.lav5 : colors.tm} />
+            <Ionicons name={`${ic.id}-outline`} size={19} color={sel ? colors.lilasTexto : colors.texto2} />
           </TouchableOpacity>
         );
       })}
@@ -166,6 +167,7 @@ export default function AdminVitoriasScreen() {
     <AdminLayout currentScreen="AdminVitorias">
       <AdminSubTabs grupo="jornada" atual="AdminVitorias" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        <Text style={s.sobre}>Jornada</Text>
         <Text style={s.title}>Pequenas Vitórias</Text>
         <Text style={s.sub}>Gerencie as opções disponíveis para as usuárias registrarem suas conquistas.</Text>
 
@@ -187,6 +189,7 @@ export default function AdminVitoriasScreen() {
               onPress={handleAdicionar}
               disabled={!novoLabel.trim() || salvando}
             >
+              <Degrade raio={14} />
               {salvando
                 ? <ActivityIndicator size="small" color="white" />
                 : <Ionicons name="add" size={20} color="white" />}
@@ -204,8 +207,8 @@ export default function AdminVitoriasScreen() {
           ) : opcoes.length === 0 ? (
             <Text style={s.empty}>Nenhuma vitória cadastrada ainda.</Text>
           ) : (
-            opcoes.map(item => (
-              <View key={item.id} style={s.itemRow}>
+            opcoes.map((item, i) => (
+              <View key={item.id} style={[s.itemRow, i > 0 && s.itemDiv]}>
                 <TouchableOpacity
                   style={[s.toggleBtn, item.ativo && s.toggleBtnOn]}
                   onPress={() => handleToggle(item)}
@@ -214,15 +217,15 @@ export default function AdminVitoriasScreen() {
                   <Ionicons
                     name={item.ativo ? 'checkmark-circle' : 'ellipse-outline'}
                     size={20}
-                    color={item.ativo ? colors.sage : colors.tl}
+                    color={item.ativo ? acento('salvia').tinta : colors.tl}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.itemIcone} onPress={() => setTrocandoIcone(item)} accessibilityLabel="Trocar ícone">
-                  <Ionicons name={iconeDaVitoria(item)} size={17} color={colors.lav5} />
+                  <Ionicons name={iconeDaVitoria(item)} size={18} color={acento('dourado').tinta} />
                 </TouchableOpacity>
                 <Text style={[s.itemLabel, !item.ativo && s.itemLabelOff]}>{item.label}</Text>
                 <TouchableOpacity onPress={() => handleExcluir(item)} style={s.delBtn}>
-                  <Ionicons name="trash-outline" size={16} color={colors.rose} />
+                  <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                 </TouchableOpacity>
               </View>
             ))
@@ -230,7 +233,7 @@ export default function AdminVitoriasScreen() {
         </View>
 
         <TouchableOpacity style={s.padrao} onPress={handleRestaurarPadrao} disabled={salvando}>
-          <Ionicons name="refresh-outline" size={14} color={colors.lav5} />
+          <Ionicons name="refresh-outline" size={16} color={colors.lilasTexto} />
           <Text style={s.padraoTxt}>Restaurar opções padrão</Text>
         </TouchableOpacity>
 
@@ -252,65 +255,40 @@ export default function AdminVitoriasScreen() {
 }
 
 const s = criarEstilos(() => ({
-  icones: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  icones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   iconeBtn: {
-    width: 40, height: 40, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cardSolido, alignItems: 'center', justifyContent: 'center',
   },
-  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav4 },
-  iconeLabel: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.tm, marginTop: spacing.md },
-  itemIcone: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.lav1,
-    alignItems: 'center', justifyContent: 'center', marginRight: 8,
-  },
-  modalFundo: { flex: 1, backgroundColor: 'rgba(46,39,64,0.35)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
-  modalCaixa: { width: '100%', maxWidth: 420, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.lg },
+  iconeBtnSel: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
+  iconeLabel: est.rotulo(),
+  itemIcone: { ...est.pilula(38), backgroundColor: acento('dourado').fundo, marginRight: 4 },
+  modalFundo: { ...est.veu(), alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  modalCaixa: { ...est.modal(), width: '100%', maxWidth: 440, padding: spacing.lg },
   scroll: { padding: spacing.lg, paddingBottom: 48 },
-  title: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  sub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, marginBottom: spacing.lg, lineHeight: 19 },
+  sobre: est.sobretitulo(),
+  title: est.titulo(),
+  sub: { ...est.subtitulo(), marginBottom: spacing.lg },
 
-  addCard: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, marginBottom: spacing.md,
-  },
-  addTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
+  addCard: { ...est.vidro(26), padding: 18, marginBottom: spacing.md },
+  addTitle: { ...est.cartaoTitulo(), marginBottom: 10 },
   addRow: { flexDirection: 'row', gap: 8 },
-  addInput: {
-    flex: 1, backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.sm, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
-  addBtn: {
-    width: 44, height: 44, borderRadius: radius.md,
-    backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center',
-  },
+  addInput: { ...est.campo(), flex: 1 },
+  addBtn: { ...est.botao(), width: 50, minHeight: 50, paddingHorizontal: 0, borderRadius: 14 },
 
-  listCard: {
-    backgroundColor: colors.card, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md,
-  },
-  listTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.td, marginBottom: spacing.sm },
-  empty: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, textAlign: 'center', paddingVertical: spacing.lg },
+  listCard: { ...est.vidro(26), paddingVertical: 12, paddingHorizontal: 16 },
+  listTitle: { ...est.cartaoTitulo(), marginBottom: 4 },
+  empty: { ...est.legenda(), textAlign: 'center', paddingVertical: spacing.lg },
 
-  itemRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: colors.border,
-  },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  itemDiv: est.divisoria(),
   toggleBtn: { padding: 2 },
   toggleBtnOn: {},
-  itemLabel: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.td },
+  itemLabel: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.td },
   itemLabelOff: { color: colors.tl, textDecorationLine: 'line-through' },
   delBtn: { padding: 6 },
 
-  padrao: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    marginTop: spacing.md, paddingVertical: 10, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.lav3, backgroundColor: colors.lav1,
-  },
-  padraoTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lav5 },
-  hint: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, marginTop: spacing.md, lineHeight: 17, textAlign: 'center' },
+  padrao: { ...est.botaoSec(), marginTop: spacing.md, alignSelf: 'center' },
+  padraoTxt: est.botaoSecTxt(),
+  hint: { ...est.dica(), marginTop: spacing.md, textAlign: 'center' },
 }), { escalar: false });

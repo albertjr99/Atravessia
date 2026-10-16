@@ -9,6 +9,8 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg, ScriptTitle } from '../../components';
 import PlayerVideo from '../../components/PlayerVideo';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Profundo } from '../../components/Efeitos';
 import TextoComLinks from '../../components/TextoComLinks';
 import { abrirLink } from '../../utils/abrirLink';
 
@@ -16,6 +18,23 @@ import { abrirLink } from '../../utils/abrirLink';
 // Vídeo, texto e link de compra vêm de configuracoes/videos.produtos, editados
 // no painel (aba Vídeos) — dá para trocar tudo sem publicar um novo app.
 const TEXTO_PADRAO = 'Canecas, cadernos e outros carinhos com a marca da Atravessia, para ter por perto no dia a dia.';
+
+// Botão principal: degradê lilás com "degrau" que afunda ao toque.
+function BotaoLilas({ onPress, children, rotulo, externo, desativado }) {
+  return (
+    <Profundo
+      externo={[externo, desativado && { opacity: 0.6 }]}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={desativado ? undefined : onPress}
+      accessibilityLabel={rotulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.btnGrad} />
+      {children}
+    </Profundo>
+  );
+}
 
 export default function ProdutosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -36,12 +55,12 @@ export default function ProdutosScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Produtos Atravessia</Text>
-        <View style={{ width: 36 }} />
+        <Text style={s.topTitle} numberOfLines={1}>Produtos Atravessia</Text>
+        <View style={{ width: 44 }} />
       </View>
 
       {dados === undefined ? (
@@ -49,7 +68,7 @@ export default function ProdutosScreen({ navigation }) {
       ) : (
         <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
           <View style={s.coluna}>
-            <ScriptTitle size={26} style={{ textAlign: 'center' }}>{dados?.titulo || 'Leve a Atravessia com você'}</ScriptTitle>
+            <ScriptTitle size={30} style={s.titulo}>{dados?.titulo || 'Leve a Atravessia com você'}</ScriptTitle>
 
             {dados?.url ? (
               <View style={s.video}>
@@ -57,20 +76,22 @@ export default function ProdutosScreen({ navigation }) {
               </View>
             ) : null}
 
+            {/* Cartão-joia dourado (degradê com "degrau" embaixo) */}
             <View style={s.cartao}>
+              <LinearGradient colors={[colors.joiaDourado[0], colors.joiaDourado[1]]} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={s.cartaoGrad} />
               <View style={s.icones}>
                 {['cafe-outline', 'book-outline', 'gift-outline'].map(ic => (
-                  <View key={ic} style={s.iconeCirculo}><Ionicons name={ic} size={18} color={colors.lav5} /></View>
+                  <View key={ic} style={s.iconeCirculo}><Ionicons name={ic} size={20} color={colors.joiaDouradoTexto} /></View>
                 ))}
               </View>
               <TextoComLinks style={s.texto}>{dados?.descricao || TEXTO_PADRAO}</TextoComLinks>
             </View>
 
             {dados?.link ? (
-              <TouchableOpacity style={s.botao} onPress={() => abrirLink(dados.link)} activeOpacity={0.85}>
-                <Ionicons name="bag-handle-outline" size={18} color="white" />
-                <Text style={s.botaoTxt}>{dados.textoBotao || 'Quero meus produtos'}</Text>
-              </TouchableOpacity>
+              <BotaoLilas onPress={() => abrirLink(dados.link)} rotulo={dados.textoBotao || 'Quero meus produtos'}>
+                <Ionicons name="bag-handle-outline" size={19} color="white" />
+                <Text style={s.btnTxt}>{dados.textoBotao || 'Quero meus produtos'}</Text>
+              </BotaoLilas>
             ) : (
               <Text style={s.emBreve}>Em breve você poderá adquirir os produtos por aqui.</Text>
             )}
@@ -83,24 +104,42 @@ export default function ProdutosScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: 10 },
-  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, paddingHorizontal: 22, overflow: 'hidden' },
+  btnGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  btnHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 5 },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnVidro: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 50, paddingHorizontal: 20,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.vidro,
+  },
+  btnVidroTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
   carregando: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  coluna: { width: '100%', gap: spacing.md },
-  video: { alignItems: 'center' },
+  coluna: { width: '100%', gap: spacing.lg },
+  titulo: { textAlign: 'center', color: colors.titulo, lineHeight: 38, marginTop: spacing.sm },
+  video: { alignItems: 'center', borderRadius: 24, overflow: 'hidden' },
   cartao: {
-    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, gap: spacing.md, ...shadow.card,
+    borderRadius: 26, padding: spacing.xl, gap: spacing.md, overflow: 'hidden',
+    backgroundColor: colors.joiaDourado[1],
+    borderBottomWidth: 5, borderBottomColor: colors.joiaDourado[2],
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 12 }, shadowOpacity: colors.escuro ? 0.4 : 0.14, shadowRadius: 22, elevation: 3,
   },
+  cartaoGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.5)' },
   icones: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
-  iconeCirculo: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
-  texto: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.tm, textAlign: 'center' },
-  botao: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 15,
+  iconeCirculo: {
+    width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.escuro ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)',
   },
-  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
-  emBreve: { fontFamily: fonts.body, fontSize: 13, color: colors.tl, textAlign: 'center' },
+  texto: { fontFamily: fonts.body, fontSize: 16, lineHeight: 25, color: colors.joiaDouradoTexto, textAlign: 'center' },
+  emBreve: { fontFamily: fonts.body, fontSize: 13.5, color: colors.texto2, textAlign: 'center' },
 }));

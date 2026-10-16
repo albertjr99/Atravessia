@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Keyboard, Platform, Linking, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Keyboard, Platform, Linking, ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import {
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { emocoes } from '../../data';
@@ -23,6 +25,23 @@ const dataBonita = (iso) => {
   const [a, m, d] = String(iso || '').split('-').map(Number);
   return a ? `${d} de ${MESES[m - 1]} de ${a}` : '';
 };
+
+// Botão principal: degradê lilás com "degrau" que afunda ao toque.
+function BotaoLilas({ onPress, children, rotulo, externo, desativado }) {
+  return (
+    <Profundo
+      externo={[externo, desativado && { opacity: 0.6 }]}
+      estilo={s.btnFace}
+      base={colors.botaoBase}
+      sombra={s.btnHalo}
+      onPress={desativado ? undefined : onPress}
+      accessibilityLabel={rotulo}
+    >
+      <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.btnGrad} />
+      {children}
+    </Profundo>
+  );
+}
 
 // Diário guiado: uma pergunta por dia, escolhida pela emoção do check-in.
 // As entradas ficam em usuarios/{uid}/diario e só a própria pessoa lê.
@@ -101,11 +120,11 @@ export default function DiarioGuiadoScreen({ navigation }) {
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
       <StatusBar barStyle={colors.statusBar} translucent backgroundColor="transparent" />
       <LavandaBg />
-      <View style={[s.topBar, { paddingTop: insets.top + 6 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconeBtn} accessibilityLabel="Voltar">
-          <Ionicons name="chevron-back" size={24} color={colors.td} />
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} accessibilityLabel="Voltar">
+          <Ionicons name="chevron-back" size={22} color={colors.lav6} />
         </TouchableOpacity>
-        <Text style={s.topTitle}>Diário guiado</Text>
+        <Text style={s.topTitle} numberOfLines={1}>Diário guiado</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -119,7 +138,7 @@ export default function DiarioGuiadoScreen({ navigation }) {
           {retorno && (
             <View style={[s.retorno, retorno.risco && s.retornoRisco]}>
               <View style={s.retornoTopo}>
-                <View style={s.avatar}><Ionicons name="sparkles" size={13} color="white" /></View>
+                <View style={s.avatar}><Ionicons name="sparkles" size={14} color={colors.lilasIcone} /></View>
                 <Text style={s.retornoTit}>AtravessIA</Text>
                 <TouchableOpacity onPress={() => setRetorno(null)} hitSlop={10} style={{ marginLeft: 'auto' }}>
                   <Ionicons name="close" size={18} color={colors.tl} />
@@ -139,7 +158,7 @@ export default function DiarioGuiadoScreen({ navigation }) {
             <Text style={s.rotulo}>{rotuloEmocao ? `Para hoje · você marcou "${rotuloEmocao.toLowerCase()}"` : 'Pergunta de hoje'}</Text>
             <Text style={s.pergunta}>{pergunta}</Text>
             <TouchableOpacity onPress={outra} style={s.outra} hitSlop={8}>
-              <Ionicons name="shuffle" size={14} color={colors.lav5} />
+              <Ionicons name="shuffle" size={16} color={colors.lilasIcone} />
               <Text style={s.outraTxt}>Outra pergunta</Text>
             </TouchableOpacity>
             <TextInput
@@ -152,12 +171,12 @@ export default function DiarioGuiadoScreen({ navigation }) {
               textAlignVertical="top"
               maxLength={4000}
             />
-            <TouchableOpacity style={[s.salvar, (!texto.trim() || salvando) && { opacity: 0.55 }]} onPress={salvar} disabled={!texto.trim() || salvando}>
-              {salvando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="bookmark-outline" size={16} color="white" />}
-              <Text style={s.salvarTxt}>{salvando ? 'Guardando...' : 'Guardar no diário'}</Text>
-            </TouchableOpacity>
+            <BotaoLilas onPress={salvar} desativado={!texto.trim() || salvando} rotulo="Guardar no diário">
+              {salvando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="bookmark-outline" size={18} color="white" />}
+              <Text style={s.btnTxt}>{salvando ? 'Guardando...' : 'Guardar no diário'}</Text>
+            </BotaoLilas>
             <Text style={s.privado}>
-              <Ionicons name="lock-closed-outline" size={11} color={colors.tl} /> Suas páginas são privadas.
+              <Ionicons name="lock-closed-outline" size={12} color={colors.tl} /> Suas páginas são privadas.
             </Text>
           </View>
 
@@ -186,48 +205,60 @@ export default function DiarioGuiadoScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   safe: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingBottom: 6 },
-  iconeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+    paddingHorizontal: spacing.lg, paddingBottom: 8,
+  },
+  backBtn: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 1,
+  },
+  topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.serif, fontSize: 28, color: colors.titulo },
+  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 52, paddingHorizontal: 22, overflow: 'hidden' },
+  btnGrad: { ...StyleSheet.absoluteFillObject, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.22)' },
+  btnHalo: { shadowColor: colors.botaoForte, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 5 },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnVidro: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 50, paddingHorizontal: 20,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.lav2, backgroundColor: colors.vidro,
+  },
+  btnVidroTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   coluna: { width: '100%', gap: spacing.md },
-  retorno: { backgroundColor: colors.lav1, borderRadius: radius.xl, padding: spacing.md, gap: 8 },
+  retorno: { backgroundColor: colors.lavVeu, borderRadius: 24, padding: spacing.lg, gap: 10, borderWidth: 1, borderColor: colors.bordaLuz },
   retornoRisco: { borderWidth: 1.5, borderColor: colors.roseTexto },
-  retornoTopo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.botaoForte, alignItems: 'center', justifyContent: 'center' },
-  retornoTit: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
-  retornoTxt: { fontFamily: fonts.body, fontSize: 14.5, lineHeight: 21, color: colors.td },
+  retornoTopo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: { width: 32, height: 32, borderRadius: 11, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
+  retornoTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
+  retornoTxt: { fontFamily: fonts.body, fontSize: 16, lineHeight: 25, color: colors.titulo },
   cvv: {
     flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-    backgroundColor: colors.roseTexto, borderRadius: radius.full, paddingVertical: 9, paddingHorizontal: 14,
+    backgroundColor: colors.roseTexto, borderRadius: radius.full, minHeight: 44, paddingHorizontal: 16,
   },
-  cvvTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  cvvTxt: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.escuro ? colors.bg : 'white' },
   cartao: {
-    backgroundColor: colors.card, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, gap: 10,
+    backgroundColor: colors.card, borderRadius: 26, borderWidth: 1, borderColor: colors.bordaLuz,
+    padding: spacing.lg, gap: 12,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.3 : 0.1, shadowRadius: 20, elevation: 2,
   },
-  rotulo: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.lav5, letterSpacing: 0.4, textTransform: 'uppercase' },
-  pergunta: { fontFamily: fonts.serif, fontSize: 20, lineHeight: 28, color: colors.lav6 },
-  outra: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start' },
-  outraTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
+  rotulo: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.lilasTexto, letterSpacing: 1, textTransform: 'uppercase' },
+  pergunta: { fontFamily: fonts.serif, fontSize: 25, lineHeight: 33, color: colors.titulo },
+  outra: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 36 },
+  outraTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
   entrada: {
-    minHeight: 150, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg, padding: 14, fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.td,
+    minHeight: 170, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.cardSolido, padding: 16, fontFamily: fonts.body, fontSize: 16, lineHeight: 25, color: colors.titulo,
   },
-  salvar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: colors.botaoForte, borderRadius: radius.full, paddingVertical: 13,
-  },
-  salvarTxt: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: 'white' },
   privado: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, textAlign: 'center' },
-  secTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginTop: spacing.sm },
-  vazio: { fontFamily: fonts.body, fontSize: 13, color: colors.tm, textAlign: 'center', paddingVertical: spacing.lg },
+  secTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, marginTop: spacing.sm, marginLeft: 4 },
+  vazio: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', paddingVertical: spacing.lg },
   pagina: {
-    backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, gap: 6,
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.bordaLuz,
+    padding: spacing.lg, gap: 8,
   },
   paginaTopo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  paginaData: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lav5 },
-  paginaPergunta: { fontFamily: fonts.quote, fontSize: 15, color: colors.tm },
-  paginaTexto: { fontFamily: fonts.body, fontSize: 14.5, lineHeight: 22, color: colors.td },
+  paginaData: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lilasTexto },
+  paginaPergunta: { fontFamily: fonts.quote, fontSize: 19, lineHeight: 26, color: colors.texto2 },
+  paginaTexto: { fontFamily: fonts.body, fontSize: 16, lineHeight: 26, color: colors.titulo },
 }));

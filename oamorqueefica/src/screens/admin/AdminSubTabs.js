@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
+import { colors, spacing, criarEstilos } from '../../theme';
+import { est } from './adminEstilo';
 
 // Sub-abas dentro de uma mesma seção do painel. Permite reunir telas irmãs
 // (ex.: Conteúdos / Áudios Check-in / Frases) sob um único item da barra
@@ -32,6 +33,7 @@ export const GRUPOS_SUBTABS = {
   ],
 };
 
+// Abas em pílulas num trilho de vidro; a aba ativa fica em branco sólido.
 export default function AdminSubTabs({ grupo, atual }) {
   const navigation = useNavigation();
   const abas = GRUPOS_SUBTABS[grupo] || [];
@@ -40,36 +42,39 @@ export default function AdminSubTabs({ grupo, atual }) {
   return (
     <View style={s.wrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.row}>
-        {abas.map(aba => {
-          const ativa = aba.screen === atual;
-          return (
-            <TouchableOpacity
-              key={aba.screen}
-              style={[s.tab, ativa && s.tabAtiva]}
-              onPress={() => !ativa && navigation.navigate(aba.screen)}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.txt, ativa && s.txtAtivo]}>{aba.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
+        <View style={s.trilho} accessibilityRole="tablist">
+          {abas.map(aba => {
+            const ativa = aba.screen === atual;
+            return (
+              <TouchableOpacity
+                key={aba.screen}
+                style={[s.tab, ativa && s.tabAtiva]}
+                onPress={() => !ativa && navigation.navigate(aba.screen)}
+                activeOpacity={0.75}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: ativa }}
+              >
+                <Text style={[s.txt, ativa && s.txtAtivo]}>{aba.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
 const s = criarEstilos(() => ({
-  wrap: {
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-    backgroundColor: colors.card,
+  wrap: { paddingTop: 10, paddingBottom: 4 },
+  row: { paddingHorizontal: spacing.lg },
+  trilho: {
+    ...est.trilho(),
+    backgroundColor: colors.escuro ? colors.card : colors.vidro,
+    ...est.sombra(),
+    shadowOpacity: colors.escuro ? 0.25 : 0.07,
   },
-  row: { paddingHorizontal: spacing.lg, gap: 6, paddingVertical: 8 },
-  tab: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: radius.full,
-    borderWidth: 1, borderColor: 'transparent',
-  },
-  tabAtiva: { backgroundColor: colors.lav1, borderColor: colors.lav3 },
-  txt: { fontFamily: fonts.body, fontSize: 12.5, color: colors.tm },
-  txtAtivo: { fontFamily: fonts.bodyBold, color: colors.lav5 },
+  tab: est.aba(),
+  tabAtiva: est.abaSel(),
+  txt: est.abaTxt(),
+  txtAtivo: est.abaTxtSel(),
 }), { escalar: false });

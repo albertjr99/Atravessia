@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../services/firebase';
@@ -67,7 +68,10 @@ export function useVideoApresentacao(chave) {
 export function BotaoApresentacao({ onPress, style }) {
   return (
     <TouchableOpacity style={[st.botao, style]} onPress={onPress} activeOpacity={0.85}>
-      <View style={st.botaoIcone}><Ionicons name="play" size={13} color="white" style={{ marginLeft: 2 }} /></View>
+      <View style={st.botaoIcone}>
+        <LinearGradient colors={[colors.botao, colors.botaoForte]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <Ionicons name="play" size={13} color="white" style={{ marginLeft: 2 }} />
+      </View>
       <Text style={st.botaoTxt}>Assistir à apresentação</Text>
     </TouchableOpacity>
   );
@@ -98,8 +102,9 @@ export function ModalVideoApresentacao({ visivel, onFechar, video, tituloPadrao 
         )}
 
         <TouchableOpacity style={st.continuar} onPress={onFechar} activeOpacity={0.85}>
+          <LinearGradient colors={['#7A65CB', '#5A46AD']} style={StyleSheet.absoluteFill} pointerEvents="none" />
           <Text style={st.continuarTxt}>Continuar para a tela</Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.lav6} />
+          <Ionicons name="arrow-forward" size={16} color="white" />
         </TouchableOpacity>
         <Text style={st.nota}>Você pode rever este vídeo quando quiser, pelo botão “Assistir à apresentação”.</Text>
       </View>
@@ -108,25 +113,29 @@ export function ModalVideoApresentacao({ visivel, onFechar, video, tituloPadrao 
 }
 
 const st = criarEstilos(() => ({
-  fundo: { flex: 1, backgroundColor: 'rgba(23,20,31,0.96)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  fundo: { flex: 1, backgroundColor: 'rgba(17,14,24,0.96)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
   topo: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: spacing.md },
-  rotulo: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.lav3, letterSpacing: 0.8, textTransform: 'uppercase' },
-  titulo: { fontFamily: fonts.serif, fontSize: 21, lineHeight: 28, color: 'white', marginTop: 2 },
+  rotulo: { fontFamily: fonts.bodyBold, fontSize: 11, color: '#CFC2FF', letterSpacing: 1, textTransform: 'uppercase' },
+  titulo: { fontFamily: fonts.serif, fontSize: 26, lineHeight: 32, color: 'white', marginTop: 2 },
   fechar: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
   },
   continuar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.lg,
-    backgroundColor: colors.lav1, borderRadius: radius.full, paddingVertical: 12, paddingHorizontal: 22,
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.lg, overflow: 'hidden',
+    backgroundColor: '#7A65CB', borderRadius: radius.full, minHeight: 50, paddingHorizontal: 26,
+    borderBottomWidth: 3, borderBottomColor: '#45358A',
   },
-  continuarTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lav6 },
-  nota: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: spacing.sm, maxWidth: 360 },
+  continuarTxt: { fontFamily: fonts.bodyBold, fontSize: 15, color: 'white' },
+  nota: { fontFamily: fonts.body, fontSize: 12.5, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: spacing.sm, maxWidth: 360 },
+  // Botão "Assistir à apresentação": pílula de vidro com o play em degradê lilás
   botao: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-    backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2, borderRadius: radius.full,
-    paddingVertical: 7, paddingLeft: 7, paddingRight: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 9, alignSelf: 'flex-start',
+    backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz, borderRadius: radius.full,
+    paddingVertical: 6, paddingLeft: 6, paddingRight: 16, minHeight: 44,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.08, shadowRadius: 10, elevation: 2,
   },
-  botaoIcone: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.lav4, alignItems: 'center', justifyContent: 'center' },
-  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lav6 },
+  botaoIcone: { width: 30, height: 30, borderRadius: 15, overflow: 'hidden', backgroundColor: colors.botao, alignItems: 'center', justifyContent: 'center' },
+  botaoTxt: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.lilasTexto },
 }));

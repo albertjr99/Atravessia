@@ -10,8 +10,8 @@ import {
 import { ref as sRef, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { uploadToStorage } from '../../utils/storageUpload';
 import { db, storage } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import { Card, Button } from '../../components';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import { est, acento, corPlano, BotaoAdmin, Degrade } from './adminEstilo';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import AdminLayout from './AdminLayout';
@@ -36,7 +36,6 @@ const PLANOS = [
   { id: 3, label: 'Evoluir' },
 ];
 
-const PLANO_COR = { get 0() { return colors.sage; }, get 1() { return colors.lav4; }, 2: '#7B5EA7', 3: '#C0843F' };
 
 function novoForm() {
   return { titulo: '', duracao: '', plano: 1, emocoes: [], url: '', storagePath: '' };
@@ -217,10 +216,12 @@ export default function AdminAudiosScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
+            <Text style={s.sobre}>Biblioteca</Text>
             <Text style={s.pageTitle}>Áudios de Acolhimento</Text>
             <Text style={s.pageSub}>Áudios exibidos no check-in por emoção.</Text>
           </View>
           <TouchableOpacity style={s.addBtn} onPress={() => setMostraModal(true)} activeOpacity={0.85}>
+            <Degrade />
             <Ionicons name="add" size={16} color="white" />
             <Text style={s.addBtnTxt}>Novo áudio</Text>
           </TouchableOpacity>
@@ -247,19 +248,20 @@ export default function AdminAudiosScreen({ navigation }) {
 
         {/* Lista */}
         {audiosFiltrados.length === 0 ? (
-          <Card style={s.vazio}>
+          <View style={s.vazio}>
             <Ionicons name="musical-notes-outline" size={32} color={colors.tl} />
             <Text style={s.vazioTxt}>Nenhum áudio{filtroEmocao !== 'todos' ? ' para esta emoção' : ''} ainda.</Text>
-          </Card>
+          </View>
         ) : (
-          audiosFiltrados.map(audio => (
-            <Card key={audio.id} style={[s.audioCard, !audio.ativo && s.audioInativo]}>
+          <View style={s.lista}>
+          {audiosFiltrados.map((audio, i) => (
+            <View key={audio.id} style={[s.audioCard, i > 0 && s.audioDiv, !audio.ativo && s.audioInativo]}>
               <View style={s.audioTop}>
                 <TouchableOpacity style={s.playBtn} onPress={() => handleTocarPausar(audio)}>
                   <Ionicons
                     name={tocandoId === audio.id ? 'pause-circle' : 'play-circle'}
-                    size={40}
-                    color={audio.ativo ? colors.lav5 : colors.tl}
+                    size={44}
+                    color={audio.ativo ? acento('nevoa').tinta : colors.tl}
                   />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
@@ -270,12 +272,12 @@ export default function AdminAudiosScreen({ navigation }) {
                   <View style={s.badgeRow}>
                     {audio.duracao ? (
                       <View style={s.badge}>
-                        <Ionicons name="time-outline" size={10} color={colors.tm} />
+                        <Ionicons name="time-outline" size={13} color={colors.texto2} />
                         <Text style={s.badgeTxt}>{audio.duracao}</Text>
                       </View>
                     ) : null}
-                    <View style={[s.badge, { backgroundColor: PLANO_COR[audio.plano] + '33' }]}>
-                      <Text style={[s.badgeTxt, { color: PLANO_COR[audio.plano] }]}>
+                    <View style={[s.badge, { backgroundColor: corPlano(audio.plano).fundo }]}>
+                      <Text style={[s.badgeTxt, { color: corPlano(audio.plano).texto, fontFamily: fonts.bodyBold }]}>
                         {PLANOS.find(p => p.id === audio.plano)?.label || 'Grátis'}
                       </Text>
                     </View>
@@ -286,11 +288,11 @@ export default function AdminAudiosScreen({ navigation }) {
                     <Ionicons
                       name={audio.ativo ? 'eye-outline' : 'eye-off-outline'}
                       size={18}
-                      color={audio.ativo ? colors.lav5 : colors.tl}
+                      color={audio.ativo ? colors.lilasIcone : colors.tl}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleExcluir(audio)} style={s.acaoBtn}>
-                    <Ionicons name="trash-outline" size={18} color={colors.rose} />
+                    <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -308,8 +310,9 @@ export default function AdminAudiosScreen({ navigation }) {
                   })}
                 </View>
               )}
-            </Card>
-          ))
+            </View>
+          ))}
+          </View>
         )}
 
         <View style={{ height: 20 }} />
@@ -339,8 +342,8 @@ export default function AdminAudiosScreen({ navigation }) {
               activeOpacity={0.8}
             >
               {uploadando
-                ? <ActivityIndicator size="small" color={colors.lav5} />
-                : <Ionicons name="cloud-upload-outline" size={20} color={colors.lav5} />
+                ? <ActivityIndicator size="small" color={colors.lilasTexto} />
+                : <Ionicons name="cloud-upload-outline" size={20} color={colors.lilasTexto} />
               }
               <Text style={s.uploadTxt}>
                 {form.url ? 'Arquivo carregado ✓' : uploadando ? 'Enviando...' : 'Selecionar arquivo de áudio'}
@@ -380,22 +383,22 @@ export default function AdminAudiosScreen({ navigation }) {
               {PLANOS.map(p => (
                 <TouchableOpacity
                   key={p.id}
-                  style={[s.planoOpc, form.plano === p.id && { backgroundColor: PLANO_COR[p.id] + '33', borderColor: PLANO_COR[p.id] }]}
+                  style={[s.planoOpc, form.plano === p.id && { backgroundColor: corPlano(p.id).fundo, borderColor: corPlano(p.id).tinta }]}
                   onPress={() => setForm(f => ({ ...f, plano: p.id }))}
                 >
-                  <Text style={[s.planoTxt, form.plano === p.id && { color: PLANO_COR[p.id] }]}>{p.label}</Text>
+                  <Text style={[s.planoTxt, form.plano === p.id && { color: corPlano(p.id).texto, fontFamily: fonts.bodyBold }]}>{p.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={s.formBtns}>
-              <Button
+              <BotaoAdmin
                 title="Cancelar"
+                variant="secondary"
                 onPress={() => { setMostraModal(false); setForm(novoForm()); }}
-                style={{ flex: 1, marginRight: spacing.sm, backgroundColor: colors.lav1 }}
-                textStyle={{ color: colors.lav5 }}
+                style={{ flex: 1, marginRight: spacing.sm }}
               />
-              <Button
+              <BotaoAdmin
                 title={salvando ? 'Salvando...' : 'Salvar'}
                 onPress={handleSalvar}
                 disabled={salvando}
@@ -412,92 +415,68 @@ export default function AdminAudiosScreen({ navigation }) {
 }
 
 const s = criarEstilos(() => ({
-  scroll: { padding: spacing.lg },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
-  pageTitle: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.td, marginBottom: 4 },
-  pageSub: { fontFamily: fonts.body, fontSize: 13, color: colors.tm },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colors.lav4, borderRadius: radius.full,
-    paddingHorizontal: 14, paddingVertical: 9,
-  },
-  addBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: 'white' },
+  scroll: { padding: spacing.lg, paddingBottom: 32 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: spacing.md },
+  sobre: est.sobretitulo(),
+  pageTitle: est.titulo(),
+  pageSub: est.subtitulo(),
+  addBtn: { ...est.botao(), minHeight: 46, paddingHorizontal: 18 },
+  addBtnTxt: est.botaoTxt(),
 
-  duracaoInfo: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginTop: spacing.sm },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalCard: {
-    backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    padding: spacing.lg, maxHeight: '90%',
-  },
+  duracaoInfo: { ...est.dica() },
+  modalOverlay: { ...est.veu(), justifyContent: 'flex-end' },
+  modalCard: { ...est.folha(), padding: spacing.lg, maxHeight: '90%' },
 
-  filtroScroll: { marginBottom: spacing.md },
+  filtroScroll: { marginBottom: spacing.md, flexGrow: 0 },
   filtroRow: { flexDirection: 'row', gap: 8, paddingRight: spacing.md },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: colors.lav1,
-    borderWidth: 1, borderColor: colors.lav2,
-  },
-  chipSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  chipTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  chipTxtSel: { color: 'white' },
+  chip: est.chip(),
+  chipSel: est.chipSel(),
+  chipTxt: est.chipTxt(),
+  chipTxtSel: est.chipTxtSel(),
 
-  vazio: { alignItems: 'center', gap: 10, paddingVertical: 32 },
-  vazioTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.tl },
+  vazio: { ...est.vidro(26), alignItems: 'center', gap: 10, paddingVertical: 32 },
+  vazioTxt: est.legenda(),
 
-  audioCard: { marginBottom: spacing.sm },
+  lista: { ...est.vidro(26), paddingVertical: 2 },
+  audioCard: { paddingVertical: 13, paddingHorizontal: 14 },
+  audioDiv: est.divisoria(),
   audioInativo: { opacity: 0.55 },
-  audioTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  playBtn: { paddingTop: 2 },
-  audioTit: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.td, marginBottom: 2 },
-  audioDesc: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 4 },
+  audioTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  playBtn: { paddingTop: 0 },
+  audioTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, marginBottom: 4 },
+  audioDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginBottom: 4 },
   badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   badge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: colors.lav1, borderRadius: 10,
-    paddingHorizontal: 7, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: acento('neutro').fundo, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 3,
   },
-  badgeTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.tm },
-  acoes: { gap: 8 },
-  acaoBtn: { padding: 4 },
-  emocaoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.sm },
-  emocaoChip: {
-    backgroundColor: colors.lav1, borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  emocaoChipTxt: { fontFamily: fonts.body, fontSize: 10, color: colors.lav5 },
+  badgeTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.texto2 },
+  acoes: { gap: 6 },
+  acaoBtn: { ...est.botaoIcone(), width: 38, height: 38 },
+  emocaoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, paddingLeft: 54 },
+  emocaoChip: { backgroundColor: acento('lilas').fundo, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  emocaoChipTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: acento('lilas').texto },
 
   form: { marginTop: spacing.sm, gap: spacing.sm },
-  formTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td, marginBottom: 4 },
-  label: { fontFamily: fonts.body, fontSize: 12, color: colors.tm, marginBottom: 4, marginTop: 4 },
-  input: {
-    backgroundColor: colors.bg, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 10,
-    fontFamily: fonts.body, fontSize: 13, color: colors.td,
-  },
+  formTit: { ...est.modalTitulo(), marginBottom: 4 },
+  label: { ...est.rotulo(), marginTop: 6, marginBottom: 0 },
+  input: est.campo(),
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.lav1, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.lav3, borderStyle: 'dashed',
-    paddingHorizontal: spacing.md, paddingVertical: 14,
+    backgroundColor: colors.lav1, borderRadius: 18,
+    borderWidth: 1.5, borderColor: colors.lav3, borderStyle: 'dashed',
+    paddingHorizontal: spacing.md, paddingVertical: 16,
     justifyContent: 'center',
   },
-  uploadTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.lav5 },
+  uploadTxt: { fontFamily: fonts.bodySemi, fontSize: 14.5, color: colors.lilasTexto },
   emocaoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  emocaoOpc: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  emocaoOpcSel: { backgroundColor: colors.botaoForte, borderColor: colors.botaoForte },
-  emocaoOpcTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  emocaoOpcTxtSel: { color: 'white' },
+  emocaoOpc: est.chip(),
+  emocaoOpcSel: est.chipSel(),
+  emocaoOpcTxt: est.chipTxt(),
+  emocaoOpcTxtSel: est.chipTxtSel(),
   planoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  planoOpc: {
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.bg,
-  },
-  planoTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.tm },
-  formBtns: { flexDirection: 'row', marginTop: spacing.sm },
+  planoOpc: est.chip(),
+  planoTxt: est.chipTxt(),
+  formBtns: { flexDirection: 'row', marginTop: spacing.md },
 }), { escalar: false });
