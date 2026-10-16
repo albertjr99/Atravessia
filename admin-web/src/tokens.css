@@ -174,7 +174,8 @@
 
   /* Tipografia ------------------------------------------------------------- */
   --fonte-ui:       "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --fonte-emocao:   "Figtree", system-ui, sans-serif;   /* uma fonte só em todo o painel */
+  --fonte-emocao:   "Figtree", system-ui, sans-serif;   /* títulos */
+  --fonte-marca:    "Cormorant Garamond", Georgia, serif; /* só no nome "Atravessia", na saudação e na Frase do dia */
   --fonte-numeros:  "Figtree", system-ui, sans-serif;                    /* font-variant-numeric: tabular-nums */
 
   /* Escala (tamanho / altura de linha / peso / família) */

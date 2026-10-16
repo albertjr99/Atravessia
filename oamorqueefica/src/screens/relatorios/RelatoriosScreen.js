@@ -1941,7 +1941,8 @@ const s = criarEstilos(() => ({
   lockedAnnualTit: { fontFamily: fonts.serif, fontSize: 30, lineHeight: 36, color: colors.titulo, marginTop: 14, textAlign: 'center' },
   lockedAnnualDesc: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21, marginTop: 8 },
   lockedAnnualBadge: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, marginTop: 16, backgroundColor: colors.lav1, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full, overflow: 'hidden' },
-  btnCentro: { alignSelf: 'center', minWidth: 230, marginTop: 20 },
+  // Botão central de tamanho fixo: no tablet ele esticava e ficava desproporcional.
+  btnCentro: { alignSelf: 'center', width: 280, maxWidth: '100%', flexGrow: 0, flexShrink: 0, marginTop: 20 },
 
   periodoIconWrap: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.lav1, alignItems: 'center', justifyContent: 'center' },
   stripeWrap: { alignSelf: 'stretch', marginTop: spacing.lg, gap: 12 },
@@ -1954,7 +1955,7 @@ const s = criarEstilos(() => ({
   stripeHint: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center', lineHeight: 17 },
 
   btnExterno: { alignSelf: 'stretch' },
-  btnFace: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 54, paddingHorizontal: 22, paddingVertical: 10, overflow: 'hidden' },
+  btnFace: { flexGrow: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 54, maxHeight: 72, paddingHorizontal: 22, paddingVertical: 10, overflow: 'hidden' },
   btnHalo: { shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 4 },
   btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.white, textAlign: 'center', flexShrink: 1 },
 

@@ -298,7 +298,7 @@ const sty = criarEstilos(() => ({
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 4, paddingBottom: 10 },
   brandLogo: { width: 42, height: 42, borderRadius: 13 },
   brandName: {
-    fontFamily: fonts.serif,
+    fontFamily: 'Marca',
     fontSize: 26, lineHeight: 30, color: colors.lav6, flexShrink: 1,
   },
   adminBadge: {
@@ -405,7 +405,7 @@ const sty = criarEstilos(() => ({
   },
   capsulaCentro: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, minWidth: 0 },
   mobileLogo: { width: 38, height: 38, borderRadius: 11 },
-  capsulaNome: { fontFamily: fonts.serif, fontSize: 25, lineHeight: 30, color: colors.lav6, flexShrink: 1 },
+  capsulaNome: { fontFamily: 'Marca', fontSize: 25, lineHeight: 30, color: colors.lav6, flexShrink: 1 },
   selo: {
     backgroundColor: colors.lav1, borderRadius: 999,
     paddingHorizontal: 8, paddingVertical: 3,

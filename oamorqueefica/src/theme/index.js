@@ -246,6 +246,12 @@ function escalarFonte(fs) {
 // itálico, para manter a mesma proporção na tela.
 const APELIDOS_TITULO = { Titulo: 1, TituloLeve: 1 };
 function folgaItalico(estilo) {
+  // Fonte da marca (Cormorant itálico): o Android corta a última letra
+  // ("Atravessi"); uma folga à direita resolve.
+  if (estilo.fontFamily === 'Marca' || estilo.fontFamily === 'MarcaLeve') {
+    if (estilo.padding != null || estilo.paddingHorizontal != null || estilo.paddingRight != null) return estilo;
+    return { ...estilo, paddingRight: Math.ceil((estilo.fontSize || 16) * 0.18) };
+  }
   if (!APELIDOS_TITULO[estilo.fontFamily]) return estilo;
   const r = { ...estilo, fontStyle: 'normal' };
   if (typeof estilo.fontSize === 'number') r.fontSize = Math.round(estilo.fontSize * 0.8 * 2) / 2;

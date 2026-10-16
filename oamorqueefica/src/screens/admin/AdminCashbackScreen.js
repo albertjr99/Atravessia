@@ -34,7 +34,7 @@ export function resumoCashback(movimentos, agora = Date.now()) {
 }
 
 export default function AdminCashbackScreen({ navigation }) {
-  const [cfg, setCfg] = useState({ ativo: true, percentual: '1', validadeMeses: '6', limitePercentual: '100' });
+  const [cfg, setCfg] = useState({ ativo: true, exibirUsuario: true, percentual: '1', validadeMeses: '6', limitePercentual: '100' });
   const [salvandoCfg, setSalvandoCfg] = useState(false);
   const [movimentos, setMovimentos] = useState([]);
   const [usuarias, setUsuarias] = useState({});
@@ -45,6 +45,7 @@ export default function AdminCashbackScreen({ navigation }) {
     const c = snap.data() || {};
     setCfg({
       ativo: c.ativo !== false,
+      exibirUsuario: c.exibirUsuario !== false,
       percentual: String(c.percentual ?? 1).replace('.', ','),
       validadeMeses: String(c.validadeMeses ?? 6),
       limitePercentual: String(c.limitePercentual ?? 100),
@@ -75,7 +76,7 @@ export default function AdminCashbackScreen({ navigation }) {
     if (!(limitePercentual >= 1 && limitePercentual <= 100)) { Alert.alert('Atenção', 'O limite de desconto deve ficar entre 1% e 100%.'); return; }
     setSalvandoCfg(true);
     try {
-      await setDoc(doc(db, 'configuracoes', 'cashback'), { ativo: cfg.ativo, percentual, validadeMeses, limitePercentual, atualizadoEm: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, 'configuracoes', 'cashback'), { ativo: cfg.ativo, exibirUsuario: cfg.exibirUsuario !== false, percentual, validadeMeses, limitePercentual, atualizadoEm: serverTimestamp() }, { merge: true });
       Alert.alert('Pronto', 'Regras do cashback salvas.');
     } catch (e) {
       Alert.alert('Erro', e.message || 'Não foi possível salvar.');
@@ -148,6 +149,13 @@ export default function AdminCashbackScreen({ navigation }) {
               <Text style={st.ajuda}>Pausado, ninguém ganha nem usa novos créditos.</Text>
             </View>
             <Switch value={cfg.ativo} onValueChange={v => setCfg(c => ({ ...c, ativo: v }))} trackColor={{ true: colors.lav4 }} />
+          </View>
+          <View style={st.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={st.switchTxt}>Mostrar o cashback para as usuárias</Text>
+              <Text style={st.ajuda}>Desligado, o cashback some da área da usuária. Cada parceria (cupom) define se dá cashback, o percentual e as condições.</Text>
+            </View>
+            <Switch value={cfg.exibirUsuario !== false} onValueChange={v => setCfg(c => ({ ...c, exibirUsuario: v }))} trackColor={{ true: colors.lav4 }} />
           </View>
           <View style={st.linha}>
             <View style={st.campo}>

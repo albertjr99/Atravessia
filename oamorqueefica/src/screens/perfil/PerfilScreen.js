@@ -29,7 +29,7 @@ const COR_PLANO = {
 // Perfil: dados da pessoa, plano atual e atalhos de configuração.
 export default function PerfilScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { usuario, cashback } = useApp();
+  const { usuario, cashback, cashbackVisivel } = useApp();
   const { perfil, firebaseUser, atualizarPerfil, sair } = useAuth();
   const [dados, setDados] = useState({
     nome: perfil?.nome || '',
@@ -102,7 +102,7 @@ export default function PerfilScreen({ navigation }) {
     {
       titulo: 'Benefícios',
       itens: [
-        { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', tela: 'Cashback', cor: ['sageFundo', 'sageFg'] },
+        cashbackVisivel && { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', tela: 'Cashback', cor: ['sageFundo', 'sageFg'] },
         { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', tela: 'MeusCupons', cor: ['douradoFundo', 'douradoTitulo'] },
       ],
     },
@@ -212,7 +212,7 @@ export default function PerfilScreen({ navigation }) {
           <View key={g.titulo}>
             <Text style={s.grupoTit}>{g.titulo}</Text>
             <View style={[s.cartao, s.lista]}>
-              {g.itens.map((it, i) => (
+              {g.itens.filter(Boolean).map((it, i) => (
                 <TouchableOpacity
                   key={it.rotulo}
                   style={[s.item, i > 0 && s.itemBorda]}

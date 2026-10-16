@@ -62,6 +62,7 @@ import CartaMesScreen from '../screens/atravessia/CartaMesScreen';
 import CashbackScreen from '../screens/cashback/CashbackScreen';
 import IndicacoesScreen from '../screens/indicacoes/IndicacoesScreen';
 import PerfilScreen from '../screens/perfil/PerfilScreen';
+import GuardarMemoriaScreen from '../screens/memoria/GuardarMemoriaScreen';
 import { SobreScreen, SejaParceiroScreen } from '../screens/institucional/TextoInstitucionalScreen';
 
 import { useAuth } from '../hooks/AuthContext';
@@ -114,6 +115,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Indicacoes" component={IndicacoesScreen} />
       <Stack.Screen name="PlanoAno" component={PlanoAnoScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
+      <Stack.Screen name="GuardarMemoria" component={GuardarMemoriaScreen} />
       <Stack.Screen name="Sobre" component={SobreScreen} />
       <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
     </Stack.Navigator>

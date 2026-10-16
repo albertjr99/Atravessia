@@ -25,7 +25,7 @@ function resumoCashback(movimentos, agora = Date.now()) {
 }
 
 export default function Cashback({ showToast }) {
-  const [cfg, setCfg] = useState({ ativo: true, percentual: '1', validadeMeses: '6', limitePercentual: '100' });
+  const [cfg, setCfg] = useState({ ativo: true, exibirUsuario: true, percentual: '1', validadeMeses: '6', limitePercentual: '100' });
   const [salvandoCfg, setSalvandoCfg] = useState(false);
   const [movimentos, setMovimentos] = useState([]);
   const [usuarias, setUsuarias] = useState({});
@@ -36,6 +36,7 @@ export default function Cashback({ showToast }) {
     const c = snap.data() || {};
     setCfg({
       ativo: c.ativo !== false,
+      exibirUsuario: c.exibirUsuario !== false,
       percentual: String(c.percentual ?? 1).replace('.', ','),
       validadeMeses: String(c.validadeMeses ?? 6),
       limitePercentual: String(c.limitePercentual ?? 100),
@@ -64,7 +65,7 @@ export default function Cashback({ showToast }) {
     if (!(limitePercentual >= 1 && limitePercentual <= 100)) { showToast('O desconto máximo deve ficar entre 1% e 100%.', 'error'); return; }
     setSalvandoCfg(true);
     try {
-      await setDoc(doc(db, 'configuracoes', 'cashback'), { ativo: cfg.ativo, percentual, validadeMeses, limitePercentual, atualizadoEm: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, 'configuracoes', 'cashback'), { ativo: cfg.ativo, exibirUsuario: cfg.exibirUsuario !== false, percentual, validadeMeses, limitePercentual, atualizadoEm: serverTimestamp() }, { merge: true });
       showToast('Regras do cashback salvas.');
     } catch (e) {
       showToast(`Erro ao salvar: ${e.message || ''}`, 'error');
@@ -125,6 +126,14 @@ export default function Cashback({ showToast }) {
             </label>
             <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Programa ativo <span className="field-hint" style={{ display: 'inline' }}>(pausado, ninguém ganha nem usa créditos)</span></span>
           </div>
+          <div className="toggle-row">
+            <label className="toggle">
+              <input type="checkbox" checked={cfg.exibirUsuario !== false} onChange={e => setCfg(c => ({ ...c, exibirUsuario: e.target.checked }))} />
+              <span className="toggle-slider" />
+            </label>
+            <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Mostrar o cashback para as usuárias <span className="field-hint" style={{ display: 'inline' }}>(desligado, o cashback some da área da usuária)</span></span>
+          </div>
+          <p className="field-hint" style={{ marginTop: 6 }}>Quais parcerias dão cashback, e com qual percentual e condições, se define no cadastro de cada parceria (cupom).</p>
           <div className="cb-linha">
             <div className="field-group"><label>Cashback (%)</label><input value={cfg.percentual} onChange={e => setCfg(c => ({ ...c, percentual: e.target.value }))} inputMode="decimal" /></div>
             <div className="field-group"><label>Validade (meses)</label><input value={cfg.validadeMeses} onChange={e => setCfg(c => ({ ...c, validadeMeses: e.target.value }))} inputMode="numeric" /></div>

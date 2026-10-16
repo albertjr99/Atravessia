@@ -77,7 +77,7 @@ const s = criarEstilos(() => ({
   },
   marca: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
   logo: { width: 44, height: 44, borderRadius: 13 },
-  marcaNome: { fontFamily: 'Titulo', fontSize: 30, color: colors.escuro ? colors.titulo : '#45358A' },
+  marcaNome: { fontFamily: 'Marca', fontSize: 30, color: colors.escuro ? colors.titulo : '#45358A' },
   texto: { fontFamily: 'Figtree_400Regular', fontSize: 16, lineHeight: 25, color: colors.titulo },
   botao: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 999, overflow: 'hidden', backgroundColor: colors.botao },
   botaoGradiente: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },

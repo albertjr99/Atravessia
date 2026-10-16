@@ -63,7 +63,7 @@ export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const {
     usuario, notificacoes, checkins, parcerias, fraseDoDia, meusVouchers, cashback, indicacoes, temAcesso,
-    recursosIA, iaAtiva, podeUsarIA,
+    recursosIA, iaAtiva, podeUsarIA, cashbackVisivel,
   } = useApp();
   // Funções da AtravessIA ligadas no painel; cada uma com o seu plano mínimo.
   const atalhosIA = RECURSOS_IA.filter(r => iaAtiva(r.chave));
@@ -81,7 +81,7 @@ export default function HomeScreen({ navigation }) {
   const { width: larguraTela } = useWindowDimensions();
   const tablet = larguraTela >= 600;
   // Com avisos, o cartão de vidro sobe e fica por cima da aquarela; o topo cresce um pouco para caber.
-  const temAvisos = cashback?.saldoCentavos > 0 || notificacoes.some(n => !n.lida);
+  const temAvisos = (cashbackVisivel && cashback?.saldoCentavos > 0) || notificacoes.some(n => !n.lida);
   // O logo fica logo abaixo dos botões do topo, com respiro até a saudação.
   const alturaTopo = (tablet ? 250 : 196) + (temAvisos ? 28 : 0);
   const [reflexaoAberta, setReflexaoAberta] = useState(false);
@@ -161,7 +161,7 @@ export default function HomeScreen({ navigation }) {
   const inicial = (usuario.apelido || usuario.nome || 'A').trim().charAt(0).toUpperCase();
 
   const itensMenu = [
-    { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', acao: () => navigation.navigate('Cashback') },
+    cashbackVisivel && { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: (cashbackVisivel && cashback?.saldoCentavos > 0) ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', acao: () => navigation.navigate('Cashback') },
     { icone: 'image-outline', rotulo: 'Foto do perfil', sub: perfil?.photoURL ? 'Trocar ou remover sua foto' : 'Personalize sua área com uma foto', acao: tocarFoto },
     { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
     { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
@@ -171,7 +171,7 @@ export default function HomeScreen({ navigation }) {
     { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', acao: () => navigation.navigate('Sobre') },
     { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Saiba como', acao: () => navigation.navigate('SejaParceiro') },
     { icone: 'log-out-outline', rotulo: 'Sair da conta', acao: handleSair, sair: true },
-  ];
+  ].filter(Boolean);
 
   const saudacao = () => {
     const h = new Date().getHours();
@@ -241,7 +241,7 @@ export default function HomeScreen({ navigation }) {
           {/* ===== AVISOS: cashback e mensagens num cartão de vidro sobre a aquarela ===== */}
           {temAvisos && (
             <Vidro style={s.avisos} intensidade={50}>
-              {cashback?.saldoCentavos > 0 && (
+              {(cashbackVisivel && cashback?.saldoCentavos > 0) && (
                 <TouchableOpacity style={[s.cashbackAviso, s.avisoNoVidro]} onPress={() => navigation.navigate('Cashback')} activeOpacity={0.85}>
                   <Ionicons name="wallet-outline" size={17} color={colors.sageFg} />
                   <Text style={s.cashbackTxt}>Você tem <Text style={s.cashbackValor}>{brl(cashback.saldoCentavos)}</Text> de cashback</Text>
@@ -250,7 +250,7 @@ export default function HomeScreen({ navigation }) {
               )}
               {naoLidas > 0 && (
                 <TouchableOpacity
-                  style={[s.notifLinha, cashback?.saldoCentavos > 0 && s.notifLinhaBorda]}
+                  style={[s.notifLinha, (cashbackVisivel && cashback?.saldoCentavos > 0) && s.notifLinhaBorda]}
                   onPress={() => navigation.navigate('Notificacoes')}
                   activeOpacity={0.88}
                 >
@@ -634,7 +634,7 @@ const s = criarEstilos(() => ({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   appTitle: {
-    fontFamily: 'Titulo',
+    fontFamily: 'Marca',
     fontSize: 38, color: colors.escuro ? colors.titulo : '#45358A',
     letterSpacing: 0.3,
   },
@@ -655,7 +655,7 @@ const s = criarEstilos(() => ({
     alignItems: 'center', justifyContent: 'center',
   },
   greetName: {
-    fontFamily: 'Titulo',
+    fontFamily: 'Marca',
     fontSize: 31, lineHeight: 36, color: colors.titulo,
   },
   greetSub: {
@@ -681,7 +681,7 @@ const s = criarEstilos(() => ({
     color: colors.lilasTexto, letterSpacing: 1.2, textTransform: 'uppercase',
   },
   fraseTxt: {
-    fontFamily: 'TituloLeve',
+    fontFamily: 'MarcaLeve',
     fontSize: 25, color: colors.titulo, lineHeight: 33, textAlign: 'center',
   },
   fraseAutor: {

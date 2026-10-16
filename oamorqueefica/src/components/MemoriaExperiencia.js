@@ -9,14 +9,12 @@ import { hojeStrBR } from '../utils/date';
 
 export const PERGUNTA_MEMORIA = 'Ao experimentar a vida hoje, que sensação boa você gostaria de guardar na memória?';
 
-// Campo opcional do Experimente a vida: depois de um serviço de parceria, a
-// pessoa pode guardar a sensação boa que viveu. O texto aparece na Carta do mês.
-// `parcerias` (opcional) permite marcar com qual parceria foi a experiência.
-export default function MemoriaExperiencia({ parcerias = [] }) {
+// Campo opcional do Experimente a vida: a pessoa guarda, de forma geral, a
+// sensação boa que viveu. O texto aparece na Carta do mês.
+export default function MemoriaExperiencia() {
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
   const [texto, setTexto] = useState('');
-  const [parceria, setParceria] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
 
@@ -27,12 +25,10 @@ export default function MemoriaExperiencia({ parcerias = [] }) {
     try {
       await addDoc(collection(db, 'usuarios', uid, 'experiencias'), {
         texto: t.slice(0, 600),
-        parceria: parceria?.titulo || null,
-        parceriaId: parceria?.id || null,
         data: hojeStrBR(),
         criadoEm: serverTimestamp(),
       });
-      setTexto(''); setParceria(null); setSalvo(true);
+      setTexto(''); setSalvo(true);
     } catch (e) {
       Alert.alert('Não foi possível guardar', e?.message || 'Tente novamente em instantes.');
     } finally {
@@ -47,19 +43,6 @@ export default function MemoriaExperiencia({ parcerias = [] }) {
         <Text style={s.sobretitulo}>Guardar na memória · opcional</Text>
       </View>
       <Text style={s.pergunta}>{PERGUNTA_MEMORIA}</Text>
-
-      {parcerias.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          {parcerias.slice(0, 12).map(p => {
-            const sel = parceria?.id === p.id;
-            return (
-              <TouchableOpacity key={p.id} style={[s.chip, sel && s.chipSel]} onPress={() => setParceria(sel ? null : p)} activeOpacity={0.8}>
-                <Text style={[s.chipTxt, sel && s.chipTxtSel]} numberOfLines={1}>{p.titulo}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
 
       <TextInput
         style={s.input}
