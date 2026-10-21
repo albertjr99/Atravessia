@@ -42,6 +42,7 @@ import AdminProdutosScreen from '../screens/admin/AdminProdutosScreen';
 import AdminAtravessIAScreen from '../screens/admin/AdminAtravessIAScreen';
 import AdminIndicacoesScreen from '../screens/admin/AdminIndicacoesScreen';
 import AdminCashbackScreen from '../screens/admin/AdminCashbackScreen';
+import AdminArtesScreen from '../screens/admin/AdminArtesScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
@@ -147,6 +148,7 @@ function AdminStack() {
       {IA_PAINEL && <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />}
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
       <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />
+      <Stack.Screen name="AdminArtes" component={AdminArtesScreen} />
     </Stack.Navigator>
   );
 }

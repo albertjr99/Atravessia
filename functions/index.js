@@ -1255,3 +1255,324 @@ exports.registrarClique = onCall(async (request) => {
   await ref.update({ cliques: admin.firestore.FieldValue.increment(1) });
   return { ok: true };
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ATRAVESSIA ARTES — gerador de artes por IA para as administradoras
+//
+// Fluxo: o painel (web ou app) chama `gerarArte` com a descrição, o formato e
+// o estilo. Aqui o pedido ganha o "prompt de marca" da Atravessia, segue para
+// o provedor escolhido (OpenAI/DALL·E ou Google/Nano Banana), cada imagem é
+// salva no Storage em artes/{id}.png e registrada na coleção `artes`.
+//
+// Configuração (documento configuracoes/artes, editado no painel):
+//   { provedor: 'openai' | 'gemini', ativo: true|false,
+//     modeloOpenai?: 'gpt-image-1' | 'dall-e-3', qualidade?: 'low'|'medium'|'high' }
+//
+// CHAVES DE API — ainda não existem. Por isso as chaves são lidas de
+// process.env (sem defineSecret): um secret declarado e inexistente faz o
+// deploy inteiro falhar. Quando a chave existir (ver docs/atravessia-artes.md):
+//   1) firebase functions:secrets:set OPENAI_API_KEY   (ou GEMINI_API_KEY)
+//   2) troque as duas linhas de CHAVES_ARTES abaixo por:
+//        const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
+//        const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+//        const CHAVES_ARTES = {
+//          openai: () => OPENAI_API_KEY.value(),
+//          gemini: () => GEMINI_API_KEY.value(),
+//        };
+//      (declare só o secret que foi criado; o outro continua via process.env)
+//   3) em OPCOES_ARTES, acrescente: secrets: [OPENAI_API_KEY] (e/ou GEMINI_API_KEY),
+//      e passe os mesmos secrets para statusGeradorArtes:
+//        exports.statusGeradorArtes = onCall({ secrets: [OPENAI_API_KEY] }, async (request) => {
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CHAVES_ARTES = {
+  openai: () => process.env.OPENAI_API_KEY || '',
+  gemini: () => process.env.GEMINI_API_KEY || '',
+};
+
+// Gerar até 4 imagens em alta qualidade pode levar mais de um minuto.
+const OPCOES_ARTES = { timeoutSeconds: 300, memory: '1GiB' };
+
+const MSG_NAO_CONECTADO = 'O gerador de artes ainda não foi conectado a um serviço de IA. '
+  + 'Assim que a chave da API for configurada no servidor, ele passa a funcionar. '
+  + 'Enquanto isso, a galeria continua disponível.';
+
+// Identidade visual da Atravessia — entra em TODA arte gerada.
+const PROMPT_MARCA = [
+  'Arte para a Atravessia, um aplicativo brasileiro de acolhimento ao luto.',
+  'Sensação: delicadeza, calma, cuidado, esperança serena e presença afetuosa.',
+  'Luz suave e difusa, composição limpa e arejada, com espaço livre para respirar.',
+  'Evite imagens tristes, pesadas, sombrias ou dramáticas: nada de cemitérios, caixões, velas de velório, lágrimas, pessoas chorando, cenas hospitalares ou escuridão.',
+  'Não escreva nenhum texto, letra, número, logotipo ou marca d\'água na imagem.',
+].join(' ');
+
+const PROMPT_PALETA = 'Paleta da marca: lavanda e lilás suaves (#8B7AC0, #C3B5EC, #ECE6FA), '
+  + 'pêssego claro (#F2B9A0, #FCE7DC), verde-sálvia (#9EC4AB, #E1EEE5) e fundo porcelana quente (#F6F1EE), '
+  + 'em tons pastel, com aspecto de aquarela suave.';
+
+// Presets de estilo (o painel mostra nome e descrição; o texto vai ao modelo).
+const ESTILOS_ARTE = {
+  aquarela: {
+    nome: 'Aquarela lavanda',
+    prompt: 'Estilo aquarela suave sobre papel texturizado, manchas delicadas de lavanda e lilás que se dissolvem nas bordas, pinceladas leves e transparentes.',
+  },
+  botanico: {
+    nome: 'Botânico realista',
+    prompt: 'Ilustração botânica realista e delicada: folhas de ginkgo, lavanda, ramos e flores do campo, detalhes finos, luz natural suave, fundo claro e limpo.',
+  },
+  minimalista: {
+    nome: 'Minimalista suave',
+    prompt: 'Composição minimalista com formas orgânicas simples, muito espaço vazio, degradês sutis e poucos elementos, elegante e silenciosa.',
+  },
+  fotografia: {
+    nome: 'Fotografia acolhedora',
+    prompt: 'Fotografia acolhedora com luz natural de fim de tarde, foco suave e profundidade de campo rasa, cenas do cotidiano que transmitem conforto (xícara de chá, janela com cortina leve, mãos segurando flores, jardim sereno).',
+  },
+  afetiva: {
+    nome: 'Ilustração afetiva',
+    prompt: 'Ilustração afetiva em traço delicado, cores pastel, personagens sem rosto detalhado e sem gênero definido, gestos de carinho e companhia, clima de colo e acolhimento.',
+  },
+};
+
+// Formatos e o tamanho que cada provedor sabe gerar. Os modelos não fazem
+// todas as proporções: o mais próximo de cada uma está indicado.
+const FORMATOS_ARTE = {
+  post: {
+    nome: 'Post (quadrado)', descricao: 'imagem quadrada para feed',
+    openai: '1024x1024', dalle3: '1024x1024', gemini: '1:1',
+  },
+  story: {
+    nome: 'Story (vertical)', descricao: 'imagem vertical de tela cheia para stories e status',
+    openai: '1024x1536', dalle3: '1024x1792', gemini: '9:16',
+  },
+  banner: {
+    nome: 'Banner (faixa larga)', descricao: 'faixa horizontal larga para topo de site, e-mail ou capa',
+    openai: '1536x1024', dalle3: '1792x1024', gemini: '21:9',
+  },
+  paisagem: {
+    nome: 'Paisagem (horizontal)', descricao: 'imagem horizontal',
+    openai: '1536x1024', dalle3: '1792x1024', gemini: '16:9',
+  },
+};
+
+async function lerConfigArtes() {
+  try {
+    const snap = await db.collection('configuracoes').doc('artes').get();
+    return snap.data() || {};
+  } catch {
+    return {};
+  }
+}
+
+function montarPromptArte({ prompt, formato, estilo, usarPaletaMarca }) {
+  const partes = [PROMPT_MARCA];
+  if (usarPaletaMarca) partes.push(PROMPT_PALETA);
+  const est = ESTILOS_ARTE[estilo];
+  if (est) partes.push(est.prompt);
+  partes.push(`Formato: ${FORMATOS_ARTE[formato].descricao}.`);
+  partes.push(`Pedido da equipe: ${prompt}`);
+  return partes.join('\n');
+}
+
+// Converte a resposta de erro do provedor numa mensagem acolhedora.
+function erroDoProvedor(nomeProvedor, status, corpo) {
+  console.error(`[gerarArte] ${nomeProvedor} respondeu ${status}:`, String(corpo).slice(0, 2000));
+  if (status === 401 || status === 403) {
+    return new HttpsError('failed-precondition', `A chave da API do ${nomeProvedor} foi recusada. Confira a chave configurada no servidor.`);
+  }
+  if (status === 429) {
+    return new HttpsError('resource-exhausted', `O ${nomeProvedor} está com muitos pedidos ou sem créditos no momento. Tente de novo em alguns minutos.`);
+  }
+  if (status === 400 && /safety|policy|blocked|moderation/i.test(String(corpo))) {
+    return new HttpsError('invalid-argument', 'O filtro de segurança do serviço não aceitou essa descrição. Tente descrevê-la de outro jeito.');
+  }
+  return new HttpsError('unavailable', `O ${nomeProvedor} não conseguiu gerar a arte agora. Tente de novo em instantes.`);
+}
+
+// ---- Adaptadores de provedor ------------------------------------------------
+// Cada adaptador recebe { promptFinal, formato, quantidade, config, chave } e
+// devolve [{ buffer, mimeType, tamanho }].
+
+const PROVEDORES_ARTE = {
+  // OpenAI Images API — gpt-image-1 (padrão) ou dall-e-3.
+  openai: {
+    nome: 'DALL·E (OpenAI)',
+    async gerar({ promptFinal, formato, quantidade, config, chave }) {
+      const modelo = config.modeloOpenai === 'dall-e-3' ? 'dall-e-3' : 'gpt-image-1';
+      const tamanho = modelo === 'dall-e-3' ? FORMATOS_ARTE[formato].dalle3 : FORMATOS_ARTE[formato].openai;
+      const pedir = async (n) => {
+        const corpo = { model: modelo, prompt: promptFinal, n, size: tamanho };
+        if (modelo === 'dall-e-3') {
+          corpo.response_format = 'b64_json';
+          corpo.quality = config.qualidade === 'high' ? 'hd' : 'standard';
+        } else {
+          // gpt-image-1 sempre devolve b64_json; qualidade: low | medium | high.
+          corpo.quality = ['low', 'medium', 'high'].includes(config.qualidade) ? config.qualidade : 'medium';
+        }
+        const resp = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${chave}` },
+          body: JSON.stringify(corpo),
+        });
+        const texto = await resp.text();
+        if (!resp.ok) throw erroDoProvedor('DALL·E (OpenAI)', resp.status, texto);
+        const json = JSON.parse(texto);
+        return (json.data || [])
+          .filter(d => d.b64_json)
+          .map(d => ({ buffer: Buffer.from(d.b64_json, 'base64'), mimeType: 'image/png', tamanho, modelo }));
+      };
+      // dall-e-3 só aceita n = 1: faz um pedido por imagem.
+      if (modelo === 'dall-e-3') {
+        const lotes = await Promise.all(Array.from({ length: quantidade }, () => pedir(1)));
+        return lotes.flat();
+      }
+      return pedir(quantidade);
+    },
+  },
+
+  // Google Gemini 2.5 Flash Image ("Nano Banana") — uma imagem por pedido.
+  gemini: {
+    nome: 'Nano Banana (Google)',
+    async gerar({ promptFinal, formato, quantidade, chave }) {
+      const modelo = 'gemini-2.5-flash-image';
+      const proporcao = FORMATOS_ARTE[formato].gemini;
+      const pedir = async () => {
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-goog-api-key': chave },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: promptFinal }] }],
+              generationConfig: {
+                responseModalities: ['IMAGE'],
+                imageConfig: { aspectRatio: proporcao },
+              },
+            }),
+          },
+        );
+        const texto = await resp.text();
+        if (!resp.ok) throw erroDoProvedor('Nano Banana (Google)', resp.status, texto);
+        const json = JSON.parse(texto);
+        const partes = json.candidates?.[0]?.content?.parts || [];
+        const img = partes.find(p => p.inlineData?.data || p.inline_data?.data);
+        if (!img) {
+          // Sem imagem = o modelo recusou (filtro de segurança) ou só devolveu texto.
+          throw erroDoProvedor('Nano Banana (Google)', 400, `sem imagem (safety?): ${texto}`);
+        }
+        const dados = img.inlineData || img.inline_data;
+        return {
+          buffer: Buffer.from(dados.data, 'base64'),
+          mimeType: dados.mimeType || dados.mime_type || 'image/png',
+          tamanho: proporcao,
+          modelo,
+        };
+      };
+      return Promise.all(Array.from({ length: quantidade }, () => pedir()));
+    },
+  },
+};
+
+// Salva a imagem no Storage com um token de download (URL estável, que abre
+// no app e no painel sem depender das regras) e devolve { url, caminho }.
+async function salvarImagemArte(id, { buffer, mimeType }) {
+  const ext = mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/webp' ? 'webp' : 'png';
+  const caminho = `artes/${id}.${ext}`;
+  const bucket = admin.storage().bucket();
+  const token = crypto.randomUUID();
+  await bucket.file(caminho).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType: mimeType,
+      cacheControl: 'public, max-age=31536000',
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(caminho)}?alt=media&token=${token}`;
+  return { url, caminho };
+}
+
+// Diz ao painel se o gerador está pronto (sem revelar as chaves).
+exports.statusGeradorArtes = onCall(async (request) => {
+  await exigirAdmin(request);
+  const config = await lerConfigArtes();
+  const provedor = config.provedor === 'gemini' ? 'gemini' : 'openai';
+  const conectados = {
+    openai: !!CHAVES_ARTES.openai(),
+    gemini: !!CHAVES_ARTES.gemini(),
+  };
+  return {
+    provedor,
+    ativo: config.ativo !== false,
+    conectados,
+    pronto: config.ativo !== false && conectados[provedor],
+  };
+});
+
+exports.gerarArte = onCall(OPCOES_ARTES, async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const dados = request.data || {};
+
+  const prompt = String(dados.prompt || '').trim().slice(0, 1200);
+  if (prompt.length < 3) throw new HttpsError('invalid-argument', 'Descreva a arte que você quer criar.');
+  const formato = FORMATOS_ARTE[dados.formato] ? dados.formato : 'post';
+  const estilo = ESTILOS_ARTE[dados.estilo] ? dados.estilo : 'aquarela';
+  const usarPaletaMarca = dados.usarPaletaMarca !== false;
+  const quantidade = Math.min(4, Math.max(1, Math.round(Number(dados.quantidade) || 1)));
+
+  const config = await lerConfigArtes();
+  if (config.ativo === false) {
+    throw new HttpsError('failed-precondition', 'O gerador de artes está desligado no momento. Ele pode ser ligado na configuração da tela Atravessia Artes.');
+  }
+  const provedorId = ['openai', 'gemini'].includes(dados.provedor)
+    ? dados.provedor
+    : (config.provedor === 'gemini' ? 'gemini' : 'openai');
+  const provedor = PROVEDORES_ARTE[provedorId];
+  const chave = CHAVES_ARTES[provedorId]();
+  if (!chave) throw new HttpsError('failed-precondition', MSG_NAO_CONECTADO);
+
+  const promptFinal = montarPromptArte({ prompt, formato, estilo, usarPaletaMarca });
+
+  let imagens;
+  try {
+    imagens = await provedor.gerar({ promptFinal, formato, quantidade, config, chave });
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    console.error('[gerarArte] falha inesperada:', e);
+    throw new HttpsError('unavailable', 'Não foi possível gerar a arte agora. Tente de novo em instantes.');
+  }
+  if (!imagens?.length) throw new HttpsError('unavailable', 'O serviço não devolveu nenhuma imagem. Tente de novo.');
+
+  const artes = [];
+  for (const img of imagens) {
+    const ref = db.collection('artes').doc();
+    const { url, caminho } = await salvarImagemArte(ref.id, img);
+    const doc = {
+      prompt, promptFinal, formato, estilo, usarPaletaMarca,
+      provedor: provedorId, modelo: img.modelo || null, tamanho: img.tamanho || null,
+      url, caminho,
+      criadoPor: adminUid,
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+      favorita: false,
+    };
+    await ref.set(doc);
+    artes.push({ id: ref.id, ...doc, criadoEm: Date.now() });
+  }
+  return { artes };
+});
+
+// Exclui a arte: arquivo no Storage + documento.
+exports.excluirArte = onCall(async (request) => {
+  await exigirAdmin(request);
+  const id = String(request.data?.id || '');
+  if (!id || id.includes('/')) throw new HttpsError('invalid-argument', 'Arte não informada.');
+  const ref = db.collection('artes').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) return { ok: true };
+  const caminho = snap.data().caminho;
+  if (caminho && String(caminho).startsWith('artes/')) {
+    await admin.storage().bucket().file(caminho).delete({ ignoreNotFound: true }).catch(() => {});
+  }
+  await ref.delete();
+  return { ok: true };
+});

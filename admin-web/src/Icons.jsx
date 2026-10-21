@@ -47,6 +47,12 @@ import svgChevron from 'ionicons/dist/svg/chevron-forward-outline.svg?raw';
 import svgFlower from 'ionicons/dist/svg/flower-outline.svg?raw';
 import svgImage from 'ionicons/dist/svg/image-outline.svg?raw';
 import svgBulb from 'ionicons/dist/svg/bulb-outline.svg?raw';
+import svgDownload from 'ionicons/dist/svg/download-outline.svg?raw';
+import svgCopy from 'ionicons/dist/svg/copy-outline.svg?raw';
+import svgPalette from 'ionicons/dist/svg/color-palette-outline.svg?raw';
+import svgRefresh from 'ionicons/dist/svg/refresh-outline.svg?raw';
+import svgHeartFill from 'ionicons/dist/svg/heart.svg?raw';
+import svgBrush from 'ionicons/dist/svg/brush-outline.svg?raw';
 
 function Ion({ svg, size = 18, className = '', style, ...rest }) {
   return (
@@ -109,6 +115,12 @@ export const IconChevron = ion(svgChevron);
 export const IconFlower = ion(svgFlower);
 export const IconImage = ion(svgImage);
 export const IconBulb = ion(svgBulb);
+export const IconDownload = ion(svgDownload);
+export const IconCopy = ion(svgCopy);
+export const IconPalette = ion(svgPalette);
+export const IconRefresh = ion(svgRefresh);
+export const IconHeartFill = ion(svgHeartFill);
+export const IconBrush = ion(svgBrush);
 
 // Aspas (não existe no Ionicons): traço no mesmo peso dos demais.
 export const IconQuote = ({ size = 18, className = '', style, ...rest }) => (
