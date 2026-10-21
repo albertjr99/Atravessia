@@ -20,7 +20,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
 import { Profundo } from '../../components/Efeitos';
 import { functions, db } from '../../services/firebase';
-import { LOGO_RELATORIO } from '../../utils/logoRelatorio';
+import { gerarRelatorioMensalHTML, gerarRelatorioAnualHTML, gerarRelatorioPersonalizadoHTML } from '../../utils/relatorioHtml';
 import UsarCashback from '../cashback/UsarCashback';
 
 
@@ -403,637 +403,7 @@ const EMO_CHART_COLORS = [
   '#8EA3C8', '#B98A7A', '#8FA89A', '#C27C78', '#9A90AE', '#C7A07E',
 ];
 
-// ── Gerador de HTML para PDF ─────────────────────────────────────────────────
-const BOTANICA_WATERMARK = `
-<div style="position:absolute;top:-20px;right:-25px;opacity:0.13;pointer-events:none;z-index:0">
-  <svg width="190" height="260" viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg">
-    <line x1="60" y1="220" x2="60" y2="32" stroke="#8B7AC0" stroke-width="2"/>
-    <ellipse cx="60" cy="22" rx="8" ry="14" fill="#9B8AD0"/>
-    <ellipse cx="47" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(-22 47 42)"/>
-    <ellipse cx="73" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(22 73 42)"/>
-    <ellipse cx="43" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(-28 43 65)"/>
-    <ellipse cx="77" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(28 77 65)"/>
-    <ellipse cx="37" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(-38 37 140)"/>
-    <ellipse cx="83" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(38 83 140)"/>
-    <ellipse cx="42" cy="168" rx="15" ry="7" fill="#B8C5A0" transform="rotate(-26 42 168)"/>
-    <ellipse cx="78" cy="168" rx="15" ry="7" fill="#B8C5A0" transform="rotate(26 78 168)"/>
-  </svg>
-</div>
-<div style="position:absolute;bottom:30px;left:-22px;opacity:0.09;pointer-events:none;z-index:0;transform:scaleX(-1) rotate(15deg)">
-  <svg width="140" height="190" viewBox="0 0 120 220" xmlns="http://www.w3.org/2000/svg">
-    <line x1="60" y1="220" x2="60" y2="32" stroke="#8B7AC0" stroke-width="2"/>
-    <ellipse cx="60" cy="22" rx="8" ry="14" fill="#9B8AD0"/>
-    <ellipse cx="47" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(-22 47 42)"/>
-    <ellipse cx="73" cy="42" rx="7" ry="11" fill="#AB9ADF" transform="rotate(22 73 42)"/>
-    <ellipse cx="43" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(-28 43 65)"/>
-    <ellipse cx="77" cy="65" rx="6" ry="10" fill="#BB99E0" transform="rotate(28 77 65)"/>
-    <ellipse cx="37" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(-38 37 140)"/>
-    <ellipse cx="83" cy="140" rx="18" ry="8" fill="#B8C5A0" transform="rotate(38 83 140)"/>
-  </svg>
-</div>`;
-
-function gerarInsightsMensais(mesal, diasPassados) {
-  if (mesal.total === 0) return [];
-  const insights = [];
-  const pctDias = diasPassados > 0 ? Math.round((mesal.com / diasPassados) * 100) : 0;
-  const emoObj = getEmoObj(mesal.dominante);
-
-  if (pctDias >= 80) {
-    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Constância admirável', texto: `Você registrou ${mesal.com} de ${diasPassados} dias deste mês (${pctDias}%). Esse comprometimento com o autoconhecimento é um ato genuíno de cuidado consigo mesm@.` });
-  } else if (pctDias >= 50) {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Boa frequência de registros', texto: `Você registrou ${mesal.com} de ${diasPassados} dias passados (${pctDias}%). Tente incluir o check-in nos dias sem registro para uma análise ainda mais completa.` });
-  } else if (mesal.com > 0) {
-    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Continue registrando', texto: `Você registrou ${mesal.com} dia(s) este mês. Cada check-in, mesmo nos dias difíceis, é uma forma de cuidado próprio. Tente tornar esse hábito parte da rotina.` });
-  }
-
-  if (emoObj) {
-    if (emoObj.positiva) {
-      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} em destaque`, texto: `${emoObj.label} foi a emoção mais presente este mês. Identificar e acolher sentimentos positivos é parte essencial da jornada de cura.` });
-    } else {
-      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando ${nomeEmo}`, texto: `${emoObj.label} foi sua emoção mais frequente este mês. Sentir isso é natural no processo de luto — nomear o que você sente é o primeiro passo para atravessá-lo.` });
-    }
-  }
-
-  if (mesal.sorted.length >= 5) {
-    insights.push({ tipo: 'neutro', icone: '🎨', titulo: 'Alta consciência emocional', texto: `Você identificou ${mesal.sorted.length} emoções diferentes este mês. Essa riqueza de percepção mostra que está desenvolvendo um olhar mais atento para o que sente.` });
-  }
-
-  return insights;
-}
-
-function gerarInsightsAnuais(anual) {
-  if (anual.total === 0) return [];
-  const insights = [];
-  const dominante = anual.sorted[0]?.[0];
-  const emoObj = getEmoObj(dominante);
-
-  if (anual.consistencia >= 70) {
-    insights.push({ tipo: 'positivo', icone: '🏆', titulo: 'Constância ao longo do ano', texto: `Você registrou ${anual.uniqueDays} dias únicos — ${anual.consistencia}% de constância anual. Esse comprometimento ao longo de meses inteiros é extraordinário.` });
-  } else if (anual.consistencia >= 40) {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Presença ao longo do ano', texto: `Você manteve registros em ${anual.uniqueDays} dias no ano (${anual.consistencia}% de constância). Cada período registrado conta uma parte importante da sua jornada.` });
-  } else {
-    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Construa o hábito em doses', texto: `Você fez ${anual.total} check-ins este ano. No próximo período, tente pelo menos uma vez por semana — pequenos hábitos constantes constroem uma memória emocional muito valiosa.` });
-  }
-
-  if (emoObj) {
-    if (emoObj.positiva) {
-      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} marcou seu ano`, texto: `${emoObj.label} foi a emoção mais registrada no ano. Que ela continue sendo parte da sua jornada de cura.` });
-    } else {
-      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Um ano atravessando ${nomeEmo}`, texto: `${emoObj.label} foi sua emoção mais frequente do ano. Atravessar um ano inteiro com essa emoção presente exige uma coragem enorme — e você chegou até aqui.` });
-    }
-  }
-
-  if (anual.total >= 100) {
-    insights.push({ tipo: 'positivo', icone: '✨', titulo: `${anual.total} registros: um mapa emocional rico`, texto: `Mais de 100 check-ins neste ano! Seus dados formam um mapa detalhado de como você se sentiu ao longo dos meses — isso é autoconhecimento em ação.` });
-  }
-
-  return insights;
-}
-
-function gerarInsightsPeriodo(rangeData, diasPeriodo) {
-  if (!rangeData || rangeData.total === 0) return [];
-  const insights = [];
-  const emoObj = getEmoObj(rangeData.dominante);
-  const pctDias = diasPeriodo > 0 ? Math.round((rangeData.uniqueDays / diasPeriodo) * 100) : 0;
-
-  if (pctDias >= 70) {
-    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Alta frequência no período', texto: `Você registrou ${rangeData.uniqueDays} de ${diasPeriodo} dias do período (${pctDias}%). Essa frequência fornece uma análise consistente da sua jornada emocional.` });
-  } else {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Seus registros no período', texto: `Você fez ${rangeData.total} check-ins em ${rangeData.uniqueDays} dias dentro do período selecionado. Cada registro contribui para a sua análise emocional.` });
-  }
-
-  if (emoObj) {
-    if (emoObj.positiva) {
-      insights.push({ tipo: 'positivo', icone: '💜', titulo: `${emoObj.label} predominou`, texto: `${emoObj.label} foi a emoção mais registrada neste período. Identificar sentimentos positivos é parte fundamental da jornada de cura.` });
-    } else {
-      const nomeEmo = emoObj.nomeRelatorio || emoObj.label.toLowerCase();
-      insights.push({ tipo: 'acolhimento', icone: '🤍', titulo: `Atravessando ${nomeEmo}`, texto: `${emoObj.label} foi a emoção mais frequente no período. Nomear e acolher esse sentimento é um ato de coragem e de autoconhecimento.` });
-    }
-  }
-
-  return insights;
-}
-
-function renderInsightsHTML(insights) {
-  if (!insights || !insights.length) return '';
-  const corMap = {
-    positivo: { bg: '#EDF7EE', border: '#7A9E7E', text: '#2D5A3D' },
-    neutro: { bg: '#F0EDF8', border: '#8B7AC0', text: '#4A3D8A' },
-    atencao: { bg: '#FFF5E6', border: '#E6A23C', text: '#7A5C14' },
-    dica: { bg: '#E8F4FD', border: '#5BAFD6', text: '#1F5C7A' },
-    acolhimento: { bg: '#FDF0F5', border: '#D4A8B5', text: '#7A3A5C' },
-  };
-  const cards = insights.map(ins => {
-    const cor = corMap[ins.tipo] || corMap.neutro;
-    return `<div style="background:${cor.bg};border:1px solid ${cor.border}77;border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">
-      <div style="font-size:18px;flex-shrink:0;line-height:1.4">${ins.icone}</div>
-      <div>
-        <div style="font-size:11px;font-weight:700;color:${cor.text};margin-bottom:3px">${ins.titulo}</div>
-        <div style="font-size:11px;color:#555;line-height:1.6">${ins.texto}</div>
-      </div>
-    </div>`;
-  }).join('');
-  return `<div style="margin-top:16px;margin-bottom:16px;page-break-inside:avoid">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <div style="width:3px;height:18px;background:#8B7AC0;border-radius:2px;flex-shrink:0"></div>
-      <span style="font-size:13px;font-weight:700;color:#4a4453">Interpretações e insights</span>
-    </div>
-    ${cards}
-  </div>`;
-}
-
-function gerarDonutSVG(data, size = 120, thickness = 22) {
-  const tot = data.reduce((s, d) => s + d.value, 0) || 1;
-  const r = (size - thickness) / 2;
-  const cx = size / 2;
-  const circumference = 2 * Math.PI * r;
-  let cum = 0;
-  const circles = data.map((seg, i) => {
-    const dash = (seg.value / tot) * circumference;
-    const offset = -(cum / tot) * circumference;
-    cum += seg.value;
-    return `<circle cx="${cx}" cy="${cx}" r="${r}" stroke="${seg.color}" stroke-width="${thickness}"
-      stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}"
-      stroke-dashoffset="${offset.toFixed(2)}" fill="none"
-      transform="rotate(-90 ${cx} ${cx})" />`;
-  }).join('\n');
-  return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="${cx}" cy="${cx}" r="${r}" stroke="#EDE9F5" stroke-width="${thickness}" fill="none" />
-    ${circles}
-  </svg>`;
-}
-
-function gerarCalendarioHTML(year, month, checkinsByDateMap) {
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  const dias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-  const header = dias.map(d => `<div style="text-align:center;font-weight:bold;font-size:9px;color:#8B7AC0">${d}</div>`).join('');
-  const blanks = Array(firstDay).fill('<div></div>').join('');
-  const cells = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = i + 1;
-    const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const emo = checkinsByDateMap[key];
-    const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-    const bg = emo ? emo.color + '55' : 'transparent';
-    const border = isToday ? '1.5px solid #8B7AC0' : '1px solid transparent';
-    return `<div style="text-align:center;font-size:10px;padding:4px 0;border-radius:4px;background:${bg};border:${border};color:${emo ? emo.color : '#888'}">${d}</div>`;
-  }).join('');
-  return `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">
-    ${header}${blanks}${cells}
-  </div>`;
-}
-
-function gerarRelatorioMensalHTML({ mesal, usuario, month, year, MONTH_NAMES }) {
-  const dataStr = `${MONTH_NAMES[month].toUpperCase()}/${year}`;
-  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const nome = usuario?.apelido || usuario?.nome || 'você';
-  const diasPassados = mesal.com + mesal.semRegistro;
-  const insights = gerarInsightsMensais(mesal, diasPassados);
-  const donutSVG = mesal.total > 0 ? gerarDonutSVG(mesal.donut, 130, 24) : '';
-  const legendaEmocoes = mesal.sorted.map(([id, v], i) => {
-    const emo = getEmoObj(id);
-    const pct = Math.round((v / mesal.total) * 100);
-    const cor = mesal.donut[i]?.color || '#aaa';
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-      <span style="font-size:11px;color:#4a4453;flex:1">${emo?.label || id}</span>
-      <span style="font-size:11px;font-weight:700;color:#4a4453">${pct}%</span>
-    </div>`;
-  }).join('');
-
-  const calHtml = gerarCalendarioHTML(year, month, mesal.byDate);
-
-  const emoObj = getEmoObj(mesal.dominante);
-  const emoNome = emoObj?.label || '—';
-  const emoCor = emoObj?.color || '#8B7AC0';
-
-  const msgEmocao = (dominante) => {
-    const e = getEmoObj(dominante);
-    if (!e) return 'Continue fazendo seus registros. Cada check-in é um passo de autoconhecimento.';
-    if (e.positiva) return `${e.label} esteve presente em você este mês. Guarde esse sentimento com carinho.`;
-    const nomeEmo = e.nomeRelatorio || e.label.toLowerCase();
-    return `Atravessando ${nomeEmo} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
-  };
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
-  .app-brand { display: flex; align-items: center; gap: 10px; }
-  .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; letter-spacing: 0.5px; }
-  .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
-  .report-title { text-align: right; }
-  .report-title h1 { font-size: 26px; font-weight: 900; color: #5C4F8A; letter-spacing: 1px; }
-  .report-title .mes-badge { display: inline-flex; align-items: center; gap: 6px; background: #EDE9F5; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #5C4F8A; margin-top: 6px; }
-  .report-title p { font-size: 12px; color: #8c8597; margin-top: 4px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .card { background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 16px; padding: 18px; }
-  .card-num { display: inline-block; width: 22px; height: 22px; background: #8B7AC0; color: #fff; border-radius: 50%; text-align: center; font-size: 11px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
-  .card-title { font-size: 13px; font-weight: 700; color: #4a4453; margin-bottom: 12px; }
-  .donut-row { display: flex; align-items: center; gap: 16px; }
-  .stat-row { display: flex; gap: 12px; margin-bottom: 16px; }
-  .stat-box { flex: 1; background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 12px; padding: 14px; text-align: center; }
-  .stat-box .n { font-size: 26px; font-weight: 900; color: #8B7AC0; }
-  .stat-box .l { font-size: 11px; color: #8c8597; margin-top: 3px; }
-  .dominante-card { background: linear-gradient(135deg, #EDE9F5, #F5F0F9); border: 1px solid #D8D1E6; border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 14px; }
-  .emo-circle { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
-  .msg-card { background: linear-gradient(135deg, #EDE9F5 0%, #FAF7F3 100%); border-radius: 16px; padding: 20px; border: 1px solid #D8D1E6; margin-top: 16px; }
-  .msg-icon { font-size: 20px; margin-bottom: 8px; }
-  .msg-text { font-size: 13px; color: #5C4F8A; line-height: 1.6; font-style: italic; }
-  .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
-  .footer .left { font-size: 10px; color: #aaa; }
-  .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
-
-  .timbre { display: flex; align-items: center; gap: 12px; }
-  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
-  .timbre .app-name { font-size: 24px; }
-  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
-  .footer .left { display: flex; align-items: center; gap: 6px; }
-  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
-</style>
-</head>
-<body>
-<div class="page">
-  ${BOTANICA_WATERMARK}
-  <div class="header">
-    <div class="timbre">
-      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
-      <div>
-        <div class="app-name">Atravessia</div>
-        <div class="timbre-sub">Relatório emocional pessoal</div>
-      </div>
-    </div>
-    <div class="report-title">
-      <h1>RELATÓRIO MENSAL</h1>
-      <div><span class="mes-badge">📅 ${dataStr}</span></div>
-      <p>Seu resumo emocional do mês</p>
-    </div>
-  </div>
-
-  ${mesal.total === 0 ? `<div style="text-align:center;padding:60px;color:#aaa"><p style="font-size:18px;margin-bottom:12px">💜</p><p>Ainda não há check-ins este mês.</p></div>` : `
-
-  <div class="grid2">
-    <!-- 1. Emoções -->
-    <div class="card">
-      <span class="card-num">1</span>
-      <p class="card-title">Seu mês em emoções</p>
-      <div class="donut-row">
-        <div style="position:relative">
-          ${donutSVG}
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-            <div style="font-size:18px;font-weight:900;color:#8B7AC0">${mesal.total}</div>
-            <div style="font-size:8px;color:#aaa">registros</div>
-          </div>
-        </div>
-        <div style="flex:1">${legendaEmocoes}</div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="grid2">
-    <!-- 3. Calendário -->
-    <div class="card">
-      <span class="card-num">3</span>
-      <p class="card-title">Calendário emocional</p>
-      <p style="font-size:10px;color:#aaa;margin-bottom:10px">Cada cor representa a emoção predominante do dia</p>
-      ${calHtml}
-    </div>
-
-    <!-- 4 + 5 -->
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <!-- 4. Predominante -->
-      <div class="card">
-        <span class="card-num">4</span>
-        <p class="card-title">Emoção predominante</p>
-        <div class="dominante-card" style="padding:12px">
-          <div class="emo-circle" style="background:${emoCor}22;font-size:20px">${emoObj?.icon ? '' : '💜'}</div>
-          <div>
-            <p style="font-size:13px;color:#4a4453">A <strong style="color:${emoCor}">${emoNome.toLowerCase()}</strong> foi a emoção mais presente neste mês.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 5. Registros -->
-      <div class="card">
-        <span class="card-num">5</span>
-        <p class="card-title">Seus registros</p>
-        <div style="display:flex;gap:12px">
-          <div style="text-align:center;flex:1">
-            <div style="font-size:22px;font-weight:900;color:#8B7AC0">${mesal.com}</div>
-            <div style="font-size:10px;color:#aaa">check-ins<br>realizados</div>
-          </div>
-          <div style="text-align:center;flex:1">
-            <div style="font-size:22px;font-weight:900;color:#D4A89A">${mesal.semRegistro}</div>
-            <div style="font-size:10px;color:#aaa">dias sem<br>registro</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 6. Mensagem -->
-  <div class="msg-card">
-    <div class="msg-icon">💜</div>
-    <p class="msg-text">${msgEmocao(mesal.dominante)}</p>
-  </div>
-
-  ${renderInsightsHTML(insights)}
-  `}
-
-  <div class="footer">
-    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
-    <div class="right">Perceber é o início.</div>
-  </div>
-</div>
-</body>
-</html>`;
-}
-
-function gerarRelatorioAnualHTML({ anual, usuario, year }) {
-  const nome = usuario?.apelido || usuario?.nome || 'você';
-  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const insights = gerarInsightsAnuais(anual);
-  const donutSVG = anual.total > 0 ? gerarDonutSVG(anual.donut, 130, 24) : '';
-  const legendaEmocoes = anual.sorted.map(([id, v], i) => {
-    const emo = getEmoObj(id);
-    const pct = Math.round((v / anual.total) * 100);
-    const cor = anual.donut[i]?.color || '#aaa';
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-      <span style="font-size:10px;color:#4a4453;flex:1">${emo?.label || id}</span>
-      <span style="font-size:10px;font-weight:700;color:#4a4453">${pct}%</span>
-    </div>`;
-  }).join('');
-
-  const trimColors = ['#8B7AC0', '#D4A89A', '#7A9E7E', '#B9C8DF'];
-  const trimLabels = ['1º Trim.', '2º Trim.', '3º Trim.', '4º Trim.'];
-  const trimHtml = anual.trimPct.map((pct, i) =>
-    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:11px;color:${trimColors[i]};font-weight:700;width:60px">${trimLabels[i]}</span>
-      <div style="flex:1;height:10px;background:#EDE9F5;border-radius:5px">
-        <div style="width:${pct}%;height:100%;background:${trimColors[i]};border-radius:5px"></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:#4a4453">${pct}%</span>
-    </div>`).join('');
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
-  .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; }
-  .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
-  .report-title h1 { font-size: 26px; font-weight: 900; color: #5C4F8A; letter-spacing: 1px; text-align: right; }
-  .report-title .year-badge { display: inline-flex; align-items: center; gap: 6px; background: #EDE9F5; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #5C4F8A; margin-top: 6px; }
-  .stat-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
-  .stat-tile { background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 14px; padding: 14px; text-align: center; }
-  .stat-tile .icon { font-size: 20px; margin-bottom: 6px; }
-  .stat-tile .n { font-size: 26px; font-weight: 900; }
-  .stat-tile .l { font-size: 10px; color: #8c8597; margin-top: 3px; line-height: 1.4; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .card { background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 16px; padding: 18px; }
-  .card-num { display: inline-block; width: 22px; height: 22px; background: #8B7AC0; color: #fff; border-radius: 50%; text-align: center; font-size: 11px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
-  .card-title { font-size: 13px; font-weight: 700; color: #4a4453; margin-bottom: 12px; }
-  .donut-row { display: flex; align-items: center; gap: 16px; }
-  .msg-card { background: linear-gradient(135deg, #EDE9F5 0%, #FAF7F3 100%); border-radius: 16px; padding: 20px; border: 1px solid #D8D1E6; margin-top: 16px; }
-  .msg-text { font-size: 13px; color: #5C4F8A; line-height: 1.6; font-style: italic; }
-  .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
-  .footer .left { font-size: 10px; color: #aaa; }
-  .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
-
-  .timbre { display: flex; align-items: center; gap: 12px; }
-  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
-  .timbre .app-name { font-size: 24px; }
-  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
-  .footer .left { display: flex; align-items: center; gap: 6px; }
-  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
-</style>
-</head>
-<body>
-<div class="page">
-  ${BOTANICA_WATERMARK}
-  <div class="header">
-    <div class="timbre">
-      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
-      <div>
-        <div class="app-name">Atravessia</div>
-        <div class="timbre-sub">Relatório emocional pessoal</div>
-      </div>
-    </div>
-    <div class="report-title">
-      <h1>RELATÓRIO ANUAL</h1>
-      <div><span class="year-badge">📅 ${year}</span></div>
-      <p style="font-size:12px;color:#8c8597;margin-top:4px;text-align:right">Sua jornada emocional do ano</p>
-    </div>
-  </div>
-
-  <!-- Stat tiles -->
-  <div class="stat-row">
-    <div class="stat-tile">
-      <div class="icon">📅</div>
-      <div class="n" style="color:#8B7AC0">${anual.total}</div>
-      <div class="l">check-ins realizados</div>
-    </div>
-    <div class="stat-tile">
-      <div class="icon">💜</div>
-      <div class="n" style="color:#D4A89A">${anual.uniqueDays}</div>
-      <div class="l">dias com registro</div>
-    </div>
-    <div class="stat-tile">
-      <div class="icon">⭐</div>
-      <div class="n" style="color:#D4B483">${anual.consistencia}%</div>
-      <div class="l">de constância no ano</div>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <!-- 1. Emoções do ano -->
-    <div class="card">
-      <span class="card-num">1</span>
-      <p class="card-title">Emoções do ano</p>
-      <div class="donut-row">
-        <div style="position:relative">
-          ${donutSVG}
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-            <div style="font-size:16px;font-weight:900;color:#8B7AC0">${anual.total}</div>
-            <div style="font-size:7px;color:#aaa">registros</div>
-          </div>
-        </div>
-        <div style="flex:1">${legendaEmocoes}</div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- 2. Distribuição por trimestre -->
-  <div class="card" style="margin-bottom:16px">
-    <span class="card-num">2</span>
-    <p class="card-title">Distribuição por trimestre</p>
-    ${trimHtml}
-  </div>
-
-  <!-- 6. Mensagem -->
-  <div class="msg-card">
-    <p style="font-size:20px;margin-bottom:8px">💜</p>
-    <p class="msg-text">Você atravessou altos e baixos, dias leves e dias desafiadores. Cada emoção registrada mostra sua coragem de olhar para dentro. Que o próximo ano seja cheio de leveza, autoconhecimento e cuidado com você.</p>
-  </div>
-
-  ${renderInsightsHTML(insights)}
-
-  <div class="footer">
-    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
-    <div class="right">Siga se cuidando. Você vale! 💜</div>
-  </div>
-</div>
-</body>
-</html>`;
-}
-
-function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim }) {
-  if (!rangeData) return '';
-  const agoraStr = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const [diI, meI, anoI] = (rangeInicio || '').split('/').map(Number);
-  const [diF, meF, anoF] = (rangeFim || '').split('/').map(Number);
-  const dStart = new Date(anoI, meI - 1, diI);
-  const dEnd = new Date(anoF, meF - 1, diF);
-  const diasPeriodo = (!isNaN(dStart) && !isNaN(dEnd)) ? Math.round((dEnd - dStart) / 86400000) + 1 : 0;
-  const insights = gerarInsightsPeriodo(rangeData, diasPeriodo);
-  const donutSVG = rangeData.total > 0 ? gerarDonutSVG(rangeData.donut, 130, 24) : '';
-  const legendaEmocoes = rangeData.sorted.map(([id, v], i) => {
-    const emo = getEmoObj(id);
-    const pct = Math.round((v / rangeData.total) * 100);
-    const cor = rangeData.donut[i]?.color || '#aaa';
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <div style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0"></div>
-      <span style="font-size:11px;color:#4a4453;flex:1">${emo?.label || id}</span>
-      <span style="font-size:11px;font-weight:700;color:#4a4453">${pct}%</span>
-    </div>`;
-  }).join('');
-  const emoObj = getEmoObj(rangeData.dominante);
-  const emoNome = emoObj?.label || '—';
-  const emoCor = emoObj?.color || '#8B7AC0';
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; color: #4a4453; }
-  .page { width: 794px; padding: 40px; position: relative; overflow: hidden; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #EDE9F5; padding-bottom: 16px; }
-  .app-name { font-family: Georgia, serif; font-style: italic; font-size: 22px; color: #5C4F8A; letter-spacing: 0.5px; }
-  .app-sub { font-size: 10px; color: #8c8597; margin-top: 2px; }
-  .report-title { text-align: right; }
-  .report-title h1 { font-size: 22px; font-weight: 900; color: #5C4F8A; letter-spacing: 1px; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; background: #EDE9F5; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #5C4F8A; margin-top: 6px; }
-  .stat-row { display: flex; gap: 12px; margin-bottom: 20px; }
-  .stat-box { flex: 1; background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 12px; padding: 14px; text-align: center; }
-  .stat-box .n { font-size: 26px; font-weight: 900; color: #8B7AC0; }
-  .stat-box .l { font-size: 11px; color: #8c8597; margin-top: 3px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .card { background: #FDFBF8; border: 1px solid #E6DDD2; border-radius: 16px; padding: 18px; }
-  .card-num { display: inline-block; width: 22px; height: 22px; background: #8B7AC0; color: #fff; border-radius: 50%; text-align: center; font-size: 11px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
-  .card-title { font-size: 13px; font-weight: 700; color: #4a4453; margin-bottom: 12px; }
-  .donut-row { display: flex; align-items: center; gap: 16px; }
-  .msg-card { background: linear-gradient(135deg, #EDE9F5 0%, #FAF7F3 100%); border-radius: 16px; padding: 20px; border: 1px solid #D8D1E6; margin-top: 16px; }
-  .msg-text { font-size: 13px; color: #5C4F8A; line-height: 1.6; font-style: italic; }
-  .footer { border-top: 1px solid #E6DDD2; margin-top: 24px; padding-top: 14px; display: flex; justify-content: space-between; align-items: center; }
-  .footer .left { font-size: 10px; color: #aaa; }
-  .footer .right { font-family: Georgia, serif; font-style: italic; font-size: 13px; color: #8B7AC0; }
-
-  .timbre { display: flex; align-items: center; gap: 12px; }
-  .timbre img { width: 54px; height: 54px; border-radius: 13px; }
-  .timbre .app-name { font-size: 24px; }
-  .timbre-sub { font-size: 10px; color: #8c8597; margin-top: 2px; letter-spacing: 0.4px; }
-  .footer .left { display: flex; align-items: center; gap: 6px; }
-  .footer .left img { width: 16px; height: 16px; border-radius: 4px; }
-</style>
-</head>
-<body>
-<div class="page">
-  ${BOTANICA_WATERMARK}
-  <div class="header">
-    <div class="timbre">
-      <img src="${LOGO_RELATORIO}" alt="Atravessia" />
-      <div>
-        <div class="app-name">Atravessia</div>
-        <div class="timbre-sub">Relatório emocional pessoal</div>
-      </div>
-    </div>
-    <div class="report-title">
-      <h1>RELATÓRIO PERSONALIZADO</h1>
-      <div><span class="badge">📅 ${rangeInicio} → ${rangeFim}</span></div>
-      <p style="font-size:12px;color:#8c8597;margin-top:4px">Resumo emocional do período</p>
-    </div>
-  </div>
-
-  <div class="stat-row">
-    <div class="stat-box">
-      <div class="n">${rangeData.total}</div>
-      <div class="l">check-ins no período</div>
-    </div>
-    <div class="stat-box">
-      <div class="n">${rangeData.uniqueDays}</div>
-      <div class="l">dias com registro</div>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div class="card">
-      <span class="card-num">1</span>
-      <p class="card-title">Emoções no período</p>
-      <div class="donut-row">
-        <div style="position:relative">
-          ${donutSVG}
-          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
-            <div style="font-size:18px;font-weight:900;color:#8B7AC0">${rangeData.total}</div>
-            <div style="font-size:8px;color:#aaa">registros</div>
-          </div>
-        </div>
-        <div style="flex:1">${legendaEmocoes}</div>
-      </div>
-    </div>
-    <div class="card">
-      <span class="card-num">2</span>
-      <p class="card-title">Emoção predominante</p>
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:${emoCor}15;border-radius:12px;margin-top:8px">
-        <div style="width:48px;height:48px;border-radius:50%;background:${emoCor}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">💜</div>
-        <div>
-          <p style="font-size:14px;font-weight:700;color:${emoCor}">${emoNome}</p>
-          <p style="font-size:11px;color:#666;margin-top:3px">foi a emoção mais presente</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="msg-card">
-    <p class="msg-text">Cada emoção registrada neste período é uma janela de autoconhecimento. Você teve coragem de olhar para dentro e nomear o que sentia. Continue se cuidando. 💜</p>
-  </div>
-
-  ${renderInsightsHTML(insights)}
-
-  <div class="footer">
-    <div class="left"><img src="${LOGO_RELATORIO}" alt="" /> Gerado em ${agoraStr} (Brasília) • Atravessia</div>
-    <div class="right">Perceber é o início.</div>
-  </div>
-</div>
-</body>
-</html>`;
-}
+// O HTML dos relatórios em PDF fica em src/utils/relatorioHtml.js.
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation, route }) {
@@ -1210,7 +580,19 @@ export default function RelatoriosScreen({ navigation, route }) {
     }
   };
 
+  // HTML do relatório da aba atual (mesmo conteúdo que aparece na tela).
+  const montarHtml = () => (tab === 'mensal'
+    ? gerarRelatorioMensalHTML({ mesal, usuario, month: calMes, year: calAno, vitorias: vitoriasMes, mensagem: mensagem(mesal.dominante) })
+    : tab === 'anual'
+      ? gerarRelatorioAnualHTML({ anual, usuario, year, vitorias: vitoriasAno })
+      : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim, usuario, vitorias: vitoriasRange }));
+
   const handleExportar = async () => {
+    if (exportando) return;
+    if (tab === 'anual' && !temAcesso(1)) {
+      Alert.alert('Relatório Anual', 'O relatório anual está disponível no Plano Acolher.');
+      return;
+    }
     if (tab === 'personalizado' && !rangeData) {
       Alert.alert('Atenção', 'Gere o relatório do período antes de exportar.');
       return;
@@ -1218,17 +600,15 @@ export default function RelatoriosScreen({ navigation, route }) {
     if (Platform.OS === 'web') {
       setExportando(true);
       try {
-        const html = tab === 'mensal'
-          ? gerarRelatorioMensalHTML({ mesal, usuario, month: calMes, year: calAno, MONTH_NAMES })
-          : tab === 'anual'
-            ? gerarRelatorioAnualHTML({ anual, usuario, year })
-            : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
+        const html = montarHtml();
         const w = typeof window !== 'undefined' && window.open ? window.open('', '_blank') : null;
         if (w) {
           w.document.write(html);
           w.document.close();
           w.focus();
-          setTimeout(() => { w.print(); }, 400);
+          // Espera as fontes da marca carregarem antes de abrir a impressão.
+          const imprimir = () => setTimeout(() => { w.print(); }, 300);
+          if (w.document.fonts?.ready) w.document.fonts.ready.then(imprimir, imprimir); else setTimeout(imprimir, 600);
         } else {
           Alert.alert('PDF', 'Permita pop-ups neste site e tente novamente.');
         }
@@ -1241,12 +621,9 @@ export default function RelatoriosScreen({ navigation, route }) {
     }
     setExportando(true);
     try {
-      const html = tab === 'mensal'
-        ? gerarRelatorioMensalHTML({ mesal, usuario, month: calMes, year: calAno, MONTH_NAMES })
-        : tab === 'anual'
-          ? gerarRelatorioAnualHTML({ anual, usuario, year })
-          : gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeFim });
-      const { uri } = await Print.printToFileAsync({ html });
+      const html = montarHtml();
+      // A4 em pontos (o padrão do expo-print é Carta).
+      const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: '.pdf', dialogTitle: 'Exportar relatório' });
@@ -1266,7 +643,7 @@ export default function RelatoriosScreen({ navigation, route }) {
     if (!emo) return 'Cada check-in é um passo de autoconhecimento. Continue cuidando de si.';
     if (emo.positiva) return `${emo.label} esteve presente em você este mês. Guarde esse sentimento com carinho e continue se cuidando.`;
     const nomeEmo = emo.nomeRelatorio || emo.label.toLowerCase();
-    return `Atravessando ${nomeEmo} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa atravessar isso sozinho.`;
+    return `Atravessando ${nomeEmo} — esse foi seu mês. Cada sentimento que você nomeia é um passo de cuidado. Você não precisa fazer essa travessia sem companhia.`;
   };
 
   return (
@@ -1323,6 +700,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                 <Text style={s.reportMesTxt}>{MONTH_NAMES[calMes].toUpperCase()}/{calAno}</Text>
               </View>
               <Text style={s.reportSub}>Seu resumo emocional do mês</Text>
+              {mesal.total > 0 && <ExportarPdf compacto onPress={handleExportar} exportando={exportando} />}
             </View>
 
             {mesal.total === 0 ? (
@@ -1428,6 +806,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                     <Text style={s.msgRodapeTxt}>Atravessia</Text>
                   </View>
                 </View>
+
+                <ExportarPdf onPress={handleExportar} exportando={exportando} />
               </>
             )}
           </>
@@ -1459,6 +839,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                     <Text style={s.reportMesTxt}>{year}</Text>
                   </View>
                   <Text style={s.reportSub}>Sua jornada emocional do ano</Text>
+                  <ExportarPdf compacto onPress={handleExportar} exportando={exportando} />
                 </View>
 
                 {/* Tiles de estatística */}
@@ -1547,6 +928,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                     <Text style={s.msgRodapeTxt}>Atravessia</Text>
                   </View>
                 </View>
+
+                <ExportarPdf onPress={handleExportar} exportando={exportando} />
               </>
             )}
           </>
@@ -1648,6 +1031,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                         <Ionicons name="calendar-outline" size={14} color={colors.lilasTexto} />
                         <Text style={s.reportMesTxt}>{rangeInicio} → {rangeFim}</Text>
                       </View>
+                      <ExportarPdf compacto onPress={handleExportar} exportando={exportando} />
                     </View>
 
                     <View style={s.tilesRow}>
@@ -1738,6 +1122,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                         <Text style={s.msgRodapeTxt}>Atravessia</Text>
                       </View>
                     </View>
+
+                    <ExportarPdf onPress={handleExportar} exportando={exportando} />
                   </>
                 )}
               </>
@@ -1829,6 +1215,33 @@ function BotaoLuz({ titulo, onPress, icone, iconeEsq, desabilitado, style }) {
   );
 }
 
+// Botão "Exportar PDF" bem à vista em cada relatório gerado: pílula de vidro
+// no cabeçalho (compacto) e botão principal no fim do relatório.
+function ExportarPdf({ onPress, exportando, compacto }) {
+  const titulo = exportando ? 'Gerando PDF...' : 'Exportar PDF';
+  if (compacto) {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={exportando}
+        activeOpacity={0.8}
+        style={[s.pdfChip, exportando && { opacity: 0.6 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Exportar relatório em PDF"
+      >
+        <Ionicons name={exportando ? 'hourglass-outline' : 'document-text-outline'} size={16} color={colors.lilasTexto} />
+        <Text style={s.pdfChipTxt}>{titulo}</Text>
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <View style={s.pdfFim}>
+      <BotaoLuz titulo={titulo} iconeEsq={exportando ? 'hourglass-outline' : 'document-text-outline'} onPress={onPress} desabilitado={exportando} />
+      <Text style={s.pdfFimTxt}>Salve ou compartilhe este relatório em PDF.</Text>
+    </View>
+  );
+}
+
 // Cartão de vidro: véu translúcido, borda de luz e sombra ameixa suave.
 const vidro = () => ({
   backgroundColor: colors.card,
@@ -1874,6 +1287,15 @@ const s = criarEstilos(() => ({
   },
   reportMesTxt: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, letterSpacing: 0.5 },
   reportSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, marginTop: 8 },
+  pdfChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, minHeight: 44,
+    paddingHorizontal: 18, borderRadius: radius.full,
+    backgroundColor: colors.vidroForte, borderWidth: 1, borderColor: colors.bordaLuz,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 4 }, shadowOpacity: colors.escuro ? 0.25 : 0.1, shadowRadius: 10, elevation: 2,
+  },
+  pdfChipTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
+  pdfFim: { marginTop: spacing.sm, marginBottom: spacing.md, gap: 8 },
+  pdfFimTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center' },
 
   card: { ...vidro(), marginBottom: spacing.md, padding: 18 },
   tituloLinha: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
