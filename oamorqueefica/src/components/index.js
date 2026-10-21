@@ -4,10 +4,9 @@ import { colors, fonts, radius, shadow, spacing, criarEstilos } from '../theme';
 
 import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
 
-const lavLeft = require('../../assets/images/lavanda_left.png');
-const lavRight = require('../../assets/images/lavanda_right.png');
-const lavSmall = require('../../assets/images/lavanda_small.png');
-const florPeach = require('../../assets/images/flor_peach.png');
+const lavPendente = require('../../assets/images/lavanda_pendente.png');
+const lavAquarelaEsq = require('../../assets/images/lavanda_aquarela_esq.png');
+const lavAquarelaDir = require('../../assets/images/lavanda_aquarela_dir.png');
 
 // Manchas da aurora: centro (%), raios (%) e cor. A tela estica o desenho
 // (preserveAspectRatio="none"), então as manchas acompanham qualquer tamanho.
@@ -18,8 +17,8 @@ const MANCHAS = [
   { id: 'a4', cx: 100, cy: 88, rx: 70, ry: 36, cor: 'auroraLilas' },
 ];
 
-// Fundo "Luz de Vidro": aurora suave (lilás, pêssego e sálvia) e ramos de
-// lavanda discretos. Só imagens com transparência e sem tintColor: antes, as
+// Fundo "Luz de Vidro": aurora suave (lilás, pêssego e sálvia) e lavandas em
+// aquarela (um ramo pendente no alto e duas moitas no rodapé). Só imagens com transparência e sem tintColor: antes, as
 // ilustrações sem canal alfa viravam retângulos chapados no Android.
 export function LavandaBg() {
   return (
@@ -38,21 +37,19 @@ export function LavandaBg() {
           <Ellipse key={m.id} cx={m.cx} cy={m.cy} rx={m.rx} ry={m.ry} fill={`url(#${m.id})`} />
         ))}
       </Svg>
-      <Image source={lavRight} style={[bgSty.topRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
-      <Image source={lavLeft} style={[bgSty.bottomLeft, colors.escuro && bgSty.noite]} resizeMode="contain" />
-      <Image source={florPeach} style={[bgSty.bottomRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
-      <Image source={lavSmall} style={[bgSty.centerRight, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={lavPendente} style={[bgSty.pendente, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={lavAquarelaEsq} style={[bgSty.moitaEsq, colors.escuro && bgSty.noite]} resizeMode="contain" />
+      <Image source={lavAquarelaDir} style={[bgSty.moitaDir, colors.escuro && bgSty.noite]} resizeMode="contain" />
     </View>
   );
 }
 
 const bgSty = criarEstilos(() => ({
   container: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', backgroundColor: colors.bg },
-  topRight: { position: 'absolute', top: -20, right: -30, width: 170, height: 170, opacity: 0.22 },
-  bottomLeft: { position: 'absolute', bottom: 30, left: -30, width: 150, height: 150, opacity: 0.2 },
-  bottomRight: { position: 'absolute', bottom: -10, right: -10, width: 90, height: 90, opacity: 0.25 },
-  centerRight: { position: 'absolute', top: '52%', right: -16, width: 70, height: 70, opacity: 0.18 },
-  noite: { opacity: 0.1 },
+  pendente: { position: 'absolute', top: 0, left: 0, width: '46%', maxWidth: 300, aspectRatio: 480 / 400, opacity: 0.5 },
+  moitaEsq: { position: 'absolute', bottom: 0, left: 0, width: '64%', maxWidth: 440, aspectRatio: 560 / 409, opacity: 0.42 },
+  moitaDir: { position: 'absolute', bottom: 0, right: 0, width: '54%', maxWidth: 380, aspectRatio: 460 / 428, opacity: 0.42 },
+  noite: { opacity: 0.13 },
 }));
 
 export function Card({ children, style, onPress }) {

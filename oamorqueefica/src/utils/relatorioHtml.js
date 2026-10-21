@@ -8,6 +8,7 @@
 // app não substitui acompanhamento profissional e a data de geração.
 import { emocoes } from '../data';
 import { LOGO_RELATORIO } from './logoRelatorio';
+import { LAV_PENDENTE, LAV_MOITA_ESQ, LAV_MOITA_DIR } from './lavandasRelatorio';
 
 export const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -154,6 +155,16 @@ const CSS = `
   /* Aurora que se repete atrás de cada página (position: fixed na impressão). */
   .aurora { position: fixed; top: 0; left: 0; width: 210mm; height: 297mm; z-index: -1; }
   .capa-aurora { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; }
+  /* Lavandas em aquarela: na capa, ramos pendentes no alto e moitas no rodapé;
+     nas demais páginas, as moitas se repetem discretas nos cantos de baixo. */
+  .capa > img.lav { position: absolute; pointer-events: none; }
+  .capa > .lav-pend { top: 0; left: 0; width: 64mm; opacity: 0.9; }
+  .capa > .lav-pend-dir { top: 0; right: 0; width: 50mm; opacity: 0.75; transform: scaleX(-1); }
+  .capa > .lav-esq { bottom: 0; left: 0; width: 74mm; opacity: 0.8; }
+  .capa > .lav-dir { bottom: 0; right: 0; width: 62mm; opacity: 0.8; }
+  .lav-fixa { position: fixed; bottom: 0; z-index: -1; opacity: 0.4; }
+  .lav-fixa.esq { left: 0; width: 64mm; }
+  .lav-fixa.dir { right: 0; width: 54mm; }
 
   /* ── Capa ── */
   .capa { position: relative; height: 296.5mm; overflow: hidden; page-break-after: always; break-after: page;
@@ -331,6 +342,8 @@ ${auroraSVG('aurora', 'au', [
   [C.auroraPessego, 0.5, 790, 520, 300],
   [C.auroraSalvia, 0.55, 260, 1130, 340],
 ])}
+<img class="lav-fixa esq" src="${LAV_MOITA_ESQ}" alt="" />
+<img class="lav-fixa dir" src="${LAV_MOITA_DIR}" alt="" />
 ${corpo ? capa : capa.replace('class="capa"', 'class="capa unica"')}
 ${folhas}
 </body>
@@ -346,6 +359,10 @@ function capaHTML({ kicker, titulo, periodo, nome, destaque, numeros, frase, ago
       [C.auroraSalvia, 0.9, 170, 1150, 440],
       [C.auroraLilas, 0.75, 790, 1080, 300],
     ])}
+    <img class="lav lav-pend" src="${LAV_PENDENTE}" alt="" />
+    <img class="lav lav-pend-dir" src="${LAV_PENDENTE}" alt="" />
+    <img class="lav lav-esq" src="${LAV_MOITA_ESQ}" alt="" />
+    <img class="lav lav-dir" src="${LAV_MOITA_DIR}" alt="" />
     <img class="capa-logo" src="${LOGO_RELATORIO}" alt="Atravessia" />
     <div class="capa-marca serif">Atravessia</div>
     <div class="capa-assin">Relatório emocional pessoal</div>

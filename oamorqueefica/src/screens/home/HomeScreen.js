@@ -25,7 +25,7 @@ import { collection, doc, limit, onSnapshot, query, where } from 'firebase/fires
 import { db } from '../../services/firebase';
 import { RECURSOS_IA, NOME_PLANO } from '../../config/recursosIA';
 
-const headerLavender = require('../../../assets/images/header-lavender.jpg');
+const headerLavender = require('../../../assets/images/header-aquarela.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
 
 const { width: SCREEN_W } = Dimensions.get('window');

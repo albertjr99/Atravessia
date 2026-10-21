@@ -15,7 +15,7 @@ import { LogoRespira, Profundo } from '../../components/Efeitos';
 import { useAuth } from '../../hooks/AuthContext';
 
 const logo = require('../../../assets/images/travessia_logo.png');
-const headerImg = require('../../../assets/images/header-lavender.jpg');
+const headerImg = require('../../../assets/images/login-aquarela.jpg');
 
 // Topo "Luz de Vidro" (igual ao da entrada): a aquarela se dissolve na aurora.
 function TopoAquarela({ altura, children }) {
