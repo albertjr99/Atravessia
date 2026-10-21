@@ -1301,7 +1301,6 @@ export default function RelatoriosScreen({ navigation, route }) {
         <TouchableOpacity style={[s.tab, tab === 'personalizado' && s.tabSel]} onPress={() => setTab('personalizado')} accessibilityState={{ selected: tab === 'personalizado' }}>
           <Ionicons name={tab === 'personalizado' ? 'options' : 'options-outline'} size={14} color={tab === 'personalizado' ? colors.lilasTexto : colors.texto2} />
           <Text style={[s.tabTxt, tab === 'personalizado' && s.tabTxtSel]}>Período</Text>
-          {!temAcesso(1) && <Ionicons name="lock-closed" size={11} color={colors.texto2} />}
         </TouchableOpacity>
       </View>
 
@@ -1602,12 +1601,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                   e gera o relatório desse intervalo.
                 </Text>
 
-                {!temAcesso(1) ? (
-                  <>
-                    <Text style={s.pricingTitle}>Para acessar, assine um plano primeiro</Text>
-                    <BotaoLuz titulo="Ver planos" onPress={() => navigation.navigate('Planos')} style={s.btnCentro} />
-                  </>
-                ) : (
+                {/* O relatório por período é uma compra avulsa: disponível em qualquer plano. */}
+                {(
                   <View style={s.stripeWrap}>
                     <View style={s.stripePriceCard}>
                       <Text style={s.stripePriceTxt}>{precoPeriodoTxt}</Text>

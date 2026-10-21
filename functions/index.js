@@ -232,12 +232,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
   const [userSnap, valorAtual] = await Promise.all([userRef.get(), obterPrecoPeriodoCentavos()]);
   const userData = userSnap.data() || {};
 
-  // Antes comparava `plano < 1` direto: com o plano gravado como texto pelo
-  // painel web a checagem falhava, e quem tinha acesso total ou cortesia era
-  // barrado.
-  if (!temAcessoPago(userData)) {
-    throw new HttpsError('failed-precondition', 'Assine um plano primeiro para gerar relatórios por período.');
-  }
+  // O relatório por período é uma compra avulsa, disponível também no plano gratuito.
 
   const stripe = stripeDe();
   const customerId = await getOrCreateCustomer(stripe, uid, userData);

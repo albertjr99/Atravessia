@@ -19,8 +19,8 @@ export default function CompartilharFrase({ visivel, frase, onFechar }) {
   if (!frase) return null;
 
   const mensagem = `"${frase.texto}"${frase.autor ? ` — ${frase.autor}` : ''}\n\n`
-    + 'Recebi esta frase no Atravessia, um app de acolhimento para quem atravessa o luto. '
-    + `Conheça o Atravessia: ${LINK_PLAY_STORE}`;
+    + 'Recebi essa frase no app Atravessia e lembrei de você. Faça parte também desta Comunidade. '
+    + LINK_PLAY_STORE;
 
   const compartilhar = async () => {
     setEnviando(true);
