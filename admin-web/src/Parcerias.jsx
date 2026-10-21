@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
   serverTimestamp, updateDoc,
 } from 'firebase/firestore';
-import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift } from './Icons';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift, IconUpload } from './Icons';
 import { UFS, formatarCidade, rotuloLocal, urlDeImagem, idDoDrive } from './parceriaUtils';
 
 // Caixa de texto que cresce com o conteúdo: quem digita vê o texto inteiro,
@@ -73,7 +74,7 @@ function novoForm() {
   };
 }
 
-export default function Parcerias({ showToast }) {
+export default function Parcerias({ showToast, irPara }) {
   const [parcerias, setParcerias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(novoForm());
@@ -82,6 +83,8 @@ export default function Parcerias({ showToast }) {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('todas');
   const [erroLista, setErroLista] = useState('');
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const arquivoRef = useRef(null);
 
   useEffect(() => {
     return onSnapshot(collection(db, 'parcerias'), snap => {
@@ -207,6 +210,28 @@ export default function Parcerias({ showToast }) {
       .catch(e => showToast(`Erro ao alterar a parceria: ${e?.message || 'tente novamente.'}`, 'error'));
   };
 
+  // Envio do banner direto do computador (mesma pasta do app: parcerias/).
+  const enviarImagem = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { showToast('Escolha um arquivo de imagem (PNG ou JPG).', 'error'); return; }
+    setEnviandoImagem(true);
+    try {
+      const nomeArq = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+      const arq = storageRef(storage, `parcerias/${nomeArq}`);
+      await uploadBytes(arq, file);
+      set('imagemUrl', await getDownloadURL(arq));
+      showToast('Imagem carregada!');
+    } catch (e) {
+      showToast(`Não foi possível enviar a imagem: ${e?.message || 'tente novamente.'}`, 'error');
+    } finally {
+      setEnviandoImagem(false);
+      if (arquivoRef.current) arquivoRef.current.value = '';
+    }
+  };
+
+  const ativas = parcerias.filter(p => p.ativo !== false).length;
+  const totalCliques = parcerias.reduce((t, p) => t + (p.cliques || 0), 0);
+
   const lista = filtro === 'todas'
     ? parcerias
     : parcerias.filter(p => (p.categorias || []).includes(filtro));
@@ -221,6 +246,12 @@ export default function Parcerias({ showToast }) {
           <p className="screen-sub">Gerenciar parcerias e descontos exclusivos exibidos no aplicativo.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Nova parceria</button>
+      </div>
+
+      <div className="stats-row-mini">
+        <div className="stat-mini"><div className="stat-mini-value" style={{ fontSize: 20 }}>{parcerias.length}</div><div className="stat-mini-label">Total</div></div>
+        <div className="stat-mini"><div className="stat-mini-value" style={{ fontSize: 20, color: 'var(--sage)' }}>{ativas}</div><div className="stat-mini-label">Ativas</div></div>
+        <div className="stat-mini"><div className="stat-mini-value" style={{ fontSize: 20, color: 'var(--text-dark)' }}>{totalCliques}</div><div className="stat-mini-label">Cliques totais</div></div>
       </div>
 
       {erroLista && (
@@ -301,6 +332,14 @@ export default function Parcerias({ showToast }) {
                         <IconTag size={10} /> Cupom · {item.percentualComissao || 0}% comissão
                       </span>
                     )}
+                    {item.tipoBeneficio !== 'cupom' && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                        background: 'var(--acento-salvia-fundo)', color: 'var(--acento-salvia-texto)',
+                      }}>
+                        {item.cliques || 0} cliques
+                      </span>
+                    )}
                   </div>
                 )}
                 {item.tipoBeneficio === 'cupom' && item.tokenPainel && (
@@ -317,6 +356,17 @@ export default function Parcerias({ showToast }) {
                     }}
                   >
                     <IconLink size={11} /> Copiar link do painel do parceiro
+                  </button>
+                )}
+                {item.tipoBeneficio === 'cupom' && irPara && (
+                  <button
+                    onClick={() => irPara('beneficios', { parceriaId: item.id })}
+                    style={{
+                      display: 'block', marginTop: 6, background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 700, color: 'var(--primary-600)', padding: 0,
+                    }}
+                  >
+                    Ver cupons e comissões →
                   </button>
                 )}
               </div>
@@ -365,7 +415,15 @@ export default function Parcerias({ showToast }) {
                   <span className="field-hint">Se preenchido, a usuária é levada a este endereço ao tocar na parceria.</span>
                 </div>
                 <div className="field-group">
-                  <label>Imagem / logotipo (link)</label>
+                  <label>Banner / imagem da parceria</label>
+                  <input ref={arquivoRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }}
+                    onChange={e => enviarImagem(e.target.files?.[0])} />
+                  <button type="button" className="btn-ghost" disabled={enviandoImagem}
+                    onClick={() => arquivoRef.current?.click()}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start', marginBottom: 8 }}>
+                    <IconUpload size={16} /> {enviandoImagem ? 'Enviando imagem…' : 'Enviar imagem do computador'}
+                  </button>
+                  <span className="field-hint" style={{ marginBottom: 6 }}>PNG ou JPG · tamanho sugerido 800×400 px. Ou cole um link abaixo:</span>
                   <input type="url" value={form.imagemUrl}
                     onChange={e => set('imagemUrl', e.target.value)}
                     placeholder="https://... ou link do Google Drive" />
