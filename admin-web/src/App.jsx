@@ -27,12 +27,13 @@ import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
 import RecursosIA from './RecursosIA';
+import Artes from './Artes';
 import Preview from './Preview';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
   IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
   Logo,
-  IconDoc,
+  IconDoc, IconPalette,
 } from './Icons';
 import './alinhamento.css';
 
@@ -94,6 +95,12 @@ const NAV_GRUPOS = [
     ],
   },
   {
+    titulo: 'Criação',
+    itens: [
+      { id: 'artes', Icon: IconPalette, label: 'Atravessia Artes', sub: 'Gerador de artes por IA · Compositor' },
+    ],
+  },
+  {
     titulo: 'Configuração',
     itens: [
       { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Cards dos planos e valores' },
@@ -128,6 +135,7 @@ const SCREENS = {
   perfil:          Perfil,
   institucional:   Institucional,
   recursosIA:      RecursosIA,
+  artes:           Artes,
 };
 
 const TODOS_ITENS = NAV_GRUPOS.flatMap(g => g.itens);

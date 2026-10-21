@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, Video, ResizeMode } from 'expo-av';
+import { Audio, Video, ResizeMode, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Disclaimer, LavandaBg } from '../../components';
@@ -77,23 +77,39 @@ export default function AudioPlayerScreen({ route, navigation }) {
     if (status.didJustFinish) { setPosicao(0); setTocando(false); }
   }, []);
 
+  // Antes, qualquer falha ao preparar o áudio era engolida e o botão
+  // simplesmente não fazia nada (como relatado no tablet). Agora a pessoa
+  // recebe um aviso, e o modo de áudio do Android é configurado por completo.
   const assegurarSom = async () => {
     if (somRef.current) return true;
     if (!temArquivoReal) return false;
     const liberado = jaLiberado(audio.id) || liberarConteudo(audio.id, grupo);
-    if (!liberado) return false;
+    if (!liberado) {
+      Alert.alert('Limite de hoje', 'Você já ouviu o conteúdo liberado para hoje neste grupo. Amanhã um novo estará disponível para você.');
+      return false;
+    }
     setCarregando(true);
     try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+      }).catch(() => {});
       const { sound } = await Audio.Sound.createAsync(
         { uri: audio.url },
-        { shouldPlay: false, rate: velocidade, shouldCorrectPitch: true },
+        { shouldPlay: false, rate: velocidade, shouldCorrectPitch: true, progressUpdateIntervalMillis: 500 },
         onStatus,
       );
       somRef.current = sound;
       return true;
-    } catch { return false; }
-    finally { setCarregando(false); }
+    } catch (e) {
+      console.warn('[Audio] não carregou:', e?.message);
+      Alert.alert('Não foi possível tocar o áudio', 'Confira sua conexão com a internet e se o volume de mídia do aparelho está ligado. Depois, tente de novo.');
+      return false;
+    } finally { setCarregando(false); }
   };
 
   const handlePlayPause = async () => {
@@ -105,7 +121,15 @@ export default function AudioPlayerScreen({ route, navigation }) {
     }
     const ok = await assegurarSom();
     if (!ok) return;
-    tocando ? await somRef.current.pauseAsync() : await somRef.current.playAsync();
+    try {
+      tocando ? await somRef.current.pauseAsync() : await somRef.current.playAsync();
+    } catch (e) {
+      console.warn('[Audio] play/pause:', e?.message);
+      // Tenta recriar o som uma vez (alguns aparelhos perdem o player ao trocar de app).
+      try { await somRef.current?.unloadAsync(); } catch {}
+      somRef.current = null;
+      if (await assegurarSom()) await somRef.current?.playAsync().catch(() => {});
+    }
   };
 
   const handleSeek = async (x) => {

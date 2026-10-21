@@ -119,11 +119,12 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
         </View>
       )}
 
+      {/* Só informa que há cashback (e as condições); nenhum percentual aparece para a usuária. */}
       {temCashback && pctCashback > 0 && (
         <View style={s.cashbackLinha}>
           <Ionicons name="wallet-outline" size={14} color={colors.sageFg} />
           <Text style={s.cashbackTxt}>
-            {`${String(pctCashback).replace('.', ',')}% de cashback`}
+            {'Esta parceria dá cashback'}
             {p.cashback?.condicoes ? <Text style={s.cashbackCond}>{` · ${p.cashback.condicoes}`}</Text> : null}
           </Text>
         </View>

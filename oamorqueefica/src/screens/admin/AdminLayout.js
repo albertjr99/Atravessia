@@ -71,6 +71,12 @@ const NAV_GRUPOS = [
     ],
   },
   {
+    titulo: 'Criação',
+    itens: [
+      { icon: 'color-palette', iconOff: 'color-palette-outline', label: 'Atravessia Artes', sub: 'Gerador de artes por IA', screen: 'AdminArtes' },
+    ],
+  },
+  {
     titulo: 'Configuração',
     itens: [
       { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços e planos', screen: 'AdminPrecos' },
