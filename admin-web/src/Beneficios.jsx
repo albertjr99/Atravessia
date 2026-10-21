@@ -284,7 +284,7 @@ const COLUNAS = [
 
 // ============================================================================
 
-export default function Beneficios({ showToast }) {
+export default function Beneficios({ showToast, parametros }) {
   const toast = (msg, tipo) => { if (typeof showToast === 'function') showToast(msg, tipo); };
 
   // Dados
@@ -296,7 +296,7 @@ export default function Beneficios({ showToast }) {
   const [erros, setErros] = useState({});
 
   // Filtros
-  const [filtroParceria, setFiltroParceria] = useState('todas');
+  const [filtroParceria, setFiltroParceria] = useState(parametros?.parceriaId || 'todas');
   const [periodo, setPeriodo] = useState('mes');
   const [custom, setCustom] = useState({ inicio: '', fim: '' });
   const [filtroStatus, setFiltroStatus] = useState('todos');

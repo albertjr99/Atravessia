@@ -148,6 +148,8 @@ export default function App() {
   const [user, setUser] = useState(undefined);
   const [perfil, setPerfil] = useState(null);
   const [screen, setScreen] = useState('dashboard');
+  // Parâmetros de um atalho entre telas (ex.: abrir Cupons já filtrado por uma parceria).
+  const [parametros, setParametros] = useState(null);
   // Última aba aberta em cada seção, para voltar a ela ao clicar no item.
   const [ultimaAba, setUltimaAba] = useState({});
   const [toast, setToast] = useState(null);
@@ -210,7 +212,8 @@ export default function App() {
 
   const handleLogout = async () => { await signOut(auth); setUser(null); };
 
-  const navigate = (id) => {
+  const navigate = (id, params = null) => {
+    setParametros(params);
     const item = TODOS_ITENS.find(it => it.id === id);
     let tela = id;
     if (item?.abas) tela = ultimaAba[item.id] || item.abas[0].id;
@@ -332,7 +335,7 @@ export default function App() {
             </div>
           )}
 
-          <Screen key={screen} showToast={showToast} perfil={perfil} />
+          <Screen key={screen} showToast={showToast} perfil={perfil} irPara={navigate} parametros={parametros} />
         </main>
 
         <div className="preview-panel">
