@@ -58,7 +58,9 @@ O segredo do webhook do modo de teste não funciona em produção.
 
 ### 3. Termos de serviço
 
-O checkout pede que a pessoa aceite os termos. Para isso, publique a URL dos termos em Configurações → **Dados públicos** da Stripe. Sem essa URL, o checkout abre sem a caixa de aceite.
+Os termos estão publicados em **https://o-amor-que-fica.web.app/termos.html** (arquivo [admin-web/public/termos.html](admin-web/public/termos.html)) e o checkout já mostra o link na caixa de aceite.
+
+Falta cadastrar a URL na Stripe: Configurações → **Dados públicos** → "Termos de serviço". Sem essa URL, o checkout abre sem a caixa de aceite.
 
 ### 4. Aparência do checkout
 

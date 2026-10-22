@@ -216,6 +216,7 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
     subscription_data: { metadata: { uid, planoId: String(planoId), periodo: anual ? 'anual' : 'mensal' } },
     custom_text: {
       submit: { message: 'Você poderá cancelar quando quiser, direto no app.' },
+      terms_of_service_acceptance: { message: TEXTO_ACEITE_TERMOS },
     },
   });
 
@@ -226,6 +227,7 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
 // de configuração da conta (termos de serviço publicados) ou de uma versão
 // mais nova da API; se a Stripe recusar uma delas, ela é retirada e a sessão é
 // criada mesmo assim, para o pagamento nunca deixar de abrir.
+const TEXTO_ACEITE_TERMOS = `Li e aceito os [Termos de Uso e de Assinatura](${SITE_URL}/termos.html) do Atravessia.`;
 const OPCOES_STUDIO_OPCIONAIS = [
   'consent_collection', 'saved_payment_method_options', 'integration_identifier',
   'origin_context', 'allow_promotion_codes', 'phone_number_collection', 'automatic_tax',
@@ -256,6 +258,11 @@ async function criarSessaoCheckout(stripe, params) {
       if (e?.type !== 'StripeInvalidRequestError' || !OPCOES_STUDIO_OPCIONAIS.includes(campo) || !(campo in p)) throw e;
       console.warn(`[Checkout] Stripe recusou "${campo}"; criando a sessão sem ele.`, e.message);
       delete p[campo];
+      // O texto do aceite dos termos só existe junto com a coleta de consentimento.
+      if (campo === 'consent_collection' && p.custom_text?.terms_of_service_acceptance) {
+        const { terms_of_service_acceptance: _, ...resto } = p.custom_text;
+        p.custom_text = resto;
+      }
     }
   }
   return stripe.checkout.sessions.create(p);
@@ -296,6 +303,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
     metadata: { uid, tipo: 'periodo_credito', cashbackCentavos: String(cashback?.desconto || 0) },
     custom_text: {
       submit: { message: `${reaisTexto(valorAtual)} por relatório — use quando quiser.` },
+      terms_of_service_acceptance: { message: TEXTO_ACEITE_TERMOS },
     },
   });
 

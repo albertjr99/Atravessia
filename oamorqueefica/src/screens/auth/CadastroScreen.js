@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, TextInput, Alert, useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -250,7 +251,7 @@ export default function CadastroScreen({ navigation }) {
               {aceitouTermos && <Ionicons name="checkmark" size={15} color="white" />}
             </View>
             <Text style={styles.checkText}>
-              Aceito os <Text style={styles.checkLink}>termos de uso</Text>
+              Aceito os <Text style={styles.checkLink} onPress={() => Linking.openURL('https://o-amor-que-fica.web.app/termos.html')}>termos de uso</Text>
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.checkRow} onPress={() => setAceitouPriv(p => !p)}>
