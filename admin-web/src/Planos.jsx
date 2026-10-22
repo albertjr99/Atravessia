@@ -268,16 +268,16 @@ export default function Planos({ showToast }) {
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="pp-editor-titulo" onClick={e => e.stopPropagation()}>
+          <div className="modal-card modal-card-lg pp-editor" role="dialog" aria-modal="true" aria-labelledby="pp-editor-titulo" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 id="pp-editor-titulo">Editar plano {modal.nome}</h2>
               <button className="modal-close" onClick={fecharModal} aria-label="Fechar"><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               {temPreco && (
-                <fieldset className="pp-editor-precos">
-                  <legend>Preço</legend>
-                  <div className="field-row">
+                <div className="pp-editor-precos" role="group" aria-labelledby="pp-preco-titulo">
+                  <h3 id="pp-preco-titulo" className="pp-editor-precos-titulo">Preço</h3>
+                  <div className="pp-preco-campos">
                     <div className="field-group">
                       <label htmlFor="pp-mensal">Mensal {form.emBreve ? <span className="aln-opcional">(opcional enquanto estiver “Em breve”)</span> : '*'}</label>
                       <div className={`pp-moeda ${mostrarErro(erroMensal) ? 'pp-moeda-erro' : ''}`}>
@@ -322,7 +322,7 @@ export default function Planos({ showToast }) {
                       )}
                     </div>
                   )}
-                </fieldset>
+                </div>
               )}
 
               <div className="field-group">
