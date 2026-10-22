@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, Video, ResizeMode, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { Video, ResizeMode } from 'expo-av';
+import { criarSomComTelaBloqueio } from '../../utils/somComTelaBloqueio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Disclaimer, LavandaBg } from '../../components';
@@ -90,21 +91,10 @@ export default function AudioPlayerScreen({ route, navigation }) {
     }
     setCarregando(true);
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        // Continua tocando com a tela bloqueada ou com o app em segundo plano.
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      }).catch(() => {});
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: audio.url },
-        { shouldPlay: false, rate: velocidade, shouldCorrectPitch: true, progressUpdateIntervalMillis: 500 },
-        onStatus,
-      );
-      somRef.current = sound;
+      // Toca com a tela bloqueada e mostra play/pausa na tela de bloqueio.
+      somRef.current = await criarSomComTelaBloqueio({
+        uri: audio.url, titulo: audio.titulo, rate: velocidade, onStatus,
+      });
       return true;
     } catch (e) {
       console.warn('[Audio] não carregou:', e?.message);
