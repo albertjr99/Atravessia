@@ -131,12 +131,8 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
       )}
 
       <View style={s.cardRodape}>
-        {desconto > 0 ? (
-          <View style={s.tagCupom}>
-            <Ionicons name="pricetag-outline" size={13} color={colors.douradoTitulo} />
-            <Text style={s.tagCupomTxt}>{desconto}% de desconto</Text>
-          </View>
-        ) : <View />}
+        {/* O percentual do cupom é informação interna da Atravessia: não aparece no cartão. */}
+        <View />
         {temAcao ? (
           // Botão com degradê e "degrau" que afunda ao toque
           <Profundo
