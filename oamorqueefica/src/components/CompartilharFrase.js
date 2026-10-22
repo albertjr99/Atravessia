@@ -7,7 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { colors, criarEstilos } from '../theme';
 
 const logo = require('../../assets/images/travessia_logo.png');
-const lavanda = require('../../assets/images/lavanda_pendente.png');
+const lavanda = require('../../assets/images/lavanda_right.png');
 
 export const LINK_PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.atravessia';
 
@@ -92,7 +92,7 @@ const s = criarEstilos(() => ({
   fundo: { flex: 1, backgroundColor: colors.sobreposicao, alignItems: 'center', justifyContent: 'center', padding: 20 },
   caixa: { width: '100%', maxWidth: 380, alignItems: 'stretch' },
   cartao: { borderRadius: 28, overflow: 'hidden', paddingHorizontal: 24, paddingTop: 24, paddingBottom: 18, backgroundColor: '#F6F1EE' },
-  lavanda: { position: 'absolute', top: 0, right: 0, width: 170, height: 142, opacity: 0.6, transform: [{ scaleX: -1 }] },
+  lavanda: { position: 'absolute', top: -14, right: -24, width: 150, height: 150, opacity: 0.35 },
   marca: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 40, height: 40, borderRadius: 12 },
   marcaNome: { fontFamily: 'Marca', fontSize: 30, color: '#45358A' },

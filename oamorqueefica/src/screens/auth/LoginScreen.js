@@ -16,7 +16,7 @@ import { Disclaimer, LavandaBg } from '../../components';
 import { LogoRespira, Profundo } from '../../components/Efeitos';
 import { useAuth } from '../../hooks/AuthContext';
 
-const headerImg = require('../../../assets/images/login-aquarela.jpg');
+const headerImg = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
 
 // Topo "Luz de Vidro": a aquarela de lavanda se dissolve na aurora do fundo

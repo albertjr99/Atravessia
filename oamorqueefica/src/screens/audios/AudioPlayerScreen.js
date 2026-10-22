@@ -92,7 +92,8 @@ export default function AudioPlayerScreen({ route, navigation }) {
     try {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
+        // Continua tocando com a tela bloqueada ou com o app em segundo plano.
+        staysActiveInBackground: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
         interruptionModeIOS: InterruptionModeIOS.DoNotMix,
