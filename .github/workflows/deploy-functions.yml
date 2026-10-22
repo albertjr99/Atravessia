@@ -43,6 +43,25 @@ jobs:
             exit 1
           fi
 
+      # Chaves da Stripe guardadas nos secrets do GitHub (STRIPE_SECRET_KEY e
+      # STRIPE_WEBHOOK_SECRET) vão para o Secret Manager do Firebase antes do
+      # deploy. Se não estiverem no GitHub, fica valendo o que já está no Firebase.
+      - name: Sincronizar chaves da Stripe
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          for nome in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+            valor="${!nome}"
+            if [ -n "$valor" ]; then
+              printf '%s' "$valor" | npx firebase-tools functions:secrets:set "$nome" --data-file=- --force --token "$FIREBASE_TOKEN" --non-interactive
+              echo "$nome atualizado no Firebase."
+            else
+              echo "$nome não está nos secrets do GitHub; mantendo o valor atual do Firebase."
+            fi
+          done
+
       - name: Deploy
         run: >
           npx firebase-tools deploy

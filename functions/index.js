@@ -195,12 +195,12 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   // Cashback: desconto na primeira mensalidade, se ela escolheu usar.
   const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await criarSessaoCheckout(stripe, {
+    ...opcoesCheckoutStudio({ assinatura: true, comDesconto: !!cashback }),
     ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'subscription',
     customer: customerId,
     locale: 'pt-BR',
-    submit_type: 'subscribe',
     line_items: [{
       price_data: {
         currency: 'brl',
@@ -222,6 +222,45 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   return { url: session.url };
 });
 
+// Opções do Checkout definidas no Checkout Studio da Stripe. Algumas dependem
+// de configuração da conta (termos de serviço publicados) ou de uma versão
+// mais nova da API; se a Stripe recusar uma delas, ela é retirada e a sessão é
+// criada mesmo assim, para o pagamento nunca deixar de abrir.
+const OPCOES_STUDIO_OPCIONAIS = [
+  'consent_collection', 'saved_payment_method_options', 'integration_identifier',
+  'origin_context', 'allow_promotion_codes', 'phone_number_collection', 'automatic_tax',
+];
+function opcoesCheckoutStudio({ assinatura, comDesconto }) {
+  return {
+    ui_mode: 'hosted',
+    billing_address_collection: 'auto',
+    phone_number_collection: { enabled: false },
+    automatic_tax: { enabled: false },
+    // A Stripe não aceita cupom de cashback e campo de código promocional juntos.
+    ...(comDesconto ? {} : { allow_promotion_codes: true }),
+    ...(assinatura ? { payment_method_collection: 'always' } : {}),
+    submit_type: 'auto',
+    consent_collection: { terms_of_service: 'required' },
+    saved_payment_method_options: { payment_method_save: 'enabled' },
+    integration_identifier: 'hosted_web_0001',
+    origin_context: 'web',
+  };
+}
+async function criarSessaoCheckout(stripe, params) {
+  const p = { ...params };
+  for (let tentativa = 0; tentativa <= OPCOES_STUDIO_OPCIONAIS.length; tentativa++) {
+    try {
+      return await stripe.checkout.sessions.create(p);
+    } catch (e) {
+      const campo = String(e?.param || '').split('[')[0];
+      if (e?.type !== 'StripeInvalidRequestError' || !OPCOES_STUDIO_OPCIONAIS.includes(campo) || !(campo in p)) throw e;
+      console.warn(`[Checkout] Stripe recusou "${campo}"; criando a sessão sem ele.`, e.message);
+      delete p[campo];
+    }
+  }
+  return stripe.checkout.sessions.create(p);
+}
+
 exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) => {
   if (request.data?.aquecer) return { ok: true };
 
@@ -238,7 +277,8 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
   const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await criarSessaoCheckout(stripe, {
+    ...opcoesCheckoutStudio({ assinatura: false, comDesconto: !!cashback }),
     ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'payment',
     customer: customerId,
