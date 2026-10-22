@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "383096379126",
+    "project_id": "o-amor-que-fica",
+    "storage_bucket": "o-amor-que-fica.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383096379126:android:5014b1e243ddf2b2027ed7",
+        "android_client_info": {
+          "package_name": "com.atravessia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuizepL0DnB-ccri0WWEJIypok3YFSnMk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
