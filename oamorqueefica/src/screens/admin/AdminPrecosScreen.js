@@ -1,261 +1,132 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  View, Text, ScrollView, TextInput, Alert, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
-import AdminLayout from './AdminLayout';
+import { colors, fonts, spacing, criarEstilos } from '../../theme';
+import AdminLayout, { LARGURA_LATERAL } from './AdminLayout';
 import AdminPlanosCards from './AdminPlanosCards';
 import AdminAssinaturaCard from './AdminAssinaturaCard';
-import { est, dadoPlano, acento, Degrade } from './adminEstilo';
+import { est, acento, BotaoAdmin, Pilula, F_NUM } from './adminEstilo';
+import { lerReais, paraCampo, formatarReais, validarPreco } from './precosUtil';
 
-const PLANOS_INFO = [
-  { id: 1, nome: 'Plano Acolher', cor: colors.rose, campo: 'plano1' },
-  { id: 2, nome: 'Plano Compreender', cor: colors.lav4, campo: 'plano2' },
-  { id: 3, nome: 'Plano Evoluir', cor: colors.sage, campo: 'plano3' },
-];
+// "Preços e planos" — único lugar para editar preços (igual ao painel web,
+// admin-web/src/PrecosPlanos.jsx):
+//   • cards dos planos, cada um com o editor de nome, recursos e preços
+//     (planos/{id}.preco e .precoAnual — o que o app mostra e o checkout cobra);
+//   • relatório por período (configuracoes/precos.periodo, centavos);
+//   • formas de pagamento (configuracoes/assinatura).
+const PERIODO_PADRAO = 590;
 
-const DEFAULT_PRECOS = {
-  plano1: 2490,
-  plano2: 4990,
-  plano3: 8990,
-  periodo: 590,
-};
-
-function centavosParaReais(centavos) {
-  return (centavos / 100).toFixed(2).replace('.', ',');
-}
-
-function reaisParaCentavos(str) {
-  const limpo = str.replace(/[^0-9,]/g, '').replace(',', '.');
-  const valor = parseFloat(limpo);
-  if (isNaN(valor)) return null;
-  return Math.round(valor * 100);
-}
-
-function formatarInput(str) {
-  const nums = str.replace(/\D/g, '');
-  if (!nums) return '';
-  const cents = parseInt(nums, 10);
-  return (cents / 100).toFixed(2).replace('.', ',');
-}
-
-export default function AdminPrecosScreen() {
-  const [precos, setPrecos] = useState(DEFAULT_PRECOS);
-  const [inputs, setInputs] = useState({});
-  const [ativarEm, setAtivarEm] = useState('');
+function CardPeriodo({ estilo }) {
+  const [atual, setAtual] = useState(PERIODO_PADRAO / 100);
+  const [valor, setValor] = useState('');
+  const [editado, setEditado] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [tentou, setTentou] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => {
-    const ref = doc(db, 'configuracoes', 'precos');
-    const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setPrecos({ ...DEFAULT_PRECOS, ...data });
-        setInputs({
-          plano1: centavosParaReais(data.plano1 ?? DEFAULT_PRECOS.plano1),
-          plano2: centavosParaReais(data.plano2 ?? DEFAULT_PRECOS.plano2),
-          plano3: centavosParaReais(data.plano3 ?? DEFAULT_PRECOS.plano3),
-          periodo: centavosParaReais(data.periodo ?? DEFAULT_PRECOS.periodo),
-        });
-      } else {
-        setInputs({
-          plano1: centavosParaReais(DEFAULT_PRECOS.plano1),
-          plano2: centavosParaReais(DEFAULT_PRECOS.plano2),
-          plano3: centavosParaReais(DEFAULT_PRECOS.plano3),
-          periodo: centavosParaReais(DEFAULT_PRECOS.periodo),
-        });
-      }
-      setCarregando(false);
-    }, () => setCarregando(false));
-    return unsub;
-  }, []);
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'precos'), (snap) => {
+    const c = snap.data()?.periodo;
+    const reais = (typeof c === 'number' && c > 0 ? c : PERIODO_PADRAO) / 100;
+    setAtual(reais);
+    if (!editado) setValor(paraCampo(reais));
+    setCarregando(false);
+  }, () => setCarregando(false)), [editado]);
 
-  const handleSalvar = async () => {
-    const novo = {};
-    for (const campo of ['plano1', 'plano2', 'plano3', 'periodo']) {
-      const inputVal = (inputs[campo] || '').trim();
-      if (!inputVal) continue; // campo em branco → não altera
-      const val = reaisParaCentavos(inputVal);
-      if (val === null || val <= 0) {
-        const nomes = { plano1: 'Plano Acolher', plano2: 'Plano Compreender', plano3: 'Plano Evoluir', periodo: 'Relatório por período' };
-        Alert.alert('Valor inválido', `Verifique o preço de "${nomes[campo]}".`);
-        return;
-      }
-      novo[campo] = val;
-    }
+  const novo = lerReais(valor);
+  const erro = validarPreco(novo);
+  const mudou = novo !== null && novo !== atual;
 
-    if (Object.keys(novo).length === 0) {
-      Alert.alert('Nenhum campo', 'Preencha ao menos um preço para salvar.');
-      return;
-    }
-
-    let ativarEmDate = null;
-    if (ativarEm) {
-      const [dia, mes, ano] = ativarEm.split('/').map(Number);
-      const d = new Date(ano, mes - 1, dia);
-      if (isNaN(d.getTime())) {
-        Alert.alert('Data inválida', 'Use o formato DD/MM/AAAA.');
-        return;
-      }
-      ativarEmDate = d;
-    }
-
+  const salvar = async () => {
+    setTentou(true);
+    if (erro) { Alert.alert('Confira o valor', erro); return; }
     setSalvando(true);
     try {
-      const payload = {
-        ...novo,
+      await setDoc(doc(db, 'configuracoes', 'precos'), {
+        periodo: Math.round(novo * 100),
         atualizadoEm: serverTimestamp(),
-      };
-      if (ativarEmDate) payload.ativarEm = ativarEmDate;
-
-      await setDoc(doc(db, 'configuracoes', 'precos'), payload, { merge: true });
-
-      // Espelha o valor também em planos/{id}.preco e .precoLabel — é esse
-      // documento que o card do plano e a tela de checkout do app realmente
-      // leem. Sem isso, o preço mudava aqui mas a usuária continuava vendo
-      // (e assinando) pelo valor antigo.
-      for (const [campo, centavos] of Object.entries(novo)) {
-        const info = PLANOS_INFO.find(p => p.campo === campo);
-        if (!info) continue;
-        const reais = centavos / 100;
-        await setDoc(doc(db, 'planos', String(info.id)), {
-          id: info.id,
-          preco: reais,
-          precoLabel: `R$ ${reais.toFixed(2).replace('.', ',')}/mês`,
-        }, { merge: true });
-      }
-
-      Alert.alert(
-        'Preços salvos',
-        ativarEmDate
-          ? `Os preços serão ativados em ${ativarEm}.`
-          : 'Os preços foram atualizados imediatamente.'
-      );
-      setAtivarEm('');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar os preços.');
+      }, { merge: true });
+      setEditado(false);
+      setTentou(false);
+      Alert.alert('Valor salvo', `O relatório por período agora custa ${formatarReais(novo)}.`);
+    } catch (e) {
+      Alert.alert('Não foi possível salvar', e?.message || 'Tente de novo.');
     } finally {
       setSalvando(false);
     }
   };
 
-  const formatarData = (text) => {
-    const nums = text.replace(/\D/g, '');
-    if (nums.length <= 2) return nums;
-    if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
-    return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4, 8)}`;
-  };
-
-  if (carregando) {
-    return (
-      <AdminLayout currentScreen="AdminPrecos">
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={colors.lav4} />
+  return (
+    <View style={[s.card, estilo]}>
+      <Text style={s.cardTitulo}>Relatório por período</Text>
+      <Text style={s.cardSub}>Valor de cada relatório personalizado que a usuária compra avulso.</Text>
+      <View style={s.atualLinha}>
+        <Pilula icone="calendar-outline" nome="lilas" tam={44} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.precoRot}>HOJE A USUÁRIA PAGA</Text>
+          {carregando
+            ? <ActivityIndicator color={colors.lav4} style={{ alignSelf: 'flex-start' }} />
+            : <Text style={s.valor}>{formatarReais(atual)}<Text style={s.per}> /relatório</Text></Text>}
         </View>
-      </AdminLayout>
-    );
-  }
+      </View>
+      <Text style={s.label}>Novo valor</Text>
+      <View style={[s.moeda, tentou && !!erro && s.moedaErro]}>
+        <Text style={s.cifrao}>R$</Text>
+        <TextInput
+          style={s.moedaInput} value={valor} editable={!carregando}
+          onChangeText={t => { setValor(t); setEditado(true); }}
+          keyboardType="decimal-pad" placeholder="5,90" placeholderTextColor={colors.tl}
+          accessibilityLabel="Novo valor do relatório por período, em reais"
+        />
+      </View>
+      <Text style={[s.dica, tentou && !!erro && s.dicaErro]}>{tentou && erro ? erro : 'Mínimo de R$ 0,50.'}</Text>
+      <BotaoAdmin
+        title={salvando ? 'Salvando...' : 'Salvar valor'} icone="checkmark"
+        onPress={salvar} disabled={salvando || carregando || !mudou} carregando={salvando}
+        style={{ marginTop: spacing.lg }}
+      />
+    </View>
+  );
+}
+
+export default function AdminPrecosScreen() {
+  const { width } = useWindowDimensions();
+  const [larguraMedida, setLarguraMedida] = useState(null);
+  const temSidebar = width >= 700;
+  const larguraConteudo = (larguraMedida ?? (width - (temSidebar ? LARGURA_LATERAL : 0))) - spacing.lg * 2;
+  // Celular: 1 coluna · tablet: 2 · tela larga: 4 cards lado a lado.
+  const colunasPlanos = larguraConteudo >= 1040 ? 4 : larguraConteudo >= 520 ? 2 : 1;
+  const duasColunas = larguraConteudo >= 640;
 
   return (
     <AdminLayout currentScreen="AdminPrecos">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={s.scroll}
+        onLayout={e => setLarguraMedida(e.nativeEvent.layout.width)}
+      >
         <Text style={s.sobre}>Configuração</Text>
-        <Text style={s.title}>Preços e Planos</Text>
-        <Text style={s.sub}>
-          Edite os valores dos planos e do relatório por período. Os preços são armazenados em centavos e usados pelas funções do Stripe.
-        </Text>
-
-        {/* Cards dos planos exibidos no app */}
-        <AdminPlanosCards />
-
-        {/* Planos */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Planos de assinatura (mensais)</Text>
-        <Text style={s.cardHint}>Deixe em branco os campos que não deseja alterar.</Text>
-          {PLANOS_INFO.map(p => (
-            <View key={p.id} style={s.precoRow}>
-              <View style={[s.planDot, { backgroundColor: dadoPlano(p.id) }]} />
-              <Text style={s.planNome}>{p.nome}</Text>
-              <View style={s.inputWrap}>
-                <Text style={s.cifrao}>R$</Text>
-                <TextInput
-                  style={s.precoInput}
-                  keyboardType="numeric"
-                  value={inputs[p.campo] || ''}
-                  onChangeText={t => setInputs(prev => ({ ...prev, [p.campo]: formatarInput(t) }))}
-                  placeholder="0,00"
-                  placeholderTextColor={colors.tl}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Relatório por período */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Relatório por período (por crédito)</Text>
-        <Text style={s.cardHint}>Deixe em branco para não alterar.</Text>
-          <View style={s.precoRow}>
-            <Ionicons name="calendar-outline" size={18} color={acento('lilas').tinta} />
-            <Text style={s.planNome}>Relatório personalizado</Text>
-            <View style={s.inputWrap}>
-              <Text style={s.cifrao}>R$</Text>
-              <TextInput
-                style={s.precoInput}
-                keyboardType="numeric"
-                value={inputs.periodo || ''}
-                onChangeText={t => setInputs(prev => ({ ...prev, periodo: formatarInput(t) }))}
-                placeholder="0,00"
-                placeholderTextColor={colors.tl}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Ativação agendada */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Ativação agendada (opcional)</Text>
-          <Text style={s.cardSub}>
-            Defina uma data futura para os novos preços entrarem em vigor. Deixe em branco para ativar imediatamente.
+        <Text style={s.title}>Preços e planos</Text>
+        <View style={[est.aviso('lilas'), { marginTop: spacing.sm, marginBottom: spacing.lg }]}>
+          <Ionicons name="pricetag-outline" size={18} color={acento('lilas').tinta} />
+          <Text style={est.avisoTxt('lilas')}>
+            O valor que você salva aqui é o que a usuária vê no app e o que é cobrado no pagamento.
+            Quem já assina continua com o valor da época da assinatura.
           </Text>
-          <View style={s.dateRow}>
-            <Ionicons name="calendar-outline" size={16} color={colors.tl} />
-            <TextInput
-              style={s.dateInput}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor={colors.tl}
-              value={ativarEm}
-              onChangeText={t => setAtivarEm(formatarData(t))}
-              keyboardType="numeric"
-              maxLength={10}
-            />
-          </View>
         </View>
 
-        {/* Salvar */}
-        <TouchableOpacity
-          style={[s.saveBtn, salvando && { opacity: 0.6 }]}
-          onPress={handleSalvar}
-          disabled={salvando}
-        >
-          <Degrade />
-          {salvando
-            ? <ActivityIndicator size="small" color="white" />
-            : <Ionicons name="checkmark-circle-outline" size={18} color="white" />}
-          <Text style={s.saveBtnTxt}>
-            {salvando ? 'Salvando...' : 'Salvar preços'}
-          </Text>
-        </TouchableOpacity>
+        <Text style={s.secao}>Planos</Text>
+        <Text style={s.secaoSub}>Cada card mostra o plano do jeito que aparece no app.</Text>
+        <AdminPlanosCards colunas={colunasPlanos} />
 
-        <Text style={s.hint}>
-          Atenção: alterar os preços aqui não reconfigura automaticamente os produtos no Stripe. Os valores são usados pelas Cloud Functions para criar novos checkouts.
-        </Text>
-        <AdminAssinaturaCard />
+        <View style={[s.linhaSecoes, duasColunas && s.linhaSecoesLarga]}>
+          <CardPeriodo estilo={duasColunas ? s.metade : null} />
+          <AdminAssinaturaCard estilo={duasColunas ? s.metade : null} />
+        </View>
       </ScrollView>
     </AdminLayout>
   );
@@ -265,44 +136,30 @@ const s = criarEstilos(() => ({
   scroll: { padding: spacing.lg, paddingBottom: 48 },
   sobre: est.sobretitulo(),
   title: est.titulo(),
-  sub: { ...est.subtitulo(), marginBottom: spacing.lg },
+  secao: { ...est.secao(), marginTop: spacing.sm },
+  secaoSub: { ...est.legenda(), marginTop: 2 },
 
-  card: { ...est.vidro(26), padding: 18, marginBottom: spacing.md },
-  cardTitle: { ...est.cartaoTitulo(), marginBottom: 4 },
-  cardSub: { ...est.legenda(), marginBottom: spacing.sm },
-  cardHint: { ...est.dica(), marginTop: 0, marginBottom: 6 },
+  linhaSecoes: { marginTop: spacing.xl, gap: spacing.md },
+  linhaSecoesLarga: { flexDirection: 'row', alignItems: 'flex-start' },
+  metade: { flex: 1, minWidth: 0 },
 
-  precoRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: colors.bordaSuave,
-  },
-  planDot: { width: 12, height: 12, borderRadius: 6, flexShrink: 0 },
-  planNome: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 15, color: colors.td },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: colors.cardSolido, borderRadius: 14,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 12, minHeight: 46,
-  },
-  cifrao: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.texto2, marginRight: 4 },
-  precoInput: {
-    fontFamily: fonts.bodyBold, fontSize: 16, color: colors.td,
-    minWidth: 70, textAlign: 'right', paddingVertical: 10,
-  },
+  card: { ...est.vidro(24), padding: 18 },
+  cardTitulo: est.cartaoTitulo(),
+  cardSub: { ...est.legenda(), marginTop: 2, marginBottom: spacing.md },
+  atualLinha: { flexDirection: 'row', alignItems: 'center', gap: 12, ...est.tenue(16), padding: 12 },
+  precoRot: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1, color: colors.tl, marginBottom: 2 },
+  valor: { fontFamily: F_NUM, fontSize: 24, letterSpacing: -0.4, color: colors.titulo },
+  per: { fontFamily: fonts.bodySemi, fontSize: 13, letterSpacing: 0, color: colors.texto2 },
 
-  dateRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: colors.cardSolido, borderRadius: 14,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 14, minHeight: 48,
+  label: est.rotulo(),
+  moeda: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.cardSolido, borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, minHeight: 52,
   },
-  dateInput: {
-    flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.td, paddingVertical: 12,
-  },
-
-  saveBtn: { ...est.botao(), marginBottom: spacing.md, marginTop: 4 },
-  saveBtnTxt: est.botaoTxt(),
-
-  hint: { ...est.dica(), textAlign: 'center' },
+  moedaErro: { borderColor: colors.roseTexto, borderWidth: 1.5 },
+  cifrao: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.texto2 },
+  moedaInput: { flex: 1, fontFamily: F_NUM, fontSize: 19, color: colors.td, paddingVertical: 10 },
+  dica: est.dica(),
+  dicaErro: { color: colors.roseTexto, fontFamily: fonts.bodySemi },
 }), { escalar: false });

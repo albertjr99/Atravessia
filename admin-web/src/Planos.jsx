@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import {
-  collection, doc, onSnapshot,
-  serverTimestamp, setDoc,
+  collection, doc, onSnapshot, serverTimestamp, setDoc, writeBatch,
 } from 'firebase/firestore';
-import { IconClose, IconSpark, IconCheck } from './Icons';
+import { IconClose, IconSpark, IconCheck, IconEdit, IconPlus, IconTrash, IconAlert } from './Icons';
+import {
+  lerReais, paraCampo, formatarReais, anualEfetivo, economiaPct, validarPreco,
+  status, STATUS_ROTULO,
+} from './precosUtil';
 
 const PLANOS_PADRAO = [
   {
@@ -18,7 +21,7 @@ const PLANOS_PADRAO = [
     destaque: false, emBreve: false,
   },
   {
-    id: 1, nome: 'Acolher', subtitulo: 'R$ 24,90/mês', preco: 24.90, precoLabel: 'R$ 24,90/mês',
+    id: 1, nome: 'Acolher', subtitulo: 'Mensal', preco: 24.90, precoLabel: 'R$ 24,90/mês',
     descricao: 'Aqui, suas emoções encontram acolhimento.',
     recursos: [
       'Tudo do Gratuito', 'Pequenas Vitórias — registre seus avanços',
@@ -48,87 +51,159 @@ const PLANOS_PADRAO = [
   },
 ];
 
-function formVazio(plano) {
+const COR_PLANO = ['perceber', 'acolher', 'compreender', 'evoluir'];
+const corDe = (id) => COR_PLANO[id] || 'acolher';
+
+function formDe(plano) {
   return {
     nome: plano?.nome || '',
-    subtitulo: plano?.subtitulo || '',
-    preco: plano?.preco?.toString() || '0',
-    precoAnual: plano?.precoAnual ? plano.precoAnual.toString() : '',
-    precoLabel: plano?.precoLabel || '',
     descricao: plano?.descricao || '',
     mensagem: plano?.mensagem || '',
-    recursos: (plano?.recursos || []).join('\n'),
-    destaque: plano?.destaque || false,
-    emBreve: plano?.emBreve || false,
+    recursos: (plano?.recursos || []).length ? [...plano.recursos] : [''],
+    destaque: plano?.destaque === true,
+    emBreve: plano?.emBreve === true,
+    preco: paraCampo(plano?.preco),
+    precoAnual: paraCampo(plano?.precoAnual),
   };
+}
+
+// Mostra os preços como a usuária vê no app.
+function PrecosDoCard({ plano }) {
+  if (plano.id === 0) {
+    return <div className="pp-precos"><div className="pp-preco-bloco"><strong className="pp-valor">Grátis</strong></div></div>;
+  }
+  const mensal = Number(plano.preco) || 0;
+  if (!(mensal > 0)) {
+    return (
+      <div className="pp-precos">
+        <div className="pp-sem-preco"><IconAlert size={14} /> Sem preço definido</div>
+      </div>
+    );
+  }
+  const anual = anualEfetivo(mensal, Number(plano.precoAnual) || 0);
+  const eco = economiaPct(mensal, anual);
+  return (
+    <div className="pp-precos">
+      <div className="pp-preco-bloco">
+        <span className="pp-preco-rot">Mensal</span>
+        <span><strong className="pp-valor">{formatarReais(mensal)}</strong><span className="pp-per">/mês</span></span>
+      </div>
+      <div className="pp-preco-bloco">
+        <span className="pp-preco-rot">Anual</span>
+        <span><strong className="pp-valor">{formatarReais(anual)}</strong><span className="pp-per">/ano</span></span>
+        <span className="pp-preco-nota">
+          ≈ {formatarReais(anual / 12)}/mês
+          {eco > 0 && <span className="pp-economia">economia de {eco}%</span>}
+        </span>
+        {!(plano.precoAnual > 0) && <span className="pp-preco-nota">automático: 10 mensalidades</span>}
+      </div>
+    </div>
+  );
 }
 
 export default function Planos({ showToast }) {
   const [planos, setPlanos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
-  const [form, setForm] = useState(formVazio(null));
+  const [form, setForm] = useState(formDe(null));
+  const [tentou, setTentou] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [semeando, setSemeando] = useState(false);
 
   useEffect(() => {
     return onSnapshot(collection(db, 'planos'), snap => {
-      setPlanos(snap.docs.map(d => ({ id: Number(d.id), ...d.data() })).sort((a, b) => a.id - b.id));
+      setPlanos(snap.docs
+        .map(d => ({ ...d.data(), id: d.data().id ?? Number(d.id) }))
+        .filter(p => Number.isFinite(p.id))
+        .sort((a, b) => a.id - b.id));
       setLoading(false);
     }, () => setLoading(false));
   }, []);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+  const setRecurso = (i, v) => setForm(prev => ({ ...prev, recursos: prev.recursos.map((r, j) => (j === i ? v : r)) }));
+  const addRecurso = () => setForm(prev => ({ ...prev, recursos: [...prev.recursos, ''] }));
+  const delRecurso = (i) => setForm(prev => ({ ...prev, recursos: prev.recursos.filter((_, j) => j !== i) }));
 
-  const abrirEditar = (plano) => {
-    setForm(formVazio(plano));
-    setModal(plano);
-  };
+  const abrirEditar = (plano) => { setForm(formDe(plano)); setTentou(false); setModal(plano); };
+  const fecharModal = () => { if (!salvando) setModal(null); };
 
-  const fecharModal = () => { setModal(null); };
+  useEffect(() => {
+    if (!modal) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') fecharModal(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  // Validação ao vivo dos preços.
+  const temPreco = modal && modal.id !== 0;
+  const mensal = lerReais(form.preco);
+  const anual = lerReais(form.precoAnual);
+  const erroNome = form.nome.trim() ? '' : 'Dê um nome ao plano.';
+  const erroMensal = temPreco ? validarPreco(mensal, { obrigatorio: !form.emBreve }) : '';
+  const erroAnual = temPreco ? validarPreco(anual, { obrigatorio: false }) : '';
+  const anualFinal = anualEfetivo(mensal || 0, anual || 0);
+  const eco = economiaPct(mensal, anualFinal);
+  const anualCaro = temPreco && mensal > 0 && anual > 0 && anual > mensal * 12;
+  const sugestao = mensal > 0 ? Math.round(mensal * 10 * 100) / 100 : 0;
 
   const handleSalvar = async () => {
-    if (!form.nome.trim()) { showToast('O nome do plano é obrigatório.', 'error'); return; }
+    setTentou(true);
+    if (erroNome || erroMensal || erroAnual) {
+      showToast('Confira os campos destacados antes de salvar.', 'error');
+      return;
+    }
     setSalvando(true);
     try {
-      const recursos = form.recursos
-        .split('\n')
-        .map(r => r.trim())
-        .filter(Boolean);
-      const data = {
-        id: modal.id,
+      const id = modal.id;
+      const dados = {
+        id,
         nome: form.nome.trim(),
-        subtitulo: form.subtitulo.trim(),
-        preco: parseFloat(form.preco) || 0,
-        // Plano anual: vazio = 10 mensalidades (dois meses de presente).
-        precoAnual: parseFloat(form.precoAnual) || 0,
-        precoLabel: form.precoLabel.trim(),
         descricao: form.descricao.trim(),
         mensagem: form.mensagem.trim(),
-        recursos,
+        recursos: form.recursos.map(r => r.trim()).filter(Boolean),
         destaque: form.destaque,
-        emBreve: form.emBreve,
+        emBreve: id === 0 ? false : form.emBreve,
+        atualizadoEm: serverTimestamp(),
       };
-      // setDoc+merge (e não updateDoc) para funcionar mesmo se o documento
-      // ainda não existir no Firestore — updateDoc falha nesse caso.
-      await setDoc(doc(db, 'planos', String(modal.id)), data, { merge: true });
-      showToast(`Plano "${data.nome}" atualizado!`);
-      fecharModal();
+      const lote = writeBatch(db);
+      if (id === 0) {
+        Object.assign(dados, { preco: 0, precoLabel: 'Grátis' });
+      } else {
+        const p = mensal || 0;
+        const a = anual || 0; // 0 = automático (10 mensalidades)
+        Object.assign(dados, {
+          preco: p,
+          precoAnual: a,
+          precoLabel: p > 0 ? `${formatarReais(p)}/mês` : 'Em breve',
+        });
+        // Espelho em centavos, só por compatibilidade com leituras antigas.
+        lote.set(doc(db, 'configuracoes', 'precos'), {
+          [`plano${id}`]: Math.round(p * 100),
+          [`plano${id}Anual`]: Math.round(a * 100),
+          atualizadoEm: serverTimestamp(),
+        }, { merge: true });
+      }
+      // set+merge funciona mesmo se o documento ainda não existir.
+      lote.set(doc(db, 'planos', String(id)), dados, { merge: true });
+      await lote.commit();
+      showToast(`Plano ${dados.nome} salvo. Já aparece assim no app.`);
+      setModal(null);
     } catch (e) {
-      showToast('Erro ao salvar: ' + (e.message || ''), 'error');
+      showToast('Não foi possível salvar: ' + (e?.message || 'tente de novo.'), 'error');
     } finally {
       setSalvando(false);
     }
   };
 
   const handleSemear = async () => {
-    if (!window.confirm('Isso vai criar os 4 planos padrão no Firestore. Continuar?')) return;
+    if (!window.confirm('Isso vai criar os 4 planos padrão. Continuar?')) return;
     setSemeando(true);
     try {
       for (const p of PLANOS_PADRAO) {
         await setDoc(doc(db, 'planos', String(p.id)), { ...p, criadoEm: serverTimestamp() });
       }
-      showToast('Planos padrão criados com sucesso!');
+      showToast('Planos padrão criados.');
     } catch (e) {
       showToast('Erro ao criar planos: ' + (e.message || ''), 'error');
     } finally {
@@ -139,18 +214,19 @@ export default function Planos({ showToast }) {
   if (loading) {
     return (
       <div className="loading-state">
-        <div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando...
+        <div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando planos...
       </div>
     );
   }
 
+  const mostrarErro = (msg) => tentou && msg;
+
   return (
-    <div className="screen-content">
-      <div className="screen-header-row">
+    <section className="pp-secao" aria-labelledby="pp-planos-titulo">
+      <div className="screen-header-row" style={{ marginBottom: 14 }}>
         <div>
-          <h1 className="screen-title">Planos</h1>
-          <p className="screen-sub">Edite os nomes, descrições e recursos de cada plano exibidos no app.
-          </p>
+          <h2 id="pp-planos-titulo" className="aln-subtitulo">Planos</h2>
+          <p className="screen-sub">Cada card mostra o plano do jeito que aparece no app.</p>
         </div>
         {planos.length === 0 && (
           <button className="btn-primary" onClick={handleSemear} disabled={semeando}>
@@ -162,199 +238,161 @@ export default function Planos({ showToast }) {
       {planos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon"><IconSpark size={34} /></div>
-          <p>Nenhum plano cadastrado no Firestore.<br />Clique em "Criar planos padrão" para começar.
-          </p>
+          <p>Ainda não há planos cadastrados.<br />Use "Criar planos padrão" para começar.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {planos.map(p => (
-            <div
-              key={p.id}
-              className={`card plano-card ${p.destaque ? 'plano-destaque' : ''}`}
-            >
-              {p.destaque && (
-                <div className="plano-selo">RECOMENDADO
+        <div className="pp-grid">
+          {planos.map(p => {
+            const st = status(p);
+            return (
+              <article key={p.id} className={`card plano-card pp-card pp-cor-${corDe(p.id)} ${p.destaque ? 'plano-destaque' : ''}`}>
+                {p.destaque && <div className="plano-selo">RECOMENDADO</div>}
+                <div className="pp-card-topo">
+                  <h3 className="pp-nome">{p.nome}</h3>
+                  <span className={`badge pp-status-${st}`}>{STATUS_ROTULO[st]}</span>
                 </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-dark)' }}>{p.nome}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 2 }}>{p.subtitulo}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 17, fontWeight: 750, color: 'var(--cor-texto-marca)', fontVariantNumeric: 'tabular-nums' }}>{p.precoLabel}</div>
-                  {p.emBreve && <span className="badge badge-inactive">Em breve</span>}
-                </div>
-              </div>
-
-              <p style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 10, lineHeight: 1.5 }}>
-                {p.descricao}
-              </p>
-
-              {p.mensagem && (
-                <div className="plano-mensagem">
-                  {p.mensagem}
-                </div>
-              )}
-
-              <div style={{ marginBottom: 14 }}>
-                {(p.recursos || []).map((r, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 7, marginBottom: 5, fontSize: 12.5, color: 'var(--text-dark)', lineHeight: 1.4 }}>
-                    <span style={{ color: 'var(--sage)', flexShrink: 0, marginTop: 2 }}><IconCheck size={13} /></span>
-                    <span>{r}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                className="btn-ghost"
-                style={{ width: '100%', fontSize: 13 }}
-                onClick={() => abrirEditar(p)}
-              >Editar este plano
-              </button>
-            </div>
-          ))}
+                <PrecosDoCard plano={p} />
+                {p.descricao && <p className="pp-desc">{p.descricao}</p>}
+                <p className="pp-meta">
+                  <IconCheck size={13} /> {(p.recursos || []).length} recurso(s) incluído(s)
+                  {p.mensagem ? ' · com mensagem de destaque' : ''}
+                </p>
+                <button className="btn-ghost pp-editar" onClick={() => abrirEditar(p)} aria-label={`Editar plano ${p.nome}`}>
+                  <IconEdit size={15} /> Editar plano
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
 
       {modal && (
         <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
+          <div className="modal-card modal-card-lg" role="dialog" aria-modal="true" aria-labelledby="pp-editor-titulo" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Editar plano — {modal.nome}</h2>
-              <button className="modal-close" onClick={fecharModal}><IconClose size={17} /></button>
+              <h2 id="pp-editor-titulo">Editar plano {modal.nome}</h2>
+              <button className="modal-close" onClick={fecharModal} aria-label="Fechar"><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
-              <div className="field-row">
-                <div className="field-group">
-                  <label>Nome do plano *</label>
-                  <input
-                    type="text"
-                    value={form.nome}
-                    onChange={e => set('nome', e.target.value)}
-                    placeholder="Ex: Acolher"
-                    autoFocus
-                  />
-                </div>
-                <div className="field-group">
-                  <label>Subtítulo</label>
-                  <input
-                    type="text"
-                    value={form.subtitulo}
-                    onChange={e => set('subtitulo', e.target.value)}
-                    placeholder="Ex: R$ 24,90/mês"
-                  />
-                </div>
-              </div>
+              {temPreco && (
+                <fieldset className="pp-editor-precos">
+                  <legend>Preço</legend>
+                  <div className="field-row">
+                    <div className="field-group">
+                      <label htmlFor="pp-mensal">Mensal {form.emBreve ? <span className="aln-opcional">(opcional enquanto estiver “Em breve”)</span> : '*'}</label>
+                      <div className={`pp-moeda ${mostrarErro(erroMensal) ? 'pp-moeda-erro' : ''}`}>
+                        <span>R$</span>
+                        <input id="pp-mensal" inputMode="decimal" autoComplete="off" value={form.preco}
+                          onChange={e => set('preco', e.target.value)} placeholder="24,90"
+                          aria-invalid={!!mostrarErro(erroMensal)} aria-describedby="pp-mensal-dica" />
+                        <span className="pp-moeda-per">/mês</span>
+                      </div>
+                      <span id="pp-mensal-dica" className={mostrarErro(erroMensal) ? 'field-hint pp-erro' : 'field-hint'}>
+                        {mostrarErro(erroMensal) || 'Cobrado todo mês. Mínimo de R$ 0,50.'}
+                      </span>
+                    </div>
+                    <div className="field-group">
+                      <label htmlFor="pp-anual">Anual <span className="aln-opcional">(opcional)</span></label>
+                      <div className={`pp-moeda ${mostrarErro(erroAnual) ? 'pp-moeda-erro' : ''}`}>
+                        <span>R$</span>
+                        <input id="pp-anual" inputMode="decimal" autoComplete="off" value={form.precoAnual}
+                          onChange={e => set('precoAnual', e.target.value)}
+                          placeholder={sugestao ? paraCampo(sugestao) : '249,00'}
+                          aria-invalid={!!mostrarErro(erroAnual)} aria-describedby="pp-anual-dica" />
+                        <span className="pp-moeda-per">/ano</span>
+                      </div>
+                      <span id="pp-anual-dica" className={mostrarErro(erroAnual) ? 'field-hint pp-erro' : 'field-hint'}>
+                        {mostrarErro(erroAnual) || (anual
+                          ? 'Cobrado uma vez por ano.'
+                          : sugestao ? `Vazio = 10 mensalidades (${formatarReais(sugestao)}).` : 'Vazio = 10 mensalidades.')}
+                      </span>
+                      {sugestao > 0 && anual !== sugestao && (
+                        <button type="button" className="pp-sugestao" onClick={() => set('precoAnual', paraCampo(sugestao))}>
+                          Usar 10 mensalidades: {formatarReais(sugestao)}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {mensal > 0 && !erroAnual && (
+                    <div className={`pp-resumo ${anualCaro ? 'pp-resumo-aviso' : ''}`} role="status">
+                      {anualCaro ? (
+                        <><IconAlert size={15} /> O anual está mais caro que 12 mensalidades ({formatarReais(mensal * 12)}). Confira se é isso mesmo.</>
+                      ) : (
+                        <>No anual, a usuária paga <b>{formatarReais(anualFinal)}</b> (≈ {formatarReais(anualFinal / 12)}/mês){eco > 0 ? <> e economiza <b>{eco}%</b></> : null}.</>
+                      )}
+                    </div>
+                  )}
+                </fieldset>
+              )}
 
-              <div className="field-row">
-                <div className="field-group">
-                  <label>Preço (número)</label>
-                  <input
-                    type="number"
-                    value={form.preco}
-                    onChange={e => set('preco', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className="field-group">
-                  <label>Preço anual (número)</label>
-                  <input
-                    type="number"
-                    value={form.precoAnual}
-                    onChange={e => set('precoAnual', e.target.value)}
-                    placeholder={form.preco > 0 ? `Vazio = ${(parseFloat(form.preco) * 10).toFixed(2)} (10 mensalidades)` : '0'}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className="field-group">
-                  <label>Rótulo do preço</label>
-                  <input
-                    type="text"
-                    value={form.precoLabel}
-                    onChange={e => set('precoLabel', e.target.value)}
-                    placeholder="Ex: R$ 24,90/mês"
-                  />
-                </div>
+              <div className="field-group">
+                <label htmlFor="pp-nome">Nome do plano *</label>
+                <input id="pp-nome" type="text" value={form.nome} onChange={e => set('nome', e.target.value)}
+                  placeholder="Ex.: Acolher" aria-invalid={!!mostrarErro(erroNome)} />
+                {mostrarErro(erroNome) && <span className="field-hint pp-erro">{erroNome}</span>}
               </div>
 
               <div className="field-group">
-                <label>Descrição curta</label>
-                <textarea
-                  value={form.descricao}
-                  onChange={e => set('descricao', e.target.value)}
-                  placeholder="Breve descrição do plano..."
-                  rows={2}
-                />
+                <label htmlFor="pp-desc">Descrição curta</label>
+                <textarea id="pp-desc" value={form.descricao} onChange={e => set('descricao', e.target.value)}
+                  placeholder="Uma frase sobre o plano..." rows={2} />
               </div>
 
               <div className="field-group">
-                <label>Mensagem do plano <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 400 }}>(destaque exibido no app)</span></label>
-                <textarea
-                  value={form.mensagem}
-                  onChange={e => set('mensagem', e.target.value)}
-                  placeholder="Ex: Neste plano você tem acesso a todo o acervo de áudios de acolhimento e às Pequenas Vitórias."
-                  rows={3}
-                />
-                <span className="field-hint">Aparece em destaque no card do plano dentro do aplicativo. Deixe em branco para não exibir.
-                </span>
+                <label htmlFor="pp-msg">Mensagem de destaque <span className="aln-opcional">(opcional)</span></label>
+                <textarea id="pp-msg" value={form.mensagem} onChange={e => set('mensagem', e.target.value)}
+                  placeholder="Ex.: Neste plano você tem acesso a todo o acervo de áudios de acolhimento." rows={2} />
+                <span className="field-hint">Aparece numa caixa em destaque no card. Em branco, não aparece.</span>
               </div>
 
               <div className="field-group">
-                <label>Recursos incluídos <span style={{ fontSize: 11, color: 'var(--text-light)', fontWeight: 400 }}>(um por linha)</span></label>
-                <textarea
-                  value={form.recursos}
-                  onChange={e => set('recursos', e.target.value)}
-                  placeholder={'Cadastro básico\nFrase do dia\n...'}
-                  rows={7}
-                  style={{ fontFamily: 'monospace', fontSize: 13 }}
-                />
-                <span className="field-hint">
-                  {form.recursos.split('\n').filter(r => r.trim()).length} recursos configurados
-                </span>
+                <label id="pp-rec-rot">O que está incluído</label>
+                <ul className="pp-recursos" aria-labelledby="pp-rec-rot">
+                  {form.recursos.map((r, i) => (
+                    <li key={i}>
+                      <span className="pp-rec-check"><IconCheck size={13} /></span>
+                      <input type="text" value={r} onChange={e => setRecurso(i, e.target.value)}
+                        placeholder="Ex.: Áudios de acolhimento" aria-label={`Recurso ${i + 1}`} />
+                      <button type="button" className="pp-rec-del" onClick={() => delRecurso(i)} aria-label={`Remover recurso ${i + 1}`}>
+                        <IconTrash size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="btn-ghost pp-rec-add" onClick={addRecurso}>
+                  <IconPlus size={15} /> Adicionar recurso
+                </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 24, marginBottom: 8 }}>
-                <div className="toggle-row" style={{ flex: 1 }}>
-                  <label className="toggle">
-                    <input
-                      type="checkbox"
-                      checked={form.destaque}
-                      onChange={e => set('destaque', e.target.checked)}
-                    />
+              <div className="pp-toggles">
+                <label className="toggle-row">
+                  <span className="toggle">
+                    <input type="checkbox" checked={form.destaque} onChange={e => set('destaque', e.target.checked)} />
                     <span className="toggle-slider" />
-                  </label>
-                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Plano em destaque (recomendado)
                   </span>
-                </div>
-                <div className="toggle-row" style={{ flex: 1 }}>
-                  <label className="toggle">
-                    <input
-                      type="checkbox"
-                      checked={form.emBreve}
-                      onChange={e => set('emBreve', e.target.checked)}
-                    />
-                    <span className="toggle-slider" />
+                  <span>Mostrar selo “Recomendado”</span>
+                </label>
+                {modal.id !== 0 && (
+                  <label className="toggle-row">
+                    <span className="toggle">
+                      <input type="checkbox" checked={form.emBreve} onChange={e => set('emBreve', e.target.checked)} />
+                      <span className="toggle-slider" />
+                    </span>
+                    <span>Em breve (aparece, mas ainda não dá para assinar)</span>
                   </label>
-                  <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>Em breve (não exibir botão)
-                  </span>
-                </div>
+                )}
               </div>
 
               <div className="modal-footer">
-                <button className="btn-ghost" onClick={fecharModal}>Cancelar</button>
+                <button className="btn-ghost" onClick={fecharModal} disabled={salvando}>Cancelar</button>
                 <button className="btn-primary" onClick={handleSalvar} disabled={salvando}>
-                  {salvando ? 'Salvando...' : 'Salvar alterações'}
+                  {salvando ? 'Salvando...' : 'Salvar plano'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

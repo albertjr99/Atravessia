@@ -158,8 +158,19 @@ function temAcessoPago(userData) {
 
 const reaisTexto = (centavos) => (centavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// O cliente salvo pode ter sido criado no modo de teste da Stripe: depois da
+// troca para a chave de produção ele "não existe" e a sessão falhava com erro
+// interno. Nesse caso (ou se o cliente foi apagado), cria um novo.
 async function getOrCreateCustomer(stripe, uid, userData) {
-  if (userData.stripeCustomerId) return userData.stripeCustomerId;
+  if (userData.stripeCustomerId) {
+    try {
+      const existente = await stripe.customers.retrieve(userData.stripeCustomerId);
+      if (!existente.deleted) return existente.id;
+    } catch (e) {
+      if (e?.code !== 'resource_missing') throw e;
+    }
+    console.warn('[Stripe] cliente salvo não existe neste modo; criando outro', uid);
+  }
   const customer = await stripe.customers.create({
     email: userData.email,
     metadata: { uid },
@@ -168,7 +179,24 @@ async function getOrCreateCustomer(stripe, uid, userData) {
   return customer.id;
 }
 
-exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
+// Erros da Stripe viravam "internal" e o app só dizia que o serviço não
+// respondeu. Agora o motivo fica no log e a pessoa recebe uma mensagem útil.
+const comErroPagamento = (fn) => async (request) => {
+  try { return await fn(request); } catch (e) { throw erroPagamento(e); }
+};
+function erroPagamento(e) {
+  if (e instanceof HttpsError) return e;
+  console.error('[Stripe] falha ao criar o pagamento:', e?.type, e?.code, e?.param, e?.message);
+  if (e?.type === 'StripeAuthenticationError' || e?.type === 'StripePermissionError') {
+    return new HttpsError('failed-precondition', 'O pagamento está temporariamente indisponível. Nossa equipe já foi avisada; tente mais tarde.');
+  }
+  if (e?.type === 'StripeInvalidRequestError') {
+    return new HttpsError('failed-precondition', `Não foi possível preparar o pagamento (${e.code || 'configuração'}). Tente de novo em instantes.`);
+  }
+  return new HttpsError('unavailable', 'O serviço de pagamento não respondeu agora. Tente de novo em alguns instantes.');
+}
+
+exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, comErroPagamento(async (request) => {
   // Chamada de aquecimento feita pelo app ao abrir a tela de planos: tira a
   // function do estado "parado" antes de a usuária tocar em assinar.
   if (request.data?.aquecer) return { ok: true };
@@ -230,7 +258,7 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   });
 
   return { url: session.url };
-});
+}));
 
 // Opções do Checkout definidas no Checkout Studio da Stripe. Algumas dependem
 // de configuração da conta (termos de serviço publicados) ou de uma versão
@@ -277,7 +305,7 @@ async function criarSessaoCheckout(stripe, params) {
   return stripe.checkout.sessions.create(p);
 }
 
-exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) => {
+exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, comErroPagamento(async (request) => {
   if (request.data?.aquecer) return { ok: true };
 
   const uid = request.auth?.uid;
@@ -317,7 +345,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
   });
 
   return { url: session.url };
-});
+}));
 
 exports.cancelarAssinatura = onCall(OPCOES_CHECKOUT, async (request) => {
   const uid = request.auth?.uid;
