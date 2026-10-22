@@ -23,24 +23,14 @@ export async function registrarPushToken(uid) {
     // No Android 13+, a pergunta de permissão só aparece se já existir um canal.
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
+        name: 'Avisos da Atravessia',
+        importance: Notifications.AndroidImportance.HIGH,
       }).catch(() => {});
     }
-    const { status: existente } = await Notifications.getPermissionsAsync();
-    let status = existente;
-    if (status !== 'granted') {
-      const resp = await Notifications.requestPermissionsAsync();
-      status = resp.status;
-    }
+    // O pedido de permissão é feito pelo convite PermissaoNotificacoes; aqui só
+    // registra o token quando ela já foi concedida.
+    const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return null;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
 
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId

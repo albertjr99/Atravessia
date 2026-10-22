@@ -26,6 +26,20 @@ const ALVOS = [
   { id: 'plano3', label: 'Somente Evoluir (futuro)' },
 ];
 
+// Envios antigos do painel web gravavam uma cópia por usuária. Na lista, as
+// cópias da mesma mensagem (mesmo tipo e texto, no mesmo minuto) viram um item
+// só, e ligar, desligar ou remover vale para todas elas.
+function agruparCopias(docs) {
+  const grupos = new Map();
+  docs.forEach(n => {
+    const ms = n.criadoEm?.toMillis?.() ?? 0;
+    const chave = n.usuarioId ? `${n.tipo}|${n.texto}|${Math.floor(ms / 60000)}` : `doc|${n.id}`;
+    const g = grupos.get(chave);
+    if (g) { g.ids.push(n.id); if (n.ativa) g.ativa = true; } else grupos.set(chave, { ...n, ids: [n.id], ativa: !!n.ativa });
+  });
+  return [...grupos.values()];
+}
+
 export default function AdminNotificacoesScreen({ navigation }) {
   const [lista, setLista] = useState([]);
   const [texto, setTexto] = useState('');
@@ -35,7 +49,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
 
   useEffect(() => {
     const ref = query(collection(db, 'notificacoesEditoriais'), orderBy('criadoEm', 'desc'));
-    const unsub = onSnapshot(ref, (snap) => setLista(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsub = onSnapshot(ref, (snap) => setLista(agruparCopias(snap.docs.map(d => ({ id: d.id, ...d.data() })))));
     return unsub;
   }, []);
 
@@ -44,10 +58,11 @@ export default function AdminNotificacoesScreen({ navigation }) {
       Alert.alert('Atenção', 'Escreva o texto da notificação.');
       return;
     }
+    if (enviando) return;
     setEnviando(true);
     try {
       await addDoc(collection(db, 'notificacoesEditoriais'), {
-        tipo, alvo, texto: texto.trim(), ativa: true, criadoEm: serverTimestamp(),
+        tipo, alvo, texto: texto.trim(), ativa: true, origem: 'admin', criadoEm: serverTimestamp(),
       });
       setTexto('');
     } catch (e) {
@@ -57,10 +72,14 @@ export default function AdminNotificacoesScreen({ navigation }) {
     }
   };
 
-  const handleToggle = (item) => updateDoc(doc(db, 'notificacoesEditoriais', item.id), { ativa: !item.ativa });
+  const handleToggle = (item) => Promise.all(item.ids.map(id => updateDoc(doc(db, 'notificacoesEditoriais', id), { ativa: !item.ativa })))
+    .catch(() => Alert.alert('Erro', 'Não foi possível alterar a notificação.'));
 
-  const handleRemover = (id) => {
-    confirmar('Remover notificação', 'Tem certeza que deseja remover?', () => deleteDoc(doc(db, 'notificacoesEditoriais', id)), 'Remover');
+  const handleRemover = (item) => {
+    confirmar('Remover notificação', 'Tem certeza que deseja remover?',
+      () => Promise.all(item.ids.map(id => deleteDoc(doc(db, 'notificacoesEditoriais', id))))
+        .catch(() => Alert.alert('Erro', 'Não foi possível remover a notificação.')),
+      'Remover');
   };
 
   return (
@@ -114,6 +133,9 @@ export default function AdminNotificacoesScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
                     <Text style={styles.itemTipo}>{TIPOS.find(t => t.id === n.tipo)?.label || n.tipo}</Text>
+                    {n.ids.length > 1 && (
+                      <Text style={[styles.itemTipo, styles.itemAlvo]}>{n.ids.length} usuárias</Text>
+                    )}
                     {n.alvo && n.alvo !== 'todos' && (
                       <Text style={[styles.itemTipo, styles.itemAlvo]}>
                         {ALVOS.find(a => a.id === n.alvo)?.label || n.alvo}
@@ -124,7 +146,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
                 </View>
                 <View style={{ alignItems: 'center', gap: 8 }}>
                   <Switch value={!!n.ativa} onValueChange={() => handleToggle(n)} trackColor={{ true: colors.lav4 }} />
-                  <TouchableOpacity onPress={() => handleRemover(n.id)} style={styles.acaoBtn}>
+                  <TouchableOpacity onPress={() => handleRemover(n)} style={styles.acaoBtn}>
                     <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                   </TouchableOpacity>
                 </View>

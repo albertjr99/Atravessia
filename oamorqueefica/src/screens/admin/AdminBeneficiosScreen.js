@@ -738,9 +738,7 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
         <View style={s.grid}>
           {porParceria.map(x => {
             const pct = (v) => Number(v) || 0;
-            const descCliente = x.p.percentualDescontoCliente != null
-              ? pct(x.p.percentualDescontoCliente)
-              : Math.max(0, pct(x.p.percentualBeneficio) - pct(x.p.percentualComissao));
+            const descCliente = pct(x.p.percentualBeneficio) || pct(x.p.percentualDescontoCliente);
             return (
               <View key={x.p.id} style={[s.parc, { width: largura(colsParc, 10) }, x.pronto > 0 && s.parcDestaque]}>
                 <View style={s.parcTopo}>

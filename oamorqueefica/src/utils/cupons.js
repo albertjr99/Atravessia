@@ -34,8 +34,8 @@ export function situacaoCupom(v) {
 }
 
 export function descontoDoCupom(v) {
-  if (v?.percentualDescontoCliente != null) return Number(v.percentualDescontoCliente) || 0;
-  return Math.max(0, (Number(v?.percentualBeneficio) || 0) - (Number(v?.percentualComissao) || 0));
+  // O desconto é o percentual cadastrado; cupons antigos guardavam "benefício − comissão".
+  return Number(v?.percentualBeneficio) || Number(v?.percentualDescontoCliente) || 0;
 }
 
 export function dataCurta(ts) {

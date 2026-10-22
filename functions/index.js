@@ -18,13 +18,22 @@ const SITE_URL = 'https://o-amor-que-fica.web.app';
 const COOLDOWN_MS = 6 * 60 * 60 * 1000; // não enviar mais de 1 notificação automática a cada 6h
 
 // Envia uma notificação push via Expo Push API para um conjunto de tokens.
+// A Expo aceita no máximo 100 mensagens por pedido: com mais usuárias, o envio
+// inteiro era recusado. Agora vai em lotes, e a mensagem padrão usa o canal
+// "default" com prioridade alta, para aparecer com a tela bloqueada.
 async function enviarPush(mensagens) {
-  if (mensagens.length === 0) return;
-  await fetch('https://exp.host/--/api/v2/push/send', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify(mensagens),
-  }).catch(() => {});
+  const validas = mensagens.filter(m => typeof m.to === 'string' && m.to.startsWith('ExponentPushToken'))
+    .map(m => ({ sound: 'default', priority: 'high', channelId: 'default', ...m }));
+  for (let i = 0; i < validas.length; i += 100) {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(validas.slice(i, i + 100)),
+    }).then(r => r.json()).then(r => {
+      const erros = (r?.data || []).filter(d => d.status === 'error');
+      if (erros.length) console.warn('[Push] falhas:', JSON.stringify(erros.slice(0, 5)));
+    }).catch(e => console.warn('[Push] envio falhou:', e?.message));
+  }
 }
 
 // Aplica a regra "no máximo 1 notificação automática a cada 6h por usuária".
@@ -195,12 +204,12 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
   // Cashback: desconto na primeira mensalidade, se ela escolheu usar.
   const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await criarSessaoCheckout(stripe, {
+    ...opcoesCheckoutStudio({ assinatura: true, comDesconto: !!cashback }),
     ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'subscription',
     customer: customerId,
     locale: 'pt-BR',
-    submit_type: 'subscribe',
     line_items: [{
       price_data: {
         currency: 'brl',
@@ -216,11 +225,57 @@ exports.criarSessaoCheckout = onCall(OPCOES_CHECKOUT, async (request) => {
     subscription_data: { metadata: { uid, planoId: String(planoId), periodo: anual ? 'anual' : 'mensal' } },
     custom_text: {
       submit: { message: 'Você poderá cancelar quando quiser, direto no app.' },
+      terms_of_service_acceptance: { message: TEXTO_ACEITE_TERMOS },
     },
   });
 
   return { url: session.url };
 });
+
+// Opções do Checkout definidas no Checkout Studio da Stripe. Algumas dependem
+// de configuração da conta (termos de serviço publicados) ou de uma versão
+// mais nova da API; se a Stripe recusar uma delas, ela é retirada e a sessão é
+// criada mesmo assim, para o pagamento nunca deixar de abrir.
+const TEXTO_ACEITE_TERMOS = `Li e aceito os [Termos de Uso e de Assinatura](${SITE_URL}/termos.html) do Atravessia.`;
+const OPCOES_STUDIO_OPCIONAIS = [
+  'consent_collection', 'saved_payment_method_options', 'integration_identifier',
+  'origin_context', 'allow_promotion_codes', 'phone_number_collection', 'automatic_tax',
+];
+function opcoesCheckoutStudio({ assinatura, comDesconto }) {
+  return {
+    ui_mode: 'hosted',
+    billing_address_collection: 'auto',
+    phone_number_collection: { enabled: false },
+    automatic_tax: { enabled: false },
+    // A Stripe não aceita cupom de cashback e campo de código promocional juntos.
+    ...(comDesconto ? {} : { allow_promotion_codes: true }),
+    ...(assinatura ? { payment_method_collection: 'always' } : {}),
+    submit_type: 'auto',
+    consent_collection: { terms_of_service: 'required' },
+    saved_payment_method_options: { payment_method_save: 'enabled' },
+    integration_identifier: 'hosted_web_0001',
+    origin_context: 'web',
+  };
+}
+async function criarSessaoCheckout(stripe, params) {
+  const p = { ...params };
+  for (let tentativa = 0; tentativa <= OPCOES_STUDIO_OPCIONAIS.length; tentativa++) {
+    try {
+      return await stripe.checkout.sessions.create(p);
+    } catch (e) {
+      const campo = String(e?.param || '').split('[')[0];
+      if (e?.type !== 'StripeInvalidRequestError' || !OPCOES_STUDIO_OPCIONAIS.includes(campo) || !(campo in p)) throw e;
+      console.warn(`[Checkout] Stripe recusou "${campo}"; criando a sessão sem ele.`, e.message);
+      delete p[campo];
+      // O texto do aceite dos termos só existe junto com a coleta de consentimento.
+      if (campo === 'consent_collection' && p.custom_text?.terms_of_service_acceptance) {
+        const { terms_of_service_acceptance: _, ...resto } = p.custom_text;
+        p.custom_text = resto;
+      }
+    }
+  }
+  return stripe.checkout.sessions.create(p);
+}
 
 exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) => {
   if (request.data?.aquecer) return { ok: true };
@@ -238,7 +293,8 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
   const customerId = await getOrCreateCustomer(stripe, uid, userData);
   const cashback = request.data?.usarCashback ? await descontoCashback(stripe, uid, valorAtual) : null;
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await criarSessaoCheckout(stripe, {
+    ...opcoesCheckoutStudio({ assinatura: false, comDesconto: !!cashback }),
     ...(cashback ? { discounts: [{ coupon: cashback.cupomId }] } : {}),
     mode: 'payment',
     customer: customerId,
@@ -256,6 +312,7 @@ exports.criarCheckoutPeriodoUnlocked = onCall(OPCOES_CHECKOUT, async (request) =
     metadata: { uid, tipo: 'periodo_credito', cashbackCentavos: String(cashback?.desconto || 0) },
     custom_text: {
       submit: { message: `${reaisTexto(valorAtual)} por relatório — use quando quiser.` },
+      terms_of_service_acceptance: { message: TEXTO_ACEITE_TERMOS },
     },
   });
 
@@ -509,6 +566,30 @@ exports.notificarEmocaoPersistente = onSchedule({ schedule: '0 20 * * *', timeZo
 
 // Ao registrar um novo check-in, libera a próxima escalada de aviso de inatividade
 // (sem isso, quem voltou a usar o app uma vez nunca mais receberia o aviso de 7/14 dias).
+// Comunicações publicadas pelas administradoras (painel do app ou web) também
+// chegam como notificação no aparelho, respeitando o público escolhido.
+exports.pushComunicacaoAdmin = onDocumentCreated('notificacoesEditoriais/{id}', async (event) => {
+  const n = event.data?.data();
+  if (!n || n.origem !== 'admin' || n.ativa === false || !n.texto) return;
+  const alvo = n.alvo || 'todos';
+  const usuarios = n.usuarioId
+    ? [await db.collection('usuarios').doc(n.usuarioId).get()].filter(d => d.exists)
+    : (await db.collection('usuarios').where('pushToken', '!=', null).get()).docs;
+  const mensagens = [];
+  for (const d of usuarios) {
+    const u = d.data();
+    if (!u.pushToken) continue;
+    const plano = Number(u.plano) || 0;
+    const total = u.acessoTotal === true;
+    if (alvo === 'plano1' && !(total || plano >= 1)) continue;
+    if (alvo === 'gratis' && (total || plano >= 1)) continue;
+    if (alvo === 'plano2' && !(total || plano === 2)) continue;
+    if (alvo === 'plano3' && !(total || plano === 3)) continue;
+    mensagens.push({ to: u.pushToken, title: 'Atravessia', body: n.texto, data: { screen: 'Notificacoes' } });
+  }
+  await enviarPush(mensagens);
+});
+
 exports.resetarInatividadeAoCheckin = onDocumentCreated('usuarios/{uid}/checkins/{checkinId}', async (event) => {
   await db.collection('usuarios').doc(event.params.uid).update({ ultimoNivelInatividadeNotificado: null });
 });
@@ -669,9 +750,9 @@ exports.gerarVoucherBeneficio = onCall(async (request) => {
 
   const beneficio = Number(parceria.percentualBeneficio) || 0;
   const comissao = Number(parceria.percentualComissao) || 0;
-  const descontoCliente = parceria.percentualDescontoCliente != null
-    ? Number(parceria.percentualDescontoCliente)
-    : Math.max(0, beneficio - comissao);
+  // O desconto da usuária é o percentual cadastrado na parceria. A comissão da
+  // Atravessia é separada: o parceiro repassa, e ela não sai do desconto da usuária.
+  const descontoCliente = beneficio;
   if (beneficio <= 0) throw new HttpsError('failed-precondition', 'Este benefício ainda não tem um percentual configurado.');
 
   const validadeDias = Number(parceria.validadeDiasVoucher) > 0 ? Number(parceria.validadeDiasVoucher) : 30;
@@ -758,7 +839,8 @@ exports.validarVoucher = onCall(async (request) => {
     parceriaNome: resultado.parceriaNome,
     percentualBeneficio: resultado.percentualBeneficio,
     percentualComissao: resultado.percentualComissao,
-    percentualDescontoCliente: resultado.percentualDescontoCliente,
+    // Cupons antigos guardavam "benefício − comissão"; vale sempre o benefício cadastrado.
+    percentualDescontoCliente: Number(resultado.percentualBeneficio) || Number(resultado.percentualDescontoCliente) || 0,
     baseCalculoComissao: resultado.baseCalculoComissao,
     codigoPublico: resultado.codigoPublico,
   };
@@ -785,12 +867,13 @@ exports.confirmarAtendimento = onCall(async (request) => {
     }
 
     // Cálculo inteiro em centavos — nunca ponto flutuante para dinheiro.
-    // O benefício total que o parceiro concede se divide em duas partes: o
-    // desconto da cliente e a comissão da Atravessia. A cliente paga o valor
-    // original menos APENAS o desconto dela (serviço de R$ 100 com 10% = 7% + 3%:
-    // a cliente paga R$ 93 e o parceiro repassa R$ 3, ficando com R$ 90).
-    const descontoTotal = Math.round(valorOriginalCentavos * (v.percentualBeneficio / 100));
-    const descontoCliente = Math.round(valorOriginalCentavos * (v.percentualDescontoCliente / 100));
+    // A cliente recebe o desconto cadastrado na parceria e, à parte, o parceiro
+    // repassa a comissão da Atravessia sobre o valor original (serviço de R$ 100
+    // com 10% de desconto e 5% de comissão: a cliente paga R$ 90 e o parceiro
+    // repassa R$ 5). Cupons antigos guardavam "benefício − comissão" como desconto.
+    const pctCliente = Number(v.percentualBeneficio) || Number(v.percentualDescontoCliente) || 0;
+    const descontoTotal = Math.round(valorOriginalCentavos * (pctCliente / 100));
+    const descontoCliente = descontoTotal;
     const valorFinalCentavos = valorOriginalCentavos - descontoCliente;
     const comissaoCentavos = Math.round(valorOriginalCentavos * (v.percentualComissao / 100));
 

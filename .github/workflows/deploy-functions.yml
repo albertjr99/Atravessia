@@ -43,6 +43,25 @@ jobs:
             exit 1
           fi
 
+      # Chaves da Stripe guardadas nos secrets do GitHub (STRIPE_SECRET_KEY e
+      # STRIPE_WEBHOOK_SECRET) vão para o Secret Manager do Firebase antes do
+      # deploy. Se não estiverem no GitHub, fica valendo o que já está no Firebase.
+      - name: Sincronizar chaves da Stripe
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        run: |
+          for nome in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+            valor="${!nome}"
+            if [ -n "$valor" ]; then
+              printf '%s' "$valor" | npx firebase-tools functions:secrets:set "$nome" --data-file=- --force --token "$FIREBASE_TOKEN" --non-interactive
+              echo "$nome atualizado no Firebase."
+            else
+              echo "$nome não está nos secrets do GitHub; mantendo o valor atual do Firebase."
+            fi
+          done
+
       - name: Deploy
         run: >
           npx firebase-tools deploy
@@ -50,3 +69,30 @@ jobs:
           --token "$FIREBASE_TOKEN" --non-interactive
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      # Endereço com o nome da marca: o projeto do Firebase continua se chamando
+      # o-amor-que-fica (isso não muda), mas um segundo site do Hosting publica o
+      # mesmo painel e as mesmas páginas em atravessia.web.app (ou
+      # atravessia-app.web.app, se o primeiro nome já tiver dono). O endereço
+      # antigo continua no ar, para cupons, links e QR codes já enviados.
+      - name: Publicar também no site Atravessia
+        continue-on-error: true
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          SITE=""
+          for candidato in atravessia atravessia-app; do
+            if npx firebase-tools hosting:sites:list --json --token "$FIREBASE_TOKEN" --non-interactive | grep -q "\"sites/$candidato\""; then
+              SITE="$candidato"; break
+            fi
+            if npx firebase-tools hosting:sites:create "$candidato" --token "$FIREBASE_TOKEN" --non-interactive; then
+              SITE="$candidato"; break
+            fi
+          done
+          if [ -z "$SITE" ]; then echo "::warning::Não foi possível criar o site com o nome Atravessia."; exit 0; fi
+          node -e "
+            const c = require('./firebase.json');
+            require('fs').writeFileSync('firebase.site-atravessia.json', JSON.stringify({ hosting: { ...c.hosting, site: process.argv[1] } }));
+          " "$SITE"
+          npx firebase-tools deploy --only hosting --config firebase.site-atravessia.json --token "$FIREBASE_TOKEN" --non-interactive
+          echo "Publicado em https://$SITE.web.app"
