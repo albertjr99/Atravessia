@@ -82,7 +82,7 @@ export default function VoucherScreen({ route, navigation }) {
   const info = STATUS_INFO[status] || STATUS_INFO.GERADO;
   const tom = tomDe(info.tom);
   const podeApresentar = !expirado && ['GERADO', 'APRESENTADO', 'VALIDADO'].includes(status);
-  const desconto = Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
+  const desconto = Number(voucher?.percentualBeneficio) || Number(percentualDescontoCliente ?? voucher?.percentualDescontoCliente) || 0;
 
   // Cupom usado ou vencido não volta a valer: para um novo atendimento, ela
   // gera outro cupom da mesma parceria, aqui mesmo.

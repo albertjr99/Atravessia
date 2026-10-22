@@ -132,9 +132,8 @@ export default function Parcerias({ showToast, irPara }) {
   };
   const closeModal = () => { setShowModal(false); setEditId(null); setForm(novoForm()); };
 
-  const descontoClienteCalculado = Math.max(
-    0, (parseFloat(form.percentualBeneficio) || 0) - (parseFloat(form.percentualComissao) || 0)
-  );
+  // A usuária recebe o desconto cadastrado; a comissão é cobrada à parte do parceiro.
+  const descontoClienteCalculado = Math.max(0, parseFloat(form.percentualBeneficio) || 0);
 
   const salvar = async () => {
     if (!form.titulo.trim()) { showToast('Informe o título.', 'error'); return; }
@@ -516,7 +515,7 @@ export default function Parcerias({ showToast, irPara }) {
                 }}>
                   <div className="field-row">
                     <div className="field-group" style={{ marginBottom: 8 }}>
-                      <label>Benefício total (%)</label>
+                      <label>Desconto para a usuária (%)</label>
                       <input type="number" min="0" step="0.5"
                         value={form.percentualBeneficio}
                         onChange={e => set('percentualBeneficio', e.target.value)}

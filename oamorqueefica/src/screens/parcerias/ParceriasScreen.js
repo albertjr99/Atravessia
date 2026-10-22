@@ -35,8 +35,7 @@ const rotuloCategoria = (c) => FILTROS.find(f => f.id === c)?.label || c;
 // A usuária vê só o desconto que ela recebe. O percentual total da parceria
 // inclui a comissão da Atravessia, que é assunto entre a Atravessia e o parceiro.
 function descontoDaUsuaria(p) {
-  if (p.percentualDescontoCliente != null) return Number(p.percentualDescontoCliente) || 0;
-  return Math.max(0, (Number(p.percentualBeneficio) || 0) - (Number(p.percentualComissao) || 0));
+  return Number(p.percentualBeneficio) || Number(p.percentualDescontoCliente) || 0;
 }
 
 function casaArea(p, filtroId) {

@@ -6,6 +6,7 @@ import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
+import PermissaoNotificacoes from '../components/PermissaoNotificacoes';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import AudiosScreen from '../screens/audios/AudiosScreen';
@@ -213,13 +214,17 @@ export default function AppNavigator() {
   } else if (!firebaseUser) {
     content = <AuthStack />;
   } else if (isAdmin && !verComoUsuaria) {
-    content = <AdminStack />;
+    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /></>;
   } else {
     content = (
-      <MainStack
-        key={comecaNoOnboarding ? `onboarding-${uid}` : 'app'}
-        rotaInicial={comecaNoOnboarding ? 'Onboarding' : 'MainTabs'}
-      />
+      <>
+        <MainStack
+          key={comecaNoOnboarding ? `onboarding-${uid}` : 'app'}
+          rotaInicial={comecaNoOnboarding ? 'Onboarding' : 'MainTabs'}
+        />
+        {/* O convite das notificações espera a apresentação inicial terminar. */}
+        {!comecaNoOnboarding && <PermissaoNotificacoes uid={uid} />}
+      </>
     );
   }
 

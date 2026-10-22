@@ -66,9 +66,8 @@ export default function AdminParceriasScreen({ navigation }) {
   const [cashbackPercentual, setCashbackPercentual] = useState('');
   const [cashbackCondicoes, setCashbackCondicoes] = useState('');
 
-  const descontoClienteCalculado = Math.max(
-    0, (parseFloat(percentualBeneficio) || 0) - (parseFloat(percentualComissao) || 0)
-  );
+  // A usuária recebe o desconto cadastrado; a comissão é cobrada à parte do parceiro.
+  const descontoClienteCalculado = Math.max(0, parseFloat(percentualBeneficio) || 0);
 
   // Exemplo em reais para a prévia: sempre sobre um serviço de R$ 100,00.
   const exemploComissao = parseFloat(percentualComissao) || 0;
@@ -444,7 +443,7 @@ export default function AdminParceriasScreen({ navigation }) {
             <View style={s.comissaoBox}>
               <View style={s.linha2}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.formLabel}>Benefício total (%)</Text>
+                  <Text style={s.formLabel}>Desconto para a usuária (%)</Text>
                   <TextInput
                     style={s.input} keyboardType="decimal-pad"
                     value={percentualBeneficio} onChangeText={setPercentualBeneficio}

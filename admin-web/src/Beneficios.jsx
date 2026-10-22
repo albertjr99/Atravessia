@@ -807,7 +807,7 @@ export default function Beneficios({ showToast, parametros }) {
                   <div className="bnf-parc-nome-wrap">
                     <div className="bnf-parc-nome">{x.p.titulo || 'Parceria sem nome'}</div>
                     <div className="bnf-parc-regra">
-                      Desconto de {Number(x.p.percentualBeneficio) || 0}%: {Number(x.p.percentualDescontoCliente ?? Math.max(0, (Number(x.p.percentualBeneficio) || 0) - (Number(x.p.percentualComissao) || 0)))}% para a cliente
+                      Desconto de {Number(x.p.percentualBeneficio) || 0}% para a cliente
                       e {Number(x.p.percentualComissao) || 0}% de comissão
                       {x.p.baseCalculoComissao === 'valor_final' ? ' (sobre o valor com desconto)' : ' (sobre o valor cheio)'}
                     </div>
