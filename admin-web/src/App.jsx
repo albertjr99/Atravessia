@@ -103,7 +103,7 @@ const NAV_GRUPOS = [
   {
     titulo: 'Configuração',
     itens: [
-      { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Cards dos planos e valores' },
+      { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Valores, planos e pagamento' },
       { id: 'recursosIA', Icon: IconSpark, label: 'Funções da AtravessIA', sub: 'Ligar, desligar e planos de cada uma' },
       { id: 'institucional', Icon: IconDoc, label: 'Sobre e parcerias', sub: 'Sobre o app · Seja nosso parceiro' },
       { id: 'perfil', Icon: IconPerson, label: 'Meu perfil', sub: 'Nome e foto' },

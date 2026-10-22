@@ -181,26 +181,6 @@ a.list-card-url:hover { color: var(--primary-600); text-decoration: underline; }
 }
 .aln-detalhe-val { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Preços ───────────────────────────────────────────────── */
-.aln-precos { padding-top: 26px; }
-.aln-preco-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 0; border-bottom: 1px solid var(--border);
-}
-.aln-preco-row:last-child { border-bottom: none; }
-.aln-preco-nome { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-dark); }
-.aln-preco-input {
-  display: flex; align-items: center; gap: 4px;
-  background: var(--surface); border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm); padding: 7px 12px;
-}
-.aln-preco-input:focus-within { border-color: var(--cor-foco); box-shadow: var(--anel-foco); }
-.aln-preco-input span { font-size: 12px; font-weight: 700; color: var(--text-mid); }
-.aln-preco-input input {
-  width: 84px; border: none; background: transparent; outline: none;
-  font-size: 14px; font-weight: 700; color: var(--text-dark); text-align: right; font-variant-numeric: tabular-nums;
-}
-
 /* ── Prévia de celular ────────────────────────────────────── */
 .aln-pw-erro { color: var(--danger); font-style: normal; }
 .aln-pw-img-card {

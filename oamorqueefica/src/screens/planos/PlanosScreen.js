@@ -324,7 +324,7 @@ export default function PlanosScreen({ navigation }) {
                   ? 'Abrindo pagamento...'
                   : anual
                     ? `Assinar ${selectedPlan?.nome || ''} anual — ${reais(precoAnualDe(selectedPlan))}/ano`
-                    : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.precoLabel || ''}`}
+                    : `Assinar ${selectedPlan?.nome || ''} — ${selectedPlan?.preco > 0 ? `${reais(selectedPlan.preco)}/mês` : (selectedPlan?.precoLabel || '')}`}
               </Text>
             </Profundo>
             </>

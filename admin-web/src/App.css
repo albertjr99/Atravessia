@@ -1461,5 +1461,111 @@ input[type="checkbox"] { accent-color: var(--cor-primaria); }
   font-size: 12.5px; color: var(--acento-lilas-texto); line-height: 1.5;
 }
 
+/* ── Preços e planos (tela única) ─────────────────────────── */
+.pp-explica {
+  display: flex; gap: 10px; align-items: flex-start; max-width: 72ch;
+  margin: 4px 0 0; padding: 12px 16px; border-radius: var(--raio-md);
+  background: var(--acento-lilas-fundo); color: var(--acento-lilas-texto);
+  font: 500 14.5px/1.5 var(--fonte-ui);
+}
+.pp-explica .ic, .pp-explica svg { flex-shrink: 0; margin-top: 3px; }
+.pp-secao { margin-bottom: 34px; }
+.pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; padding-top: 10px; }
+.pp-card { border-top: 4px solid var(--pp-cor, var(--plano-acolher)); }
+.pp-cor-perceber    { --pp-cor: var(--plano-perceber); }
+.pp-cor-acolher     { --pp-cor: var(--plano-acolher); }
+.pp-cor-compreender { --pp-cor: var(--plano-compreender); }
+.pp-cor-evoluir     { --pp-cor: var(--plano-evoluir); }
+.pp-card-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.pp-nome { margin: 0; font: 700 19px/1.2 var(--fonte-emocao); color: var(--cor-texto); }
+.pp-status-gratuito { background: var(--plano-perceber-fundo); color: var(--plano-perceber-texto); }
+.pp-status-ativo    { background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); }
+.pp-status-emBreve  { background: var(--cor-superficie-2); color: var(--cor-texto-3); box-shadow: inset 0 0 0 1px var(--cor-borda); }
+.pp-precos { display: grid; gap: 10px; margin-bottom: 12px; }
+.pp-preco-bloco {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; border-radius: var(--raio-md); background: var(--cor-superficie-2);
+}
+.pp-preco-rot { font: 700 11px/1.3 var(--fonte-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--cor-texto-3); }
+.pp-valor { font: 800 24px/1.15 var(--fonte-numeros); color: var(--cor-texto); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.pp-per { font: 600 13px/1 var(--fonte-ui); color: var(--cor-texto-2); margin-left: 3px; }
+.pp-preco-nota { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font: 500 12.5px/1.4 var(--fonte-ui); color: var(--cor-texto-2); }
+.pp-economia {
+  padding: 2px 8px; border-radius: var(--raio-pill);
+  background: var(--cor-sucesso-fundo); color: var(--cor-sucesso); font-weight: 700;
+}
+.pp-sem-preco {
+  display: flex; gap: 6px; align-items: center; padding: 10px 12px; border-radius: var(--raio-md);
+  background: var(--cor-aviso-fundo); color: var(--cor-aviso); font: 600 13px/1.4 var(--fonte-ui);
+}
+.pp-desc { font-size: 13px; color: var(--cor-texto-2); line-height: 1.5; margin: 0 0 8px; }
+.pp-meta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--cor-texto-3); margin: 0 0 14px; }
+.pp-editar { width: 100%; min-height: 44px; }
+
+/* Editor */
+.pp-editor-precos {
+  border: none; margin: 0 0 18px; padding: 14px 16px 4px;
+  border-radius: var(--raio-md); background: var(--cor-superficie-2);
+}
+.pp-editor-precos legend { float: left; width: 100%; padding: 0; margin-bottom: 10px; font: 700 15px/1.3 var(--fonte-ui); color: var(--cor-texto); }
+.pp-moeda {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda-forte);
+  border-radius: var(--raio-sm); padding: 0 14px; min-height: 48px;
+}
+.pp-moeda:focus-within { border-color: var(--cor-foco); box-shadow: var(--anel-foco); }
+.pp-moeda-erro { border-color: var(--cor-erro); }
+.pp-moeda > span { font: 700 14px/1 var(--fonte-ui); color: var(--cor-texto-2); }
+.pp-moeda .pp-moeda-per { font-weight: 500; color: var(--cor-texto-3); }
+.field-group .pp-moeda input {
+  flex: 1; min-width: 0; border: none; background: transparent; box-shadow: none; padding: 12px 0;
+  font: 750 18px/1.2 var(--fonte-numeros); font-variant-numeric: tabular-nums;
+}
+.field-group .pp-moeda input:focus { box-shadow: none; }
+.pp-erro { color: var(--cor-erro); font-weight: 600; }
+.pp-sugestao {
+  margin-top: 8px; padding: 6px 12px; min-height: 32px; border: none; cursor: pointer;
+  border-radius: var(--raio-pill); background: var(--acento-lilas-fundo); color: var(--acento-lilas-texto);
+  font: 700 12.5px/1.2 var(--fonte-ui);
+}
+.pp-sugestao:hover { filter: brightness(.97); }
+.pp-sugestao:focus-visible { outline: none; box-shadow: var(--anel-foco); }
+.pp-resumo {
+  display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 10px 12px;
+  border-radius: var(--raio-sm); background: var(--cor-sucesso-fundo); color: var(--cor-sucesso);
+  font: 500 13px/1.5 var(--fonte-ui);
+}
+.pp-resumo-aviso { background: var(--cor-aviso-fundo); color: var(--cor-aviso); }
+.pp-resumo svg { flex-shrink: 0; margin-top: 2px; }
+.pp-recursos { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.pp-recursos li { display: flex; align-items: center; gap: 8px; }
+.pp-rec-check { color: var(--salvia-500); display: grid; place-items: center; flex-shrink: 0; }
+.pp-rec-del {
+  flex-shrink: 0; width: 40px; height: 40px; border: none; cursor: pointer; border-radius: var(--raio-sm);
+  background: transparent; color: var(--cor-texto-3); display: grid; place-items: center;
+}
+.pp-rec-del:hover { background: var(--cor-erro-fundo); color: var(--cor-erro); }
+.pp-rec-del:focus-visible { outline: none; box-shadow: var(--anel-foco); }
+.pp-rec-add { font-size: 13px; }
+.pp-toggles .toggle-row { cursor: pointer; font-size: 14px; color: var(--cor-texto); }
+
+/* Relatório por período e formas de pagamento */
+.pp-avulso { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; }
+.pp-avulso-info { display: flex; align-items: center; gap: 14px; }
+.pp-avulso-icone {
+  width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--acento-lilas-fundo); color: var(--acento-lilas-tinta);
+}
+.pp-avulso-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.pp-avulso-form .field-group { width: 200px; }
+.pp-avulso-form .btn-primary { margin-top: 27px; }
+.pp-formas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; }
+.pp-forma { cursor: pointer; align-items: flex-start; font-size: 14.5px; color: var(--cor-texto); }
+@media (max-width: 900px) {
+  .pp-formas { grid-template-columns: 1fr; }
+  .pp-avulso-form, .pp-avulso-form .field-group { width: 100%; }
+  .pp-avulso-form .btn-primary { margin-top: 0; width: 100%; }
+}
+
 /* Saudação do Dashboard na fonte da marca (como o nome "Atravessia" e a Frase do dia). */
 .dash-saudacao .screen-title { font: 600 italic 40px/1.08 var(--fonte-marca); padding-right: 6px; }
