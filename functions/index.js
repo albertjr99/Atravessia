@@ -22,8 +22,8 @@ const COOLDOWN_MS = 6 * 60 * 60 * 1000; // não enviar mais de 1 notificação a
 // inteiro era recusado. Agora vai em lotes, e a mensagem padrão usa o canal
 // "default" com prioridade alta, para aparecer com a tela bloqueada.
 async function enviarPush(mensagens) {
-  const validas = mensagens.filter(m => typeof m.to === 'string' && m.to.startsWith('ExponentPushToken'))
-    .map(m => ({ sound: 'default', priority: 'high', channelId: 'default', ...m }));
+  const validas = mensagens.filter(m => typeof m.to === 'string' && /^Expo(nent)?PushToken\[/.test(m.to))
+    .map(m => ({ sound: 'default', priority: 'high', channelId: 'avisos', ...m }));
   for (let i = 0; i < validas.length; i += 100) {
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -761,7 +761,19 @@ function gerarCodigoPublico() {
 }
 
 // ---- 1) Usuária gera o voucher ---------------------------------------------
-exports.gerarVoucherBeneficio = onCall(async (request) => {
+// Qualquer falha inesperada vinha para o app como "INTERNAL". Agora o motivo
+// fica no log da function e a pessoa recebe uma mensagem clara.
+exports.gerarVoucherBeneficio = onCall({ memory: '256MiB', timeoutSeconds: 60 }, async (request) => {
+  try {
+    return await gerarVoucher(request);
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    console.error('[Cupom] falha ao gerar', request.data?.parceriaId, e?.code, e?.message, e?.stack);
+    throw new HttpsError('unavailable', 'Não foi possível gerar o cupom agora. Tente de novo em instantes.');
+  }
+});
+
+async function gerarVoucher(request) {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login para gerar um cupom.');
 
@@ -821,7 +833,7 @@ exports.gerarVoucherBeneficio = onCall(async (request) => {
     percentualDescontoCliente: descontoCliente,
     linkValidacao: `${PARTNER_PORTAL_BASE_URL}/parceiro.html?t=${tokenSeguro}`,
   };
-});
+}
 
 // ---- 2) Parceiro valida o voucher (sem login — o token é a credencial) -----
 // Chamada pública (parceiro.html não autentica no Firebase); a segurança vem

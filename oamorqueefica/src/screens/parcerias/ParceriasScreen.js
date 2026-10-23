@@ -188,7 +188,7 @@ export default function ParceriasScreen({ navigation }) {
       } catch (e) {
         // functions/not-found = a Cloud Function não existe no projeto (ainda não
         // publicada). Sem isto a usuária via só "not found", que não diz nada.
-        const indisponivel = e?.code === 'functions/not-found' || e?.code === 'functions/unavailable';
+        const indisponivel = e?.code === 'functions/not-found';
         Alert.alert(
           '',
           indisponivel

@@ -5,7 +5,9 @@ import * as Notifications from 'expo-notifications';
 // As notificações são locais: agendamos os próximos dias com a frase que cada
 // dia vai ter (a mesma escolha da tela inicial) e refazemos ao abrir o app.
 
-export const CANAL_FRASE = 'frase-do-dia';
+// Canal novo com prioridade alta: o importance de um canal já criado não muda
+// no Android, e o antigo ('frase-do-dia') não aparecia em destaque.
+export const CANAL_FRASE = 'frase-diaria';
 export const FRASE_PADRAO = { ativo: true, hora: 8, minuto: 0 };
 const DIAS = 14;
 const PREFIXO_ID = 'frase-do-dia-';
@@ -28,14 +30,15 @@ export function normalizarPrefFrase(pref) {
   return { ativo: pref?.ativo !== false, hora, minuto };
 }
 
-async function criarCanal() {
+export async function criarCanal() {
   if (Platform.OS !== 'android') return;
   try {
     await Notifications.setNotificationChannelAsync(CANAL_FRASE, {
       name: 'Frase do dia',
       description: 'Uma frase de acolhimento todas as manhãs.',
-      importance: Notifications.AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
+      enableVibrate: true,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
   } catch {}
