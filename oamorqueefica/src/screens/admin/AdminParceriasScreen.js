@@ -583,7 +583,7 @@ export default function AdminParceriasScreen({ navigation }) {
         <Pressable style={s.modalFundo} onPress={() => setEscolhendoEstado(false)}>
           <Pressable style={s.modalCaixa} onPress={() => {}}>
             <Text style={s.cardTitle}>Estado</Text>
-            <ScrollView style={{ maxHeight: 420 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 420 }}>
               <TouchableOpacity style={s.ufItem} onPress={() => { setEstado(''); setEscolhendoEstado(false); }}>
                 <Text style={[s.ufTxt, { color: colors.tl }]}>Sem estado (só on-line)</Text>
               </TouchableOpacity>

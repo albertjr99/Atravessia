@@ -1371,7 +1371,8 @@ const s = criarEstilos(() => ({
   periodoStatusTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.lilasTexto, lineHeight: 18 },
   stripeHint: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, textAlign: 'center', lineHeight: 17 },
 
-  btnExterno: { alignSelf: 'stretch' },
+  // Largura total no celular; no tablet para em 520 (não estica a tela inteira).
+  btnExterno: { alignSelf: 'center', width: '100%', maxWidth: 520 },
   btnFace: { flexGrow: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 54, maxHeight: 72, paddingHorizontal: 22, paddingVertical: 10, overflow: 'hidden' },
   btnHalo: { shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.45 : 0.32, shadowRadius: 16, elevation: 4 },
   btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.white, textAlign: 'center', flexShrink: 1 },

@@ -636,7 +636,7 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
         {/* ---------------- Filtros ---------------- */}
         <View style={s.filtros}>
           <Text style={s.filtroRotulo}>PARCERIA</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
             <Chip label="Todas" ativo={filtroParceria === 'todas'} onPress={() => setFiltroParceria('todas')} />
             {parceriasCupom.map(p => (
               <Chip key={p.id} label={`${p.titulo || 'Sem nome'}${p.ativo === false ? ' (inativa)' : ''}`}
@@ -645,12 +645,12 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
           </ScrollView>
 
           <Text style={s.filtroRotulo}>PERÍODO</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
             {PERIODOS.map(p => <Chip key={p.id} label={p.label} ativo={periodo === p.id} onPress={() => setPeriodo(p.id)} />)}
           </ScrollView>
 
           <Text style={s.filtroRotulo}>SITUAÇÃO</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
             <Chip label="Todas" ativo={filtroStatus === 'todos'} onPress={() => setFiltroStatus('todos')} />
             {ORDEM_STATUS.map(st => (
               <Chip key={st} label={STATUS[st].rotulo} ativo={filtroStatus === st} onPress={() => setFiltroStatus(st)} />

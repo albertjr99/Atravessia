@@ -213,7 +213,7 @@ export default function AdminAudiosScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminAudios">
       <AdminSubTabs grupo="biblioteca" atual="AdminAudios" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={s.sobre}>Biblioteca</Text>
@@ -228,7 +228,7 @@ export default function AdminAudiosScreen({ navigation }) {
         </View>
 
         {/* Filtro por emoção */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
           <TouchableOpacity
             style={[s.chip, filtroEmocao === 'todos' && s.chipSel]}
             onPress={() => setFiltroEmocao('todos')}

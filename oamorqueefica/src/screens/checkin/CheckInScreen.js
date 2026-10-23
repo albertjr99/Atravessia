@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, StatusBar, Alert, Platform, Image,
-  Animated, Dimensions, useWindowDimensions,
+  Animated, useWindowDimensions,
 } from 'react-native';
 
-const SCREEN_W = Dimensions.get('window').width;
 // Confete nas cores dos dados de emoção (Luz de Vidro).
 const CONFETTI_COLORS = ['#A595DC', '#E39A72', '#6E9B7E', '#C9A15A', '#7F9BCB', '#D682A0', '#F2B9A0'];
 const CONFETTI_COUNT = 20;
@@ -331,7 +330,7 @@ export default function CheckInScreen({ navigation, route }) {
           {/* Confetti overlay */}
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             {confettiAnims.map((a, i) => {
-              const xPos = (SCREEN_W / (CONFETTI_COUNT + 1)) * (i + 1);
+              const xPos = (larguraTela / (CONFETTI_COUNT + 1)) * (i + 1);
               const size = 8 + (i % 4) * 2;
               return (
                 <Animated.View

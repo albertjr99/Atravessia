@@ -282,7 +282,7 @@ export default function AdminArtesScreen() {
           </View>
 
           <Text style={s.rotulo}>Estilo</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }}>
             {ESTILOS_ARTE.map(e => {
               const sel = estilo === e.id;
               return (

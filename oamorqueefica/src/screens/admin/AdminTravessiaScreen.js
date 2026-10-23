@@ -108,7 +108,7 @@ export default function AdminTravessiaScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminTravessia">
       <AdminSubTabs grupo="jornada" atual="AdminTravessia" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>

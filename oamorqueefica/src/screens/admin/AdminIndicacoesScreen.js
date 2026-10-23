@@ -98,7 +98,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
           <Text style={st.addBtnTxt}>Nova indicação</Text>
         </TouchableOpacity>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
           {[{ id: 'todas', rotulo: 'Todas' }, ...CATEGORIAS_INDICACAO].map(c => (
             <TouchableOpacity key={c.id} style={[st.chip, filtro === c.id && st.chipSel]} onPress={() => setFiltro(c.id)}>
               <Text style={[st.chipText, filtro === c.id && st.chipTextSel]}>{c.rotulo}</Text>

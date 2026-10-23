@@ -684,7 +684,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
       </View>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={atualizando} onRefresh={carregar} tintColor={colors.lav4} />}
         contentContainerStyle={s.scroll}

@@ -463,7 +463,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminOutrosConteudos">
       <AdminSubTabs grupo="biblioteca" atual="AdminOutrosConteudos" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={s.sobre}>Biblioteca</Text>
@@ -486,7 +486,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
           </Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
           {filtros.map(f => {
             const sel = filtroTipo === f.id;
             return (

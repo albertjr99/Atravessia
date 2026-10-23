@@ -416,7 +416,7 @@ export default function AdminProdutosScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
           {TIPOS.map(tp => (
             <TouchableOpacity key={tp.id} style={s.chip} onPress={() => abrirNovo(tp.id)}>
               <Ionicons name={tp.icon} size={14} color={colors.texto2} />

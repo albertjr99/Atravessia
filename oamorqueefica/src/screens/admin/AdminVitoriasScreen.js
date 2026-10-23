@@ -166,7 +166,7 @@ export default function AdminVitoriasScreen() {
   return (
     <AdminLayout currentScreen="AdminVitorias">
       <AdminSubTabs grupo="jornada" atual="AdminVitorias" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <Text style={s.sobre}>Jornada</Text>
         <Text style={s.title}>Pequenas Vitórias</Text>
         <Text style={s.sub}>Gerencie as opções disponíveis para as usuárias registrarem suas conquistas.</Text>
