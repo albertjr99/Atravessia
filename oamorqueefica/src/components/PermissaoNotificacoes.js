@@ -7,7 +7,7 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, criarEstilos } from '../theme';
 import { registrarPushToken } from '../utils/pushNotifications';
-import { criarCanalLembretes } from '../utils/lembreteCheckin';
+import { garantirCanais } from '../utils/canaisNotificacao';
 
 const CHAVE_ADIADO = 'permissaoNotificacoes.adiadoEm';
 const ESPERA_MS = 3 * 24 * 60 * 60 * 1000;
@@ -23,6 +23,7 @@ export default function PermissaoNotificacoes({ uid }) {
   const conferir = useCallback(async (ignorarAdiamento = false) => {
     if (!uid || Platform.OS === 'web' || !Device.isDevice) return;
     try {
+      await garantirCanais();
       const atual = await Notifications.getPermissionsAsync();
       if (atual.status === 'granted') {
         setVisivel(false);
@@ -48,12 +49,7 @@ export default function PermissaoNotificacoes({ uid }) {
   const permitir = async () => {
     try {
       // No Android 13+, a pergunta só aparece se já existir um canal.
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'Avisos da Atravessia', importance: Notifications.AndroidImportance.HIGH,
-        }).catch(() => {});
-        await criarCanalLembretes();
-      }
+      await garantirCanais();
       if (!podePerguntar) { Linking.openSettings(); return; }
       const { status, canAskAgain } = await Notifications.requestPermissionsAsync();
       if (status === 'granted') {

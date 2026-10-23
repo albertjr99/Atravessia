@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { garantirCanais } from './canaisNotificacao';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -21,12 +22,7 @@ export async function registrarPushToken(uid) {
   if (!uid || !Device.isDevice) return null;
   try {
     // No Android 13+, a pergunta de permissão só aparece se já existir um canal.
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Avisos da Atravessia',
-        importance: Notifications.AndroidImportance.HIGH,
-      }).catch(() => {});
-    }
+    await garantirCanais();
     // O pedido de permissão é feito pelo convite PermissaoNotificacoes; aqui só
     // registra o token quando ela já foi concedida.
     const { status } = await Notifications.getPermissionsAsync();

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Platform, Image,
-  ScrollView, Dimensions, StatusBar,
+  ScrollView, StatusBar, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,13 +18,15 @@ import { IA_PAINEL } from '../../config/recursos';
 import { est } from './adminEstilo';
 
 const logo = require('../../../assets/images/travessia_logo.png');
-const { width: SCREEN_W } = Dimensions.get('window');
 // Barra lateral flutuante (tablet) e gaveta (celular), em vidro.
+// A largura é lida a cada render (useWindowDimensions): antes era fixada na
+// abertura do app, e no tablet (girar a tela, tela dividida, Android 16, que
+// ignora a trava de orientação em telas grandes) o painel ficava com a barra
+// lateral numa janela estreita, ou com a gaveta numa larga, diferente das
+// telas internas, que já usam a largura atual.
 const SIDEBAR_W = 264;
 const SIDEBAR_MARGEM = 10;
-const DRAWER_W = Math.min(320, SCREEN_W - 48);
 const { OS: SISTEMA } = Platform;
-const isWide = SISTEMA === 'web' || SCREEN_W >= 700;
 // Largura ocupada pela barra lateral (com a margem), para telas que calculam colunas.
 export const LARGURA_LATERAL = SIDEBAR_W + SIDEBAR_MARGEM;
 
@@ -213,6 +215,9 @@ export default function AdminLayout({ children, currentScreen }) {
   const { perfil, sair } = useAuth();
   const navigation = useNavigation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { width: larguraTela } = useWindowDimensions();
+  const isWide = SISTEMA === 'web' || larguraTela >= 700;
+  const larguraGaveta = Math.min(320, larguraTela - 48);
 
   const navigateTo = (screen) => {
     setDrawerOpen(false);
@@ -269,7 +274,7 @@ export default function AdminLayout({ children, currentScreen }) {
                 activeOpacity={1}
                 accessibilityLabel="Fechar menu"
               />
-              <Vidro style={[sty.drawer, { top: insets.top + 8, bottom: insets.bottom + 8 }]} intensidade={50}>
+              <Vidro style={[sty.drawer, { top: insets.top + 8, bottom: insets.bottom + 8, width: larguraGaveta }]} intensidade={50}>
                 <View pointerEvents="none" style={sty.drawerVeu} />
                 <SidebarContent
                   navigate={navigateTo}
@@ -426,7 +431,7 @@ const sty = criarEstilos(() => ({
   },
   drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.sobreposicao },
   drawer: {
-    position: 'absolute', left: 8, width: DRAWER_W,
+    position: 'absolute', left: 8, width: 320,
     borderRadius: 28, borderWidth: 1, borderColor: colors.bordaLuz,
     ...est.sombraForte(),
   },

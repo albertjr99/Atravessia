@@ -457,7 +457,8 @@ const styles = criarEstilos(() => ({
   esperaTit: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo, textAlign: 'center' },
   esperaSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, textAlign: 'center', lineHeight: 19 },
   btns: { gap: 12, marginTop: spacing.xs },
-  btnExterno: { alignSelf: 'stretch' },
+  // No tablet o botão ocupava a largura toda da tela; agora para em 520.
+  btnExterno: { alignSelf: 'center', width: '100%', maxWidth: 520 },
   btnFace: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     minHeight: 54, paddingHorizontal: 22, paddingVertical: 12, overflow: 'hidden',

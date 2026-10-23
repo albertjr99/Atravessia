@@ -421,9 +421,26 @@ export function AppProvider({ children }) {
   );
 
   const gerarVoucherBeneficio = async (parceriaId) => {
-    const fn = httpsCallable(functions, 'gerarVoucherBeneficio');
-    const { data } = await fn({ parceriaId });
-    return data; // { tokenSeguro, codigoPublico, expiraEm, linkValidacao }
+    const fn = httpsCallable(functions, 'gerarVoucherBeneficio', { timeout: 30000 });
+    // Uma nova tentativa automática quando a rede ou o servidor falham na
+    // primeira chamada (servidor "acordando", Wi-Fi do tablet oscilando).
+    const temporario = (e) => ['functions/internal', 'functions/unavailable', 'functions/deadline-exceeded'].includes(e?.code);
+    try {
+      const { data } = await fn({ parceriaId });
+      return data;
+    } catch (e) {
+      if (!temporario(e)) throw e;
+      await new Promise(r => setTimeout(r, 1200));
+      try {
+        const { data } = await fn({ parceriaId });
+        return data; // { tokenSeguro, codigoPublico, expiraEm, linkValidacao }
+      } catch (e2) {
+        if (!temporario(e2)) throw e2;
+        const erro = new Error('Não foi possível gerar o cupom agora. Confira sua internet e tente de novo em instantes.');
+        erro.code = e2.code;
+        throw erro;
+      }
+    }
   };
 
   const responderConfirmacaoResgate = async (resgateId, confirmar) => {

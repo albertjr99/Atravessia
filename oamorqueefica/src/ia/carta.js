@@ -6,7 +6,16 @@ import { emocoes as LISTA_EMOCOES } from '../data';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const diaDe = (d) => (typeof d === 'string' ? d.slice(0, 10) : '');
 
-const NOME_EMOCAO = Object.fromEntries(LISTA_EMOCOES.map(e => [e.id, (e.nomeRelatorio || e.label).replace(/^(a|o) /, '')]));
+// Os rótulos do check-in são adjetivos ("Triste", "Com medo"); numa frase da
+// carta a emoção precisa aparecer como substantivo, com artigo.
+const SUBSTANTIVO = {
+  saudade: 'a saudade', triste: 'a tristeza', sozinho: 'a solidão', medo: 'o medo',
+  ansioso: 'a ansiedade', culpado: 'a culpa', raiva: 'a raiva', desanimado: 'o desânimo',
+  grato: 'a gratidão', tranquilo: 'a paz', esperancoso: 'a esperança', alegre: 'a alegria', amoroso: 'o amor',
+};
+const NOME_EMOCAO = Object.fromEntries(LISTA_EMOCOES.map(e => [e.id, SUBSTANTIVO[e.id] || (e.nomeRelatorio || e.label).toLowerCase()]));
+// "a, b e c"
+const listar = (itens) => (itens.length <= 1 ? itens.join('') : `${itens.slice(0, -1).join(', ')} e ${itens[itens.length - 1]}`);
 const POSITIVA = Object.fromEntries(LISTA_EMOCOES.map(e => [e.id, !!e.positiva]));
 
 const LEITURA = {
@@ -45,8 +54,8 @@ export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diar
       titulo, vazio: true, numeros: { checkins: 0, vitorias: 0, diario: 0 },
       paragrafos: [
         saudacao,
-        `Ainda não há registros em ${MESES[mes]}. Tudo bem: cada pessoa tem o seu tempo.`,
-        'Quando quiser, faça um check-in ou escreva no diário guiado. No fim do mês, eu transformo o seu caminho em uma carta como esta.',
+        `Ainda não há registros em ${MESES[mes]}, e está tudo bem: cada pessoa tem o seu tempo.`,
+        'Quando quiser, faça um check-in, registre uma pequena vitória ou escreva no diário guiado. No fim do mês, eu transformo o seu caminho em uma carta como esta.',
         'Com carinho,\nAtravessIA',
       ],
     };
@@ -66,12 +75,12 @@ export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diar
 
   const p = [saudacao];
   p.push(dias > 0
-    ? `Em ${MESES[mes]} você esteve aqui em ${dias} ${dias === 1 ? 'dia' : 'dias'} para contar como estava. Cada check-in é um momento em que você escolheu olhar para si.`
-    : `Em ${MESES[mes]} você cuidou de si de outras formas por aqui.`);
+    ? `Em ${MESES[mes]}, você esteve aqui em ${dias === 1 ? 'um dia' : `${dias} dias`} para contar como estava. Cada check-in foi um momento em que você escolheu olhar para si.`
+    : `Em ${MESES[mes]}, você cuidou de si de outras formas por aqui.`);
   if (predominante && LEITURA[predominante]) p.push(LEITURA[predominante]);
   if (ordem.length >= 3) {
     const outras = ordem.slice(1, 3).map(([id]) => NOME_EMOCAO[id]).filter(Boolean);
-    if (outras.length) p.push(`Também passaram por você ${outras.join(' e ')}. Sentimentos diferentes podem conviver no mesmo coração.`);
+    if (outras.length) p.push(`${outras.length === 1 ? 'Também passou por você' : 'Também passaram por você'} ${listar(outras)}. Sentimentos diferentes podem conviver no mesmo coração.`);
   }
   if (ck.length >= 6) {
     if (fim - inicio >= 0.2) p.push('Percebi mais dias leves na segunda metade do mês. Sem pressa, o caminho também mostra os seus avanços.');
@@ -82,21 +91,21 @@ export function montarCarta({ nome, ano, mes, checkins = [], vitorias = [], diar
     vt.forEach(v => { const l = v.label || v.texto; if (l) freq[l] = (freq[l] || 0) + 1; });
     const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([l]) => `"${l}"`);
     const qtd = `${vt.length} ${vt.length === 1 ? 'pequena vitória' : 'pequenas vitórias'}`;
-    p.push(top.length ? `Você registrou ${qtd}, como ${top.join(', ')}. Elas contam, e muito.` : `Você registrou ${qtd}. Elas contam, e muito.`);
+    p.push(top.length ? `Você registrou ${qtd}, como ${listar(top)}. ${vt.length === 1 ? 'Ela conta' : 'Elas contam'}, e muito.` : `Você registrou ${qtd}. ${vt.length === 1 ? 'Ela conta' : 'Elas contam'}, e muito.`);
   }
   if (dr.length) {
-    p.push(`E escreveu no diário ${dr.length} ${dr.length === 1 ? 'vez' : 'vezes'}. Colocar o que sente em palavras é uma forma corajosa de atravessar.`);
+    p.push(`Você também escreveu no diário ${dr.length === 1 ? 'uma vez' : `${dr.length} vezes`}. Colocar o que sente em palavras é uma forma corajosa de atravessar.`);
   }
   if (ex.length) {
     // As sensações boas que ela quis guardar ao experimentar a vida, nas palavras dela.
     const trechos = ex.slice(0, 3).map(x => {
       const t = x.texto.trim().replace(/\s+/g, ' ');
       const curto = t.length > 160 ? `${t.slice(0, 157).trim()}…` : t;
-      return x.parceria ? `"${curto}" (${x.parceria})` : `"${curto}"`;
+      return `"${curto.replace(/[.!?…]+$/, '')}"`;
     });
-    p.push(`Ao experimentar a vida, você quis guardar na memória: ${trechos.join('; ')}. Que essas sensações boas continuem com você.`);
+    p.push(`Ao experimentar a vida, você quis guardar na memória ${trechos.length === 1 ? 'esta sensação' : 'estas sensações'}: ${listar(trechos)}. Que ${trechos.length === 1 ? 'ela continue' : 'elas continuem'} com você.`);
   }
-  p.push('Que o próximo mês tenha espaço para o que você sente e para o que te faz bem.');
+  p.push(`Que ${MESES[(mes + 1) % 12]} tenha espaço para tudo o que você sente e para o que faz bem a você.`);
   p.push('Com carinho,\nAtravessIA');
 
   return { titulo, vazio: false, paragrafos: p, numeros: { checkins: ck.length, dias, vitorias: vt.length, diario: dr.length, experiencias: ex.length } };

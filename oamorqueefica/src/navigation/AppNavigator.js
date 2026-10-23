@@ -222,8 +222,8 @@ export default function AppNavigator() {
           key={comecaNoOnboarding ? `onboarding-${uid}` : 'app'}
           rotaInicial={comecaNoOnboarding ? 'Onboarding' : 'MainTabs'}
         />
-        {/* O convite das notificações espera a apresentação inicial terminar. */}
-        {!comecaNoOnboarding && <PermissaoNotificacoes uid={uid} />}
+        {/* Convite das notificações logo no primeiro acesso. */}
+        <PermissaoNotificacoes uid={uid} />
       </>
     );
   }
