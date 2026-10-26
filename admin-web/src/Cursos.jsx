@@ -66,6 +66,42 @@ function Chips({ opcoes, valor, onChange }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Aba Cursos
 // ═══════════════════════════════════════════════════════════════════════════
+// Demonstração: publica o curso de Yoga com 5 vídeos do @yogaparavoce, um
+// profissional de teste com vendas fictícias e libera o curso para quem clicou.
+function DemoCursos({ showToast }) {
+  const [rodando, setRodando] = useState(false);
+  const [links, setLinks] = useState(null);
+  const executar = async (remover) => {
+    if (remover && !window.confirm('Remover o curso, o profissional e as vendas de demonstração?')) return;
+    setRodando(true);
+    try {
+      const { data } = await httpsCallable(functions, 'criarDemonstracaoCursos')({ remover });
+      setLinks(remover ? null : data);
+      showToast(remover ? 'Demonstração removida.' : 'Demonstração pronta! O curso já aparece no app.');
+    } catch (e) { showToast(e?.message || 'Não foi possível criar a demonstração.', 'error'); }
+    setRodando(false);
+  };
+  return (
+    <Recolhivel titulo="Demonstração dos Cursos" subtitulo="Curso de Yoga com 5 aulas, profissional de teste e vendas fictícias para apresentar as ferramentas">
+      <p className="screen-sub" style={{ marginTop: 0 }}>
+        Publica o curso "Yoga para acalmar a mente" (vídeos do canal @yogaparavoce), cadastra o profissional "Yoga para Você (demonstração)"
+        com 6 vendas fictícias para o portal e libera o curso para a sua conta assistir no app e na web. Pode clicar de novo para atualizar; nada é duplicado.
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn-primary" disabled={rodando} onClick={() => executar(false)}>{rodando ? 'Preparando…' : 'Criar ou atualizar demonstração'}</button>
+        <button className="btn-ghost" disabled={rodando} onClick={() => executar(true)}>Remover demonstração</button>
+      </div>
+      {links && (
+        <div className="field-hint" style={{ marginTop: 12, lineHeight: 1.7 }}>
+          Área da aluna: <a href={links.linkAluna} target="_blank" rel="noreferrer">{links.linkAluna}</a><br />
+          Portal do profissional: <a href={links.linkPortal} target="_blank" rel="noreferrer">abrir</a>{' · '}
+          <button type="button" className="btn-ghost" style={{ padding: '2px 10px' }} onClick={() => { navigator.clipboard?.writeText(links.linkPortal); showToast('Link do portal copiado!'); }}>copiar link</button>
+        </div>
+      )}
+    </Recolhivel>
+  );
+}
+
 export default function Cursos({ showToast }) {
   const cursos = useColecao('cursos', (a, b) => ms(b.criadoEm) - ms(a.criadoEm));
   const profissionais = useColecao('profissionais', (a, b) => String(a.nome).localeCompare(String(b.nome)));
@@ -186,6 +222,8 @@ export default function Cursos({ showToast }) {
           <button className="btn-secondary" onClick={() => jsonRef.current?.click()}><IconUpload size={15} /> Importar curso (JSON)</button>
         </div>
       </div>
+
+      <DemoCursos showToast={showToast} />
 
       <div ref={formRef}>
         <Recolhivel titulo={editId ? `Editando: ${c.titulo || 'curso'}` : (c.titulo ? `Novo: ${c.titulo}` : 'Novo curso')} subtitulo="Título, capa, preço, profissional, programa e aulas"

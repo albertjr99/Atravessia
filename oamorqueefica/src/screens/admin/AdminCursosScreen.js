@@ -552,6 +552,42 @@ function AbaVendas({ cursos, profissionais, matriculas, repasses }) {
 }
 
 // ---------------------------------------------------------------------------
+// Demonstração: curso de Yoga com 5 aulas, profissional de teste e vendas
+// fictícias; o curso fica liberado para a administradora assistir.
+function DemoCursos() {
+  const [rodando, setRodando] = useState(false);
+  const [links, setLinks] = useState(null);
+  const executar = async (remover) => {
+    setRodando(true);
+    try {
+      const { data } = await httpsCallable(functions, 'criarDemonstracaoCursos')({ remover });
+      setLinks(remover ? null : data);
+      Alert.alert('', remover ? 'Demonstração removida.' : 'Demonstração pronta! O curso já aparece em Cursos, no app.');
+    } catch (e) { Alert.alert('Não foi possível', e?.message || 'Tente novamente.'); }
+    setRodando(false);
+  };
+  return (
+    <Recolhivel titulo="Demonstração dos Cursos" subtitulo="Curso de Yoga com 5 aulas, profissional de teste e vendas fictícias" icone="sparkles-outline">
+      <Text style={s.sub}>Publica o curso "Yoga para acalmar a mente" (canal @yogaparavoce), cadastra um profissional de teste com 6 vendas fictícias para o portal e libera o curso para a sua conta. Pode tocar de novo para atualizar; nada é duplicado.</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+        <TouchableOpacity style={[s.aba, s.abaSel, { paddingHorizontal: 18 }]} disabled={rodando} onPress={() => executar(false)}>
+          <Text style={[s.abaTxt, s.abaTxtSel]}>{rodando ? 'Preparando…' : 'Criar ou atualizar'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.aba, { paddingHorizontal: 18 }]} disabled={rodando}
+          onPress={() => Alert.alert('Remover demonstração', 'Remover o curso, o profissional e as vendas de demonstração?', [
+            { text: 'Cancelar', style: 'cancel' }, { text: 'Remover', style: 'destructive', onPress: () => executar(true) }])}>
+          <Text style={s.abaTxt}>Remover</Text>
+        </TouchableOpacity>
+      </View>
+      {links && (
+        <TouchableOpacity style={{ marginTop: 12 }} onPress={() => copiarOuCompartilhar(links.linkPortal)}>
+          <Text style={[s.sub, { fontWeight: '700' }]}>Copiar ou compartilhar o link do portal do profissional</Text>
+        </TouchableOpacity>
+      )}
+    </Recolhivel>
+  );
+}
+
 export default function AdminCursosScreen({ navigation }) {
   const rolagem = useRef(null);
   const [aba, setAba] = useState('cursos');
@@ -581,6 +617,7 @@ export default function AdminCursosScreen({ navigation }) {
         <Text style={s.title}>Cursos</Text>
         <Text style={s.sub}>Cursos em vídeo (YouTube não listado) vendidos no app. Cada venda guarda o repasse do profissional, calculado na hora e sem possibilidade de edição.</Text>
         {!!erro && <Text style={s.erro}>{erro}</Text>}
+        <DemoCursos />
         <View style={s.trilho}>
           {[['cursos', 'Cursos'], ['profissionais', 'Profissionais'], ['vendas', 'Vendas e repasses']].map(([k, r]) => (
             <TouchableOpacity key={k} style={[s.aba, aba === k && s.abaSel]} onPress={() => setAba(k)}>
