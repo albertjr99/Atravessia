@@ -2146,7 +2146,7 @@ async function processarCompraCurso(stripe, session) {
   if (!criada) return;
 
   const userSnap = await db.collection('usuarios').doc(uid).get();
-  const token = userSnap.data()?.expoPushToken;
+  const token = userSnap.data()?.pushToken;
   if (token) {
     await enviarPush([{
       to: token,
@@ -2496,4 +2496,105 @@ exports.fecharRepasse = onCall(async (request) => {
     return { vendas: vendas.length, ajustes: ajustes.length, totalCentavos: total };
   });
   return { id: repasseRef.id, ...resultado };
+});
+
+// ============================================================================
+// CURSOS — DEMONSTRAÇÃO
+// ============================================================================
+// Um toque no painel publica (ou atualiza) o curso de demonstração "Yoga para
+// acalmar a mente" com 5 vídeos do canal @yogaparavoce, um profissional de
+// teste com vendas fictícias (para mostrar o portal) e libera o curso para a
+// própria administradora assistir. Tudo marcado com `demo: true` e com ids
+// fixos, para não duplicar e para poder remover depois.
+const DEMO_CURSO_ID = 'demo-yoga-acalmar-mente';
+const DEMO_PROF_ID = 'demo-yoga-para-voce';
+const DEMO_AULAS = [
+  ['UBnFUY9CwCo', 'Yoga e Outubro Rosa: Autocuidado Como Propósito Maior', true],
+  ['vf0Vqb-TKpA', 'Meditação Guiada para Acalmar a Mente | Desacelere em Dias Intensos', false],
+  ['babdn-oFs0U', 'O Que o Yoga Realmente Faz com a Sua Mente?', false],
+  ['NEbLrV7VyrY', 'Eleições: como agir com serenidade?', false],
+  ['I_TJX1dBTl4', 'Como Não Cair em Fake News? Uma Lição do Yoga de 2.000 Anos', false],
+];
+
+exports.criarDemonstracaoCursos = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request).then(() => request.auth.uid);
+  const remover = request.data?.remover === true;
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lote = db.batch();
+  const demosVendas = await db.collection('matriculas').where('demo', '==', true).get();
+
+  if (remover) {
+    demosVendas.docs.forEach(d => lote.delete(d.ref));
+    lote.delete(db.collection('cursos').doc(DEMO_CURSO_ID));
+    lote.delete(db.collection('profissionais').doc(DEMO_PROF_ID));
+    lote.delete(db.collection('profissionaisPrivado').doc(DEMO_PROF_ID));
+    lote.delete(db.collection('usuarios').doc(adminUid).collection('cursos').doc(DEMO_CURSO_ID));
+    await lote.commit();
+    return { ok: true, removido: true };
+  }
+
+  lote.set(db.collection('profissionais').doc(DEMO_PROF_ID), {
+    nome: 'Yoga para Você (demonstração)',
+    bio: 'Canal de yoga e meditação com práticas simples para o dia a dia, para desacelerar a mente e cuidar do corpo com gentileza.',
+    fotoUrl: 'https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg',
+    repasseTipo: 'percentual', repasseValor: 50, repasseBase: 'bruto',
+    ativo: true, demo: true, atualizadoEm: agora, criadoEm: agora,
+  }, { merge: true });
+  const privRef = db.collection('profissionaisPrivado').doc(DEMO_PROF_ID);
+  const priv = await privRef.get();
+  const tokenPortal = priv.data()?.tokenPortal || gerarTokenPortal();
+  lote.set(privRef, { email: '', tokenPortal, demo: true, atualizadoEm: agora }, { merge: true });
+
+  lote.set(db.collection('cursos').doc(DEMO_CURSO_ID), {
+    titulo: 'Yoga para acalmar a mente',
+    subtitulo: 'Cinco encontros curtos para respirar, desacelerar e olhar para dentro com carinho.',
+    descricao: 'Um curso para quem sente a mente acelerada e quer encontrar, no próprio ritmo, um pouco mais de calma. Em cinco aulas, você conhece o que o yoga faz pela mente, pratica uma meditação guiada para dias intensos e aprende, com a sabedoria de mais de 2.000 anos do yoga, a atravessar momentos de ruído com mais presença. Não é preciso experiência: basta um cantinho tranquilo e alguns minutos para você.',
+    capaUrl: 'https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg',
+    preco: 97,
+    ativo: true, destaque: true, demo: true,
+    profissionalId: DEMO_PROF_ID,
+    programa: [
+      { titulo: 'Módulo 1 · Autocuidado como propósito', descricao: 'Por que cuidar de si não é egoísmo: o yoga como prática de presença e de cuidado.' },
+      { titulo: 'Módulo 2 · Meditação para dias intensos', descricao: 'Uma meditação guiada para acalmar a mente e desacelerar quando tudo parece urgente.' },
+      { titulo: 'Módulo 3 · O que o yoga faz com a mente', descricao: 'Atenção, respiração e emoções: o que acontece por dentro quando praticamos.' },
+      { titulo: 'Módulo 4 · Serenidade em tempos de ruído', descricao: 'Como agir com calma em períodos de tensão e não se perder em notícias falsas.' },
+    ],
+    aulas: DEMO_AULAS.map(([youtubeId, titulo, gratis], i) => ({
+      id: `a${i + 1}`, youtubeId, titulo, duracao: '', ordem: i + 1, gratis,
+      thumb: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
+    })),
+    atualizadoEm: agora, criadoEm: agora,
+  }, { merge: true });
+
+  // Acesso da administradora, para demonstrar o player e o progresso.
+  lote.set(db.collection('usuarios').doc(adminUid).collection('cursos').doc(DEMO_CURSO_ID), {
+    cursoId: DEMO_CURSO_ID, matriculaId: 'demo', liberadoEm: agora, demo: true,
+  }, { merge: true });
+
+  // Vendas fictícias para o portal do profissional (só se ainda não existirem).
+  if (demosVendas.empty) {
+    const dias = [2, 5, 9, 14, 21, 26];
+    dias.forEach((d, i) => {
+      const valorPagoCentavos = 9700;
+      const taxaStripeCentavos = 438;
+      const { repasseCentavos, regra } = calcularRepasseCentavos(valorPagoCentavos, taxaStripeCentavos,
+        { repasseTipo: 'percentual', repasseValor: 50, repasseBase: 'bruto' });
+      const id = `demo_${String(i + 1).padStart(2, '0')}`;
+      lote.set(db.collection('matriculas').doc(id), {
+        uid: `demo-aluna-${i + 1}`, cursoId: DEMO_CURSO_ID, profissionalId: DEMO_PROF_ID,
+        cursoTitulo: 'Yoga para acalmar a mente',
+        valorPagoCentavos, taxaStripeCentavos, repasseCentavos, repasseRegra: regra, moeda: 'brl',
+        stripeSessionId: `cs_demo_${id}`, stripePaymentIntent: `pi_demo_${crypto.randomBytes(6).toString('hex')}`, stripeChargeId: null,
+        criadaEm: admin.firestore.Timestamp.fromMillis(Date.now() - d * 86400000),
+        status: i === 3 ? 'reembolsada' : 'ativa', repasseId: null, demo: true,
+      });
+    });
+  }
+
+  await lote.commit();
+  return {
+    ok: true, cursoId: DEMO_CURSO_ID, profissionalId: DEMO_PROF_ID,
+    linkPortal: `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}`,
+    linkAluna: `${SITE_URL}/curso.html`,
+  };
 });
