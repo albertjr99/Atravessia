@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import PermissaoNotificacoes from '../components/PermissaoNotificacoes';
+import AvisoAtualizacao from '../components/AvisoAtualizacao';
+import AdminVersaoAppScreen from '../screens/admin/AdminVersaoAppScreen';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import AudiosScreen from '../screens/audios/AudiosScreen';
@@ -150,6 +152,7 @@ function AdminStack() {
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
       <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />
       <Stack.Screen name="AdminArtes" component={AdminArtesScreen} />
+      <Stack.Screen name="AdminVersaoApp" component={AdminVersaoAppScreen} />
     </Stack.Navigator>
   );
 }
@@ -214,7 +217,7 @@ export default function AppNavigator() {
   } else if (!firebaseUser) {
     content = <AuthStack />;
   } else if (isAdmin && !verComoUsuaria) {
-    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /></>;
+    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /><AvisoAtualizacao uid={uid} /></>;
   } else {
     content = (
       <>
@@ -224,6 +227,7 @@ export default function AppNavigator() {
         />
         {/* Convite das notificações logo no primeiro acesso. */}
         <PermissaoNotificacoes uid={uid} />
+        <AvisoAtualizacao uid={uid} />
       </>
     );
   }

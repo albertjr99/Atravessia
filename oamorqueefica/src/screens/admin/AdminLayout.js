@@ -84,6 +84,7 @@ const NAV_GRUPOS = [
       { icon: 'pricetag', iconOff: 'pricetag-outline', label: 'Preços e planos', screen: 'AdminPrecos' },
       { icon: 'sparkles', iconOff: 'sparkles-outline', label: 'Funções da AtravessIA', screen: 'AdminRecursosIA' },
       { icon: 'document-text', iconOff: 'document-text-outline', label: 'Sobre e parcerias', screen: 'AdminInstitucional' },
+      { icon: 'cloud-download', iconOff: 'cloud-download-outline', label: 'Versão do app', screen: 'AdminVersaoApp' },
       { icon: 'person-circle', iconOff: 'person-circle-outline', label: 'Meu Perfil', screen: 'AdminPerfil' },
     ],
   },

@@ -26,6 +26,7 @@ import Relatorios from './Relatorios';
 import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
+import VersaoApp from './VersaoApp';
 import RecursosIA from './RecursosIA';
 import Artes from './Artes';
 import Preview from './Preview';
@@ -33,7 +34,7 @@ import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
   IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
   Logo,
-  IconDoc, IconPalette,
+  IconDoc, IconPalette, IconDownload,
 } from './Icons';
 import './alinhamento.css';
 
@@ -106,6 +107,7 @@ const NAV_GRUPOS = [
       { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Valores, planos e pagamento' },
       { id: 'recursosIA', Icon: IconSpark, label: 'Funções da AtravessIA', sub: 'Ligar, desligar e planos de cada uma' },
       { id: 'institucional', Icon: IconDoc, label: 'Sobre e parcerias', sub: 'Sobre o app · Seja nosso parceiro' },
+      { id: 'versaoApp', Icon: IconDownload, label: 'Versão do app', sub: 'Aviso de atualização na Play Store' },
       { id: 'perfil', Icon: IconPerson, label: 'Meu perfil', sub: 'Nome e foto' },
     ],
   },
@@ -134,6 +136,7 @@ const SCREENS = {
   precos:          PrecosPlanos,
   perfil:          Perfil,
   institucional:   Institucional,
+  versaoApp:       VersaoApp,
   recursosIA:      RecursosIA,
   artes:           Artes,
 };
