@@ -11,6 +11,7 @@ import { useApp } from '../../hooks/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Profundo } from '../../components/Efeitos';
 import { formatDataBR } from '../../utils/date';
+import Recolhivel from '../../components/Recolhivel';
 
 const ilustracao = require('../../../assets/images/cartas_envelope.png');
 
@@ -71,11 +72,9 @@ export default function CartasScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.lista}>
         {tab === 'ler' ? (
           cartasInspiradoras.map(c => (
-            <Card key={c.id} style={styles.cartaCard}>
-              <Text style={styles.cartaTitulo}>{c.titulo}</Text>
+            <Recolhivel key={c.id} titulo={c.titulo} subtitulo={c.autor ? `— ${c.autor}` : undefined} icone="mail-open-outline" estilo={{ marginBottom: 0 }}>
               <Text style={styles.cartaConteudo}>{c.conteudo}</Text>
-              <Text style={styles.cartaAutor}>— {c.autor}</Text>
-            </Card>
+            </Recolhivel>
           ))
         ) : podeEscrever ? (
           cartasEscritas.length === 0 ? (
@@ -85,11 +84,9 @@ export default function CartasScreen({ navigation }) {
             </View>
           ) : (
             [...cartasEscritas].reverse().map(c => (
-              <Card key={c.id} style={styles.cartaCard}>
-                <Text style={styles.cartaTitulo}>{c.titulo}</Text>
-                <Text style={styles.cartaConteudo}>{c.conteudo}</Text>
-                <Text style={styles.cartaAutor}>{formatDataBR(c.data)}</Text>
-              </Card>
+              <Recolhivel key={c.id} titulo={c.titulo} subtitulo={formatDataBR(c.data)} icone="mail-outline" estilo={{ marginBottom: 0 }}>
+                <Text style={styles.cartaConteudo} selectable>{c.conteudo}</Text>
+              </Recolhivel>
             ))
           )
         ) : (

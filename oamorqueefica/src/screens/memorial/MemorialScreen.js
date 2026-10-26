@@ -11,6 +11,7 @@ import { hojeStrBR, formatDataBR } from '../../utils/date';
 import { useApp } from '../../hooks/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Profundo } from '../../components/Efeitos';
+import Recolhivel from '../../components/Recolhivel';
 
 const ilustracao = require('../../../assets/images/memorial_coracao.png');
 
@@ -90,19 +91,16 @@ export default function MemorialScreen({ navigation }) {
               <Text style={styles.emptySubText}>Toque em "Adicionar memória" para começar.</Text>
             </View>
           ) : (
+            // Cada memória fica recolhida: a lista mostra títulos e datas, um toque abre o texto.
             memorias.map(m => (
-              <Card key={m.id} style={styles.memoriaCard}>
-                <View style={styles.memoriaHeader}>
-                  <View style={styles.memoriaIcon}>
-                    <Ionicons name="heart-outline" size={18} color={colors.roseTexto} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memoriaTitulo}>{m.titulo}</Text>
-                    <Text style={styles.memoriaData}>{formatDataBR(m.data)}</Text>
-                  </View>
-                </View>
-                <Text style={styles.memoriaConteudo}>{m.conteudo}</Text>
-              </Card>
+              <Recolhivel
+                key={m.id}
+                titulo={m.titulo}
+                subtitulo={formatDataBR(m.data)}
+                icone="heart-outline"
+              >
+                <Text style={styles.memoriaConteudo} selectable>{m.conteudo}</Text>
+              </Recolhivel>
             ))
           )}
         </View>

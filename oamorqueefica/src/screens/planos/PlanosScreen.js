@@ -19,6 +19,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { abrirPagamento, mensagemErroPagamento, aquecerPagamento } from '../../utils/pagamento';
 import { db, functions } from '../../services/firebase';
 import UsarCashback from '../cashback/UsarCashback';
+import Recolhivel from '../../components/Recolhivel';
 
 export default function PlanosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -243,14 +244,31 @@ export default function PlanosScreen({ navigation }) {
                     <Text style={styles.planMensagemTxt}>{p.mensagem}</Text>
                   </View>
                 )}
+                {/* Os 3 primeiros recursos ficam à vista; o resto, recolhido, para a lista não pesar. */}
                 <View style={styles.recursosList}>
-                  {p.recursos.map((r, i) => (
+                  {(p.recursos || []).slice(0, (p.recursos || []).length > RECURSOS_VISIVEIS + 1 ? RECURSOS_VISIVEIS : undefined).map((r, i) => (
                     <View key={i} style={styles.recursoRow}>
                       <Ionicons name="checkmark-circle" size={17} color={cor.tinta} />
                       <Text style={styles.recursoText}>{r}</Text>
                     </View>
                   ))}
                 </View>
+                {(p.recursos || []).length > RECURSOS_VISIVEIS + 1 && (
+                  <Recolhivel
+                    titulo={`Ver mais ${p.recursos.length - RECURSOS_VISIVEIS} recursos`}
+                    estilo={styles.recursosMais}
+                    estiloConteudo={{ paddingBottom: 4 }}
+                  >
+                    <View style={styles.recursosList}>
+                      {p.recursos.slice(RECURSOS_VISIVEIS).map((r, i) => (
+                        <View key={i} style={styles.recursoRow}>
+                          <Ionicons name="checkmark-circle" size={17} color={cor.tinta} />
+                          <Text style={styles.recursoText}>{r}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </Recolhivel>
+                )}
                 <View style={[styles.radioIndicator, escolhido && { borderColor: cor.tinta }]}>
                   {escolhido && <View style={[styles.radioInner, { backgroundColor: cor.tinta }]} />}
                 </View>
@@ -355,6 +373,8 @@ export default function PlanosScreen({ navigation }) {
 // Cores de cada plano (mesmas em todas as telas e nos painéis):
 // Perceber = sálvia, Acolher = lilás, Compreender = névoa, Evoluir = pêssego,
 // Acesso Total = dourado. Função para acompanhar o tema claro/noturno.
+// Quantos recursos do plano ficam à vista antes do "Ver mais".
+const RECURSOS_VISIVEIS = 3;
 const ICONE_PLANO = { 0: 'leaf-outline', 1: 'heart-outline', 2: 'compass-outline', 3: 'sunny-outline' };
 function corDoPlano(id) {
   const n = colors.escuro;
@@ -432,6 +452,11 @@ const styles = criarEstilos(() => ({
   },
   planMensagemTxt: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.titulo, lineHeight: 19 },
   recursosList: { gap: 9 },
+  // "Ver mais recursos": recolhível sem moldura de cartão, dentro do cartão do plano.
+  recursosMais: {
+    backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, marginBottom: 0, marginTop: 4, marginHorizontal: -16,
+    shadowOpacity: 0, elevation: 0,
+  },
   recursoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   recursoText: { fontFamily: fonts.body, fontSize: 14, color: colors.titulo, flex: 1, lineHeight: 19 },
   radioIndicator: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.lav3, alignSelf: 'flex-end', alignItems: 'center', justifyContent: 'center', marginTop: 6 },

@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, shadow, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import Recolhivel from '../../components/Recolhivel';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { hojeStrBR } from '../../utils/date';
@@ -253,8 +254,13 @@ export default function LembreteScreen({ navigation }) {
 
           {/* Garantir que o aviso chegue na hora (celular e tablet) */}
           {pref.ativo && !naWeb && (
-            <View style={s.cartao}>
-              <Text style={s.secTit}>Para o lembrete chegar na hora certa</Text>
+            // Ajustes de solução de problemas: recolhidos para não pesar na tela.
+            <Recolhivel
+              titulo="Para o lembrete chegar na hora certa"
+              subtitulo="Teste o aviso e ajuste o aparelho, se precisar"
+              icone="construct-outline"
+              estilo={{ marginBottom: spacing.md }}
+            >
               <TouchableOpacity style={s.ajusteBtn} onPress={async () => {
                 const ok = await testarLembrete();
                 setTeste(ok ? 'Em 10 segundos chega um aviso de teste. Pode sair do app para ver.' : 'Não foi possível enviar o teste. Confira se as notificações estão permitidas.');
@@ -278,7 +284,7 @@ export default function LembreteScreen({ navigation }) {
                   </TouchableOpacity>
                 </>
               )}
-            </View>
+            </Recolhivel>
           )}
         </ScrollView>
       )}
