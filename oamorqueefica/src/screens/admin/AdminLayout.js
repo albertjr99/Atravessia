@@ -53,10 +53,11 @@ const NAV_GRUPOS = [
         label: 'Jornada', sub: 'Travessia · Jornadas · Vitórias',
         screen: 'AdminTravessia', irmas: ['AdminJornadas', 'AdminVitorias'],
       },
+      { icon: 'play-circle', iconOff: 'play-circle-outline', label: 'Cursos', sub: 'Cursos · Profissionais · Vendas', screen: 'AdminCursos' },
       {
         icon: 'gift', iconOff: 'gift-outline',
-        label: 'Parcerias', sub: 'Cupons · Cashback · Indicações',
-        screen: 'AdminParcerias', irmas: ['AdminBeneficios', 'AdminCashback', 'AdminIndicacoes'],
+        label: 'Parcerias', sub: 'Cupons · Cashback · Afiliados',
+        screen: 'AdminParcerias', irmas: ['AdminBeneficios', 'AdminCashback', 'AdminIndicacoes', 'AdminPedidosCashback'],
       },
     ],
   },

@@ -5,9 +5,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp,
+  collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, getDoc, setDoc,
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import Recolhivel from '../../components/Recolhivel';
+import {
+  PLATAFORMAS_AFILIADO, nomePlataforma, textoBotaoAfiliado, seloCashback, regraCashback, calcularCashback,
+  reaisParaCentavos, centavosParaTexto, brlCentavos, escolherEnviarImagem, LIMITES_AFILIADO,
+} from '../../utils/afiliados';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, acento, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
@@ -16,9 +21,17 @@ import { urlDeImagem } from '../../utils/imagemUrl';
 import { normalizarUrl } from '../../utils/abrirLink';
 import { CATEGORIAS_INDICACAO } from '../indicacoes/IndicacoesScreen';
 
-// Indicações Atravessia (afiliados Amazon): vitrine de produtos com link de
-// afiliada. Cada clique no app soma em `cliques` (via Cloud Function).
-const VAZIO = { titulo: '', descricao: '', imagemUrl: '', link: '', categoria: 'livros', ordem: '', ativo: true };
+// Afiliados (antes "Indicações Amazon"): vitrine de produtos com link de
+// afiliado de várias lojas, na coleção `indicacoes` (id mantido). Cada clique
+// no app soma em `cliques` (Cloud Function registrarCliqueAfiliado). A comissão
+// do app fica em `afiliadosPrivado/{id}`, que só as administradoras leem.
+const VAZIO = {
+  titulo: '', descricao: '', imagemUrl: '', imagemCaminho: '', link: '', categoria: 'livros', ordem: '', ativo: true,
+  plataforma: 'amazon', plataformaNome: '', textoBotao: '',
+  cashbackAtivo: false, cashbackTipo: 'fixo', cashbackFixo: '', cashbackPercentual: '',
+  comissaoPercentual: '', precoReferencia: '',
+};
+const numOuNull = (v) => { const n = Number(String(v || '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : null; };
 
 export default function AdminIndicacoesScreen({ navigation }) {
   const [itens, setItens] = useState([]);
@@ -26,9 +39,14 @@ export default function AdminIndicacoesScreen({ navigation }) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [pendentes, setPendentes] = useState(0);
 
   useEffect(() => onSnapshot(collection(db, 'indicacoes'), (snap) => {
     setItens(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, () => {}), []);
+  useEffect(() => onSnapshot(collection(db, 'pedidosCashbackAfiliado'), (snap) => {
+    setPendentes(snap.docs.filter(d => d.data().status === 'pendente').length);
   }, () => {}), []);
 
   const ordenados = useMemo(() => [...itens].sort((a, b) =>
@@ -39,28 +57,65 @@ export default function AdminIndicacoesScreen({ navigation }) {
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const abrirNovo = () => { setForm(VAZIO); setModal({ mode: 'add' }); };
-  const abrirEditar = (item) => {
-    setForm({
+  const abrirEditar = async (item) => {
+    const base = {
+      ...VAZIO,
       titulo: item.titulo || '', descricao: item.descricao || '', imagemUrl: item.imagemUrl || '',
+      imagemCaminho: item.imagemCaminho || '',
       link: item.link || '', categoria: item.categoria || 'outros',
       ordem: item.ordem != null ? String(item.ordem) : '', ativo: item.ativo !== false,
-    });
+      plataforma: item.plataforma || 'amazon', plataformaNome: item.plataformaNome || '', textoBotao: item.textoBotao || '',
+      cashbackAtivo: item.cashbackAtivo === true, cashbackTipo: item.cashbackTipo === 'percentual' ? 'percentual' : 'fixo',
+      cashbackFixo: centavosParaTexto(item.cashbackFixoCentavos),
+      cashbackPercentual: item.cashbackPercentual != null ? String(item.cashbackPercentual).replace('.', ',') : '',
+    };
+    setForm(base);
     setModal({ mode: 'edit', item });
+    // Dados internos (comissão), lidos à parte: a usuária não tem acesso.
+    try {
+      const priv = (await getDoc(doc(db, 'afiliadosPrivado', item.id))).data() || {};
+      setForm(p => ({
+        ...p,
+        comissaoPercentual: priv.comissaoPercentual != null ? String(priv.comissaoPercentual).replace('.', ',') : '',
+        precoReferencia: centavosParaTexto(priv.precoReferenciaCentavos),
+      }));
+    } catch { /* sem dados internos ainda */ }
   };
   const fechar = () => { setModal(null); setForm(VAZIO); };
 
   const salvar = async () => {
     if (!form.titulo.trim()) { Alert.alert('Atenção', 'Informe o nome do produto.'); return; }
     const link = normalizarUrl(form.link);
-    if (!link) { Alert.alert('Atenção', 'Cole o link de afiliada da Amazon.'); return; }
+    if (!link) { Alert.alert('Atenção', 'Cole o link de afiliado da loja.'); return; }
+    if (form.plataforma === 'outra' && !form.plataformaNome.trim()) { Alert.alert('Atenção', 'Escreva o nome da loja.'); return; }
+    const fixo = reaisParaCentavos(form.cashbackFixo);
+    const percentual = numOuNull(form.cashbackPercentual);
+    if (form.cashbackAtivo) {
+      if (form.cashbackTipo === 'fixo' && !(fixo > 0)) { Alert.alert('Atenção', 'Informe o valor do cashback em reais.'); return; }
+      if (form.cashbackTipo === 'percentual' && !(percentual > 0)) { Alert.alert('Atenção', 'Informe o percentual do cashback.'); return; }
+      if (form.cashbackTipo === 'percentual' && percentual > LIMITES_AFILIADO.percentualMax) { Alert.alert('Atenção', `O cashback pode ser de até ${LIMITES_AFILIADO.percentualMax}%.`); return; }
+      if (form.cashbackTipo === 'fixo' && fixo > LIMITES_AFILIADO.cashbackMaxCentavos) { Alert.alert('Atenção', `O cashback pode ser de até ${brlCentavos(LIMITES_AFILIADO.cashbackMaxCentavos)}.`); return; }
+    }
     setSalvando(true);
     const dados = {
       titulo: form.titulo.trim(), descricao: form.descricao.trim(), imagemUrl: form.imagemUrl.trim(),
+      imagemCaminho: form.imagemUrl.trim() && form.imagemCaminho ? form.imagemCaminho : null,
       link, categoria: form.categoria, ordem: Number(form.ordem) || null, ativo: form.ativo,
+      plataforma: form.plataforma, plataformaNome: form.plataforma === 'outra' ? form.plataformaNome.trim() : '',
+      textoBotao: form.textoBotao.trim(),
+      cashbackAtivo: !!form.cashbackAtivo, cashbackTipo: form.cashbackTipo,
+      cashbackFixoCentavos: fixo || null, cashbackPercentual: percentual,
+    };
+    const privado = {
+      comissaoPercentual: numOuNull(form.comissaoPercentual),
+      precoReferenciaCentavos: reaisParaCentavos(form.precoReferencia) || null,
+      atualizadoEm: serverTimestamp(),
     };
     try {
-      if (modal.mode === 'add') await addDoc(collection(db, 'indicacoes'), { ...dados, cliques: 0, criadoEm: serverTimestamp() });
-      else await updateDoc(doc(db, 'indicacoes', modal.item.id), dados);
+      let id = modal.item?.id;
+      if (modal.mode === 'add') id = (await addDoc(collection(db, 'indicacoes'), { ...dados, cliques: 0, criadoEm: serverTimestamp() })).id;
+      else await updateDoc(doc(db, 'indicacoes', id), dados);
+      await setDoc(doc(db, 'afiliadosPrivado', id), privado, { merge: true });
       fechar();
     } catch (e) {
       Alert.alert('Erro', e.message || 'Não foi possível salvar.');
@@ -70,21 +125,61 @@ export default function AdminIndicacoesScreen({ navigation }) {
   };
 
   const alternar = (item) => updateDoc(doc(db, 'indicacoes', item.id), { ativo: item.ativo === false });
-  const excluir = (item) => Alert.alert('Excluir indicação', `Excluir "${item.titulo}"? Esta ação não pode ser desfeita.`, [
+  const excluir = (item) => Alert.alert('Excluir item', `Excluir "${item.titulo}"? Esta ação não pode ser desfeita.`, [
     { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: () => deleteDoc(doc(db, 'indicacoes', item.id)) },
+    {
+      text: 'Excluir', style: 'destructive', onPress: async () => {
+        await deleteDoc(doc(db, 'indicacoes', item.id));
+        deleteDoc(doc(db, 'afiliadosPrivado', item.id)).catch(() => {});
+        if (item.imagemCaminho) {
+          const { ref: sRef, deleteObject } = require('firebase/storage');
+          const { storage } = require('../../services/firebase');
+          deleteObject(sRef(storage, item.imagemCaminho)).catch(() => {});
+        }
+      },
+    },
   ]);
 
+  const enviarFoto = async () => {
+    setEnviandoFoto(true);
+    try {
+      const r = await escolherEnviarImagem('afiliados', { maxMB: 10, qualidade: 0.8 });
+      if (r) setForm(p => ({ ...p, imagemUrl: r.url, imagemCaminho: r.caminho }));
+    } catch (e) {
+      Alert.alert('Erro no envio', e?.message || 'Tente novamente.');
+    } finally {
+      setEnviandoFoto(false);
+    }
+  };
+
   const previa = urlDeImagem(form.imagemUrl);
-  const linkAmazon = !form.link || /amzn\.|amazon\./i.test(form.link);
+  const plat = PLATAFORMAS_AFILIADO.find(p => p.id === form.plataforma) || PLATAFORMAS_AFILIADO[0];
+  const linkConfere = !form.link || !plat.padrao || plat.padrao.test(form.link);
+  // Simulação para a administradora: comissão estimada x cashback devolvido.
+  const simPreco = reaisParaCentavos(form.precoReferencia) || 0;
+  const simComissao = simPreco && numOuNull(form.comissaoPercentual) ? Math.floor(simPreco * numOuNull(form.comissaoPercentual) / 100) : 0;
+  const simRegra = form.cashbackAtivo ? regraCashback({
+    cashbackAtivo: true, cashbackTipo: form.cashbackTipo,
+    cashbackFixoCentavos: reaisParaCentavos(form.cashbackFixo), cashbackPercentual: numOuNull(form.cashbackPercentual),
+  }) : null;
+  const simCashback = simPreco && simRegra ? calcularCashback(simRegra, simPreco) : 0;
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminIndicacoes">
       <AdminSubTabs grupo="parcerias" atual="AdminIndicacoes" />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={st.scroll}>
         <Text style={st.sobre}>Parcerias</Text>
-        <Text style={st.pageTitle}>Indicações Atravessia</Text>
-        <Text style={st.pageSub}>Vitrine de produtos com link de afiliada da Amazon. A comissão chega pela conta de Associados.</Text>
+        <Text style={st.pageTitle}>Afiliados</Text>
+        <Text style={st.pageSub}>Vitrine de produtos com link de afiliado (Amazon, Mercado Livre, Shopee, Magalu e outras). No app, a usuária vê esta vitrine como “Achados da Atravessia”.</Text>
+
+        <TouchableOpacity style={st.pedidosAviso} onPress={() => navigation.navigate('AdminPedidosCashback')} activeOpacity={0.85}>
+          <Ionicons name="receipt-outline" size={20} color={acento(pendentes ? 'dourado' : 'lilas').texto} />
+          <View style={{ flex: 1 }}>
+            <Text style={st.pedidosTit}>Pedidos de cashback</Text>
+            <Text style={st.pedidosSub}>{pendentes ? `${pendentes} aguardando análise` : 'Nenhum pedido aguardando análise'}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.tl} />
+        </TouchableOpacity>
 
         <View style={st.statsRow}>
           <View style={st.statBox}><Text style={st.statN}>{itens.length}</Text><Text style={st.statL}>Produtos</Text></View>
@@ -95,7 +190,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
         <TouchableOpacity style={st.addBtn} onPress={abrirNovo}>
           <Degrade />
           <Ionicons name="add" size={18} color="white" />
-          <Text style={st.addBtnTxt}>Nova indicação</Text>
+          <Text style={st.addBtnTxt}>Novo item de afiliado</Text>
         </TouchableOpacity>
 
         <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
@@ -110,7 +205,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
           <View style={st.dica}>
             <Ionicons name="information-circle-outline" size={18} color={acento('lilas').texto} />
             <Text style={st.dicaTxt}>
-              Para começar: entre no programa Amazon Associados, gere o link de afiliada do produto (barra SiteStripe) e cadastre aqui com uma foto.
+              Para começar: entre no programa de afiliados da loja (Amazon Associados, Mercado Livre, Shopee, Magalu…), gere o link de afiliado do produto e cadastre aqui com uma foto.
             </Text>
           </View>
         )}
@@ -127,7 +222,8 @@ export default function AdminIndicacoesScreen({ navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={st.itemCat}>{CATEGORIAS_INDICACAO.find(c => c.id === item.categoria)?.rotulo || 'Outros'}{inativo ? ' · oculta' : ''}</Text>
                 <Text style={st.itemTit} numberOfLines={2}>{item.titulo}</Text>
-                <Text style={st.itemSub}>{item.cliques || 0} clique{(item.cliques || 0) === 1 ? '' : 's'}{item.ordem ? ` · ordem ${item.ordem}` : ''}</Text>
+                <Text style={st.itemSub}>{nomePlataforma(item)} · {item.cliques || 0} clique{(item.cliques || 0) === 1 ? '' : 's'}{item.ordem ? ` · ordem ${item.ordem}` : ''}</Text>
+                {!!seloCashback(item) && <Text style={st.itemCashback}>{seloCashback(item)}</Text>}
               </View>
               <View style={st.acoes}>
                 <TouchableOpacity style={st.acaoBtn} onPress={() => abrirEditar(item)} accessibilityLabel="Editar">
@@ -151,7 +247,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
           <View style={st.overlay}>
             <View style={st.modalCard}>
               <View style={st.modalHeader}>
-                <Text style={st.modalTitle}>{modal?.mode === 'add' ? 'Nova indicação' : 'Editar indicação'}</Text>
+                <Text style={st.modalTitle}>{modal?.mode === 'add' ? 'Novo item de afiliado' : 'Editar item de afiliado'}</Text>
                 <TouchableOpacity onPress={fechar} accessibilityLabel="Fechar" style={st.fechar}><Ionicons name="close" size={20} color={colors.td} /></TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -161,12 +257,33 @@ export default function AdminIndicacoesScreen({ navigation }) {
                 <Text style={st.label}>Por que indicamos</Text>
                 <TextInput style={[st.input, st.multi]} value={form.descricao} onChangeText={v => set('descricao', v)} multiline placeholder="Uma frase curta e acolhedora" placeholderTextColor={colors.tl} />
 
-                <Text style={st.label}>Link de afiliada (Amazon) *</Text>
-                <TextInput style={st.input} value={form.link} onChangeText={v => set('link', v)} autoCapitalize="none" keyboardType="url" placeholder="https://amzn.to/..." placeholderTextColor={colors.tl} />
-                {!linkAmazon && <Text style={st.alerta}>Este link não parece ser da Amazon. Confira se é o link de afiliada.</Text>}
+                <Text style={st.label}>Loja</Text>
+                <View style={st.chipWrap}>
+                  {PLATAFORMAS_AFILIADO.map(p => (
+                    <TouchableOpacity key={p.id} style={[st.chip, form.plataforma === p.id && st.chipSel]} onPress={() => set('plataforma', p.id)}>
+                      <Text style={[st.chipText, form.plataforma === p.id && st.chipTextSel]}>{p.nome}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {form.plataforma === 'outra' && (
+                  <TextInput style={[st.input, { marginTop: 8 }]} value={form.plataformaNome} onChangeText={v => set('plataformaNome', v)} placeholder="Nome da loja (ex.: Amazon Kindle, Americanas)" placeholderTextColor={colors.tl} />
+                )}
 
-                <Text style={st.label}>Imagem (link direto ou Google Drive)</Text>
-                <TextInput style={st.input} value={form.imagemUrl} onChangeText={v => set('imagemUrl', v)} autoCapitalize="none" placeholder="https://..." placeholderTextColor={colors.tl} />
+                <Text style={st.label}>Link de afiliado *</Text>
+                <TextInput style={st.input} value={form.link} onChangeText={v => set('link', v)} autoCapitalize="none" keyboardType="url" placeholder={plat.exemplo} placeholderTextColor={colors.tl} />
+                {!linkConfere && <Text style={st.alerta}>Este link não parece ser da {plat.nome}. Confira se é o link de afiliado.</Text>}
+
+                <Text style={st.label}>Texto do botão</Text>
+                <TextInput style={st.input} value={form.textoBotao} onChangeText={v => set('textoBotao', v)} placeholder={textoBotaoAfiliado({ plataforma: form.plataforma, plataformaNome: form.plataformaNome })} placeholderTextColor={colors.tl} />
+                <Text style={st.ajuda}>Deixe em branco para usar “{textoBotaoAfiliado({ plataforma: form.plataforma, plataformaNome: form.plataformaNome })}”.</Text>
+
+                <Text style={st.label}>Foto do produto</Text>
+                <TouchableOpacity style={[st.fotoBtn, enviandoFoto && { opacity: 0.6 }]} onPress={enviarFoto} disabled={enviandoFoto}>
+                  {enviandoFoto ? <ActivityIndicator size="small" color={colors.lilasTexto} /> : <Ionicons name="image-outline" size={18} color={colors.lilasTexto} />}
+                  <Text style={st.fotoBtnTxt}>{enviandoFoto ? 'Enviando…' : form.imagemCaminho ? 'Trocar foto' : 'Enviar foto do aparelho'}</Text>
+                </TouchableOpacity>
+                <Text style={st.ajuda}>Ou cole o link de uma imagem (link direto ou Google Drive):</Text>
+                <TextInput style={st.input} value={form.imagemUrl} onChangeText={v => setForm(p => ({ ...p, imagemUrl: v, imagemCaminho: '' }))} autoCapitalize="none" placeholder="https://..." placeholderTextColor={colors.tl} />
                 {!!previa && <Image source={{ uri: previa }} style={st.previa} resizeMode="contain" />}
 
                 <Text style={st.label}>Categoria</Text>
@@ -180,6 +297,55 @@ export default function AdminIndicacoesScreen({ navigation }) {
 
                 <Text style={st.label}>Ordem na vitrine (opcional)</Text>
                 <TextInput style={st.input} value={form.ordem} onChangeText={v => set('ordem', v.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="1 aparece primeiro" placeholderTextColor={colors.tl} />
+
+                <Recolhivel
+                  titulo="Cashback e comissão"
+                  subtitulo={form.cashbackAtivo ? 'Este item dá cashback' : 'Sem cashback para a usuária'}
+                  icone="wallet-outline"
+                  inicialAberto={form.cashbackAtivo}
+                  estilo={{ marginTop: spacing.md }}
+                >
+                  <View style={st.dica}>
+                    <Ionicons name="lock-closed-outline" size={16} color={acento('lilas').texto} />
+                    <Text style={st.dicaTxt}>A comissão do app é só para vocês: a usuária vê apenas o cashback dela.</Text>
+                  </View>
+                  <Text style={st.label}>Comissão do app na loja (%)</Text>
+                  <TextInput style={st.input} value={form.comissaoPercentual} onChangeText={v => set('comissaoPercentual', v.replace(/[^\d,.]/g, ''))} keyboardType="decimal-pad" placeholder="Ex.: 10" placeholderTextColor={colors.tl} />
+                  <Text style={st.label}>Preço de referência (R$, para a simulação)</Text>
+                  <TextInput style={st.input} value={form.precoReferencia} onChangeText={v => set('precoReferencia', v.replace(/[^\d,.]/g, ''))} keyboardType="decimal-pad" placeholder="Ex.: 22,00" placeholderTextColor={colors.tl} />
+
+                  <View style={st.switchRow}>
+                    <Text style={st.switchTxt}>Dar cashback à usuária</Text>
+                    <Switch value={form.cashbackAtivo} onValueChange={v => set('cashbackAtivo', v)} trackColor={{ true: colors.lav4 }} />
+                  </View>
+                  {form.cashbackAtivo && (
+                    <>
+                      <View style={[st.chipWrap, { marginTop: 10 }]}>
+                        {[{ id: 'fixo', rotulo: 'Valor fixo (R$)' }, { id: 'percentual', rotulo: '% do valor da compra' }].map(t => (
+                          <TouchableOpacity key={t.id} style={[st.chip, form.cashbackTipo === t.id && st.chipSel]} onPress={() => set('cashbackTipo', t.id)}>
+                            <Text style={[st.chipText, form.cashbackTipo === t.id && st.chipTextSel]}>{t.rotulo}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      {form.cashbackTipo === 'fixo' ? (
+                        <TextInput style={[st.input, { marginTop: 8 }]} value={form.cashbackFixo} onChangeText={v => set('cashbackFixo', v.replace(/[^\d,.]/g, ''))} keyboardType="decimal-pad" placeholder="Ex.: 0,20" placeholderTextColor={colors.tl} />
+                      ) : (
+                        <TextInput style={[st.input, { marginTop: 8 }]} value={form.cashbackPercentual} onChangeText={v => set('cashbackPercentual', v.replace(/[^\d,.]/g, ''))} keyboardType="decimal-pad" placeholder="Ex.: 1 (= 1% do valor pago)" placeholderTextColor={colors.tl} />
+                      )}
+                      {!!seloCashback({ cashbackAtivo: true, cashbackTipo: form.cashbackTipo, cashbackFixoCentavos: reaisParaCentavos(form.cashbackFixo), cashbackPercentual: numOuNull(form.cashbackPercentual) }) && (
+                        <Text style={st.ajuda}>No app aparece: “{seloCashback({ cashbackAtivo: true, cashbackTipo: form.cashbackTipo, cashbackFixoCentavos: reaisParaCentavos(form.cashbackFixo), cashbackPercentual: numOuNull(form.cashbackPercentual) })}”.</Text>
+                      )}
+                    </>
+                  )}
+                  {!!simPreco && (simComissao > 0 || simCashback > 0) && (
+                    <View style={st.simulacao}>
+                      <Text style={st.simTit}>Simulação numa compra de {brlCentavos(simPreco)}</Text>
+                      {simComissao > 0 && <Text style={st.simLinha}>Comissão estimada do app: {brlCentavos(simComissao)}</Text>}
+                      {simCashback > 0 && <Text style={st.simLinha}>Cashback para a usuária: {brlCentavos(simCashback)}</Text>}
+                      {simComissao > 0 && simCashback > simComissao && <Text style={st.alerta}>O cashback está maior que a comissão: o app pagaria a diferença.</Text>}
+                    </View>
+                  )}
+                </Recolhivel>
 
                 <View style={st.switchRow}>
                   <Text style={st.switchTxt}>Visível no app</Text>
@@ -226,6 +392,16 @@ const st = criarEstilos(() => ({
   itemCat: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.lilasTexto, letterSpacing: 0.8, textTransform: 'uppercase' },
   itemTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, marginTop: 2 },
   itemSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  itemCashback: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.sageFg, marginTop: 2 },
+  pedidosAviso: { ...est.vidro(20), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: spacing.md },
+  pedidosTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
+  pedidosSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
+  ajuda: { ...est.dica() },
+  fotoBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 46, borderRadius: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.lav4, backgroundColor: colors.lav1 },
+  fotoBtnTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
+  simulacao: { marginTop: spacing.md, padding: 12, borderRadius: 16, backgroundColor: colors.vidroTenue, borderWidth: 1, borderColor: colors.bordaLuz, gap: 4 },
+  simTit: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.titulo },
+  simLinha: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2 },
   acoes: { flexDirection: 'row', gap: 4 },
   acaoBtn: { ...est.botaoIcone(), width: 38, height: 38 },
   overlay: { ...est.veu(), justifyContent: 'flex-end' },

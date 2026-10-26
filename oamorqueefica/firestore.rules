@@ -31,7 +31,17 @@ service cloud.firestore {
 
       match /{subcollection}/{docId} {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-        allow write: if isSignedIn() && request.auth.uid == userId;
+        // "cursos" é o acesso aos cursos comprados: só o servidor libera
+        // (ver o bloco usuarios/{uid}/cursos abaixo).
+        allow write: if isSignedIn() && request.auth.uid == userId && subcollection != 'cursos';
+      }
+
+      // Cursos Atravessia: o acesso é criado pelo webhook do Stripe. A usuária
+      // só pode atualizar o próprio progresso (aulas concluídas, última aula).
+      match /cursos/{cursoId} {
+        allow update: if isSignedIn() && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['progresso', 'ultimaAulaId', 'progressoEm']);
       }
     }
 
@@ -166,6 +176,57 @@ service cloud.firestore {
 
     // Trilha de auditoria de todo o módulo — somente leitura pela admin.
     match /auditoriaBeneficios/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ── AFILIADOS (cashback de compras pelos links de afiliado) ────────────
+    // Dados internos de cada item (comissão do app, preço de referência).
+    // A usuária nunca lê: só as administradoras.
+    match /afiliadosPrivado/{itemId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Rastreio do clique (prova de que a compra começou pelo app). Gravado só
+    // pela Cloud Function registrarCliqueAfiliado; a usuária lê os seus.
+    match /rastreiosAfiliados/{docId} {
+      allow read: if isSignedIn() && (resource.data.usuarioId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Pedidos de cashback (nº do pedido, valor, comprovante). Criados pela
+    // função enviarPedidoCashbackAfiliado e analisados por
+    // analisarPedidoCashbackAfiliado: depois de enviado, ninguém altera o
+    // status pelo app — nem a usuária, nem o painel (o crédito sai no servidor).
+    match /pedidosCashbackAfiliado/{docId} {
+      allow read: if isSignedIn() && (resource.data.usuarioId == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // ===== Cursos Atravessia =====
+    // Vitrine: leitura para quem está logada; criação e edição só admin.
+    match /cursos/{cursoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    // Perfil público do profissional (sem e-mail nem token do portal).
+    // Gravado pela função salvarProfissional; a admin pode ativar/ocultar.
+    match /profissionais/{profId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    // E-mail e token do portal do profissional: só admin lê; só o servidor grava.
+    match /profissionaisPrivado/{profId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    // Vendas: criadas só pelo webhook do Stripe; valores congelados.
+    match /matriculas/{matriculaId} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    // Histórico de repasses aos profissionais (função fecharRepasse).
+    match /repasses/{repasseId} {
       allow read: if isAdmin();
       allow write: if false;
     }

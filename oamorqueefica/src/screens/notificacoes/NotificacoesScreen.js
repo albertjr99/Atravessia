@@ -40,6 +40,8 @@ const DESTINO = {
   confirmar_resgate: 'ConfirmarResgate',
   // Gerado pelas Cloud Functions do cashback (crédito recebido / a vencer).
   cashback: 'Cashback',
+  // Resposta a um pedido de cashback de afiliados (recusa com motivo).
+  cashback_afiliado: 'MeusPedidosCashback',
 };
 
 export default function NotificacoesScreen({ navigation }) {

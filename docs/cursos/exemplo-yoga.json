@@ -1,0 +1,35 @@
+{
+  "_sobre": "Curso de demonstração dos Cursos Atravessia, feito com vídeos do canal https://www.youtube.com/@yogaparavoce (channelId UCm3vAALOavIHDxbMb9rG-Pw). No painel: Conteúdo do app → Cursos → 'Importar curso de um arquivo (JSON)' e escolha este arquivo, ou cole os 5 links em 'Importar do YouTube'. Ele entra como RASCUNHO (ativo: false): revise preço, profissional e capa antes de publicar. As durações ficam em branco (sem chave YOUTUBE_API_KEY o YouTube não informa) e podem ser preenchidas à mão.",
+  "profissional": {
+    "nome": "Yoga para Você",
+    "bio": "Canal de yoga e meditação com práticas simples para o dia a dia, para desacelerar a mente e cuidar do corpo com gentileza.",
+    "fotoUrl": "",
+    "email": "",
+    "repasseTipo": "percentual",
+    "repasseValor": 50,
+    "repasseBase": "bruto",
+    "ativo": true
+  },
+  "curso": {
+    "titulo": "Yoga para acalmar a mente",
+    "subtitulo": "Cinco encontros curtos para respirar, desacelerar e olhar para dentro com carinho.",
+    "descricao": "Um curso para quem sente a mente acelerada e quer encontrar, no próprio ritmo, um pouco mais de calma. Em cinco aulas, você conhece o que o yoga faz pela mente, pratica uma meditação guiada para dias intensos e aprende, com a sabedoria de mais de 2.000 anos do yoga, a atravessar momentos de ruído — notícias, eleições, informações demais — com mais presença. Não é preciso experiência: basta um cantinho tranquilo e alguns minutos para você.",
+    "capaUrl": "https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg",
+    "preco": 97,
+    "ativo": false,
+    "destaque": true,
+    "programa": [
+      { "titulo": "Módulo 1 · Autocuidado como propósito", "descricao": "Por que cuidar de si não é egoísmo: o yoga como prática de presença e de cuidado, inspirado no Outubro Rosa." },
+      { "titulo": "Módulo 2 · Meditação para dias intensos", "descricao": "Uma meditação guiada para acalmar a mente e desacelerar quando tudo parece urgente." },
+      { "titulo": "Módulo 3 · O que o yoga faz com a mente", "descricao": "Atenção, respiração e emoções: o que acontece por dentro quando praticamos." },
+      { "titulo": "Módulo 4 · Serenidade em tempos de ruído", "descricao": "Como agir com calma em períodos de tensão coletiva e como não se perder em notícias falsas, com uma lição antiga do yoga." }
+    ],
+    "aulas": [
+      { "id": "a1", "youtubeId": "UBnFUY9CwCo", "titulo": "Yoga e Outubro Rosa: Autocuidado Como Propósito Maior", "duracao": "", "thumb": "https://i.ytimg.com/vi/UBnFUY9CwCo/hqdefault.jpg", "ordem": 1, "gratis": true },
+      { "id": "a2", "youtubeId": "vf0Vqb-TKpA", "titulo": "Meditação Guiada para Acalmar a Mente | Desacelere em Dias Intensos", "duracao": "", "thumb": "https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg", "ordem": 2, "gratis": false },
+      { "id": "a3", "youtubeId": "babdn-oFs0U", "titulo": "O Que o Yoga Realmente Faz com a Sua Mente?", "duracao": "", "thumb": "https://i.ytimg.com/vi/babdn-oFs0U/hqdefault.jpg", "ordem": 3, "gratis": false },
+      { "id": "a4", "youtubeId": "NEbLrV7VyrY", "titulo": "ELEIÇÕES, COMO AGIR?", "duracao": "", "thumb": "https://i.ytimg.com/vi/NEbLrV7VyrY/hqdefault.jpg", "ordem": 4, "gratis": false },
+      { "id": "a5", "youtubeId": "I_TJX1dBTl4", "titulo": "Como Não Cair em Fake News? Uma Lição do Yoga de 2.000 Anos", "duracao": "", "thumb": "https://i.ytimg.com/vi/I_TJX1dBTl4/hqdefault.jpg", "ordem": 5, "gratis": false }
+    ]
+  }
+}

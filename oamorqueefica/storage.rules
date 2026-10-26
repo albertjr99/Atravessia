@@ -74,5 +74,37 @@ service firebase.storage {
                    && request.resource.size < 15 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
+
+    // Afiliados: fotos dos produtos da vitrine (até 10 MB, só imagem).
+    // Leitura aberta (a foto aparece no app); envio e exclusão só admin.
+    match /afiliados/{file} {
+      allow read: if true;
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Comprovantes de compra do cashback de afiliados (até 8 MB, só imagem).
+    // Cada usuária envia apenas na própria pasta e não substitui nem apaga
+    // depois de enviado; leitura só dela e das administradoras.
+    match /comprovantesAfiliados/{userId}/{file} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow update, delete: if isAdmin();
+    }
+
+    // Cursos Atravessia: capas dos cursos e fotos dos profissionais (até 10 MB,
+    // só imagem). Leitura pública (a capa também aparece na página de
+    // pagamento da Stripe e no portal do profissional); envio só admin.
+    match /cursos/{allPaths=**} {
+      allow read: if true;
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
   }
 }
