@@ -5,6 +5,7 @@ import {
   collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconQuote, IconSpark, IconTrash, IconSearch } from './Icons';
+import AcoesItem from './AcoesItem';
 
 const VAZIO = { texto: '', autor: '', reflexao: '' };
 
@@ -135,13 +136,12 @@ export default function Frases({ showToast }) {
             <div className="frase-text">"{item.texto}"</div>
             {item.autor && <div className="frase-autor">— {item.autor}</div>}
             {item.reflexao && <div className="frase-reflexao">{item.reflexao}</div>}
+            <AcoesItem onEditar={() => abrirEditar(item)} onApagar={() => handleExcluir(item)} rotuloApagar="Apagar frase" />
           </div>
           <div className="frase-actions">
-            <button className="icon-btn" onClick={() => abrirEditar(item)} title="Editar"><IconEdit size={16} /></button>
             <button className="icon-btn" onClick={() => handleToggle(item)} title={item.ativa === false ? 'Ativar' : 'Desativar'}>
               {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
             </button>
-            <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir"><IconTrash size={16} /></button>
           </div>
         </div>
       ))}

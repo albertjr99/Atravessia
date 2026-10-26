@@ -27,6 +27,8 @@ const normalizarPlano = (p) => {
 export default function AdminHomeScreen({ navigation }) {
   const { perfil } = useAuth();
   const { width } = useWindowDimensions();
+  // No tablet, a mesma tela do celular (mesma ordem, cartões e estilo), só
+  // centralizada com largura máxima; os números seguem em 2 colunas.
   const largo = width >= 700;
   const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: {} });
   const [conteudo, setConteudo] = useState({ conteudos: 0, audios: 0, parcerias: 0 });
@@ -97,8 +99,8 @@ export default function AdminHomeScreen({ navigation }) {
 
         <View style={s.pageHeader}>
           <Text style={s.sobretitulo}>Dashboard</Text>
-          <Text style={[s.pageTitle, largo && s.pageTitleLargo]}>{saudacaoAdmin(pareceNome(perfil?.apelido) ? perfil.apelido : primeiroNome(perfil?.nome))}</Text>
-          <Text style={s.pageSub}>Bem-vinda ao painel Atravessia</Text>
+          <Text style={s.pageTitle}>{saudacaoAdmin(pareceNome(perfil?.apelido) ? perfil.apelido : primeiroNome(perfil?.nome))}</Text>
+          <Text style={s.pageSub}>Boas-vindas ao painel Atravessia</Text>
         </View>
 
         {erroCheckins && (
@@ -112,17 +114,17 @@ export default function AdminHomeScreen({ navigation }) {
         )}
 
         {/* Herói: usuárias cadastradas + recorte por plano */}
-        <View style={[s.heroi, largo && s.heroiLargo]}>
-          <View style={[s.heroiEsq, largo && s.heroiEsqLargo]}>
+        <View style={s.heroi}>
+          <View style={s.heroiEsq}>
             <Pilula icone="people-outline" nome="lilas" tam={46} tamIcone={22} />
-            <View style={largo ? { flex: 1 } : null}>
+            <View>
               <Text style={s.heroiNum}>{mostrar(stats.usuarias)}</Text>
               <Text style={s.heroiRot}>usuárias cadastradas</Text>
             </View>
           </View>
-          <View style={largo ? s.recorteLargo : s.recorte}>
+          <View style={[s.recorte, largo && s.recorteLargo]}>
             {recorte.map(t => (
-              <View key={t.label} style={[s.mini, largo ? s.miniLargo : s.miniFlex]}>
+              <View key={t.label} style={[s.mini, s.miniFlex]}>
                 <Pilula icone={t.icon} nome={t.acento} tam={34} tamIcone={17} />
                 <View style={{ flexShrink: 1 }}>
                   <Text style={s.miniNum}>{mostrar(t.value)}</Text>
@@ -136,7 +138,7 @@ export default function AdminHomeScreen({ navigation }) {
         {/* Números compactos */}
         <View style={s.bento}>
           {tiles.map(t => (
-            <View key={t.label} style={[s.tile, largo && s.tileLargo]}>
+            <View key={t.label} style={s.tile}>
               <View style={s.tileLinha}>
                 <Pilula icone={t.icon} nome={t.acento} tam={42} tamIcone={20} />
                 <Text style={s.tileNum} numberOfLines={1} adjustsFontSizeToFit>{mostrar(t.value)}</Text>
@@ -173,11 +175,10 @@ export default function AdminHomeScreen({ navigation }) {
 
 const s = criarEstilos(() => ({
   scroll: { paddingHorizontal: spacing.lg, paddingTop: 14, paddingBottom: 48 },
-  scrollLargo: { paddingHorizontal: 28, paddingTop: 26 },
+  scrollLargo: { paddingHorizontal: 28, paddingTop: 26, width: '100%', maxWidth: 900, alignSelf: 'center' },
   pageHeader: { marginBottom: 18, paddingHorizontal: 4 },
   sobretitulo: { ...est.sobretitulo(), fontFamily: 'Figtree_800ExtraBold', letterSpacing: 1.8 },
   pageTitle: { fontFamily: 'Marca', fontSize: 36, lineHeight: 42, color: colors.titulo, marginTop: 2 },
-  pageTitleLargo: { fontSize: 40, lineHeight: 46 },
   pageSub: { ...est.subtitulo(), fontSize: 15.5 },
   avisoBox: { ...est.aviso('dourado'), marginBottom: spacing.md },
   avisoTxt: est.avisoTxt('dourado'),
@@ -188,20 +189,17 @@ const s = criarEstilos(() => ({
     ...est.sombraForte(),
     flexDirection: 'row', gap: 12, padding: 16,
   },
-  heroiLargo: { padding: 20, alignItems: 'center', gap: 16 },
   heroiEsq: { flex: 1, minWidth: 0, justifyContent: 'space-between', gap: 18, paddingLeft: 2 },
-  heroiEsqLargo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   heroiNum: { fontFamily: F_NUM, fontSize: 56, lineHeight: 60, letterSpacing: -1.8, color: colors.titulo },
   heroiRot: { fontFamily: fonts.bodySemi, fontSize: 15, lineHeight: 20, color: colors.texto2, marginTop: 2 },
   recorte: { width: 172, gap: 8 },
-  recorteLargo: { flexDirection: 'row', gap: 12 },
+  recorteLargo: { width: 260 },
   miniFlex: { flex: 1 },
   mini: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingVertical: 12, paddingHorizontal: 11, borderRadius: 18,
     backgroundColor: colors.vidroTenue, borderWidth: 1, borderColor: colors.bordaLuz,
   },
-  miniLargo: { width: 210, paddingVertical: 14, paddingHorizontal: 14 },
   miniNum: { fontFamily: F_NUM, fontSize: 21, lineHeight: 25, color: colors.titulo },
   miniRot: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 17, color: colors.texto2 },
 
@@ -212,7 +210,6 @@ const s = criarEstilos(() => ({
     flexBasis: '46%', flexGrow: 1, gap: 12,
     paddingTop: 14, paddingBottom: 16, paddingHorizontal: 14,
   },
-  tileLargo: { flexBasis: '22%' },
   tileLinha: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   tileNum: { flexShrink: 1, fontFamily: F_NUM, fontSize: 30, lineHeight: 34, letterSpacing: -0.6, color: colors.titulo, textAlign: 'right' },
   tileRot: { fontFamily: fonts.bodySemi, fontSize: 13.5, color: colors.texto2 },

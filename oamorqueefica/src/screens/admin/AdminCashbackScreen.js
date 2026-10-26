@@ -11,6 +11,7 @@ import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { brl } from '../cashback/CashbackScreen';
 import { est, acento, Degrade } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 
 // Cashback: regras do programa, números gerais, crédito manual e estorno.
 // Os créditos e usos só são gravados pelas Cloud Functions.
@@ -141,8 +142,12 @@ export default function AdminCashbackScreen({ navigation }) {
         </View>
         <Text style={st.nota}>{resumo.pessoas} pessoa{resumo.pessoas === 1 ? '' : 's'} já receberam cashback.</Text>
 
-        <Text style={st.secTit}>Regras do programa</Text>
-        <View style={st.card}>
+        <Recolhivel
+          titulo="Regras do programa"
+          subtitulo={`${cfg.ativo ? 'Ativo' : 'Pausado'} · ${cfg.percentual || 0}% de cashback`}
+          icone="options-outline"
+          estilo={{ marginTop: spacing.lg }}
+        >
           <View style={st.switchRow}>
             <View style={{ flex: 1 }}>
               <Text style={st.switchTxt}>Programa ativo</Text>
@@ -176,11 +181,13 @@ export default function AdminCashbackScreen({ navigation }) {
             <Degrade />
             {salvandoCfg ? <ActivityIndicator color="white" size="small" /> : <Text style={st.btnTxt}>Salvar regras</Text>}
           </TouchableOpacity>
-        </View>
+        </Recolhivel>
 
-        <Text style={st.secTit}>Conceder crédito</Text>
-        <View style={st.card}>
-          <Text style={st.ajuda}>Para cortesias ou ajustes. A pessoa recebe uma notificação no app.</Text>
+        <Recolhivel
+          titulo="Conceder crédito"
+          subtitulo="Para cortesias ou ajustes. A pessoa recebe uma notificação no app."
+          icone="add-circle-outline"
+        >
           <Text style={st.label}>E-mail da usuária</Text>
           <TextInput style={st.input} value={conceder.email} onChangeText={v => setConceder(c => ({ ...c, email: v }))} autoCapitalize="none" keyboardType="email-address" placeholder="nome@email.com" placeholderTextColor={colors.tl} />
           <View style={st.linha}>
@@ -197,7 +204,7 @@ export default function AdminCashbackScreen({ navigation }) {
             <Degrade />
             {enviando ? <ActivityIndicator color="white" size="small" /> : <Text style={st.btnTxt}>Conceder crédito</Text>}
           </TouchableOpacity>
-        </View>
+        </Recolhivel>
 
         <Text style={st.secTit}>Movimentos recentes</Text>
         {recentes.length === 0 ? (

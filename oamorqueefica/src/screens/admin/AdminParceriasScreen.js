@@ -9,7 +9,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, BotaoAdmin } from './adminEstilo';
+import { est, acento, BotaoAdmin, AcoesItem, useFormRecolhivel } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 import * as ImagePicker from 'expo-image-picker';
 import { confirmar } from '../../utils/confirm';
 import { uploadToStorage } from '../../utils/storageUpload';
@@ -76,6 +77,8 @@ export default function AdminParceriasScreen({ navigation }) {
 
   const [erroLista, setErroLista] = useState('');
   const rolagem = useRef(null);
+  // Formulário fechado por padrão; abre em "Nova parceria" ou ao editar.
+  const form = useFormRecolhivel(rolagem);
 
   useEffect(() => {
     // Sem orderBy: o Firestore descartaria parcerias sem `criadoEm` e um
@@ -174,7 +177,7 @@ export default function AdminParceriasScreen({ navigation }) {
     setCashbackAtivo(p.cashback?.ativo !== false);
     setCashbackPercentual(p.cashback?.percentual != null ? String(p.cashback.percentual).replace('.', ',') : '');
     setCashbackCondicoes(p.cashback?.condicoes || '');
-    rolagem.current?.scrollTo({ y: 0, animated: true });
+    form.abrirERolar();
   };
 
   const handlePublicar = async () => {
@@ -234,6 +237,7 @@ export default function AdminParceriasScreen({ navigation }) {
         Alert.alert('', 'Parceria publicada com sucesso!');
       }
       limparFormulario();
+      form.setAberto(false);
     } catch (e) {
       Alert.alert('Erro', `Não foi possível publicar a parceria.${e?.message ? `\n${e.message}` : ''}`);
     } finally {
@@ -292,15 +296,23 @@ export default function AdminParceriasScreen({ navigation }) {
         </View>
 
         {/* ── Formulário ── */}
-        <View style={s.form}>
-          <View style={s.formTopo}>
-            <Text style={[s.cardTitle, { flex: 1, marginBottom: 0 }]}>{editId ? 'Editar parceria' : 'Nova parceria / benefício'}</Text>
-            {editId && (
-              <TouchableOpacity onPress={limparFormulario} style={s.cancelarEdicao}>
+        <View onLayout={form.onLayout}>
+        <Recolhivel
+          titulo={editId ? 'Editar parceria' : 'Nova parceria / benefício'}
+          subtitulo={editId ? (titulo || 'Parceria sem título') : 'Toque para cadastrar uma nova parceria'}
+          icone={editId ? 'create-outline' : 'add-circle-outline'}
+          aberto={form.aberto}
+          onAlternar={form.setAberto}
+          estilo={{ marginBottom: spacing.xl }}
+        >
+          {editId && (
+            <View style={s.formTopo}>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity onPress={() => { limparFormulario(); form.setAberto(false); }} style={s.cancelarEdicao}>
                 <Text style={s.cancelarEdicaoTxt}>Cancelar edição</Text>
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
 
           <Text style={s.formLabel}>Título <Text style={s.required}>*</Text></Text>
           <TextInput
@@ -502,6 +514,7 @@ export default function AdminParceriasScreen({ navigation }) {
             onPress={handlePublicar}
             style={{ marginTop: spacing.lg }}
           />
+        </Recolhivel>
         </View>
 
         {/* ── Lista ── */}
@@ -522,7 +535,8 @@ export default function AdminParceriasScreen({ navigation }) {
 
         {parcerias.length > 0 && <View style={s.lista}>
         {parcerias.map((p, i) => (
-          <View key={p.id} style={[s.item, i > 0 && s.itemDiv]}>
+          <View key={p.id} style={[s.itemBloco, i > 0 && s.itemDiv]}>
+          <View style={s.item}>
             {p.imagemUrl ? (
               <Image source={{ uri: urlDeImagem(p.imagemUrl) }} style={s.itemThumb} resizeMode="cover" />
             ) : (
@@ -566,13 +580,9 @@ export default function AdminParceriasScreen({ navigation }) {
                 thumbColor={p.ativo !== false ? colors.lav4 : colors.tl}
               />
               <Text style={s.switchLbl}>{p.ativo !== false ? 'Ativa' : 'Oculta'}</Text>
-              <TouchableOpacity onPress={() => editar(p)} style={{ padding: 4, marginTop: 4 }} accessibilityLabel="Editar">
-                <Ionicons name="create-outline" size={19} color={colors.lilasIcone} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleRemover(p.id)} style={{ padding: 4, marginTop: 4 }}>
-                <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-              </TouchableOpacity>
             </View>
+          </View>
+            <AcoesItem onEditar={() => editar(p)} onApagar={() => handleRemover(p.id)} rotuloApagar="Apagar parceria" />
           </View>
         ))}
         </View>}
@@ -674,7 +684,8 @@ const s = criarEstilos(() => ({
   sectionTitle: { ...est.secao(), marginBottom: 10 },
   emptyText: { ...est.legenda(), marginBottom: spacing.md },
   lista: { ...est.vidro(26), paddingVertical: 2 },
-  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },
+  itemBloco: { paddingVertical: 14, paddingHorizontal: 14 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   itemDiv: est.divisoria(),
   itemThumb: { width: 60, height: 60, borderRadius: 16, flexShrink: 0 },
   itemThumbPlaceholder: { backgroundColor: acento('pessego').fundo, alignItems: 'center', justifyContent: 'center' },

@@ -10,6 +10,7 @@ import { est, acento, BotaoAdmin } from './adminEstilo';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import Recolhivel from '../../components/Recolhivel';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo' },
@@ -90,7 +91,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
         <Text style={styles.pageTitle}>Notificações</Text>
         <Text style={styles.pageSub}>Publique avisos e mensagens para as usuárias do app.</Text>
 
-        <View style={styles.form}>
+        <Recolhivel titulo="Nova notificação" subtitulo="Toque para escrever e publicar um aviso" icone="add-circle-outline" estilo={{ marginBottom: spacing.xl }}>
           <Text style={styles.formLabel}>Tipo</Text>
           <View style={styles.row}>
             {TIPOS.map(t => (
@@ -119,7 +120,7 @@ export default function AdminNotificacoesScreen({ navigation }) {
             onChangeText={setTexto}
           />
           <BotaoAdmin title={enviando ? 'Publicando...' : 'Publicar notificação'} onPress={handlePublicar} icone="paper-plane-outline" style={{ marginTop: spacing.lg }} />
-        </View>
+        </Recolhivel>
 
         <Text style={styles.sectionTitle}>Publicadas</Text>
         {lista.length === 0 && <Text style={styles.emptyText}>Nenhuma notificação publicada ainda.</Text>}

@@ -5,6 +5,7 @@ import {
   collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTrash, IconUp, IconDown, IconWhatsapp, IconVideo, IconMusic } from './Icons';
+import AcoesItem from './AcoesItem';
 
 // Ícone por tipo (só exibição).
 const ICONE_TIPO = { link: IconLink, whatsapp: IconWhatsapp, video: IconVideo, audio: IconMusic };
@@ -111,6 +112,7 @@ export default function Travessia({ showToast }) {
                   <span className="badge">{TIPOS.find(t => t.id === item.tipo)?.label || item.tipo}</span>
                   {item.ativo === false && <span className="badge badge-inactive">Inativo</span>}
                 </div>
+                <AcoesItem onEditar={() => openEdit(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar item" />
               </div>
               <div className="list-card-actions">
                 <button className="icon-btn" onClick={() => mover(item, -1)} disabled={idx === 0} title="Subir"><IconUp size={16} /></button>
@@ -118,8 +120,6 @@ export default function Travessia({ showToast }) {
                 <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                   {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}

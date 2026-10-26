@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, Degrade } from './adminEstilo';
+import { est, acento, Degrade, AcoesItem } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 
@@ -160,13 +160,8 @@ export default function AdminTravessiaScreen({ navigation }) {
               <TouchableOpacity onPress={() => toggleAtivo(item)} style={s.actionBtn}>
                 <Ionicons name={item.ativo === false ? 'eye-off-outline' : 'eye-outline'} size={17} color={colors.texto2} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => abrirEditar(item)} style={s.actionBtn}>
-                <Ionicons name="create-outline" size={17} color={colors.lilasIcone} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => excluir(item)} style={s.actionBtn}>
-                <Ionicons name="trash-outline" size={17} color={colors.roseTexto} />
-              </TouchableOpacity>
             </View>
+            <AcoesItem onEditar={() => abrirEditar(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar item" />
           </View>
         ))}
         </View>}

@@ -14,7 +14,7 @@ import { uploadToStorage } from '../../utils/storageUpload';
 import { confirmar } from '../../utils/confirm';
 import { db, storage } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, BotaoAdmin, Degrade } from './adminEstilo';
+import { est, acento, BotaoAdmin, Degrade, AcoesItem } from './adminEstilo';
 import { VIDEOS, CartaoVideo } from './AdminVideosScreen';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -367,13 +367,8 @@ export default function AdminProdutosScreen({ navigation }) {
           <TouchableOpacity onPress={() => alternarAtivo(item)} style={s.acaoBtn} accessibilityLabel={ativo ? 'Desativar' : 'Ativar'}>
             <Ionicons name={ativo ? 'eye-outline' : 'eye-off-outline'} size={18} color={ativo ? colors.lilasIcone : colors.tl} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => abrirEdicao(item)} style={s.acaoBtn} accessibilityLabel="Editar">
-            <Ionicons name="create-outline" size={18} color={colors.lilasIcone} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => excluir(item)} style={s.acaoBtn} accessibilityLabel="Excluir">
-            <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-          </TouchableOpacity>
         </View>
+        <AcoesItem onEditar={() => abrirEdicao(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar item" />
       </View>
     );
   };

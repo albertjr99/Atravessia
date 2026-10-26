@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore';
 import { ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { IconAudio, IconClose, IconEdit, IconEye, IconEyeOff, IconPlay, IconSpark, IconTrash, IconTime, IconUpload } from './Icons';
+import AcoesItem from './AcoesItem';
 
 const EMOCOES = [
   { id: 'triste', label: 'Triste' }, { id: 'saudade', label: 'Saudade' },
@@ -177,6 +178,7 @@ export default function Audios({ showToast }) {
                   </div>
                 )}
                 {item.url && <div className="audio-card-url">{item.url}</div>}
+                <AcoesItem onEditar={() => openEdit(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar áudio" />
               </div>
               <div className="audio-card-actions">
                 {item.url && (
@@ -187,8 +189,6 @@ export default function Audios({ showToast }) {
                 <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                   {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
             </div>
           ))}

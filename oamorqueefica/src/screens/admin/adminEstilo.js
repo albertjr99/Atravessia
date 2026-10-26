@@ -220,9 +220,64 @@ export function Pilula({ icone, nome = 'lilas', tam = 42, tamIcone }) {
   );
 }
 
+// Rodapé de ações de um item de lista: "Editar" (botão com rótulo) à
+// esquerda e "Apagar" menor, em vermelho, afastado à direita, separados por
+// uma linha. Áreas de toque ≥ 44px. A confirmação ao apagar fica com a tela.
+// `extra` entra entre os dois (ex.: duplicar, ver detalhes).
+export function AcoesItem({ onEditar, onApagar, rotuloEditar = 'Editar', rotuloApagar = 'Apagar', extra, estilo }) {
+  return (
+    <View style={[eb.acoes, estilo]}>
+      {!!onEditar && (
+        <TouchableOpacity onPress={onEditar} style={eb.editar} activeOpacity={0.8}
+          accessibilityRole="button" accessibilityLabel={rotuloEditar}>
+          <Ionicons name="create-outline" size={17} color={colors.lilasTexto} />
+          <Text style={eb.editarTxt}>{rotuloEditar}</Text>
+        </TouchableOpacity>
+      )}
+      {extra}
+      <View style={{ flex: 1, minWidth: 16 }} />
+      {!!onApagar && (
+        <TouchableOpacity onPress={onApagar} style={eb.apagar} activeOpacity={0.7}
+          accessibilityRole="button" accessibilityLabel={rotuloApagar}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+          <Ionicons name="trash-outline" size={15} color={colors.roseTexto} />
+          <Text style={eb.apagarTxt}>{rotuloApagar}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// Formulário de "novo item" num Recolhivel: fechado por padrão; ao editar,
+// abre e rola até ele. Uso: const f = useFormRecolhivel(refDoScrollView);
+// <View onLayout={f.onLayout}><Recolhivel aberto={f.aberto} onAlternar={f.setAberto} ...>
+// e, no editar, f.abrirERolar().
+export function useFormRecolhivel(rolagem, inicialAberto = false) {
+  const [aberto, setAberto] = React.useState(inicialAberto);
+  const posY = React.useRef(0);
+  const onLayout = React.useCallback((e) => { posY.current = e.nativeEvent.layout.y; }, []);
+  const abrirERolar = React.useCallback(() => {
+    setAberto(true);
+    // Espera o conteúdo abrir para rolar até o topo do formulário.
+    setTimeout(() => rolagem?.current?.scrollTo?.({ y: Math.max(0, posY.current - 12), animated: true }), 120);
+  }, [rolagem]);
+  return { aberto, setAberto, onLayout, abrirERolar };
+}
+
 const eb = criarEstilos(() => ({
   prim: est.botao(),
   primTxt: est.botaoTxt(),
   sec: est.botaoSec(),
   secTxt: est.botaoSecTxt(),
+  acoes: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+    marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.bordaSuave,
+  },
+  editar: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 16, borderRadius: 999,
+    backgroundColor: colors.lav1, borderWidth: 1, borderColor: colors.lav2,
+  },
+  editarTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.lilasTexto },
+  apagar: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 10 },
+  apagarTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.roseTexto },
 }), { escalar: false });

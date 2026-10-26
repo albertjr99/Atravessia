@@ -3,6 +3,8 @@ import { db, storage } from './firebase';
 import { doc, onSnapshot, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { IconPlay, IconTrash } from './Icons';
+import AcoesItem from './AcoesItem';
+import Recolhivel from './Recolhivel';
 
 // Vídeos de apresentação exibidos no app (porte de
 // oamorqueefica/src/screens/admin/AdminVideosScreen.js). Ficam em
@@ -113,16 +115,17 @@ export function CartaoVideo({ info, dados, showToast }) {
   };
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-        <span className="pilula xs lilas"><IconPlay size={16} /></span>
-        <h3 className="card-title" style={{ margin: 0, flex: 1 }}>{info.nome}</h3>
-        {dados?.url && (
-          <span className={`badge ${dados.ativo === false ? 'badge-inactive' : 'badge-total'}`}>
-            {dados.ativo === false ? 'Oculto' : 'No app'}
-          </span>
-        )}
-      </div>
+    // Fechado por padrão: o cabeçalho mostra o nome e se o vídeo está no app.
+    <Recolhivel
+      titulo={info.nome}
+      subtitulo={dados?.url ? (titulo || info.tituloPadrao) : 'Nenhum vídeo enviado ainda'}
+      icone={<IconPlay size={16} />}
+      direita={dados?.url ? (
+        <span className={`badge ${dados.ativo === false ? 'badge-inactive' : 'badge-total'}`}>
+          {dados.ativo === false ? 'Oculto' : 'No app'}
+        </span>
+      ) : null}
+    >
       <p className="field-hint" style={{ marginBottom: 12 }}>{info.desc}</p>
 
       {dados?.url ? (
@@ -178,14 +181,14 @@ export function CartaoVideo({ info, dados, showToast }) {
           {dados?.url && (
             <>
               <button className="btn-ghost" onClick={alternarAtivo}>{dados.ativo === false ? 'Mostrar no app' : 'Ocultar do app'}</button>
-              <button className="icon-btn icon-btn-delete" onClick={remover} title="Remover vídeo"><IconTrash size={16} /></button>
             </>
           )}
           <input ref={inputRef} type="file" accept="video/*" style={{ display: 'none' }}
             onChange={e => { enviar(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
       )}
-    </div>
+      {dados?.url && progresso == null && <AcoesItem onApagar={remover} rotuloApagar="Remover vídeo" />}
+    </Recolhivel>
   );
 }
 

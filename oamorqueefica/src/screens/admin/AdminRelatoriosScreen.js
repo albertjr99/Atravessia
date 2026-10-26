@@ -12,6 +12,7 @@ import AdminLayout from './AdminLayout';
 import { formatDataBR } from '../../utils/date';
 import { calcularMetricasFunil, planoNumero } from '../../utils/metricasFunil';
 import { est, acento, corPlano, dadoPlano } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 
 function nDiasAtras(n) {
   const d = new Date();
@@ -584,13 +585,17 @@ function AbaEmpresas({ usuarios }) {
       )}
 
       {empresas.map(([nome, users]) => (
-        <View key={nome} style={s.card}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
-            <Text style={s.cardTitle}>{nome}</Text>
+        // Lista de pessoas de cada empresa fica recolhida; o cabeçalho mostra o total.
+        <Recolhivel
+          key={nome}
+          titulo={nome}
+          icone="business-outline"
+          direita={(
             <View style={{ backgroundColor: acento('dourado').fundo, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
               <Text style={{ fontFamily: fonts.bodyBold, fontSize: 12, color: acento('dourado').texto }}>{users.length} usuária{users.length !== 1 ? 's' : ''}</Text>
             </View>
-          </View>
+          )}
+        >
           {users.map((u, i) => (
             <View key={u.id} style={[s.histRow, i === users.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={[s.emoDot, { backgroundColor: dadoPlano(u.plano || 0) }]} />
@@ -598,7 +603,7 @@ function AbaEmpresas({ usuarios }) {
               <Text style={s.histData}>{PLANO_LABELS[u.plano || 0]}</Text>
             </View>
           ))}
-        </View>
+        </Recolhivel>
       ))}
     </View>
   );

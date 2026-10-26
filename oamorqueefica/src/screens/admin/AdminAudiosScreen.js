@@ -11,7 +11,7 @@ import { ref as sRef, deleteObject, uploadBytes, getDownloadURL } from 'firebase
 import { uploadToStorage } from '../../utils/storageUpload';
 import { db, storage } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, corPlano, BotaoAdmin, Degrade } from './adminEstilo';
+import { est, acento, corPlano, BotaoAdmin, Degrade, AcoesItem } from './adminEstilo';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import AdminLayout from './AdminLayout';
@@ -291,9 +291,6 @@ export default function AdminAudiosScreen({ navigation }) {
                       color={audio.ativo ? colors.lilasIcone : colors.tl}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleExcluir(audio)} style={s.acaoBtn}>
-                    <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -310,6 +307,7 @@ export default function AdminAudiosScreen({ navigation }) {
                   })}
                 </View>
               )}
+              <AcoesItem onApagar={() => handleExcluir(audio)} rotuloApagar="Apagar áudio" />
             </View>
           ))}
           </View>

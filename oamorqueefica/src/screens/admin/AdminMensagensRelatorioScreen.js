@@ -9,6 +9,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { est, acento, Degrade } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 
 export default function AdminMensagensRelatorioScreen() {
   const [mensagens, setMensagens] = useState({});
@@ -49,16 +50,22 @@ export default function AdminMensagensRelatorioScreen() {
           Deixe vazio para usar o texto padrão do app.
         </Text>
 
-        <View style={sty.lista}>
-        {emocoes.map((emo, i) => (
-          <View key={emo.id} style={[sty.emoBlock, i > 0 && sty.emoDiv]}>
-            <View style={sty.emoHeader}>
-              <View style={[sty.emoDot, { backgroundColor: emo.dado || emo.color }]} />
-              <Text style={sty.emoLabel}>{emo.label}</Text>
-              <Text style={[sty.emoType, emo.positiva && sty.emoTypePos]}>
-                {emo.positiva ? 'positiva' : 'negativa'}
-              </Text>
-            </View>
+        {/* Uma emoção por cartão recolhível: a tela fica curta e quem edita
+            abre só a emoção que quer mudar. */}
+        {emocoes.map((emo) => (
+          <Recolhivel
+            key={emo.id}
+            titulo={emo.label}
+            subtitulo={(mensagens[emo.id] || '').trim() ? 'Mensagem personalizada' : 'Usando o texto padrão do app'}
+            direita={(
+              <View style={sty.emoHeader}>
+                <View style={[sty.emoDot, { backgroundColor: emo.dado || emo.color }]} />
+                <Text style={[sty.emoType, emo.positiva && sty.emoTypePos]}>
+                  {emo.positiva ? 'positiva' : 'negativa'}
+                </Text>
+              </View>
+            )}
+          >
             <TextInput
               style={sty.input}
               placeholder="Mensagem personalizada (deixe vazio para usar o padrão)"
@@ -68,9 +75,8 @@ export default function AdminMensagensRelatorioScreen() {
               multiline
               numberOfLines={3}
             />
-          </View>
+          </Recolhivel>
         ))}
-        </View>
 
         <TouchableOpacity
           style={[sty.saveBtn, salvando && { opacity: 0.6 }]}
@@ -93,7 +99,7 @@ const sty = criarEstilos(() => ({
   lista: { ...est.vidro(26), paddingVertical: 4 },
   emoBlock: { paddingVertical: 14, paddingHorizontal: 16 },
   emoDiv: est.divisoria(),
-  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  emoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   emoDot: { width: 12, height: 12, borderRadius: 6 },
   emoLabel: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, flex: 1 },
   emoType: {

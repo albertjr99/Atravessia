@@ -5,6 +5,7 @@ import {
   collection, addDoc, getDocs, serverTimestamp, onSnapshot, doc, updateDoc, deleteDoc,
 } from 'firebase/firestore';
 import { IconTrash } from './Icons';
+import Recolhivel from './Recolhivel';
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo', desc: 'Mensagem motivacional' },
@@ -114,8 +115,7 @@ export default function Notificacoes({ showToast }) {
         <p className="screen-sub">Envie notificações personalizadas para as usuárias do app.</p>
       </div>
 
-      <div className="card" style={{ marginBottom: 28 }}>
-        <h2 className="card-title"> Nova notificação</h2>
+      <Recolhivel titulo="Nova notificação" subtitulo="Clique para escrever e enviar uma notificação" className="recolhivel-espaco">
 
         <div className="field-group">
           <label>Tipo</label>
@@ -156,7 +156,7 @@ export default function Notificacoes({ showToast }) {
             {enviando ? 'Enviando...' : 'Enviar notificação'}
           </button>
         </div>
-      </div>
+      </Recolhivel>
 
       <div className="card">
         <h2 className="card-title"> Histórico</h2>

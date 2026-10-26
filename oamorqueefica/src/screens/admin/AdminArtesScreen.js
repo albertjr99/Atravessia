@@ -12,7 +12,8 @@ import { deleteObject, ref as refStorage } from 'firebase/storage';
 import { db, functions, storage } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
-import { est, acento, Degrade, BotaoAdmin } from './adminEstilo';
+import { est, acento, Degrade, BotaoAdmin, AcoesItem, useFormRecolhivel } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 import { confirmar } from '../../utils/confirm';
 import {
   FORMATOS_ARTE, ESTILOS_ARTE, IDEIAS_ARTE, PROVEDORES_ARTE,
@@ -129,10 +130,8 @@ function CartaoArte({ arte, onReusar, onFavoritar, onExcluir }) {
               <Ionicons name={arte.favorita ? 'heart' : 'heart-outline'} size={18} color={arte.favorita ? acento('rosa').tinta : colors.lilasTexto} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.acao} onPress={() => onExcluir(arte)} accessibilityLabel="Excluir">
-            <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-          </TouchableOpacity>
         </View>
+        <AcoesItem onApagar={() => onExcluir(arte)} rotuloApagar="Excluir" estilo={{ marginTop: 4, paddingTop: 2 }} />
       </View>
     </View>
   );
@@ -140,6 +139,7 @@ function CartaoArte({ arte, onReusar, onFavoritar, onExcluir }) {
 
 export default function AdminArtesScreen() {
   const scrollRef = useRef(null);
+  const formArte = useFormRecolhivel(scrollRef);
   const [status, setStatus] = useState(null);
   const [verConfig, setVerConfig] = useState(false);
   const [prompt, setPrompt] = useState('');
@@ -193,7 +193,7 @@ export default function AdminArtesScreen() {
     if (a.formato) setFormato(a.formato);
     if (a.estilo) setEstilo(a.estilo);
     if (typeof a.usarPaletaMarca === 'boolean') setUsarPaleta(a.usarPaletaMarca);
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    formArte.abrirERolar();
   };
 
   const favoritar = (a) => {
@@ -246,8 +246,17 @@ export default function AdminArtesScreen() {
         </TouchableOpacity>
         {verConfig && <Configuracao status={status} aoSalvar={carregarStatus} />}
 
-        {/* Criar */}
-        <View style={s.cartao}>
+        {/* Criar: fechado por padrão; abre ao tocar ou ao reusar uma descrição. */}
+        <View onLayout={formArte.onLayout}>
+        <Recolhivel
+          titulo="Criar nova arte"
+          subtitulo="Descreva, escolha formato e estilo e gere"
+          icone="sparkles-outline"
+          aberto={formArte.aberto}
+          onAlternar={formArte.setAberto}
+          estilo={{ marginBottom: 0 }}
+          estiloConteudo={{ gap: 4 }}
+        >
           <Text style={s.rotulo}>Descreva a arte</Text>
           <TextInput
             style={s.campo} multiline maxLength={1200} value={prompt} onChangeText={setPrompt}
@@ -320,6 +329,7 @@ export default function AdminArtesScreen() {
             disabled={gerando || prompt.trim().length < 3}
           />
           {gerando && <Text style={[s.dica, { textAlign: 'center' }]}>Pode levar até um minuto.</Text>}
+        </Recolhivel>
         </View>
 
         {!!erro && !gerando && (

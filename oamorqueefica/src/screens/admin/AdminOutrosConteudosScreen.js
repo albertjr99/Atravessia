@@ -13,7 +13,8 @@ import { uploadToStorage } from '../../utils/storageUpload';
 import { confirmar } from '../../utils/confirm';
 import { db, storage } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, corPlano, BotaoAdmin, Degrade } from './adminEstilo';
+import { est, acento, corPlano, BotaoAdmin, Degrade, AcoesItem } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 import { emocoes as EMOCOES_APP } from '../../data';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -417,20 +418,12 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
           </View>
 
           <View style={s.acoes}>
-            {!antigo ? (
-              <TouchableOpacity onPress={() => abrirEdicao(item)} style={s.acaoBtn} accessibilityLabel="Editar">
-                <Ionicons name="create-outline" size={18} color={colors.lilasIcone} />
-              </TouchableOpacity>
-            ) : null}
             <TouchableOpacity
               onPress={() => handleToggleAtivo(item)}
               style={s.acaoBtn}
               accessibilityLabel={ativo ? 'Desativar' : 'Ativar'}
             >
               <Ionicons name={ativo ? 'eye-outline' : 'eye-off-outline'} size={18} color={ativo ? colors.lilasIcone : colors.tl} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleExcluir(item)} style={s.acaoBtn} accessibilityLabel="Excluir">
-              <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
             </TouchableOpacity>
           </View>
         </View>
@@ -456,6 +449,7 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
         ) : semEmocao ? (
           <Text style={s.avisoEmocao}>Sem emoção vinculada — não aparece no check-in.</Text>
         ) : null}
+        <AcoesItem onEditar={!antigo ? () => abrirEdicao(item) : undefined} onApagar={() => handleExcluir(item)} rotuloApagar="Apagar" />
       </View>
     );
   };
@@ -477,14 +471,13 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={s.ajuda}>
-          <Ionicons name="information-circle-outline" size={18} color={acento('lilas').texto} />
+        <Recolhivel titulo="Como estes conteúdos aparecem" icone="information-circle-outline">
           <Text style={s.ajudaTxt}>
             Estes conteúdos aparecem para a usuária como sugestão logo depois do check-in, conforme a
             emoção escolhida, e ficam salvos nos Favoritos quando ela toca no coração. Imagem e texto
             abrem dentro do app; link abre no navegador. Áudios têm seção própria em Áudios Check-in.
           </Text>
-        </View>
+        </Recolhivel>
 
         <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
           {filtros.map(f => {

@@ -4,6 +4,7 @@ import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { IconAlert, IconChart, IconClose, IconStar, IconUsers, IconSpark } from './Icons';
 import { EMOCOES, emocaoPorId, nDiasAtras, formatDataBR } from './emocoes';
 import { calcularMetricasFunil, planoNumero } from './metricasFunil';
+import Recolhivel from './Recolhivel';
 
 // Porte de oamorqueefica/src/screens/admin/AdminRelatoriosScreen.js
 // Abas: Geral · Funil · Emoções · Usuárias · Empresas. Mesmos cálculos do app.
@@ -548,11 +549,13 @@ function AbaEmpresas({ usuarios }) {
 
       <div className="aln-rel-grid">
         {empresas.map(([nome, users]) => (
-          <div key={nome} className="card">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-              <h3 className="card-title" style={{ margin: 0 }}>{nome}</h3>
-              <span className="badge badge-total">{users.length} usuária{users.length !== 1 ? 's' : ''}</span>
-            </div>
+          // A lista de pessoas de cada empresa fica recolhida; o cabeçalho mostra o total.
+          <Recolhivel
+            key={nome}
+            titulo={nome}
+            className="aln-rel-recolhivel"
+            direita={<span className="badge badge-total">{users.length} usuária{users.length !== 1 ? 's' : ''}</span>}
+          >
             {users.map(u => (
               <div key={u.id} className="aln-hist-row">
                 <span className="aln-dot" style={{ background: PLANO_CORES[u.plano || 0] }} />
@@ -560,7 +563,7 @@ function AbaEmpresas({ usuarios }) {
                 <span className="aln-hist-data">{PLANO_LABELS[u.plano || 0]}</span>
               </div>
             ))}
-          </div>
+          </Recolhivel>
         ))}
       </div>
     </>
