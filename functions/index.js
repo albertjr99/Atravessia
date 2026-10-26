@@ -402,6 +402,9 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
             { merge: true }
           );
         }
+      } else if (session.metadata?.tipo === 'curso') {
+        // Cursos Atravessia: matrícula + acesso (ver seção CURSOS no fim do arquivo).
+        await processarCompraCurso(stripe, session);
       } else {
         await definirPlano(session.metadata?.uid, Number(session.metadata?.planoId), {
           stripeSubscriptionId: session.subscription,
@@ -424,6 +427,16 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
     case 'customer.subscription.deleted': {
       const sub = event.data.object;
       await definirPlano(sub.metadata?.uid, 0);
+      break;
+    }
+    // Cursos: pagamento confirmado depois (ex.: boleto) e reembolso.
+    case 'checkout.session.async_payment_succeeded': {
+      const session = event.data.object;
+      if (session.metadata?.tipo === 'curso') await processarCompraCurso(stripe, session);
+      break;
+    }
+    case 'charge.refunded': {
+      await processarReembolsoCurso(event.data.object);
       break;
     }
   }
@@ -1698,4 +1711,789 @@ exports.excluirArte = onCall(async (request) => {
   }
   await ref.delete();
   return { ok: true };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AFILIADOS — cashback de compras feitas pelos links de afiliado
+//
+// A vitrine continua na coleção `indicacoes` (ids e dados antigos preservados).
+// Campos novos de cada item (públicos, lidos pelo app):
+//   plataforma: 'amazon'|'mercadolivre'|'shopee'|'magalu'|'outra', plataformaNome,
+//   textoBotao, imagemUrl, imagemCaminho (se enviada para afiliados/ no Storage),
+//   cashbackAtivo, cashbackTipo: 'fixo'|'percentual', cashbackFixoCentavos, cashbackPercentual
+// A comissão do app fica em `afiliadosPrivado/{itemId}` (só admin lê):
+//   { comissaoPercentual, precoReferenciaCentavos }
+//
+// As lojas não informam quem comprou, então o fluxo é por comprovante:
+//  1. Clique no link → registrarCliqueAfiliado soma o clique e cria/atualiza o
+//     rastreio `rastreiosAfiliados/{uid}_{itemId}` (prova de que veio do app).
+//  2. A usuária envia pedido, valor e print → enviarPedidoCashbackAfiliado cria
+//     `pedidosCashbackAfiliado/{itemId}_{hash do nº do pedido}` (id fixo = um
+//     pedido por número por item, para todas as usuárias) com status 'pendente'.
+//  3. A administradora aprova ou recusa → analisarPedidoCashbackAfiliado. Ao
+//     aprovar, o crédito sai pelo mesmo creditarCashback da carteira.
+// Só estas funções (Admin SDK) gravam rastreios e pedidos; as regras negam a
+// escrita pelo app, então a usuária não altera o status depois de enviar.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const AFILIADOS_LIMITES = {
+  valorMinCentavos: 100,        // compra mínima: R$ 1,00
+  valorMaxCentavos: 300000,     // compra máxima aceita: R$ 3.000,00
+  cashbackMaxCentavos: 10000,   // cashback máximo por pedido: R$ 100,00
+  percentualMax: 50,            // ninguém devolve mais que 50% em créditos
+  pendentesMax: 5,              // pedidos em análise ao mesmo tempo, por usuária
+  diasAposClique: 60,           // pedido precisa vir até 60 dias após o último clique
+};
+const COL_PEDIDOS_AFILIADO = 'pedidosCashbackAfiliado';
+const COL_RASTREIOS_AFILIADO = 'rastreiosAfiliados';
+const NOMES_PLATAFORMA_AFILIADO = {
+  amazon: 'Amazon', mercadolivre: 'Mercado Livre', shopee: 'Shopee', magalu: 'Magalu',
+};
+
+function nomePlataformaAfiliado(item) {
+  if (item?.plataforma === 'outra') return String(item.plataformaNome || '').trim() || 'loja';
+  return NOMES_PLATAFORMA_AFILIADO[item?.plataforma] || 'Amazon';
+}
+
+// Nº do pedido sem espaços, traços e pontos, em maiúsculas: "123-456 7" e
+// "1234567" contam como o mesmo pedido.
+function normalizarNumeroPedido(numero) {
+  return String(numero || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40);
+}
+
+// Regra de cashback do item (o que vale para a usuária). null = sem cashback.
+function regraCashbackAfiliado(item) {
+  if (!item || item.cashbackAtivo !== true) return null;
+  if (item.cashbackTipo === 'percentual') {
+    const p = Number(item.cashbackPercentual);
+    if (!Number.isFinite(p) || p <= 0) return null;
+    return { tipo: 'percentual', percentual: Math.min(p, AFILIADOS_LIMITES.percentualMax) };
+  }
+  const fixo = Math.round(Number(item.cashbackFixoCentavos));
+  if (!Number.isFinite(fixo) || fixo <= 0) return null;
+  return { tipo: 'fixo', fixoCentavos: Math.min(fixo, AFILIADOS_LIMITES.cashbackMaxCentavos) };
+}
+
+function calcularCashbackAfiliado(regra, valorCentavos) {
+  if (!regra || !(valorCentavos > 0)) return 0;
+  const bruto = regra.tipo === 'percentual'
+    ? Math.floor(valorCentavos * (regra.percentual / 100))
+    : regra.fixoCentavos;
+  return Math.max(0, Math.min(bruto, valorCentavos, AFILIADOS_LIMITES.cashbackMaxCentavos));
+}
+
+// configuracoes/cashback: o cashback de afiliados só existe com o cashback
+// ligado E visível para a usuária.
+async function cashbackAfiliadosLiberado() {
+  const snap = await db.collection('configuracoes').doc('cashback').get().catch(() => null);
+  const c = snap?.data() || {};
+  return c.ativo !== false && c.exibirUsuario !== false;
+}
+
+async function pushParaUsuaria(uid, body, screen) {
+  try {
+    const u = (await db.collection('usuarios').doc(uid).get()).data();
+    if (u?.pushToken) await enviarPush([{ to: u.pushToken, title: 'Atravessia', body, data: { screen } }]);
+  } catch (e) {
+    console.warn('[afiliados] push não enviado:', e?.message);
+  }
+}
+
+// 1) Clique no link de afiliado: soma o clique do item e guarda o rastreio.
+exports.registrarCliqueAfiliado = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) return { ok: false };
+  const itemId = String(request.data?.id || '');
+  if (!itemId || itemId.includes('/')) return { ok: false };
+  const itemRef = db.collection('indicacoes').doc(itemId);
+  const item = await itemRef.get();
+  if (!item.exists) return { ok: false };
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  await itemRef.update({ cliques: admin.firestore.FieldValue.increment(1) });
+  const rastreioRef = db.collection(COL_RASTREIOS_AFILIADO).doc(`${uid}_${itemId}`);
+  const existente = await rastreioRef.get();
+  await rastreioRef.set({
+    usuarioId: uid, itemId, itemTitulo: item.data().titulo || '',
+    ultimoCliqueEm: agora, cliques: admin.firestore.FieldValue.increment(1),
+    ...(existente.exists ? {} : { primeiroCliqueEm: agora, status: 'clicado' }),
+  }, { merge: true });
+  return { ok: true };
+});
+
+// 2) A usuária pede o cashback de uma compra.
+exports.enviarPedidoCashbackAfiliado = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta para pedir o cashback.');
+  if (!(await cashbackAfiliadosLiberado())) {
+    throw new HttpsError('failed-precondition', 'O cashback está pausado no momento. Tente novamente mais tarde.');
+  }
+
+  const itemId = String(request.data?.itemId || '');
+  if (!itemId || itemId.includes('/')) throw new HttpsError('invalid-argument', 'Item não informado.');
+  const itemSnap = await db.collection('indicacoes').doc(itemId).get();
+  const item = itemSnap.data();
+  if (!itemSnap.exists || item.ativo === false) throw new HttpsError('not-found', 'Este item não está mais disponível.');
+  const regra = regraCashbackAfiliado(item);
+  if (!regra) throw new HttpsError('failed-precondition', 'Este item não oferece cashback.');
+
+  const numeroPedido = String(request.data?.numeroPedido || '').trim().slice(0, 60);
+  const numeroNorm = normalizarNumeroPedido(numeroPedido);
+  if (numeroNorm.length < 4) throw new HttpsError('invalid-argument', 'Confira o número do pedido (como aparece no app ou no e-mail da loja).');
+
+  const valorCentavos = centavos(request.data?.valor);
+  if (!valorCentavos || valorCentavos < AFILIADOS_LIMITES.valorMinCentavos) {
+    throw new HttpsError('invalid-argument', 'Informe o valor pago por este item.');
+  }
+  if (valorCentavos > AFILIADOS_LIMITES.valorMaxCentavos) {
+    throw new HttpsError('invalid-argument', `O valor passa do limite de ${reaisTexto(AFILIADOS_LIMITES.valorMaxCentavos)} por pedido. Fale com a gente pelo app.`);
+  }
+
+  // Comprovante: precisa estar na pasta da própria usuária e existir no Storage.
+  const caminho = String(request.data?.comprovanteCaminho || '');
+  if (!caminho.startsWith(`comprovantesAfiliados/${uid}/`) || caminho.includes('..')) {
+    throw new HttpsError('invalid-argument', 'Envie a foto do comprovante.');
+  }
+  const [existeArquivo] = await admin.storage().bucket().file(caminho).exists();
+  if (!existeArquivo) throw new HttpsError('invalid-argument', 'Não encontramos a foto do comprovante. Envie de novo, por favor.');
+  const urlRecebida = String(request.data?.comprovanteUrl || '');
+  const comprovanteUrl = urlRecebida.startsWith('https://firebasestorage.googleapis.com/')
+    && urlRecebida.includes(encodeURIComponent(caminho)) ? urlRecebida : null;
+
+  // Precisa ter aberto o link pelo app (rastreio) há no máximo N dias.
+  const rastreioRef = db.collection(COL_RASTREIOS_AFILIADO).doc(`${uid}_${itemId}`);
+  const rastreio = (await rastreioRef.get()).data();
+  const ultimoClique = rastreio?.ultimoCliqueEm?.toMillis?.() || 0;
+  if (!ultimoClique) {
+    throw new HttpsError('failed-precondition', 'Para ganhar o cashback, a compra precisa começar pelo botão da loja aqui no app.');
+  }
+  if (Date.now() - ultimoClique > AFILIADOS_LIMITES.diasAposClique * 86400000) {
+    throw new HttpsError('failed-precondition', `O pedido precisa ser enviado em até ${AFILIADOS_LIMITES.diasAposClique} dias depois de abrir o link pelo app.`);
+  }
+
+  const meus = await db.collection(COL_PEDIDOS_AFILIADO).where('usuarioId', '==', uid).get();
+  if (meus.docs.filter(d => d.data().status === 'pendente').length >= AFILIADOS_LIMITES.pendentesMax) {
+    throw new HttpsError('resource-exhausted', 'Você já tem pedidos em análise. Assim que forem analisados, você pode enviar outros.');
+  }
+
+  const perfil = (await db.collection('usuarios').doc(uid).get()).data() || {};
+  const hash = crypto.createHash('sha256').update(numeroNorm).digest('hex').slice(0, 24);
+  const pedidoId = `${itemId}_${hash}`;
+  const pedidoRef = db.collection(COL_PEDIDOS_AFILIADO).doc(pedidoId);
+  const cashbackPrevisto = calcularCashbackAfiliado(regra, valorCentavos);
+
+  await db.runTransaction(async (tx) => {
+    const ja = await tx.get(pedidoRef);
+    if (ja.exists) {
+      throw new HttpsError('already-exists', ja.data().usuarioId === uid
+        ? 'Você já enviou este número de pedido para este item. Acompanhe em "Meus pedidos de cashback".'
+        : 'Este número de pedido já foi usado para este item. Se achar que é um engano, fale com a gente.');
+    }
+    tx.set(pedidoRef, {
+      usuarioId: uid,
+      usuarioNome: perfil.nome || '',
+      usuarioEmail: perfil.email || request.auth.token?.email || '',
+      itemId, itemTitulo: item.titulo || '', itemImagemUrl: item.imagemUrl || '',
+      plataforma: nomePlataformaAfiliado(item),
+      numeroPedido, numeroPedidoNorm: numeroNorm,
+      valorCentavos, regraCashback: regra, cashbackPrevistoCentavos: cashbackPrevisto,
+      comprovanteCaminho: caminho, comprovanteUrl,
+      rastreioId: rastreioRef.id,
+      status: 'pendente',
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.set(rastreioRef, { status: 'pedido_enviado', pedidoId }, { merge: true });
+  });
+
+  return { ok: true, pedidoId, cashbackPrevisto: reais(cashbackPrevisto) };
+});
+
+// 3) A administradora aprova (credita) ou recusa (com motivo).
+// data: { pedidoId, decisao: 'aprovar'|'recusar', motivo?, valor? (reais, para corrigir o valor da compra) }
+exports.analisarPedidoCashbackAfiliado = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const pedidoId = String(request.data?.pedidoId || '');
+  const decisao = request.data?.decisao;
+  if (!pedidoId || pedidoId.includes('/')) throw new HttpsError('invalid-argument', 'Pedido não informado.');
+  if (!['aprovar', 'recusar'].includes(decisao)) throw new HttpsError('invalid-argument', 'Escolha aprovar ou recusar.');
+  const ref = db.collection(COL_PEDIDOS_AFILIADO).doc(pedidoId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  if (decisao === 'recusar') {
+    const motivo = String(request.data?.motivo || '').trim().slice(0, 300);
+    if (motivo.length < 3) throw new HttpsError('invalid-argument', 'Escreva o motivo da recusa (a usuária vai ler).');
+    const pedido = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError('not-found', 'Pedido não encontrado.');
+      if (snap.data().status !== 'pendente') throw new HttpsError('failed-precondition', 'Este pedido já foi analisado.');
+      tx.update(ref, { status: 'recusado', motivo, analisadoEm: agora, analisadoPor: adminUid });
+      return snap.data();
+    });
+    // A coleção de notificações é lida por todas: o motivo fica só no pedido
+    // (que só a dona lê) e no push, que vai apenas para o aparelho dela.
+    await db.collection('notificacoesEditoriais').add({
+      usuarioId: pedido.usuarioId, tipo: 'cashback_afiliado',
+      texto: 'Seu pedido de cashback foi analisado. Toque para ver os detalhes.',
+      ativa: true, criadoEm: agora,
+    });
+    await pushParaUsuaria(pedido.usuarioId, `Não conseguimos aprovar o cashback de "${pedido.itemTitulo}": ${motivo}`, 'MeusPedidosCashback');
+    await registrarAuditoriaBeneficio('cashback_afiliado_recusado', 'pedidoCashbackAfiliado', pedidoId, { adminUid, motivo });
+    return { ok: true, status: 'recusado' };
+  }
+
+  if (!(await cashbackAfiliadosLiberado())) {
+    throw new HttpsError('failed-precondition', 'O cashback está desligado ou oculto em Configurações do cashback. Ligue para aprovar.');
+  }
+  const cfg = await configCashback();
+  const ajuste = request.data?.valor != null && request.data?.valor !== '' ? centavos(request.data.valor) : null;
+  if (ajuste != null && (!ajuste || ajuste > AFILIADOS_LIMITES.valorMaxCentavos)) {
+    throw new HttpsError('invalid-argument', 'Valor corrigido inválido.');
+  }
+
+  // Marca como aprovado primeiro (evita aprovação dupla); se o crédito falhar,
+  // volta para pendente.
+  const pedido = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new HttpsError('not-found', 'Pedido não encontrado.');
+    const p = snap.data();
+    if (p.status !== 'pendente') throw new HttpsError('failed-precondition', 'Este pedido já foi analisado.');
+    const valor = ajuste || p.valorCentavos;
+    const cb = calcularCashbackAfiliado(p.regraCashback, valor);
+    if (!(cb > 0)) throw new HttpsError('failed-precondition', 'O cashback calculado ficou zerado. Confira o valor.');
+    tx.update(ref, {
+      status: 'aprovado', valorAprovadoCentavos: valor, cashbackCentavos: cb,
+      analisadoEm: agora, analisadoPor: adminUid,
+    });
+    return { ...p, cashbackCentavos: cb, valorAprovadoCentavos: valor };
+  });
+
+  try {
+    await creditarCashback(pedido.usuarioId, pedido.cashbackCentavos, {
+      origem: 'afiliado',
+      descricao: `Cashback de compra com afiliado: ${pedido.itemTitulo}`.slice(0, 140),
+      referencia: `afiliado:${pedidoId}`,
+      idDoc: `afiliado_${pedidoId}`,
+    }, cfg);
+  } catch (e) {
+    console.error('[afiliados] falha ao creditar', pedidoId, e);
+    await ref.update({ status: 'pendente', erroCredito: String(e?.message || e).slice(0, 200) }).catch(() => {});
+    throw new HttpsError('internal', 'Não foi possível creditar agora. O pedido continua em análise; tente de novo.');
+  }
+  await ref.update({ creditoId: `afiliado_${pedidoId}`, erroCredito: admin.firestore.FieldValue.delete() }).catch(() => {});
+  await pushParaUsuaria(pedido.usuarioId, `Seu cashback de ${reaisTexto(pedido.cashbackCentavos)} chegou! Use no seu plano ou relatório.`, 'Cashback');
+  await registrarAuditoriaBeneficio('cashback_afiliado_aprovado', 'pedidoCashbackAfiliado', pedidoId, {
+    adminUid, usuarioId: pedido.usuarioId, cashbackCentavos: pedido.cashbackCentavos, valorCentavos: pedido.valorAprovadoCentavos,
+  });
+  return { ok: true, status: 'aprovado', cashback: reais(pedido.cashbackCentavos) };
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CURSOS
+// Cursos em vídeo (YouTube não listado) vendidos pelo Stripe, com prestação
+// de contas para o profissional parceiro. Valores sempre em centavos.
+//   cursos/{id}                  { titulo, subtitulo, descricao, capaUrl, programa[], aulas[],
+//                                  preco (reais), ativo, destaque, profissionalId, criadoEm }
+//   profissionais/{id}           { nome, bio, fotoUrl, repasseTipo, repasseValor, repasseBase, ativo }
+//   profissionaisPrivado/{id}    { email, tokenPortal }            (só admin lê; só servidor grava)
+//   matriculas/{stripeSessionId} { uid, cursoId, profissionalId, valorPagoCentavos, taxaStripeCentavos,
+//                                  repasseCentavos, repasseRegra, stripeSessionId, stripePaymentIntent,
+//                                  criadaEm, status: 'ativa'|'reembolsada', repasseId? }
+//   usuarios/{uid}/cursos/{cursoId} { cursoId, matriculaId, liberadoEm, progresso{aulaId:true} }
+//   repasses/{id}                { profissionalId, periodo, matriculaIds, ajusteMatriculaIds,
+//                                  totalCentavos, pagoEm, comprovanteUrl? }
+// O valor do repasse é calculado no momento da venda, com a regra vigente
+// naquele instante, e fica congelado na matrícula (que só o servidor grava).
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PORTAL_PROFISSIONAL_URL = `${SITE_URL}/profissional.html`;
+// Endereços aceitos como retorno do pagamento feito pela área web do curso.
+const ORIGENS_RETORNO_CURSO = [SITE_URL, 'https://o-amor-que-fica.firebaseapp.com', 'http://localhost:'];
+
+function gerarTokenPortal() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+// Regra do repasse do profissional, aplicada a uma venda.
+//  - percentual: repasseValor % sobre o valor pago (base 'bruto') ou sobre o
+//    valor pago menos a taxa da Stripe (base 'liquido', se a taxa for conhecida);
+//  - fixo: repasseValor reais por venda (nunca mais que o valor pago).
+function calcularRepasseCentavos(valorPagoCentavos, taxaCentavos, prof) {
+  const tipo = prof?.repasseTipo === 'fixo' ? 'fixo' : 'percentual';
+  const valor = Number(prof?.repasseValor) || 0;
+  const baseDesejada = prof?.repasseBase === 'liquido' ? 'liquido' : 'bruto';
+  const base = baseDesejada === 'liquido' && Number.isFinite(taxaCentavos) ? 'liquido' : 'bruto';
+  const baseCentavos = Math.max(0, valorPagoCentavos - (base === 'liquido' ? taxaCentavos : 0));
+  let repasse = tipo === 'fixo'
+    ? Math.round(valor * 100)
+    : Math.round(baseCentavos * Math.min(Math.max(valor, 0), 100) / 100);
+  repasse = Math.max(0, Math.min(repasse, valorPagoCentavos));
+  return { repasseCentavos: repasse, regra: { tipo, valor, base, baseCentavos } };
+}
+
+// ---- Checkout do curso ------------------------------------------------------
+exports.criarCheckoutCurso = onCall(OPCOES_CHECKOUT, comErroPagamento(async (request) => {
+  if (request.data?.aquecer) return { ok: true };
+
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Faça login para comprar o curso.');
+  const cursoId = String(request.data?.cursoId || '');
+  if (!cursoId || cursoId.includes('/')) throw new HttpsError('invalid-argument', 'Curso não informado.');
+
+  const userRef = db.collection('usuarios').doc(uid);
+  const [cursoSnap, userSnap, acessoSnap] = await Promise.all([
+    db.collection('cursos').doc(cursoId).get(),
+    userRef.get(),
+    userRef.collection('cursos').doc(cursoId).get(),
+  ]);
+  const curso = cursoSnap.data();
+  if (!curso || curso.ativo === false) throw new HttpsError('failed-precondition', 'Este curso não está disponível no momento.');
+  if (acessoSnap.exists) throw new HttpsError('already-exists', 'Você já tem este curso. Ele está em "Meus cursos".');
+  const valorCentavos = centavos(curso.preco);
+  if (!valorCentavos || valorCentavos < 100) throw new HttpsError('failed-precondition', 'O preço deste curso ainda não foi definido.');
+
+  const retorno = (url) => (typeof url === 'string' && ORIGENS_RETORNO_CURSO.some(o => url.startsWith(o)) ? url : null);
+  const stripe = stripeDe();
+  const customerId = await getOrCreateCustomer(stripe, uid, userSnap.data() || {});
+
+  // Sem códigos promocionais nem cashback: o valor pago é sempre o preço do
+  // curso, para o repasse do profissional não depender de descontos da casa.
+  const opcoes = opcoesCheckoutStudio({ assinatura: false, comDesconto: false });
+  delete opcoes.allow_promotion_codes;
+  const metadata = { uid, tipo: 'curso', cursoId };
+  const capa = /^https:\/\//.test(curso.capaUrl || '') ? [curso.capaUrl] : undefined;
+
+  const session = await criarSessaoCheckout(stripe, {
+    ...opcoes,
+    mode: 'payment',
+    customer: customerId,
+    locale: 'pt-BR',
+    line_items: [{
+      price_data: {
+        currency: 'brl',
+        product_data: {
+          name: `Curso: ${String(curso.titulo || 'Atravessia').slice(0, 200)}`,
+          ...(curso.subtitulo ? { description: String(curso.subtitulo).slice(0, 300) } : {}),
+          ...(capa ? { images: capa } : {}),
+        },
+        unit_amount: valorCentavos,
+      },
+      quantity: 1,
+    }],
+    success_url: retorno(request.data?.successUrl) || `${SITE_URL}/checkout-sucesso.html`,
+    cancel_url: retorno(request.data?.cancelUrl) || `${SITE_URL}/checkout-cancelado.html`,
+    metadata,
+    payment_intent_data: { metadata, description: `Curso Atravessia: ${String(curso.titulo || '').slice(0, 200)}` },
+    custom_text: {
+      submit: { message: 'Acesso vitalício às aulas, no app e no computador.' },
+      terms_of_service_acceptance: { message: TEXTO_ACEITE_TERMOS },
+    },
+  });
+  return { url: session.url };
+}));
+
+// ---- Webhook: compra concluída -> matrícula ---------------------------------
+// Idempotente: o id da matrícula é o id da sessão do Stripe; se o evento
+// chegar duas vezes, a segunda não faz nada.
+async function processarCompraCurso(stripe, session) {
+  const { uid, cursoId } = session.metadata || {};
+  if (!uid || !cursoId) { console.error('[Cursos] sessão sem uid/cursoId', session.id); return; }
+  if (session.payment_status && session.payment_status !== 'paid') {
+    console.log('[Cursos] pagamento ainda não confirmado', session.id, session.payment_status);
+    return;
+  }
+  const matriculaRef = db.collection('matriculas').doc(session.id);
+  if ((await matriculaRef.get()).exists) return;
+
+  const cursoSnap = await db.collection('cursos').doc(cursoId).get();
+  const curso = cursoSnap.data() || {};
+  const profissionalId = curso.profissionalId || null;
+  const prof = profissionalId ? (await db.collection('profissionais').doc(profissionalId).get()).data() : null;
+
+  const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null;
+  let taxaStripeCentavos = null;
+  let chargeId = null;
+  if (paymentIntentId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge.balance_transaction'] });
+      chargeId = pi.latest_charge?.id || null;
+      const bt = pi.latest_charge?.balance_transaction;
+      if (bt && typeof bt === 'object' && Number.isFinite(bt.fee)) taxaStripeCentavos = bt.fee;
+    } catch (e) {
+      console.warn('[Cursos] não foi possível ler a taxa da Stripe', session.id, e?.message);
+    }
+  }
+  const valorPagoCentavos = Number(session.amount_total) || 0;
+  const { repasseCentavos, regra } = prof
+    ? calcularRepasseCentavos(valorPagoCentavos, taxaStripeCentavos, prof)
+    : { repasseCentavos: 0, regra: null };
+
+  const criada = await db.runTransaction(async (tx) => {
+    const atual = await tx.get(matriculaRef);
+    if (atual.exists) return false;
+    const agora = admin.firestore.FieldValue.serverTimestamp();
+    tx.set(matriculaRef, {
+      uid, cursoId, profissionalId,
+      cursoTitulo: curso.titulo || '',
+      valorPagoCentavos, taxaStripeCentavos, repasseCentavos, repasseRegra: regra,
+      moeda: session.currency || 'brl',
+      stripeSessionId: session.id, stripePaymentIntent: paymentIntentId, stripeChargeId: chargeId,
+      criadaEm: agora, status: 'ativa', repasseId: null,
+    });
+    tx.set(db.collection('usuarios').doc(uid).collection('cursos').doc(cursoId), {
+      cursoId, matriculaId: session.id, liberadoEm: agora,
+    }, { merge: true });
+    return true;
+  });
+  if (!criada) return;
+
+  const userSnap = await db.collection('usuarios').doc(uid).get();
+  const token = userSnap.data()?.expoPushToken;
+  if (token) {
+    await enviarPush([{
+      to: token,
+      title: 'Seu curso já está liberado 💜',
+      body: `Boas-vindas a "${curso.titulo || 'seu novo curso'}". As aulas estão esperando por você, no seu ritmo.`,
+      data: { screen: 'Cursos', cursoId },
+    }]);
+  }
+}
+
+// ---- Webhook: reembolso -> matrícula reembolsada e acesso removido ----------
+async function processarReembolsoCurso(charge) {
+  if (!charge?.refunded) return; // reembolso parcial: mantém o acesso
+  const pi = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+  if (!pi) return;
+  const snap = await db.collection('matriculas').where('stripePaymentIntent', '==', pi).get();
+  for (const d of snap.docs) {
+    const m = d.data();
+    if (m.status === 'reembolsada') continue;
+    await d.ref.update({ status: 'reembolsada', reembolsadaEm: admin.firestore.FieldValue.serverTimestamp() });
+    await db.collection('usuarios').doc(m.uid).collection('cursos').doc(m.cursoId).delete().catch(() => {});
+  }
+}
+
+// ---- Importar vídeos do YouTube (admin) -------------------------------------
+const YT_ID = /^[A-Za-z0-9_-]{11}$/;
+const yt = {
+  thumb: (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+  async texto(url, ms = 12000) {
+    const r = await fetch(url, {
+      signal: AbortSignal.timeout(ms),
+      headers: { 'accept-language': 'pt-BR,pt;q=0.9', 'user-agent': 'Mozilla/5.0 (compatible; AtravessiaBot/1.0)' },
+    });
+    if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
+    return r.text();
+  },
+};
+
+// Classifica cada linha colada: vídeo, playlist ou canal.
+function interpretarLinkYoutube(bruto) {
+  const s = String(bruto || '').trim();
+  if (!s) return null;
+  if (YT_ID.test(s)) return { tipo: 'video', id: s };
+  if (/^UC[A-Za-z0-9_-]{22}$/.test(s)) return { tipo: 'canal', channelId: s };
+  if (/^@[\w.-]+$/.test(s)) return { tipo: 'canal', url: `https://www.youtube.com/${s}` };
+  let u;
+  try { u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`); } catch { return { tipo: 'invalido', entrada: s }; }
+  const host = u.hostname.replace(/^www\.|^m\./, '');
+  if (host === 'youtu.be') {
+    const id = u.pathname.split('/')[1];
+    return YT_ID.test(id) ? { tipo: 'video', id } : { tipo: 'invalido', entrada: s };
+  }
+  if (!/(^|\.)youtube(-nocookie)?\.com$/.test(host)) return { tipo: 'invalido', entrada: s };
+  const v = u.searchParams.get('v');
+  if (v && YT_ID.test(v)) return { tipo: 'video', id: v };
+  const partes = u.pathname.split('/').filter(Boolean);
+  if (['embed', 'shorts', 'live', 'v'].includes(partes[0]) && YT_ID.test(partes[1] || '')) return { tipo: 'video', id: partes[1] };
+  const lista = u.searchParams.get('list');
+  if (lista) return { tipo: 'playlist', id: lista };
+  if (partes[0] === 'channel' && /^UC[A-Za-z0-9_-]{22}$/.test(partes[1] || '')) return { tipo: 'canal', channelId: partes[1] };
+  if (partes[0]?.startsWith('@') || ['c', 'user'].includes(partes[0])) {
+    const caminho = partes[0].startsWith('@') ? partes[0] : `${partes[0]}/${partes[1] || ''}`;
+    return { tipo: 'canal', url: `https://www.youtube.com/${caminho}` };
+  }
+  return { tipo: 'invalido', entrada: s };
+}
+
+async function resolverChannelId(urlCanal) {
+  const html = await yt.texto(urlCanal);
+  const m = html.match(/channel_id=(UC[A-Za-z0-9_-]{22})/)
+    || html.match(/"externalId":"(UC[A-Za-z0-9_-]{22})"/)
+    || html.match(/"channelId":"(UC[A-Za-z0-9_-]{22})"/)
+    || html.match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/);
+  return m ? m[1] : null;
+}
+
+const decodificarXml = (t) => String(t || '')
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+
+// Feed RSS público (últimos ~15 vídeos públicos do canal ou da playlist).
+async function videosDoFeed(param) {
+  const xml = await yt.texto(`https://www.youtube.com/feeds/videos.xml?${param}`);
+  const autorCanal = decodificarXml((xml.match(/<author>\s*<name>([^<]*)<\/name>/) || [])[1]);
+  return xml.split('<entry>').slice(1).map(e => {
+    const id = (e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
+    const titulo = decodificarXml((e.match(/<title>([^<]*)<\/title>/) || [])[1]);
+    const autor = decodificarXml((e.match(/<name>([^<]*)<\/name>/) || [])[1]) || autorCanal;
+    return id ? { youtubeId: id, titulo, autor, thumb: yt.thumb(id), duracao: '' } : null;
+  }).filter(Boolean);
+}
+
+// oEmbed público: funciona para vídeos públicos e não listados, sem chave.
+async function videoPorOembed(id) {
+  const url = `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
+  const d = await r.json();
+  return { youtubeId: id, titulo: d.title || '', autor: d.author_name || '', thumb: yt.thumb(id), duracao: '' };
+}
+
+// "PT1H2M3S" -> "1:02:03"
+function duracaoIso(iso) {
+  const m = String(iso || '').match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return '';
+  const [h, mi, s] = [Number(m[1] || 0), Number(m[2] || 0), Number(m[3] || 0)];
+  const p = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${p(mi)}:${p(s)}` : `${mi}:${p(s)}`;
+}
+
+// YouTube Data API v3 (opcional, com process.env.YOUTUBE_API_KEY).
+async function ytApi(caminho, params) {
+  const q = new URLSearchParams({ ...params, key: process.env.YOUTUBE_API_KEY });
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/${caminho}?${q}`, { signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error(`YouTube API ${r.status}`);
+  return r.json();
+}
+async function idsDaPlaylistApi(playlistId, max) {
+  const ids = [];
+  let pageToken;
+  do {
+    const d = await ytApi('playlistItems', { part: 'contentDetails', playlistId, maxResults: '50', ...(pageToken ? { pageToken } : {}) });
+    (d.items || []).forEach(i => i.contentDetails?.videoId && ids.push(i.contentDetails.videoId));
+    pageToken = d.nextPageToken;
+  } while (pageToken && ids.length < max);
+  return ids.slice(0, max);
+}
+async function detalhesApi(ids) {
+  const mapa = {};
+  for (let i = 0; i < ids.length; i += 50) {
+    const d = await ytApi('videos', { part: 'snippet,contentDetails', id: ids.slice(i, i + 50).join(',') });
+    (d.items || []).forEach(v => {
+      mapa[v.id] = {
+        youtubeId: v.id, titulo: v.snippet?.title || '', autor: v.snippet?.channelTitle || '',
+        thumb: v.snippet?.thumbnails?.high?.url || yt.thumb(v.id), duracao: duracaoIso(v.contentDetails?.duration),
+      };
+    });
+  }
+  return mapa;
+}
+
+exports.importarVideosYoutube = onCall({ timeoutSeconds: 120, memory: '256MiB' }, async (request) => {
+  await exigirAdmin(request);
+  const MAX = 60;
+  const entradas = (Array.isArray(request.data?.links) ? request.data.links : String(request.data?.texto || '').split(/[\s,;]+/))
+    .map(s => String(s).trim()).filter(Boolean).slice(0, 80);
+  if (!entradas.length) throw new HttpsError('invalid-argument', 'Cole ao menos um link de vídeo, playlist ou canal do YouTube.');
+
+  const comApi = !!process.env.YOUTUBE_API_KEY;
+  const avisos = [];
+  const ordem = [];           // ids na ordem em que apareceram
+  const conhecidos = {};      // metadados já obtidos (feed/API)
+  const add = (v) => { if (v && !ordem.includes(v.youtubeId) && ordem.length < MAX) { ordem.push(v.youtubeId); if (v.titulo) conhecidos[v.youtubeId] = v; } };
+
+  for (const entrada of entradas) {
+    const item = interpretarLinkYoutube(entrada);
+    try {
+      if (!item || item.tipo === 'invalido') { avisos.push(`Não reconheci "${entrada}" como link do YouTube.`); continue; }
+      if (item.tipo === 'video') { add({ youtubeId: item.id }); continue; }
+      if (item.tipo === 'playlist') {
+        if (comApi) (await idsDaPlaylistApi(item.id, MAX)).forEach(id => add({ youtubeId: id }));
+        else (await videosDoFeed(`playlist_id=${encodeURIComponent(item.id)}`)).forEach(add);
+        continue;
+      }
+      const channelId = item.channelId || await resolverChannelId(item.url);
+      if (!channelId) { avisos.push(`Não encontrei o canal "${entrada}".`); continue; }
+      if (comApi) (await idsDaPlaylistApi(`UU${channelId.slice(2)}`, MAX)).forEach(id => add({ youtubeId: id }));
+      else {
+        (await videosDoFeed(`channel_id=${channelId}`)).forEach(add);
+        avisos.push('Do canal vêm só os vídeos públicos mais recentes. Vídeos não listados precisam ser colados um a um (ou numa playlist).');
+      }
+    } catch (e) {
+      console.warn('[Cursos] importação', entrada, e?.message);
+      avisos.push(`Não foi possível ler "${entrada}" agora (${e?.message || 'erro'}).`);
+    }
+  }
+
+  let detalhes = {};
+  if (comApi && ordem.length) {
+    try { detalhes = await detalhesApi(ordem); } catch (e) { avisos.push('A YouTube Data API não respondeu; usei os dados públicos.'); }
+  }
+  const videos = [];
+  for (const id of ordem) {
+    let v = detalhes[id] || conhecidos[id];
+    if (!v) {
+      try { v = await videoPorOembed(id); } catch (e) {
+        avisos.push(e?.status === 401 || e?.status === 403
+          ? `O vídeo ${id} é privado ou não permite incorporação: deixe-o como "não listado" e com incorporação ativada.`
+          : `Não encontrei o vídeo ${id}.`);
+        continue;
+      }
+    }
+    videos.push(v);
+  }
+  return { videos, avisos: [...new Set(avisos)], fonte: comApi ? 'api' : 'publica' };
+});
+
+// ---- Profissionais (admin) --------------------------------------------------
+// O token do portal é gerado aqui (nunca no navegador) e guardado em
+// profissionaisPrivado/{id}, junto com o e-mail — fora da leitura das usuárias.
+exports.salvarProfissional = onCall(async (request) => {
+  await exigirAdmin(request);
+  const d = request.data || {};
+  const nome = String(d.nome || '').trim().slice(0, 120);
+  if (!nome) throw new HttpsError('invalid-argument', 'Informe o nome do profissional.');
+  const repasseTipo = d.repasseTipo === 'fixo' ? 'fixo' : 'percentual';
+  const repasseValor = Number(String(d.repasseValor ?? '').replace(',', '.'));
+  if (!Number.isFinite(repasseValor) || repasseValor < 0 || (repasseTipo === 'percentual' && repasseValor > 100)) {
+    throw new HttpsError('invalid-argument', repasseTipo === 'percentual' ? 'O repasse deve ficar entre 0% e 100%.' : 'Informe um valor de repasse válido.');
+  }
+  const id = d.id ? String(d.id) : db.collection('profissionais').doc().id;
+  if (id.includes('/')) throw new HttpsError('invalid-argument', 'Profissional inválido.');
+  const ref = db.collection('profissionais').doc(id);
+  const privRef = db.collection('profissionaisPrivado').doc(id);
+  const [snap, priv] = await Promise.all([ref.get(), privRef.get()]);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  await ref.set({
+    nome,
+    bio: String(d.bio || '').trim().slice(0, 2000),
+    fotoUrl: String(d.fotoUrl || '').trim(),
+    repasseTipo, repasseValor,
+    repasseBase: d.repasseBase === 'liquido' ? 'liquido' : 'bruto',
+    ativo: d.ativo !== false,
+    atualizadoEm: agora,
+    ...(snap.exists ? {} : { criadoEm: agora }),
+  }, { merge: true });
+  const tokenPortal = (!d.novoToken && priv.data()?.tokenPortal) || gerarTokenPortal();
+  await privRef.set({ email: String(d.email || '').trim().toLowerCase(), tokenPortal, atualizadoEm: agora }, { merge: true });
+  return { id, linkPortal: `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}` };
+});
+
+// ---- Portal do profissional (sem login, por token) ---------------------------
+// Só dados agregados e anônimos: nenhuma informação das alunas sai daqui.
+exports.portalProfissional = onCall(async (request) => {
+  const token = String(request.data?.token || '');
+  if (token.length < 20) throw new HttpsError('invalid-argument', 'Link inválido.');
+  const privSnap = await db.collection('profissionaisPrivado').where('tokenPortal', '==', token).limit(1).get();
+  if (privSnap.empty) throw new HttpsError('not-found', 'Este link não é mais válido. Peça um novo à equipe Atravessia.');
+  const profissionalId = privSnap.docs[0].id;
+
+  const [profSnap, matSnap, repSnap, cursosSnap] = await Promise.all([
+    db.collection('profissionais').doc(profissionalId).get(),
+    db.collection('matriculas').where('profissionalId', '==', profissionalId).get(),
+    db.collection('repasses').where('profissionalId', '==', profissionalId).get(),
+    db.collection('cursos').where('profissionalId', '==', profissionalId).get(),
+  ]);
+  const prof = profSnap.data() || {};
+  const titulos = {};
+  cursosSnap.forEach(c => { titulos[c.id] = c.data().titulo || 'Curso'; });
+  const ms = (t) => t?.toMillis?.() || null;
+
+  const vendas = matSnap.docs.map(d => {
+    const m = d.data();
+    return {
+      data: ms(m.criadaEm),
+      cursoId: m.cursoId,
+      curso: titulos[m.cursoId] || m.cursoTitulo || 'Curso',
+      valorCentavos: m.valorPagoCentavos || 0,
+      taxaStripeCentavos: Number.isFinite(m.taxaStripeCentavos) ? m.taxaStripeCentavos : null,
+      repasseCentavos: m.repasseCentavos || 0,
+      regra: m.repasseRegra ? { tipo: m.repasseRegra.tipo, valor: m.repasseRegra.valor, base: m.repasseRegra.base } : null,
+      status: m.status,
+      repassada: !!m.repasseId,
+      ajustePendente: m.status === 'reembolsada' && !!m.repasseId && !m.ajusteRepasseId,
+      codigo: String(m.stripePaymentIntent || '').slice(-8).toUpperCase(),
+    };
+  }).sort((a, b) => (b.data || 0) - (a.data || 0));
+
+  const porCurso = {};
+  for (const v of vendas) {
+    const c = porCurso[v.cursoId] || (porCurso[v.cursoId] = { cursoId: v.cursoId, curso: v.curso, ativas: 0, reembolsadas: 0, brutoCentavos: 0, repasseCentavos: 0 });
+    if (v.status === 'reembolsada') { c.reembolsadas++; continue; }
+    c.ativas++;
+    c.brutoCentavos += v.valorCentavos;
+    c.repasseCentavos += v.repasseCentavos;
+  }
+  const repasses = repSnap.docs.map(d => {
+    const r = d.data();
+    return { periodo: r.periodo?.rotulo || '', totalCentavos: r.totalCentavos || 0, vendas: (r.matriculaIds || []).length, pagoEm: ms(r.pagoEm), comprovanteUrl: r.comprovanteUrl || null };
+  }).sort((a, b) => (b.pagoEm || 0) - (a.pagoEm || 0));
+
+  const ativas = vendas.filter(v => v.status !== 'reembolsada');
+  const soma = (l, k) => l.reduce((a, v) => a + (v[k] || 0), 0);
+  return {
+    profissional: { nome: prof.nome || '', fotoUrl: prof.fotoUrl || '', repasseTipo: prof.repasseTipo || 'percentual', repasseValor: prof.repasseValor ?? 0, repasseBase: prof.repasseBase || 'bruto' },
+    resumo: {
+      vendas: ativas.length,
+      reembolsadas: vendas.length - ativas.length,
+      brutoCentavos: soma(ativas, 'valorCentavos'),
+      repasseCentavos: soma(ativas, 'repasseCentavos'),
+      recebidoCentavos: soma(repasses, 'totalCentavos'),
+      // Vendas ainda não repassadas, menos reembolsos de vendas já repassadas
+      // que serão descontados no próximo repasse.
+      aReceberCentavos: soma(ativas.filter(v => !v.repassada), 'repasseCentavos')
+        - soma(vendas.filter(v => v.ajustePendente), 'repasseCentavos'),
+    },
+    porCurso: Object.values(porCurso),
+    vendas: vendas.slice(0, 500),
+    repasses,
+    geradoEm: Date.now(),
+  };
+});
+
+// ---- Registrar repasse (admin) ----------------------------------------------
+// Junta as vendas ativas ainda não repassadas do período e marca cada uma com
+// o id do repasse. Reembolsos de vendas que JÁ tinham sido repassadas entram
+// como desconto no repasse seguinte (ajusteMatriculaIds).
+exports.fecharRepasse = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const profissionalId = String(request.data?.profissionalId || '');
+  if (!profissionalId || profissionalId.includes('/')) throw new HttpsError('invalid-argument', 'Escolha o profissional.');
+  const inicio = Number(request.data?.inicio) || 0;
+  const fim = Number(request.data?.fim) || Date.now();
+  const comprovanteUrl = String(request.data?.comprovanteUrl || '').trim() || null;
+  const observacao = String(request.data?.observacao || '').trim().slice(0, 500) || null;
+  const pagoEmMs = Number(request.data?.pagoEm) || Date.now();
+  const fmt = (t) => new Date(t).toLocaleDateString('pt-BR', { timeZone: TIMEZONE });
+  const rotulo = `${inicio ? fmt(inicio) : 'início'} a ${fmt(fim)}`;
+
+  const repasseRef = db.collection('repasses').doc();
+  const resultado = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(db.collection('matriculas').where('profissionalId', '==', profissionalId));
+    const vendas = [];
+    const ajustes = [];
+    snap.forEach(d => {
+      const m = d.data();
+      const t = m.criadaEm?.toMillis?.() || 0;
+      if (m.status === 'ativa' && !m.repasseId && t >= inicio && t <= fim) vendas.push(d);
+      if (m.status === 'reembolsada' && m.repasseId && !m.ajusteRepasseId) ajustes.push(d);
+    });
+    if (!vendas.length && !ajustes.length) throw new HttpsError('failed-precondition', 'Não há vendas a repassar neste período.');
+    const bruto = vendas.reduce((a, d) => a + (d.data().repasseCentavos || 0), 0);
+    const desconto = ajustes.reduce((a, d) => a + (d.data().repasseCentavos || 0), 0);
+    const total = bruto - desconto;
+    const agora = admin.firestore.FieldValue.serverTimestamp();
+    tx.set(repasseRef, {
+      profissionalId,
+      periodo: { inicio: inicio ? admin.firestore.Timestamp.fromMillis(inicio) : null, fim: admin.firestore.Timestamp.fromMillis(fim), rotulo },
+      matriculaIds: vendas.map(d => d.id),
+      ajusteMatriculaIds: ajustes.map(d => d.id),
+      vendasCentavos: bruto, descontosCentavos: desconto, totalCentavos: total,
+      pagoEm: admin.firestore.Timestamp.fromMillis(pagoEmMs),
+      comprovanteUrl, observacao,
+      criadoPor: adminUid, criadoEm: agora,
+    });
+    vendas.forEach(d => tx.update(d.ref, { repasseId: repasseRef.id, repassadaEm: agora }));
+    ajustes.forEach(d => tx.update(d.ref, { ajusteRepasseId: repasseRef.id }));
+    return { vendas: vendas.length, ajustes: ajustes.length, totalCentavos: total };
+  });
+  return { id: repasseRef.id, ...resultado };
 });

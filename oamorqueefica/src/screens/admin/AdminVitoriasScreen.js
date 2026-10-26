@@ -13,6 +13,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { est, acento, Degrade } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 import { ICONES_VITORIA, iconeDaVitoria } from '../../data/iconesVitoria';
 
 function SeletorIcone({ valor, onChange }) {
@@ -172,8 +173,7 @@ export default function AdminVitoriasScreen() {
         <Text style={s.sub}>Gerencie as opções disponíveis para as usuárias registrarem suas conquistas.</Text>
 
         {/* Adicionar nova */}
-        <View style={s.addCard}>
-          <Text style={s.addTitle}>Adicionar nova vitória</Text>
+        <Recolhivel titulo="Adicionar nova vitória" subtitulo="Toque para cadastrar uma nova opção" icone="add-circle-outline">
           <View style={s.addRow}>
             <TextInput
               style={s.addInput}
@@ -197,7 +197,7 @@ export default function AdminVitoriasScreen() {
           </View>
           <Text style={s.iconeLabel}>Ícone</Text>
           <SeletorIcone valor={novoIcone} onChange={setNovoIcone} />
-        </View>
+        </Recolhivel>
 
         {/* Lista */}
         <View style={s.listCard}>

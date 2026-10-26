@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, acento, Degrade } from './adminEstilo';
+import { est, acento, Degrade, AcoesItem } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
 import { FRASES_SEED } from '../../data/frasesSeed';
@@ -265,20 +265,16 @@ export default function AdminFrasesScreen({ navigation }) {
                 {item.reflexao ? (
                   <Text style={styles.itemReflexao} numberOfLines={2}>{item.reflexao}</Text>
                 ) : null}
+                <AcoesItem onEditar={() => abrirEditar(item)} onApagar={() => handleExcluir(item)} rotuloApagar="Apagar frase" />
               </View>
               <View style={styles.itemActions}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => abrirEditar(item)}>
-                  <Ionicons name="pencil-outline" size={18} color={colors.lilasIcone} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleToggleAtiva(item)}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => handleToggleAtiva(item)}
+                  accessibilityLabel={inativa ? 'Ativar frase' : 'Desativar frase'}>
                   <Ionicons
                     name={inativa ? 'eye-outline' : 'eye-off-outline'}
                     size={17}
                     color={inativa ? acento('salvia').tinta : colors.tl}
                   />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleExcluir(item)}>
-                  <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
                 </TouchableOpacity>
               </View>
             </View>

@@ -5,6 +5,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, BotaoAdmin } from './adminEstilo';
 import AdminLayout from './AdminLayout';
+import Recolhivel from '../../components/Recolhivel';
 import { RECURSOS_IA, NOME_PLANO, normalizarRecursosIA } from '../../config/recursosIA';
 
 // Liga/desliga cada função da AtravessIA e escolhe o plano mínimo de cada uma.
@@ -32,14 +33,15 @@ export default function AdminRecursosIAScreen({ navigation }) {
         <Text style={s.pageTitle}>Funções da AtravessIA</Text>
         <Text style={s.pageSub}>Escolha quais funções aparecem no app e a partir de qual plano cada uma fica liberada.</Text>
         {RECURSOS_IA.map(r => (
-          <View key={r.chave} style={s.card}>
-            <View style={s.linha}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.titulo}>{r.rotulo}</Text>
-                <Text style={s.desc}>{r.descricao}</Text>
-              </View>
-              <Switch value={!!cfg[r.chave].ativo} onValueChange={v => set(r.chave, 'ativo', v)} trackColor={{ true: colors.lav4 }} />
-            </View>
+          // Cada função num cartão recolhível: o liga/desliga fica sempre à vista
+          // no cabeçalho; a descrição e o plano abrem ao tocar.
+          <Recolhivel
+            key={r.chave}
+            titulo={r.rotulo}
+            subtitulo={cfg[r.chave].ativo ? `Ligada · a partir do ${NOME_PLANO[cfg[r.chave].planoMinimo] || NOME_PLANO[0]}` : 'Desligada'}
+            direita={<Switch value={!!cfg[r.chave].ativo} onValueChange={v => set(r.chave, 'ativo', v)} trackColor={{ true: colors.lav4 }} />}
+          >
+            <Text style={s.desc}>{r.descricao}</Text>
             <Text style={s.label}>Liberada a partir do plano</Text>
             <View style={s.planos}>
               {NOME_PLANO.map((p, i) => {
@@ -52,7 +54,7 @@ export default function AdminRecursosIAScreen({ navigation }) {
                 );
               })}
             </View>
-          </View>
+          </Recolhivel>
         ))}
         <BotaoAdmin title={salvando ? 'Salvando…' : 'Salvar e publicar'} icone="checkmark" onPress={salvar} disabled={salvando} />
       </ScrollView>

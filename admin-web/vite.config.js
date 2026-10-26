@@ -10,6 +10,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         parceiro: resolve(__dirname, 'parceiro.html'),
+        curso: resolve(__dirname, 'curso.html'),
+        profissional: resolve(__dirname, 'profissional.html'),
       },
     },
   },

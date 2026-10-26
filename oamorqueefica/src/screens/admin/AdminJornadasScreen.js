@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Alert, Switch,
@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
-import { est, corPlano, BotaoAdmin } from './adminEstilo';
+import { est, corPlano, BotaoAdmin, AcoesItem } from './adminEstilo';
 import { confirmar } from '../../utils/confirm';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
@@ -46,6 +46,12 @@ export default function AdminJornadasScreen({ navigation }) {
 
   const abrirNova = () => setForm({ ...novo(), ordem: jornadas.length });
   const cancelar = () => setForm(null);
+  // Editar abre o formulário (que fica no topo) e rola até ele.
+  const rolagem = useRef(null);
+  const editar = (j) => {
+    setForm({ ...j });
+    setTimeout(() => rolagem.current?.scrollTo({ y: 0, animated: true }), 60);
+  };
 
   const salvar = async () => {
     if (!form.titulo.trim()) { Alert.alert('', 'Informe um título para a jornada.'); return; }
@@ -78,7 +84,7 @@ export default function AdminJornadasScreen({ navigation }) {
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminJornadas">
       <AdminSubTabs grupo="jornada" atual="AdminJornadas" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={rolagem} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <Text style={s.sobre}>Jornada</Text>
         <Text style={s.pageTitle}>Jornadas</Text>
         <Text style={s.pageSub}>Crie programas e trilhas de conteúdo, definindo plano de acesso e ordem de exibição.</Text>
@@ -152,15 +158,10 @@ export default function AdminJornadasScreen({ navigation }) {
                   <Text style={[s.tag, j.ativa ? s.tagAtiva : s.tagInativa]}>{j.ativa ? 'Ativa' : 'Inativa'}</Text>
                   <Text style={s.tag}>Ordem: {j.ordem ?? 0}</Text>
                 </View>
+                <AcoesItem onEditar={() => editar(j)} onApagar={() => remover(j.id)} rotuloApagar="Apagar jornada" />
               </View>
               <View style={s.actions}>
                 <Switch value={!!j.ativa} onValueChange={() => toggleAtiva(j)} trackColor={{ true: colors.lav4 }} style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} />
-                <TouchableOpacity onPress={() => setForm({ ...j })} style={s.actionBtn}>
-                  <Ionicons name="create-outline" size={18} color={colors.lilasIcone} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => remover(j.id)} style={s.actionBtn}>
-                  <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-                </TouchableOpacity>
               </View>
             </View>
           );

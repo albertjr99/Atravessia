@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import PermissaoNotificacoes from '../components/PermissaoNotificacoes';
+import AvisoAtualizacao from '../components/AvisoAtualizacao';
+import AdminVersaoAppScreen from '../screens/admin/AdminVersaoAppScreen';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import AudiosScreen from '../screens/audios/AudiosScreen';
@@ -42,6 +44,8 @@ import AdminVideosScreen from '../screens/admin/AdminVideosScreen';
 import AdminProdutosScreen from '../screens/admin/AdminProdutosScreen';
 import AdminAtravessIAScreen from '../screens/admin/AdminAtravessIAScreen';
 import AdminIndicacoesScreen from '../screens/admin/AdminIndicacoesScreen';
+import AdminPedidosCashbackScreen from '../screens/admin/AdminPedidosCashbackScreen';
+import MeusPedidosCashbackScreen from '../screens/indicacoes/MeusPedidosCashbackScreen';
 import AdminCashbackScreen from '../screens/admin/AdminCashbackScreen';
 import AdminArtesScreen from '../screens/admin/AdminArtesScreen';
 import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
@@ -65,6 +69,10 @@ import CashbackScreen from '../screens/cashback/CashbackScreen';
 import IndicacoesScreen from '../screens/indicacoes/IndicacoesScreen';
 import PerfilScreen from '../screens/perfil/PerfilScreen';
 import GuardarMemoriaScreen from '../screens/memoria/GuardarMemoriaScreen';
+import CursosScreen from '../screens/cursos/CursosScreen';
+import CursoScreen from '../screens/cursos/CursoScreen';
+import AulaScreen from '../screens/cursos/AulaScreen';
+import AdminCursosScreen from '../screens/admin/AdminCursosScreen';
 import { SobreScreen, SejaParceiroScreen } from '../screens/institucional/TextoInstitucionalScreen';
 
 import { useAuth } from '../hooks/AuthContext';
@@ -115,9 +123,13 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="CartaMes" component={CartaMesScreen} />
       <Stack.Screen name="Cashback" component={CashbackScreen} />
       <Stack.Screen name="Indicacoes" component={IndicacoesScreen} />
+      <Stack.Screen name="MeusPedidosCashback" component={MeusPedidosCashbackScreen} />
       <Stack.Screen name="PlanoAno" component={PlanoAnoScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
       <Stack.Screen name="GuardarMemoria" component={GuardarMemoriaScreen} />
+      <Stack.Screen name="Cursos" component={CursosScreen} />
+      <Stack.Screen name="Curso" component={CursoScreen} />
+      <Stack.Screen name="Aula" component={AulaScreen} />
       <Stack.Screen name="Sobre" component={SobreScreen} />
       <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
     </Stack.Navigator>
@@ -148,8 +160,11 @@ function AdminStack() {
       <Stack.Screen name="AdminProdutos" component={AdminProdutosScreen} />
       {IA_PAINEL && <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />}
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
+      <Stack.Screen name="AdminPedidosCashback" component={AdminPedidosCashbackScreen} />
       <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />
       <Stack.Screen name="AdminArtes" component={AdminArtesScreen} />
+      <Stack.Screen name="AdminCursos" component={AdminCursosScreen} />
+      <Stack.Screen name="AdminVersaoApp" component={AdminVersaoAppScreen} />
     </Stack.Navigator>
   );
 }
@@ -214,7 +229,7 @@ export default function AppNavigator() {
   } else if (!firebaseUser) {
     content = <AuthStack />;
   } else if (isAdmin && !verComoUsuaria) {
-    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /></>;
+    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /><AvisoAtualizacao uid={uid} /></>;
   } else {
     content = (
       <>
@@ -224,6 +239,7 @@ export default function AppNavigator() {
         />
         {/* Convite das notificações logo no primeiro acesso. */}
         <PermissaoNotificacoes uid={uid} />
+        <AvisoAtualizacao uid={uid} />
       </>
     );
   }

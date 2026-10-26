@@ -102,6 +102,11 @@ export default function HomeScreen({ navigation }) {
     (snap) => setTemProdutosItens(!snap.empty),
     (e) => console.warn('[Home] produtosItens:', e?.message)), []);
   const temProdutos = temProdutosVideo || temProdutosItens;
+  // "Cursos Atravessia": linha discreta que só aparece com algum curso publicado.
+  const [temCursos, setTemCursos] = useState(false);
+  useEffect(() => onSnapshot(query(collection(db, 'cursos'), where('ativo', '==', true), limit(1)),
+    (snap) => setTemCursos(!snap.empty),
+    (e) => console.warn('[Home] cursos:', e?.message)), []);
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
   // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.
@@ -166,6 +171,7 @@ export default function HomeScreen({ navigation }) {
     { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', acao: () => navigation.navigate('Aparencia') },
     { icone: 'time-outline', rotulo: 'Lembrete diário', sub: 'Escolha o horário do lembrete do check-in', acao: () => navigation.navigate('Lembrete') },
     { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', acao: () => navigation.navigate('Onboarding', { revisita: true }) },
+    temCursos && { icone: 'play-circle-outline', rotulo: 'Cursos', sub: 'Seus cursos e a vitrine de cursos', acao: () => navigation.navigate('Cursos') },
     { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', acao: () => navigation.navigate('MeusCupons') },
     { icone: 'heart-outline', rotulo: 'Favoritos', sub: 'O que você guardou com carinho', acao: () => navigation.navigate('Favoritos') },
     { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', acao: () => navigation.navigate('Sobre') },
@@ -420,7 +426,7 @@ export default function HomeScreen({ navigation }) {
                       <Ionicons name="book-outline" size={20} color={colors.lav5} />
                     </View>
                     <View>
-                      <Text style={s.indicacoesTit}>Indicações Atravessia</Text>
+                      <Text style={s.indicacoesTit}>Achados da Atravessia</Text>
                       <Text style={s.indicacoesSub}>Livros e cuidados escolhidos com carinho</Text>
                     </View>
                   </TouchableOpacity>
@@ -445,6 +451,16 @@ export default function HomeScreen({ navigation }) {
               </View>
             )}
           </View>
+
+          {/* ===== CURSOS ATRAVESSIA: linha discreta, no mesmo estilo das parcerias ===== */}
+          {temCursos && (
+            <TouchableOpacity style={s.parceriasLinha} onPress={() => navigation.navigate('Cursos')} activeOpacity={0.8}>
+              <Ionicons name="play-circle-outline" size={16} color={colors.lilasIcone} />
+              <Text style={s.parceriasLinhaTxt}>Cursos Atravessia</Text>
+              <Text style={s.sectLink}>Ver cursos</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.lilasTexto} />
+            </TouchableOpacity>
+          )}
 
           {/* ===== PARCERIAS: discreto, sem banners (o destaque é Experimente a vida) ===== */}
           {parcerias.length > 0 && (

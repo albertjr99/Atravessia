@@ -19,6 +19,7 @@ import Parcerias from './Parcerias';
 import Beneficios from './Beneficios';
 import Cashback from './Cashback';
 import Indicacoes from './Indicacoes';
+import PedidosCashback from './PedidosCashback';
 import Usuarias from './Usuarias';
 import Notificacoes from './Notificacoes';
 import Mensagens from './Mensagens';
@@ -26,14 +27,17 @@ import Relatorios from './Relatorios';
 import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
+import VersaoApp from './VersaoApp';
 import RecursosIA from './RecursosIA';
 import Artes from './Artes';
+import Cursos, { ProfissionaisCursos, VendasCursos } from './Cursos';
 import Preview from './Preview';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
   IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
   Logo,
-  IconDoc, IconPalette,
+  IconDoc, IconPalette, IconDownload,
+  IconPlay,
 } from './Icons';
 import './alinhamento.css';
 
@@ -70,12 +74,21 @@ const NAV_GRUPOS = [
         ],
       },
       {
+        id: 'secaoCursos', Icon: IconPlay, label: 'Cursos',
+        abas: [
+          { id: 'cursos', label: 'Cursos' },
+          { id: 'profissionaisCursos', label: 'Profissionais' },
+          { id: 'vendasCursos', label: 'Vendas e repasses' },
+        ],
+      },
+      {
         id: 'secaoParcerias', Icon: IconGift, label: 'Parcerias',
         abas: [
           { id: 'parcerias', label: 'Parcerias' },
           { id: 'beneficios', label: 'Cupons e Comissões' },
           { id: 'cashback', label: 'Cashback' },
-          { id: 'indicacoes', label: 'Indicações Amazon' },
+          { id: 'indicacoes', label: 'Afiliados' },
+          { id: 'pedidosCashback', label: 'Pedidos de cashback' },
         ],
       },
     ],
@@ -106,6 +119,7 @@ const NAV_GRUPOS = [
       { id: 'precos', Icon: IconTag, label: 'Preços e planos', sub: 'Valores, planos e pagamento' },
       { id: 'recursosIA', Icon: IconSpark, label: 'Funções da AtravessIA', sub: 'Ligar, desligar e planos de cada uma' },
       { id: 'institucional', Icon: IconDoc, label: 'Sobre e parcerias', sub: 'Sobre o app · Seja nosso parceiro' },
+      { id: 'versaoApp', Icon: IconDownload, label: 'Versão do app', sub: 'Aviso de atualização na Play Store' },
       { id: 'perfil', Icon: IconPerson, label: 'Meu perfil', sub: 'Nome e foto' },
     ],
   },
@@ -127,6 +141,7 @@ const SCREENS = {
   beneficios:      Beneficios,
   cashback:        Cashback,
   indicacoes:      Indicacoes,
+  pedidosCashback: PedidosCashback,
   usuarias:        Usuarias,
   notificacoes:    Notificacoes,
   mensagens:       Mensagens,
@@ -134,8 +149,12 @@ const SCREENS = {
   precos:          PrecosPlanos,
   perfil:          Perfil,
   institucional:   Institucional,
+  versaoApp:       VersaoApp,
   recursosIA:      RecursosIA,
   artes:           Artes,
+  cursos:          Cursos,
+  profissionaisCursos: ProfissionaisCursos,
+  vendasCursos:    VendasCursos,
 };
 
 const TODOS_ITENS = NAV_GRUPOS.flatMap(g => g.itens);

@@ -8,10 +8,30 @@ import { db } from '../../services/firebase';
 import { colors, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { Profundo } from '../../components/Efeitos';
+import Recolhivel from '../../components/Recolhivel';
 import { abrirLink } from '../../utils/abrirLink';
 import { SOBRE_PADRAO, PARCEIRO_PADRAO } from './textosPadrao';
 
 const logo = require('../../../assets/images/travessia_logo.png');
+
+// Textos longos podem ser divididos em seções pelo painel: cada linha que
+// começa com "## " vira o título de um cartão recolhível (fechado por padrão).
+// O que vem antes do primeiro "## " fica sempre à vista. Sem "## ", nada muda.
+function dividirSecoes(texto) {
+  const linhas = String(texto || '').split('\n');
+  const intro = [];
+  const secoes = [];
+  linhas.forEach((linha) => {
+    const m = linha.match(/^\s*##\s+(.+)$/);
+    if (m) secoes.push({ titulo: m[1].trim(), corpo: [] });
+    else if (secoes.length) secoes[secoes.length - 1].corpo.push(linha);
+    else intro.push(linha);
+  });
+  return {
+    intro: intro.join('\n').trim(),
+    secoes: secoes.map(sc => ({ titulo: sc.titulo, corpo: sc.corpo.join('\n').trim() })),
+  };
+}
 
 // Tela de texto editado pela administração: "Sobre o app" ou "Seja nosso parceiro".
 // `tipo` vem da rota ('sobre' | 'parceiro').
@@ -26,6 +46,7 @@ function TextoInstitucional({ navigation, tipo }) {
   const titulo = parceiro ? 'Seja nosso parceiro' : 'Sobre o app';
   const texto = (parceiro ? cfg?.parceiroTexto : cfg?.sobreTexto) || (parceiro ? PARCEIRO_PADRAO : SOBRE_PADRAO);
   const link = parceiro ? (cfg?.parceiroLink || '').trim() : '';
+  const { intro, secoes } = dividirSecoes(texto);
 
   return (
     <SafeAreaView style={s.safe} edges={['left', 'right']}>
@@ -45,7 +66,16 @@ function TextoInstitucional({ navigation, tipo }) {
             <Image source={logo} style={s.logo} />
             <Text style={s.marcaNome}>Atravessia</Text>
           </View>
-          <Text style={s.texto}>{texto}</Text>
+          {!!intro && <Text style={s.texto}>{intro}</Text>}
+          {secoes.length > 0 && (
+            <View style={[s.secoes, !intro && { marginTop: 0 }]}>
+              {secoes.map((sc, i) => (
+                <Recolhivel key={`${i}-${sc.titulo}`} titulo={sc.titulo} estilo={s.secao}>
+                  <Text style={s.texto}>{sc.corpo}</Text>
+                </Recolhivel>
+              ))}
+            </View>
+          )}
           {parceiro && !!link && (
             <Profundo estilo={s.botao} base={colors.botaoBase} sombra={s.botaoSombra} onPress={() => abrirLink(link)} accessibilityLabel="Quero ser parceiro">
               <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.botaoGradiente} />
@@ -79,6 +109,9 @@ const s = criarEstilos(() => ({
   logo: { width: 44, height: 44, borderRadius: 13 },
   marcaNome: { fontFamily: 'Marca', fontSize: 30, color: colors.escuro ? colors.titulo : '#45358A' },
   texto: { fontFamily: 'Figtree_400Regular', fontSize: 16, lineHeight: 25, color: colors.titulo },
+  secoes: { marginTop: 16 },
+  // Seções dentro do cartão: sem sombra própria, só a borda suave.
+  secao: { backgroundColor: colors.vidroTenue, shadowOpacity: 0, elevation: 0, marginBottom: 10 },
   botao: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 999, overflow: 'hidden', backgroundColor: colors.botao },
   botaoGradiente: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   botaoSombra: { shadowColor: '#5B48A8', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 5, marginTop: 20 },

@@ -30,7 +30,8 @@ export const GRUPOS_SUBTABS = {
     { label: 'Parcerias', screen: 'AdminParcerias' },
     { label: 'Cupons e Comissões', screen: 'AdminBeneficios' },
     { label: 'Cashback', screen: 'AdminCashback' },
-    { label: 'Indicações Amazon', screen: 'AdminIndicacoes' },
+    { label: 'Afiliados', screen: 'AdminIndicacoes' },
+    { label: 'Pedidos de cashback', screen: 'AdminPedidosCashback' },
   ],
 };
 

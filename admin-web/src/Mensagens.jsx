@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { IconAlert } from './Icons';
+import Recolhivel from './Recolhivel';
 import { EMOCOES } from './emocoes';
 
 // Porte de oamorqueefica/src/screens/admin/AdminMensagensRelatorioScreen.js
@@ -70,14 +71,18 @@ export default function Mensagens({ showToast }) {
 
       <div className="aln-msg-grid">
         {EMOCOES.map(emo => (
-          <div key={emo.id} className="card aln-msg-card">
-            <div className="aln-msg-header">
-              <span className="aln-dot" style={{ background: emo.color }} />
-              <span className="aln-msg-label">{emo.label}</span>
+          <Recolhivel
+            key={emo.id}
+            className="aln-msg-recolhivel"
+            titulo={emo.label}
+            subtitulo={(mensagens[emo.id] || '').trim() ? 'Mensagem personalizada' : 'Usando o texto padrão'}
+            icone={<span className="aln-dot" style={{ background: emo.color }} />}
+            direita={(
               <span className={`badge ${emo.positiva ? 'badge-perceber' : 'badge-compreender'}`}>
                 {emo.positiva ? 'positiva' : 'negativa'}
               </span>
-            </div>
+            )}
+          >
             <div className="field-group" style={{ marginBottom: 0 }}>
               <textarea
                 value={mensagens[emo.id] || ''}
@@ -87,7 +92,7 @@ export default function Mensagens({ showToast }) {
               />
               <span className="field-hint">Padrão: “{mensagemPadrao(emo)}”</span>
             </div>
-          </div>
+          </Recolhivel>
         ))}
       </div>
 

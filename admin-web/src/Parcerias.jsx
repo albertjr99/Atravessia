@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift, IconUpload } from './Icons';
 import { UFS, formatarCidade, rotuloLocal, urlDeImagem, idDoDrive } from './parceriaUtils';
+import AcoesItem from './AcoesItem';
 
 // Caixa de texto que cresce com o conteúdo: quem digita vê o texto inteiro,
 // como a usuária vê no app (antes ficava preso em 3 linhas).
@@ -278,10 +279,8 @@ export default function Parcerias({ showToast, irPara }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {lista.map(item => (
-            <div key={item.id} className="card" style={{
-              display: 'flex', gap: 16, alignItems: 'flex-start',
-              opacity: item.ativo === false ? 0.6 : 1,
-            }}>
+            <div key={item.id} className="card item-com-acoes">
+            <div className="item-com-acoes-linha" style={{ opacity: item.ativo === false ? 0.6 : 1 }}>
               {item.imagemUrl ? (
                 <img src={urlDeImagem(item.imagemUrl)} alt={item.titulo}
                   style={{ width: 72, height: 72, borderRadius: 16, objectFit: 'cover', flexShrink: 0, boxShadow: 'var(--sombra-1)' }} />
@@ -374,9 +373,9 @@ export default function Parcerias({ showToast, irPara }) {
                   title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                   {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
-                <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
               </div>
+            </div>
+              <AcoesItem onEditar={() => openEdit(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar parceria" />
             </div>
           ))}
         </div>

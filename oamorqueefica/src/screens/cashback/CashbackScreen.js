@@ -6,6 +6,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import Recolhivel from '../../components/Recolhivel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../hooks/AppContext';
 
@@ -85,8 +86,15 @@ export default function CashbackScreen({ navigation }) {
             )}
           </View>
 
-          <Text style={s.secTit}>Como funciona</Text>
-          <View style={s.cartao}>
+          {/* Explicação secundária: recolhida; abre sozinha só para quem ainda não tem movimentações. */}
+          <Recolhivel
+            titulo="Como funciona"
+            subtitulo={`${percentualTxt}% de volta nos atendimentos de parceria`}
+            icone="help-circle-outline"
+            inicialAberto={cashback.movimentos.length === 0}
+            estilo={{ marginBottom: 0 }}
+            estiloConteudo={{ paddingBottom: 4 }}
+          >
             {[
               { icone: 'ticket-outline', titulo: 'Use um cupom de parceria', texto: 'Gere o cupom em Experimente a vida e apresente no atendimento.' },
               { icone: 'checkmark-circle-outline', titulo: 'Confirme o atendimento', texto: `Ao confirmar, você ganha ${percentualTxt}% do valor do serviço em cashback.` },
@@ -100,7 +108,7 @@ export default function CashbackScreen({ navigation }) {
                 </View>
               </View>
             ))}
-          </View>
+          </Recolhivel>
           {!cfg.ativo && <Text style={s.pausado}>O programa de cashback está pausado no momento. Seu saldo continua valendo até a data de cada crédito.</Text>}
 
           <Text style={s.secTit}>Extrato</Text>

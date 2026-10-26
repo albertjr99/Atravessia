@@ -10,6 +10,8 @@ import {
   IconEyeOff, IconLink, IconPlay, IconSpark, IconTrash,
 } from './Icons';
 import { EMOCOES, PLANOS_NIVEIS, emocaoPorId, ordenarPor } from './emocoes';
+import AcoesItem from './AcoesItem';
+import Recolhivel from './Recolhivel';
 
 // "Outros conteúdos" — coleção `conteudos`. Apenas imagem, link e texto:
 // áudios têm seção própria (Áudios Check-in). O campo `grupo` não existe mais.
@@ -253,14 +255,13 @@ export default function OutrosConteudos({ showToast }) {
         <button className="btn-primary" onClick={openNew}>+ Novo conteúdo</button>
       </div>
 
-      <div className="aln-ajuda">
-        <IconSpark size={16} />
+      <Recolhivel titulo="Como estes conteúdos aparecem" icone={<IconSpark size={16} />}>
         <div>
           Estes conteúdos aparecem para a usuária como <strong>sugestões no check-in</strong>, conforme a emoção
           que ela escolher, e podem ser guardados na <strong>área de favoritos</strong>. Marque as emoções em que
           cada conteúdo deve ser sugerido e o plano mínimo para acessá-lo. Áudios ficam na aba <strong>Áudios Check-in</strong>.
         </div>
-      </div>
+      </Recolhivel>
 
       {erroLista && (
         <div className="aln-erro">
@@ -339,15 +340,12 @@ export default function OutrosConteudos({ showToast }) {
                     )}
                     {emos.length === 0 && !antigo && <span className="badge badge-inactive">Sem emoção (só favoritos)</span>}
                   </div>
+                  <AcoesItem onEditar={!antigo ? () => openEdit(item) : undefined} onApagar={() => excluir(item)} />
                 </div>
                 <div className="list-card-actions">
                   <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                     {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                   </button>
-                  {!antigo && (
-                    <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                  )}
-                  <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
                 </div>
               </div>
             );

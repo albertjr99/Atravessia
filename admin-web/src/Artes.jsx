@@ -14,6 +14,8 @@ import {
   rotuloFormato, rotuloEstilo, rotuloProvedor, mensagemErroArte,
 } from './artes';
 import './artes.css';
+import AcoesItem from './AcoesItem';
+import Recolhivel from './Recolhivel';
 
 // Atravessia Artes — gerador de artes por IA para as administradoras.
 // A geração roda na Cloud Function `gerarArte` (functions/index.js), que guarda
@@ -457,10 +459,8 @@ function CartaoArte({ arte, onCompor, onReusar, onExcluir, onFavoritar, showToas
               {arte.favorita ? <IconHeartFill size={18} /> : <IconHeart size={18} />}
             </button>
           )}
-          {onExcluir && (
-            <button className="icon-btn icon-btn-delete" title="Excluir" aria-label="Excluir" onClick={() => onExcluir(arte)}><IconTrash size={18} /></button>
-          )}
         </div>
+        {onExcluir && <AcoesItem onApagar={() => onExcluir(arte)} rotuloApagar="Excluir" className="acoes-item-compacto" />}
       </div>
     </div>
   );
@@ -472,6 +472,7 @@ export default function Artes({ showToast, perfil }) {
   const arquivoRef = useRef(null);
   const [status, setStatus] = useState(null);
   const [verConfig, setVerConfig] = useState(false);
+  const [criarAberto, setCriarAberto] = useState(false);
 
   const [prompt, setPrompt] = useState('');
   const [formato, setFormato] = useState('post');
@@ -534,6 +535,7 @@ export default function Artes({ showToast, perfil }) {
     if (a.formato) setFormato(a.formato);
     if (a.estilo) setEstilo(a.estilo);
     if (typeof a.usarPaletaMarca === 'boolean') setUsarPaleta(a.usarPaletaMarca);
+    setCriarAberto(true);
     topoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -598,8 +600,15 @@ export default function Artes({ showToast, perfil }) {
 
       {verConfig && <Configuracao status={status} showToast={(m, t) => { showToast(m, t); carregarStatus(); }} />}
 
-      {/* Criar */}
-      <div className="card art-criar">
+      {/* Criar: fechado por padrão; abre ao clicar ou ao reusar uma descrição. */}
+      <Recolhivel
+        titulo="Criar nova arte"
+        subtitulo="Descreva, escolha formato e estilo e gere"
+        icone={<IconSpark size={17} />}
+        aberto={criarAberto}
+        onAlternar={setCriarAberto}
+        className="art-criar"
+      >
         <div className="field-group">
           <label htmlFor="art-prompt">Descreva a arte</label>
           <textarea
@@ -661,7 +670,7 @@ export default function Artes({ showToast, perfil }) {
             {gerando ? <><span className="art-spin" /> Criando…</> : <><IconSpark size={17} /> Gerar {quantidade > 1 ? `${quantidade} artes` : 'arte'}</>}
           </button>
         </div>
-      </div>
+      </Recolhivel>
 
       {gerando && (
         <div className="art-grade">

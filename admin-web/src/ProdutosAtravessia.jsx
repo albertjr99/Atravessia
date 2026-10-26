@@ -10,6 +10,7 @@ import {
   IconLink, IconPlay, IconSpark, IconTrash, IconUp, IconVideo,
 } from './Icons';
 import { VIDEOS, CartaoVideo } from './Videos';
+import AcoesItem from './AcoesItem';
 import { ordenarPor } from './ordenar';
 
 // "Produtos Atravessia" na Biblioteca do painel. Reúne:
@@ -343,6 +344,7 @@ export default function ProdutosAtravessia({ showToast }) {
                     {item.link && <span className="badge">Botão: {item.botaoTexto || 'Saiba mais'}</span>}
                     {item.ativo === false && <span className="badge badge-inactive">Inativo</span>}
                   </div>
+                  <AcoesItem onEditar={() => openEdit(item)} onApagar={() => excluir(item)} rotuloApagar="Apagar item" />
                 </div>
                 <div className="list-card-actions">
                   <button className="icon-btn" onClick={() => mover(idx, -1)} disabled={idx === 0} title="Subir"><IconUp size={16} /></button>
@@ -350,8 +352,6 @@ export default function ProdutosAtravessia({ showToast }) {
                   <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                     {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                   </button>
-                  <button className="icon-btn" onClick={() => openEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                  <button className="icon-btn icon-btn-delete" onClick={() => excluir(item)} title="Excluir"><IconTrash size={16} /></button>
                 </div>
               </div>
             );

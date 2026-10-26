@@ -13,7 +13,8 @@ import { confirmar } from '../../utils/confirm';
 import PlayerVideo from '../../components/PlayerVideo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
-import { est, acento, Degrade } from './adminEstilo';
+import { est, acento, Degrade, AcoesItem } from './adminEstilo';
+import Recolhivel from '../../components/Recolhivel';
 
 // Vídeos de apresentação (mesma tela do painel web: admin-web/src/Videos.jsx).
 // Ficam em configuracoes/videos → { jornadas: {...}, parcerias: {...} }.
@@ -118,14 +119,16 @@ export function CartaoVideo({ info, dados, aoFocar }) {
   );
 
   return (
-    <View style={s.card}>
-      <View style={s.cardTopo}>
-        <View style={s.cardIcone}><Ionicons name="play-circle-outline" size={21} color={acento('nevoa').tinta} /></View>
-        <Text style={s.cardTit}>{info.nome}</Text>
-        {!!dados?.url && (
-          <Text style={[s.tag, dados.ativo === false && s.tagOculto]}>{dados.ativo === false ? 'Oculto' : 'No app'}</Text>
-        )}
-      </View>
+    // Fechado por padrão: o cabeçalho mostra o nome e se o vídeo está no app.
+    <Recolhivel
+      titulo={info.nome}
+      subtitulo={dados?.url ? (titulo || info.tituloPadrao) : 'Nenhum vídeo enviado ainda'}
+      icone="play-circle-outline"
+      estiloConteudo={{ gap: 8 }}
+      direita={dados?.url ? (
+        <Text style={[s.tag, dados.ativo === false && s.tagOculto]}>{dados.ativo === false ? 'Oculto' : 'No app'}</Text>
+      ) : null}
+    >
 
       {dados?.url ? (
         verPrevia ? (
@@ -175,13 +178,11 @@ export function CartaoVideo({ info, dados, aoFocar }) {
             <TouchableOpacity style={s.btnSec} onPress={() => salvar({ ativo: dados.ativo === false }).catch(() => {})}>
               <Text style={s.btnSecTxt}>{dados.ativo === false ? 'Mostrar' : 'Ocultar'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.btnIcone} onPress={remover}>
-              <Ionicons name="trash-outline" size={18} color={colors.roseTexto} />
-            </TouchableOpacity>
           </>
         )}
       </View>
-    </View>
+      {!!dados?.url && <AcoesItem onApagar={remover} rotuloApagar="Remover vídeo" />}
+    </Recolhivel>
   );
 }
 

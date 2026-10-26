@@ -18,6 +18,7 @@ import svg_shield from 'ionicons/dist/svg/shield-outline.svg?raw';
 import svg_sparkles from 'ionicons/dist/svg/sparkles-outline.svg?raw';
 import svg_flower from 'ionicons/dist/svg/flower-outline.svg?raw';
 import svg_infinite from 'ionicons/dist/svg/infinite-outline.svg?raw';
+import AcoesItem from './AcoesItem';
 
 const SVG_ICONE = {
   'heart-outline': svg_heart,
@@ -193,14 +194,13 @@ export default function Jornadas({ showToast }) {
                     <span className={`badge ${j.ativa ? 'badge-perceber' : 'badge-inactive'}`}>{j.ativa ? 'Ativa' : 'Inativa'}</span>
                     <span className="badge badge-inactive">Ordem: {j.ordem ?? 0}</span>
                   </div>
+                  <AcoesItem onEditar={() => setForm({ ...novo(), ...j })} onApagar={() => remover(j)} rotuloApagar="Apagar jornada" />
                 </div>
                 <div className="list-card-actions" style={{ alignItems: 'center' }}>
                   <label className="toggle" title={j.ativa ? 'Desativar' : 'Ativar'}>
                     <input type="checkbox" checked={!!j.ativa} onChange={() => toggleAtiva(j)} />
                     <span className="toggle-slider" />
                   </label>
-                  <button className="icon-btn" onClick={() => setForm({ ...novo(), ...j })} title="Editar"><IconEdit size={16} /></button>
-                  <button className="icon-btn icon-btn-delete" onClick={() => remover(j)} title="Remover"><IconTrash size={16} /></button>
                 </div>
               </div>
             );

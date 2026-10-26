@@ -5,8 +5,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp,
+  collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc,
 } from 'firebase/firestore';
+import Recolhivel from '../../components/Recolhivel';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
@@ -20,6 +21,8 @@ import { vibrarSucesso } from '../../utils/vibrar';
 import { perguntaDoDia, outrasPerguntas, devolutiva } from '../../ia/diario';
 
 const hojeISO = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+// Limite de cada página do diário (contador discreto abaixo da caixa).
+const LIMITE_TEXTO = 1000;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const dataBonita = (iso) => {
   const [a, m, d] = String(iso || '').split('-').map(Number);
@@ -45,6 +48,9 @@ function BotaoLilas({ onPress, children, rotulo, externo, desativado }) {
 
 // Diário guiado: uma pergunta por dia, escolhida pela emoção do check-in.
 // As entradas ficam em usuarios/{uid}/diario e só a própria pessoa lê.
+// Uma página por dia: a de hoje usa o id 'AAAA-MM-DD' (registros antigos,
+// com id automático, continuam valendo: se já houver um de hoje, ele é
+// atualizado em vez de criar outro).
 export default function DiarioGuiadoScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { checkins, temAcesso, podeUsarIA } = useApp();
@@ -63,7 +69,18 @@ export default function DiarioGuiadoScreen({ navigation }) {
   const [salvando, setSalvando] = useState(false);
   const [retorno, setRetorno] = useState(null);
   const [alturaTeclado, setAlturaTeclado] = useState(0);
+  const [editando, setEditando] = useState(false);
   const rolagem = useRef(null);
+
+  // Página de hoje: prefere o doc com id do dia; senão, a mais recente com data de hoje (legado).
+  const entradaHoje = useMemo(() => {
+    if (!entradas) return null;
+    return entradas.find(e => e.id === hoje) || entradas.find(e => e.data === hoje) || null;
+  }, [entradas, hoje]);
+  const anteriores = useMemo(
+    () => (entradas || []).filter(e => e.id !== entradaHoje?.id),
+    [entradas, entradaHoje],
+  );
 
   useEffect(() => {
     if (!uid) { setEntradas([]); return undefined; }
@@ -80,7 +97,16 @@ export default function DiarioGuiadoScreen({ navigation }) {
   }, []);
 
   const lista = useMemo(() => outrasPerguntas(emocaoHoje), [emocaoHoje]);
-  const pergunta = indice < 0 ? perguntaDoDia(emocaoHoje, hoje) : lista[indice % lista.length];
+  const perguntaSorteada = indice < 0 ? perguntaDoDia(emocaoHoje, hoje) : lista[indice % lista.length];
+  // Ao editar a página de hoje, a pergunta continua a mesma que foi respondida.
+  const pergunta = (editando && entradaHoje?.pergunta) || perguntaSorteada;
+
+  const editarHoje = () => {
+    setTexto(entradaHoje?.texto || '');
+    setRetorno(null);
+    setEditando(true);
+  };
+  const cancelarEdicao = () => { setEditando(false); setTexto(''); Keyboard.dismiss(); };
 
   const outra = () => setIndice(i => {
     let n = i + 1;
@@ -93,11 +119,19 @@ export default function DiarioGuiadoScreen({ navigation }) {
     if (!t || !uid) return;
     setSalvando(true);
     try {
-      await addDoc(collection(db, 'usuarios', uid, 'diario'), {
-        data: hoje, emocao: emocaoHoje, pergunta, texto: t, criadoEm: serverTimestamp(),
-      });
+      if (entradaHoje) {
+        // Já existe a página de hoje (nova ou antiga): atualiza a mesma.
+        await updateDoc(doc(db, 'usuarios', uid, 'diario', entradaHoje.id), {
+          pergunta, texto: t, emocao: entradaHoje.emocao ?? emocaoHoje, atualizadoEm: serverTimestamp(),
+        });
+      } else {
+        await setDoc(doc(db, 'usuarios', uid, 'diario', hoje), {
+          data: hoje, emocao: emocaoHoje, pergunta, texto: t, criadoEm: serverTimestamp(),
+        }, { merge: true });
+      }
       vibrarSucesso();
       setRetorno(devolutiva(t));
+      setEditando(false);
       setTexto('');
       Keyboard.dismiss();
       setTimeout(() => rolagem.current?.scrollTo({ y: 0, animated: true }), 100);
@@ -112,7 +146,10 @@ export default function DiarioGuiadoScreen({ navigation }) {
   const apagar = (item) => confirmar(
     'Apagar esta página?',
     'Ela será removida do seu diário.',
-    () => deleteDoc(doc(db, 'usuarios', uid, 'diario', item.id)).catch(e => console.warn('[Diário] apagar:', e?.message)),
+    () => {
+      if (item.id === entradaHoje?.id) { setEditando(false); setTexto(''); }
+      deleteDoc(doc(db, 'usuarios', uid, 'diario', item.id)).catch(e => console.warn('[Diário] apagar:', e?.message));
+    },
     'Apagar',
   );
 
@@ -154,48 +191,89 @@ export default function DiarioGuiadoScreen({ navigation }) {
             </View>
           )}
 
-          <View style={s.cartao}>
-            <Text style={s.rotulo}>{rotuloEmocao ? `Para hoje · você marcou "${rotuloEmocao.toLowerCase()}"` : 'Pergunta de hoje'}</Text>
-            <Text style={s.pergunta}>{pergunta}</Text>
-            <TouchableOpacity onPress={outra} style={s.outra} hitSlop={8}>
-              <Ionicons name="shuffle" size={16} color={colors.lilasIcone} />
-              <Text style={s.outraTxt}>Outra pergunta</Text>
-            </TouchableOpacity>
-            <TextInput
-              style={s.entrada}
-              value={texto}
-              onChangeText={setTexto}
-              placeholder="Escreva no seu ritmo. Só você vê."
-              placeholderTextColor={colors.tl}
-              multiline
-              textAlignVertical="top"
-              maxLength={4000}
-            />
-            <BotaoLilas onPress={salvar} desativado={!texto.trim() || salvando} rotulo="Guardar no diário">
-              {salvando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="bookmark-outline" size={18} color="white" />}
-              <Text style={s.btnTxt}>{salvando ? 'Guardando...' : 'Guardar no diário'}</Text>
-            </BotaoLilas>
-            <Text style={s.privado}>
-              <Ionicons name="lock-closed-outline" size={12} color={colors.tl} /> Suas páginas são privadas.
-            </Text>
-          </View>
-
-          <Text style={s.secTit}>Suas páginas</Text>
           {entradas === null ? (
             <ActivityIndicator color={colors.lav4} style={{ marginTop: spacing.lg }} />
-          ) : entradas.length === 0 ? (
-            <Text style={s.vazio}>Quando você guardar sua primeira página, ela aparece aqui.</Text>
-          ) : entradas.map(item => (
-            <View key={item.id} style={s.pagina}>
+          ) : entradaHoje && !editando ? (
+            // Já há página hoje: mostra para ler, com opção de editar.
+            <View style={s.cartao}>
               <View style={s.paginaTopo}>
-                <Text style={s.paginaData}>{dataBonita(item.data)}</Text>
-                <TouchableOpacity onPress={() => apagar(item)} hitSlop={10} accessibilityLabel="Apagar página">
+                <Text style={[s.rotulo, { flex: 1 }]}>Sua página de hoje · {dataBonita(hoje)}</Text>
+                <TouchableOpacity onPress={() => apagar(entradaHoje)} hitSlop={10} accessibilityLabel="Apagar a página de hoje">
                   <Ionicons name="trash-outline" size={16} color={colors.tl} />
                 </TouchableOpacity>
               </View>
-              {!!item.pergunta && <Text style={s.paginaPergunta}>{item.pergunta}</Text>}
-              <Text style={s.paginaTexto} selectable>{item.texto}</Text>
+              {!!entradaHoje.pergunta && <Text style={s.paginaPergunta}>{entradaHoje.pergunta}</Text>}
+              <Text style={s.paginaTexto} selectable>{entradaHoje.texto}</Text>
+              <TouchableOpacity onPress={editarHoje} style={s.btnVidro} accessibilityLabel="Editar a página de hoje">
+                <Ionicons name="create-outline" size={18} color={colors.lilasTexto} />
+                <Text style={s.btnVidroTxt}>Editar a página de hoje</Text>
+              </TouchableOpacity>
+              <Text style={s.privado}>
+                Uma página por dia. Amanhã chega uma nova pergunta para você.
+              </Text>
             </View>
+          ) : (
+            <View style={s.cartao}>
+              <Text style={s.rotulo}>
+                {editando ? 'Editando a página de hoje'
+                  : rotuloEmocao ? `Para hoje · você marcou "${rotuloEmocao.toLowerCase()}"` : 'Pergunta de hoje'}
+              </Text>
+              <Text style={s.pergunta}>{pergunta}</Text>
+              {!editando && (
+                <TouchableOpacity onPress={outra} style={s.outra} hitSlop={8}>
+                  <Ionicons name="shuffle" size={16} color={colors.lilasIcone} />
+                  <Text style={s.outraTxt}>Outra pergunta</Text>
+                </TouchableOpacity>
+              )}
+              <View>
+                <TextInput
+                  style={s.entrada}
+                  value={texto}
+                  onChangeText={setTexto}
+                  placeholder="Escreva no seu ritmo. Só você vê."
+                  placeholderTextColor={colors.tl}
+                  multiline
+                  scrollEnabled
+                  textAlignVertical="top"
+                  maxLength={LIMITE_TEXTO}
+                />
+                <Text style={s.contador} accessibilityLabel={`${texto.length} de ${LIMITE_TEXTO} caracteres`}>
+                  {texto.length}/{LIMITE_TEXTO}
+                </Text>
+              </View>
+              <BotaoLilas onPress={salvar} desativado={!texto.trim() || salvando} rotulo={editando ? 'Salvar alterações' : 'Guardar no diário'}>
+                {salvando ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="bookmark-outline" size={18} color="white" />}
+                <Text style={s.btnTxt}>{salvando ? 'Guardando...' : editando ? 'Salvar alterações' : 'Guardar no diário'}</Text>
+              </BotaoLilas>
+              {editando && (
+                <TouchableOpacity onPress={cancelarEdicao} style={s.outra} hitSlop={8}>
+                  <Text style={s.outraTxt}>Cancelar edição</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={s.privado}>
+                <Ionicons name="lock-closed-outline" size={12} color={colors.tl} /> Suas páginas são privadas.
+              </Text>
+            </View>
+          )}
+
+          <Text style={s.secTit}>Páginas anteriores</Text>
+          {entradas === null ? null : anteriores.length === 0 ? (
+            <Text style={s.vazio}>As páginas dos outros dias aparecem aqui, guardadinhas.</Text>
+          ) : anteriores.map(item => (
+            <Recolhivel
+              key={item.id}
+              titulo={dataBonita(item.data) || 'Página do diário'}
+              subtitulo={item.pergunta}
+              icone="book-outline"
+              estilo={{ marginBottom: 0 }}
+              direita={(
+                <TouchableOpacity onPress={() => apagar(item)} hitSlop={10} accessibilityLabel="Apagar página">
+                  <Ionicons name="trash-outline" size={16} color={colors.tl} />
+                </TouchableOpacity>
+              )}
+            >
+              <Text style={s.paginaTexto} selectable>{item.texto}</Text>
+            </Recolhivel>
           ))}
         </View>
       </ScrollView>
@@ -247,9 +325,10 @@ const s = criarEstilos(() => ({
   outra: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 36 },
   outraTxt: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.lilasTexto },
   entrada: {
-    minHeight: 170, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    minHeight: 170, maxHeight: 280, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
     backgroundColor: colors.cardSolido, padding: 16, fontFamily: fonts.body, fontSize: 16, lineHeight: 25, color: colors.titulo,
   },
+  contador: { fontFamily: fonts.body, fontSize: 11, color: colors.tl, textAlign: 'right', marginTop: 4, marginRight: 4 },
   privado: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, textAlign: 'center' },
   secTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, marginTop: spacing.sm, marginLeft: 4 },
   vazio: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', paddingVertical: spacing.lg },

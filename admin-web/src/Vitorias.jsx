@@ -6,6 +6,8 @@ import {
 } from 'firebase/firestore';
 import { IconEdit, IconEye, IconEyeOff, IconSpark, IconTrash } from './Icons';
 import { ICONES_VITORIA, iconeVitoria } from './iconesVitoria';
+import AcoesItem from './AcoesItem';
+import Recolhivel from './Recolhivel';
 
 const VITORIAS_PADRAO = [
   'Saí de casa', 'Consegui dormir', 'Encontrei amigos',
@@ -138,8 +140,7 @@ export default function Vitorias({ showToast }) {
         </button>
       </div>
 
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h2 className="card-title">Adicionar nova vitória</h2>
+      <Recolhivel titulo="Adicionar nova vitória" subtitulo="Clique para cadastrar uma nova opção">
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
           <div className="field-group" style={{ flex: 1, marginBottom: 0 }}>
             <label>Texto da vitória</label>
@@ -160,7 +161,7 @@ export default function Vitorias({ showToast }) {
           <SeletorIcone valor={novoIcone} onChange={setNovoIcone} />
           <span className="field-hint">Aparece ao lado da vitória no aplicativo.</span>
         </div>
-      </div>
+      </Recolhivel>
 
       {opcoes.length === 0 ? (
         <div className="empty-state">
@@ -194,13 +195,11 @@ export default function Vitorias({ showToast }) {
                     <span>{item.label}</span>
                     {item.ativo === false && <span className="badge badge-inactive" style={{ marginLeft: 8 }}>Inativo</span>}
                   </div>
-                  <div className="vitoria-actions">
+                  <AcoesItem className="acoes-item-inline" onEditar={() => startEdit(item)} onApagar={() => handleExcluir(item)}>
                     <button className="icon-btn" onClick={() => toggleAtivo(item)} title={item.ativo === false ? 'Ativar' : 'Desativar'}>
                       {item.ativo === false ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                     </button>
-                    <button className="icon-btn" onClick={() => startEdit(item)} title="Editar"><IconEdit size={16} /></button>
-                    <button className="icon-btn icon-btn-delete" onClick={() => handleExcluir(item)} title="Excluir"><IconTrash size={16} /></button>
-                  </div>
+                  </AcoesItem>
                 </>
               )}
             </div>

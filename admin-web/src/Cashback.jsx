@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { db, functions } from './firebase';
 import { collection, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import Recolhivel from './Recolhivel';
 
 // Cashback no painel web (porte de AdminCashbackScreen.js): regras do
 // programa, números gerais, crédito manual e estorno. Créditos e usos são
@@ -117,8 +118,11 @@ export default function Cashback({ showToast }) {
       <p className="field-hint" style={{ marginTop: -6, marginBottom: 18 }}>{resumo.pessoas} pessoa{resumo.pessoas === 1 ? '' : 's'} já receberam cashback.</p>
 
       <div className="cb-colunas">
-        <div className="card">
-          <h3 className="card-title">Regras do programa</h3>
+        <Recolhivel
+          titulo="Regras do programa"
+          subtitulo={`${cfg.ativo ? 'Ativo' : 'Pausado'} · ${cfg.percentual || 0}% de cashback`}
+          className="cb-recolhivel"
+        >
           <div className="toggle-row">
             <label className="toggle">
               <input type="checkbox" checked={cfg.ativo} onChange={e => setCfg(c => ({ ...c, ativo: e.target.checked }))} />
@@ -141,18 +145,20 @@ export default function Cashback({ showToast }) {
           </div>
           <p className="field-hint">"Desconto máx." é quanto do preço o cashback pode cobrir. Sempre fica ao menos R$ 1,00 a pagar.</p>
           <button className="btn-primary" onClick={salvarCfg} disabled={salvandoCfg} style={{ marginTop: 10 }}>{salvandoCfg ? 'Salvando...' : 'Salvar regras'}</button>
-        </div>
+        </Recolhivel>
 
-        <div className="card">
-          <h3 className="card-title">Conceder crédito</h3>
-          <p className="field-hint" style={{ marginTop: 0 }}>Para cortesias ou ajustes. A pessoa recebe uma notificação no app.</p>
+        <Recolhivel
+          titulo="Conceder crédito"
+          subtitulo="Para cortesias ou ajustes. A pessoa recebe uma notificação no app."
+          className="cb-recolhivel"
+        >
           <div className="field-group"><label>E-mail da usuária</label><input type="email" value={conceder.email} onChange={e => setConceder(c => ({ ...c, email: e.target.value }))} placeholder="nome@email.com" /></div>
           <div className="cb-linha">
             <div className="field-group"><label>Valor (R$)</label><input value={conceder.valor} onChange={e => setConceder(c => ({ ...c, valor: e.target.value }))} inputMode="decimal" placeholder="10,00" /></div>
             <div className="field-group" style={{ flex: 2 }}><label>Motivo (aparece no extrato)</label><input value={conceder.motivo} onChange={e => setConceder(c => ({ ...c, motivo: e.target.value }))} placeholder="Presente da Atravessia" /></div>
           </div>
           <button className="btn-primary" onClick={concederCredito} disabled={enviando}>{enviando ? 'Concedendo...' : 'Conceder crédito'}</button>
-        </div>
+        </Recolhivel>
       </div>
 
       <h3 className="card-title" style={{ marginTop: 22 }}>Movimentos recentes</h3>
