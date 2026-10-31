@@ -17,7 +17,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.atravessia",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -42,8 +44,12 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "Atravessia Admin",
-      "lang": "pt-BR"
+      "name": "Atravessia",
+      "lang": "pt-BR",
+      "shortName": "Atravessia",
+      "themeColor": "#45358A",
+      "backgroundColor": "#F6F1EE",
+      "description": "Acolhimento para quem atravessa o luto."
     },
     "plugins": [
       [
@@ -95,6 +101,9 @@
       "eas": {
         "projectId": "87497b0a-d29e-4c73-bb76-42a69cbd026f"
       }
+    },
+    "experiments": {
+      "baseUrl": "/app"
     }
   }
 }

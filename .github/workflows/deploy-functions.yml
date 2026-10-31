@@ -13,6 +13,11 @@ on:
       - 'firestore.indexes.json'
       - 'firebase.json'
       - 'admin-web/dist/**'
+      - 'oamorqueefica/src/**'
+      - 'oamorqueefica/assets/**'
+      - 'oamorqueefica/app.json'
+      - 'oamorqueefica/web/**'
+      - 'oamorqueefica/package-lock.json'
   workflow_dispatch:
 
 jobs:
@@ -46,6 +51,17 @@ jobs:
       # Chaves da Stripe guardadas nos secrets do GitHub (STRIPE_SECRET_KEY e
       # STRIPE_WEBHOOK_SECRET) vão para o Secret Manager do Firebase antes do
       # deploy. Se não estiverem no GitHub, fica valendo o que já está no Firebase.
+      # Versão web do app da usuária em /app (para usar no iPhone pelo Safari,
+      # "Adicionar à Tela de Início", enquanto a versão iOS não sai).
+      - name: Gerar o app web (/app)
+        working-directory: oamorqueefica
+        run: |
+          npm ci --no-audit --no-fund
+          npx expo export --platform web --output-dir web-build
+          node web/preparar-pwa.js web-build
+          rm -rf ../admin-web/dist/app
+          cp -r web-build ../admin-web/dist/app
+
       - name: Sincronizar chaves da Stripe
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

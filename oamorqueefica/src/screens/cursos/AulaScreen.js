@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import YoutubePlayer from 'react-native-youtube-iframe';
+import YoutubePlayer from '../../components/PlayerYoutube';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
