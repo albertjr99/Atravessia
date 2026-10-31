@@ -9,7 +9,7 @@ import { LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 import { abrirLink } from '../../utils/abrirLink';
 import {
-  useCursos, useMeusCursos, TopoCursos, Capa, BarraProgresso,
+  useCursos, useMeusCursos, useCursosForaDaVitrine, TopoCursos, Capa, BarraProgresso,
   aulasOrdenadas, capaCurso, progressoCurso, brl, URL_CURSOS_WEB, useProfissional,
 } from './cursosComum';
 
@@ -62,8 +62,10 @@ export default function CursosScreen({ navigation }) {
   const colunas = larguraUtil >= 900 ? 3 : larguraUtil >= 560 ? 2 : 1;
   const larguraCard = (larguraUtil - spacing.md * (colunas - 1)) / colunas;
 
+  // Cursos comprados que saíram da vitrine continuam em "Meus cursos".
+  const foraDaVitrine = useCursosForaDaVitrine(meus, cursos);
   const lista = cursos || [];
-  const meusCursos = lista.filter(c => meus[c.id]);
+  const meusCursos = [...lista.filter(c => meus[c.id]), ...foraDaVitrine];
   const destaque = lista.find(c => c.destaque && !meus[c.id]);
   const outros = lista.filter(c => !meus[c.id] && c !== destaque);
   const abrir = (curso) => navigation.navigate('Curso', { cursoId: curso.id });
@@ -85,7 +87,7 @@ export default function CursosScreen({ navigation }) {
               <Text style={s.heroTxt}>Aulas em vídeo com profissionais que cuidam com carinho. Assista no seu ritmo, quantas vezes quiser.</Text>
             </View>
 
-            {lista.length === 0 && (
+            {lista.length === 0 && meusCursos.length === 0 && (
               <View style={s.vazio}>
                 <Ionicons name="sparkles-outline" size={26} color={colors.lilasIcone} />
                 <Text style={s.vazioTxt}>Os primeiros cursos estão sendo preparados com carinho. Volte em breve!</Text>

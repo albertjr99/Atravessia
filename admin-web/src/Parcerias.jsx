@@ -3,11 +3,15 @@ import { db, storage } from './firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   collection, addDoc, deleteDoc, doc, onSnapshot,
-  serverTimestamp, updateDoc,
+  serverTimestamp, updateDoc, setDoc,
 } from 'firebase/firestore';
-import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift, IconUpload } from './Icons';
+import { IconClose, IconEdit, IconEye, IconEyeOff, IconLink, IconSpark, IconTag, IconTrash, IconGift, IconUpload, IconWhatsapp, IconDoc } from './Icons';
 import { UFS, formatarCidade, rotuloLocal, urlDeImagem, idDoDrive } from './parceriaUtils';
 import AcoesItem from './AcoesItem';
+import Recolhivel from './Recolhivel';
+import {
+  ehDataISO, seloVigencia, linkWhatsApp, linkLigar, normalizarLinkContrato, ehLinkDrive,
+} from './vigenciaUtils';
 
 // Caixa de texto que cresce com o conteúdo: quem digita vê o texto inteiro,
 // como a usuária vê no app (antes ficava preso em 3 linhas).
@@ -54,6 +58,31 @@ function normalizarUrl(bruto) {
 
 const brl = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
+// Contato e contrato da parceria (internos), na lista do painel.
+function ContatoContrato({ priv }) {
+  if (!priv || (!priv.contatoNome && !priv.contatoTelefone && !priv.contratoUrl)) return null;
+  const wa = linkWhatsApp(priv.contatoTelefone);
+  const tel = linkLigar(priv.contatoTelefone);
+  return (
+    <div className="pc-interno">
+      {(priv.contatoNome || priv.contatoTelefone) && (
+        <span className="pc-contato">
+          Contato: <strong>{priv.contatoNome || '—'}</strong>
+          {priv.contatoTelefone && (tel
+            ? <a href={tel} title="Ligar">{priv.contatoTelefone}</a>
+            : <span>{priv.contatoTelefone}</span>)}
+        </span>
+      )}
+      {wa && (
+        <a className="pc-acao" href={wa} target="_blank" rel="noreferrer"><IconWhatsapp size={14} /> WhatsApp</a>
+      )}
+      {priv.contratoUrl && (
+        <a className="pc-acao" href={priv.contratoUrl} target="_blank" rel="noreferrer"><IconDoc size={14} /> Abrir contrato</a>
+      )}
+    </div>
+  );
+}
+
 function tipoBtnStyle(ativo) {
   return {
     flex: 1, textAlign: 'left', cursor: 'pointer', padding: '12px 14px',
@@ -72,10 +101,15 @@ function novoForm() {
     percentualComissao: '3',
     validadeDiasVoucher: '30',
     cashbackAtivo: true, cashbackPercentual: '', cashbackCondicoes: '',
+    // Internos (parceriasPrivado/{id}): só as administradoras leem.
+    inicioParceria: '', fimParceria: '', contatoNome: '', contatoTelefone: '', contratoUrl: '',
   };
 }
 
-export default function Parcerias({ showToast, irPara }) {
+// Campos que ficam em parceriasPrivado/{id}, fora do alcance das usuárias.
+const CAMPOS_PRIVADOS = ['inicioParceria', 'fimParceria', 'contatoNome', 'contatoTelefone', 'contratoUrl'];
+
+export default function Parcerias({ showToast, irPara, parametros }) {
   const [parcerias, setParcerias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(novoForm());
@@ -96,6 +130,26 @@ export default function Parcerias({ showToast, irPara }) {
       setLoading(false);
     }, (e) => { setErroLista(e?.message || 'Não foi possível carregar as parcerias.'); setLoading(false); });
   }, []);
+
+  // Vigência, contato e contrato (só admin lê).
+  const [privados, setPrivados] = useState({});
+  const [privadosProntos, setPrivadosProntos] = useState(false);
+  useEffect(() => onSnapshot(collection(db, 'parceriasPrivado'), snap => {
+    const m = {};
+    snap.docs.forEach(d => { m[d.id] = d.data(); });
+    setPrivados(m);
+    setPrivadosProntos(true);
+  }, () => setPrivadosProntos(true)), []);
+
+  // Atalho do Dashboard ("Contratos a vencer"): abre direto a edição.
+  const editarPedido = useRef(null);
+  useEffect(() => {
+    const id = parametros?.editarId;
+    if (!id || loading || !privadosProntos || editarPedido.current === id) return;
+    const item = parcerias.find(p => p.id === id);
+    if (item) { editarPedido.current = id; openEdit(item); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parametros, loading, parcerias, privadosProntos]);
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
@@ -127,6 +181,7 @@ export default function Parcerias({ showToast, irPara }) {
       cashbackAtivo: item.cashback?.ativo !== false,
       cashbackPercentual: item.cashback?.percentual != null ? String(item.cashback.percentual).replace('.', ',') : '',
       cashbackCondicoes: item.cashback?.condicoes || '',
+      ...Object.fromEntries(CAMPOS_PRIVADOS.map(k => [k, privados[item.id]?.[k] || ''])),
     });
     setEditId(item.id);
     setShowModal(true);
@@ -154,9 +209,34 @@ export default function Parcerias({ showToast, irPara }) {
       showToast('Escolha o estado da cidade informada.', 'error');
       return;
     }
+    // Vigência, contato e contrato (internos).
+    const { inicioParceria, fimParceria, contatoNome, contatoTelefone, contratoUrl } = form;
+    if ((inicioParceria && !ehDataISO(inicioParceria)) || (fimParceria && !ehDataISO(fimParceria))) {
+      showToast('Confira as datas da parceria.', 'error');
+      return;
+    }
+    if (inicioParceria && fimParceria && fimParceria < inicioParceria) {
+      showToast('O fim da parceria não pode ser antes do início.', 'error');
+      return;
+    }
+    const contratoFinal = normalizarLinkContrato(contratoUrl);
+    if (contratoFinal === null) {
+      showToast('O link do contrato não parece um endereço válido. Cole o link de compartilhamento do Google Drive.', 'error');
+      return;
+    }
+    const privado = {
+      titulo: form.titulo.trim(),
+      inicioParceria: inicioParceria || '',
+      fimParceria: fimParceria || '',
+      contatoNome: contatoNome.trim(),
+      contatoTelefone: contatoTelefone.trim(),
+      contratoUrl: contratoFinal,
+      atualizadoEm: serverTimestamp(),
+    };
     setSaving(true);
     try {
       const { percentualBeneficio, percentualComissao, validadeDiasVoucher, cashbackAtivo, cashbackPercentual, cashbackCondicoes, ...resto } = form;
+      CAMPOS_PRIVADOS.forEach(k => { delete resto[k]; });
       const pctCashback = parseFloat(String(cashbackPercentual).replace(',', '.'));
       const data = {
         ...resto,
@@ -185,13 +265,14 @@ export default function Parcerias({ showToast, irPara }) {
           data.tokenPainel = gerarTokenPainel();
         }
       }
+      let id = editId;
       if (editId) {
         await updateDoc(doc(db, 'parcerias', editId), data);
-        showToast('Parceria atualizada!');
       } else {
-        await addDoc(collection(db, 'parcerias'), { ...data, cliques: 0, criadoEm: serverTimestamp() });
-        showToast('Parceria adicionada!');
+        id = (await addDoc(collection(db, 'parcerias'), { ...data, cliques: 0, criadoEm: serverTimestamp() })).id;
       }
+      await setDoc(doc(db, 'parceriasPrivado', id), privado, { merge: true });
+      showToast(editId ? 'Parceria atualizada!' : 'Parceria adicionada!');
       closeModal();
     } catch (e) { showToast(`Erro ao salvar: ${e?.message || 'tente novamente.'}`, 'error'); }
     setSaving(false);
@@ -201,6 +282,7 @@ export default function Parcerias({ showToast, irPara }) {
     if (!window.confirm(`Excluir "${item.titulo}"?`)) return;
     try {
       await deleteDoc(doc(db, 'parcerias', item.id));
+      deleteDoc(doc(db, 'parceriasPrivado', item.id)).catch(() => {});
       showToast('Parceria excluída.');
     } catch (e) { showToast(`Erro ao excluir: ${e?.message || 'tente novamente.'}`, 'error'); }
   };
@@ -295,7 +377,13 @@ export default function Parcerias({ showToast, irPara }) {
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-dark)', marginBottom: 4 }}>
                   {item.titulo}
                   {item.ativo === false && <span className="badge badge-inactive" style={{ marginLeft: 8 }}>Inativo</span>}
+                  {seloVigencia(privados[item.id]) && (
+                    <span className={`vig-selo vig-${seloVigencia(privados[item.id]).tom}`} style={{ marginLeft: 8 }}>
+                      {seloVigencia(privados[item.id]).texto}
+                    </span>
+                  )}
                 </div>
+                <ContatoContrato priv={privados[item.id]} />
                 {item.descricao && (
                   <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 6, lineHeight: 1.5 }}>
                     {item.descricao}
@@ -572,6 +660,54 @@ export default function Parcerias({ showToast, irPara }) {
                   </div>
                 </div>
               )}
+
+              <Recolhivel
+                titulo="Contrato, vigência e contato"
+                subtitulo={seloVigencia({ inicioParceria: form.inicioParceria, fimParceria: form.fimParceria })?.texto
+                  || 'Uso interno: as usuárias não veem estes dados'}
+                inicialAberto={!!(form.fimParceria || form.contatoNome || form.contratoUrl)}
+                className="recolhivel-espaco"
+              >
+                <p className="field-hint" style={{ marginTop: 0 }}>Uso interno: estes dados ficam guardados à parte e só as administradoras veem. Quando faltarem 60, 30 e 7 dias para o fim (e no dia), o painel avisa.</p>
+                <div className="field-row">
+                  <div className="field-group">
+                    <label>Início da parceria</label>
+                    <input type="date" value={form.inicioParceria} onChange={e => set('inicioParceria', e.target.value)} />
+                  </div>
+                  <div className="field-group">
+                    <label>Fim da parceria (vencimento do contrato)</label>
+                    <input type="date" value={form.fimParceria} min={form.inicioParceria || undefined} onChange={e => set('fimParceria', e.target.value)} />
+                  </div>
+                </div>
+                <div className="field-row">
+                  <div className="field-group">
+                    <label>Nome do contato</label>
+                    <input type="text" value={form.contatoNome} onChange={e => set('contatoNome', e.target.value)} placeholder="Quem responde pela parceria" />
+                  </div>
+                  <div className="field-group">
+                    <label>Telefone/WhatsApp do contato</label>
+                    <input type="tel" value={form.contatoTelefone} onChange={e => set('contatoTelefone', e.target.value)} placeholder="(27) 99999-9999" />
+                    {form.contatoTelefone.trim() && !linkWhatsApp(form.contatoTelefone) && (
+                      <span className="field-hint" style={{ color: 'var(--cor-aviso)' }}>Confira o número: use DDD + telefone.</span>
+                    )}
+                  </div>
+                </div>
+                <div className="field-group" style={{ marginBottom: 0 }}>
+                  <label>Link do contrato (Google Drive)</label>
+                  <input type="url" value={form.contratoUrl} onChange={e => set('contratoUrl', e.target.value)} placeholder="https://drive.google.com/..." />
+                  {form.contratoUrl.trim() && normalizarLinkContrato(form.contratoUrl) === null && (
+                    <span className="field-hint" style={{ color: 'var(--cor-erro)' }}>Este link não parece um endereço válido.</span>
+                  )}
+                  {normalizarLinkContrato(form.contratoUrl) && !ehLinkDrive(form.contratoUrl) && (
+                    <span className="field-hint" style={{ color: 'var(--cor-aviso)' }}>Não parece um link do Google Drive, mas será salvo assim mesmo.</span>
+                  )}
+                  {normalizarLinkContrato(form.contratoUrl) && (
+                    <a className="pc-acao" style={{ marginTop: 8, alignSelf: 'flex-start' }} href={normalizarLinkContrato(form.contratoUrl)} target="_blank" rel="noreferrer">
+                      <IconDoc size={14} /> Abrir contrato
+                    </a>
+                  )}
+                </div>
+              </Recolhivel>
 
               <div className="field-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

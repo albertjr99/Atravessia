@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atravessia",
     "slug": "atravessia",
-    "version": "1.20.1",
+    "version": "1.21.0",
     "sdkVersion": "54.0.0",
     "newArchEnabled": true,
     "orientation": "portrait",
@@ -26,7 +26,7 @@
         "backgroundColor": "#FAF7F3"
       },
       "package": "com.atravessia",
-      "versionCode": 50,
+      "versionCode": 51,
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -76,8 +76,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#B8A6C9",
+          "icon": "./assets/notification-icon.png",
+          "color": "#6B54C6",
           "androidMode": "default",
           "androidCollapsedTitle": "Atravessia",
           "iosDisplayInForeground": true

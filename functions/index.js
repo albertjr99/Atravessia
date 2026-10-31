@@ -449,7 +449,7 @@ exports.stripeWebhook = onRequest({ secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_
 const MENSAGENS_INATIVIDADE = {
   3: 'Sentimos sua falta por aqui. Como você está hoje?',
   7: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.',
-  14: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.',
+  14: 'Você não precisa passar por tudo sem companhia. Quando quiser, estaremos aqui.',
 };
 
 // Roda 1x por dia às 10h (horário de Brasília) e avisa usuárias inativas há 3, 7 ou 14 dias.
@@ -554,7 +554,7 @@ exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZ
     if (negativas / checkinsSnap.size < 0.6) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Você não precisa atravessar tudo sozinho. Considere se aproximar de alguém da sua rede de apoio.', data: { screen: 'RedeApoio' } });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Você não precisa atravessar tudo sem companhia. Considere se aproximar de alguém da sua rede de apoio.', data: { screen: 'RedeApoio', tipo: 'rede_apoio' } });
   }
 
   await enviarPush(mensagensPush);
@@ -626,7 +626,9 @@ exports.pushComunicacaoAdmin = onDocumentCreated('notificacoesEditoriais/{id}', 
     if (alvo === 'gratis' && (total || plano >= 1)) continue;
     if (alvo === 'plano2' && !(total || plano === 2)) continue;
     if (alvo === 'plano3' && !(total || plano === 3)) continue;
-    mensagens.push({ to: u.pushToken, title: 'Atravessia', body: n.texto, data: { screen: 'Notificacoes' } });
+    // `screen` opcional no documento (ex.: comunicação automática → 'Cursos'/'Parcerias').
+    const screen = typeof n.screen === 'string' && /^[A-Za-z]{2,40}$/.test(n.screen) ? n.screen : 'Notificacoes';
+    mensagens.push({ to: u.pushToken, title: 'Atravessia', body: n.texto, data: { screen, ...(n.cursoId ? { cursoId: String(n.cursoId) } : {}) } });
   }
   await enviarPush(mensagens);
 });
@@ -661,7 +663,7 @@ exports.notificarJornadaParada = onSchedule({ schedule: '0 18 * * *', timeZone: 
     if (!parada) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
-    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Sua jornada está esperando por você. Quando se sentir pronta, continue de onde parou.', data: { screen: 'Inicio' } });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Sua jornada está esperando por você. Quando sentir que é o momento, continue de onde parou.', data: { screen: 'Jornadas', tipo: 'jornada' } });
   }
 
   await enviarPush(mensagensPush);
@@ -686,7 +688,7 @@ exports.notificarMemorialSemAtualizacao = onSchedule({ schedule: '0 18 * * *', t
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
     await userDoc.ref.update({ memorialAvisoEnviado: true });
-    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?', data: { screen: 'Inicio' } });
+    mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Seu Memorial está esperando por novas lembranças. Que tal adicionar algo hoje?', data: { screen: 'GuardarMemoria', tipo: 'memorial' } });
   }
 
   await enviarPush(mensagensPush);
@@ -1991,9 +1993,15 @@ exports.analisarPedidoCashbackAfiliado = onCall(async (request) => {
 // Cursos em vídeo (YouTube não listado) vendidos pelo Stripe, com prestação
 // de contas para o profissional parceiro. Valores sempre em centavos.
 //   cursos/{id}                  { titulo, subtitulo, descricao, capaUrl, programa[], aulas[],
-//                                  preco (reais), ativo, destaque, profissionalId, criadoEm }
-//   profissionais/{id}           { nome, bio, fotoUrl, repasseTipo, repasseValor, repasseBase, ativo }
-//   profissionaisPrivado/{id}    { email, tokenPortal }            (só admin lê; só servidor grava)
+//                                  preco (reais), ativo, destaque, arquivado, protegerAulas,
+//                                  profissionalId, criadoEm }
+//                                  Com protegerAulas, as aulas PAGAS ficam aqui sem youtubeId/thumb.
+//   cursosConteudo/{id}          { aulas: { aulaId: { youtubeId, thumb } } }  (só quem comprou e admin lêem)
+//   profissionais/{id}           { nome, bio, fotoUrl, ativo }     (perfil público, sem valores)
+//   profissionaisPrivado/{id}    { email, tokenPortal, repasseTipo, repasseValor, repasseBase,
+//                                  termoAceitoEm, termoVersao, termoIp, termoUserAgent, termoPedirNovo }
+//                                  (só admin lê; só servidor grava) + subcoleção aceites/{id}
+//   limitesPortal/{hash}         contador de chamadas do portal por IP (só servidor)
 //   matriculas/{stripeSessionId} { uid, cursoId, profissionalId, valorPagoCentavos, taxaStripeCentavos,
 //                                  repasseCentavos, repasseRegra, stripeSessionId, stripePaymentIntent,
 //                                  criadaEm, status: 'ativa'|'reembolsada', repasseId? }
@@ -2005,11 +2013,114 @@ exports.analisarPedidoCashbackAfiliado = onCall(async (request) => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const PORTAL_PROFISSIONAL_URL = `${SITE_URL}/profissional.html`;
-// Endereços aceitos como retorno do pagamento feito pela área web do curso.
-const ORIGENS_RETORNO_CURSO = [SITE_URL, 'https://o-amor-que-fica.firebaseapp.com', 'http://localhost:'];
+// Endereços aceitos como retorno do pagamento feito pela área web do curso
+// (comparados pela origem inteira, para não aceitar "…web.app.outro.com").
+const ORIGENS_RETORNO_CURSO = [SITE_URL, 'https://o-amor-que-fica.firebaseapp.com'];
+// Versão do termo de parceria do profissional. Ao mudar o texto
+// (docs/cursos/termo-profissional-parceiro.md e admin-web/src/termoProfissional.js),
+// suba a versão AQUI e LÁ: o portal volta a pedir o aceite.
+const TERMO_PROFISSIONAL_VERSAO = '1.0';
+const ID_SEGURO = /^[A-Za-z0-9_-]{1,128}$/;
+// 32+ caracteres: aceita também os links já enviados (24 bytes = 32 caracteres).
+const TOKEN_PORTAL = /^[A-Za-z0-9_-]{32,128}$/;
 
+// Token do portal: 32 bytes aleatórios (43 caracteres), gerado só no servidor.
 function gerarTokenPortal() {
-  return crypto.randomBytes(24).toString('base64url');
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function idValido(valor, mensagem) {
+  const s = String(valor ?? '');
+  if (!ID_SEGURO.test(s)) throw new HttpsError('invalid-argument', mensagem);
+  return s;
+}
+// Link https opcional (capa, foto, comprovante). Vazio vira ''.
+function urlHttpsOpcional(valor, rotulo, max = 2000) {
+  const s = String(valor ?? '').trim();
+  if (!s) return '';
+  if (s.length > max || !/^https:\/\/\S+$/i.test(s)) throw new HttpsError('invalid-argument', `${rotulo}: use um link que comece com https://`);
+  return s;
+}
+function urlRetornoCurso(url) {
+  if (typeof url !== 'string' || url.length > 2000) return null;
+  try {
+    const u = new URL(url);
+    const ok = ORIGENS_RETORNO_CURSO.includes(u.origin) || (u.protocol === 'http:' && u.hostname === 'localhost');
+    return ok ? u.toString() : null;
+  } catch { return null; }
+}
+
+// Regra de repasse: fica em profissionaisPrivado (as usuárias não leem). Os
+// perfis antigos ainda tinham os campos no documento público; vale como reserva.
+function regraRepasseDe(pub, priv) {
+  const v = (k) => (priv && priv[k] != null ? priv[k] : pub?.[k]);
+  return { repasseTipo: v('repasseTipo'), repasseValor: v('repasseValor'), repasseBase: v('repasseBase') };
+}
+
+// Aulas pagas sem youtubeId nem miniatura (que também contém o id) no
+// documento público; o conteúdo completo vai para cursosConteudo/{id}.
+function aulasPublicasCurso(aulas, proteger) {
+  return aulas.map(a => ((!proteger || a.gratis) ? a : { id: a.id, titulo: a.titulo, duracao: a.duracao || '', ordem: a.ordem, gratis: false }));
+}
+function conteudoDasAulas(aulas) {
+  return { aulas: Object.fromEntries(aulas.map(a => [a.id, { youtubeId: a.youtubeId, thumb: a.thumb || `https://i.ytimg.com/vi/${a.youtubeId}/hqdefault.jpg` }])) };
+}
+
+// ---- Proteção do portal: limite simples de chamadas por IP -----------------
+const hashCurto = (s) => crypto.createHash('sha256').update(String(s)).digest('hex').slice(0, 40);
+function origemChamada(request) {
+  const h = request.rawRequest?.headers || {};
+  const ip = String(h['x-forwarded-for'] || request.rawRequest?.ip || '').split(',')[0].trim();
+  return { ip: ip.slice(0, 64), ua: String(h['user-agent'] || '').slice(0, 300) };
+}
+// IP sem o final (a.b.c.0 / 3 primeiros blocos do IPv6) e navegador + sistema.
+function resumirIp(ip) {
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip.replace(/\.\d+$/, '.0');
+  if (ip.includes(':')) return `${ip.split(':').slice(0, 3).join(':')}::`;
+  return '';
+}
+function resumirUserAgent(ua) {
+  const nav = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Outro navegador';
+  const so = /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows'
+    : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'outro sistema';
+  return `${nav} · ${so}`;
+}
+// Janela fixa: até `max` chamadas a cada `janelaMs`. Devolve true se passou do
+// limite. Com incrementar=false só consulta. Os documentos têm `expiraEm` para
+// uma política de TTL do Firestore (opcional) apagar os antigos.
+async function passouDoLimite(chave, { max, janelaMs, incrementar = true }) {
+  const ref = db.collection('limitesPortal').doc(hashCurto(chave));
+  const agora = Date.now();
+  return db.runTransaction(async (tx) => {
+    const d = (await tx.get(ref)).data();
+    if (!d || agora - (d.inicio || 0) > janelaMs) {
+      if (incrementar) tx.set(ref, { inicio: agora, total: 1, expiraEm: admin.firestore.Timestamp.fromMillis(agora + janelaMs) });
+      return false;
+    }
+    if (d.total >= max) return true;
+    if (incrementar) tx.update(ref, { total: admin.firestore.FieldValue.increment(1) });
+    return false;
+  });
+}
+const MSG_MUITAS_TENTATIVAS = 'Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.';
+// Identifica o profissional pelo token do link, com limite de chamadas por IP
+// (60 a cada 10 min) e de links inválidos (8 a cada 30 min).
+async function profissionalPorToken(request) {
+  const { ip, ua } = origemChamada(request);
+  const chave = ip || 'sem-ip';
+  const LIM_FALHA = { max: 8, janelaMs: 30 * 60 * 1000 };
+  if (await passouDoLimite(`portal:${chave}`, { max: 60, janelaMs: 10 * 60 * 1000 })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  if (await passouDoLimite(`falha:${chave}`, { ...LIM_FALHA, incrementar: false })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  const falhar = async (codigo, msg) => {
+    await passouDoLimite(`falha:${chave}`, LIM_FALHA);
+    throw new HttpsError(codigo, msg);
+  };
+  const token = String(request.data?.token || '');
+  if (!TOKEN_PORTAL.test(token)) await falhar('invalid-argument', 'Link inválido. Abra o link exatamente como a equipe Atravessia enviou.');
+  const snap = await db.collection('profissionaisPrivado').where('tokenPortal', '==', token).limit(1).get();
+  if (snap.empty) await falhar('not-found', 'Este link não é mais válido. Peça um novo à equipe Atravessia.');
+  return { id: snap.docs[0].id, ref: snap.docs[0].ref, priv: snap.docs[0].data(), ip, ua };
 }
 
 // Regra do repasse do profissional, aplicada a uma venda.
@@ -2026,7 +2137,10 @@ function calcularRepasseCentavos(valorPagoCentavos, taxaCentavos, prof) {
     ? Math.round(valor * 100)
     : Math.round(baseCentavos * Math.min(Math.max(valor, 0), 100) / 100);
   repasse = Math.max(0, Math.min(repasse, valorPagoCentavos));
-  return { repasseCentavos: repasse, regra: { tipo, valor, base, baseCentavos } };
+  // Se a regra pedia o líquido e a taxa não veio da Stripe, a venda fica
+  // registrada como calculada sobre o bruto, e isso aparece na própria regra.
+  const regra = { tipo, valor, base, baseCentavos, ...(tipo === 'percentual' && base !== baseDesejada ? { baseSolicitada: baseDesejada, taxaIndisponivel: true } : {}) };
+  return { repasseCentavos: repasse, regra };
 }
 
 // ---- Checkout do curso ------------------------------------------------------
@@ -2035,8 +2149,7 @@ exports.criarCheckoutCurso = onCall(OPCOES_CHECKOUT, comErroPagamento(async (req
 
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Faça login para comprar o curso.');
-  const cursoId = String(request.data?.cursoId || '');
-  if (!cursoId || cursoId.includes('/')) throw new HttpsError('invalid-argument', 'Curso não informado.');
+  const cursoId = idValido(request.data?.cursoId, 'Curso não informado.');
 
   const userRef = db.collection('usuarios').doc(uid);
   const [cursoSnap, userSnap, acessoSnap] = await Promise.all([
@@ -2045,12 +2158,17 @@ exports.criarCheckoutCurso = onCall(OPCOES_CHECKOUT, comErroPagamento(async (req
     userRef.collection('cursos').doc(cursoId).get(),
   ]);
   const curso = cursoSnap.data();
-  if (!curso || curso.ativo === false) throw new HttpsError('failed-precondition', 'Este curso não está disponível no momento.');
+  if (!curso || curso.ativo !== true || curso.arquivado === true) throw new HttpsError('failed-precondition', 'Este curso não está disponível no momento.');
   if (acessoSnap.exists) throw new HttpsError('already-exists', 'Você já tem este curso. Ele está em "Meus cursos".');
   const valorCentavos = centavos(curso.preco);
   if (!valorCentavos || valorCentavos < 100) throw new HttpsError('failed-precondition', 'O preço deste curso ainda não foi definido.');
+  // Profissional desativado no painel: o curso para de ser vendido.
+  if (curso.profissionalId) {
+    const prof = (await db.collection('profissionais').doc(String(curso.profissionalId)).get()).data();
+    if (!prof || prof.ativo === false) throw new HttpsError('failed-precondition', 'Este curso está temporariamente indisponível para compra.');
+  }
 
-  const retorno = (url) => (typeof url === 'string' && ORIGENS_RETORNO_CURSO.some(o => url.startsWith(o)) ? url : null);
+  const retorno = urlRetornoCurso;
   const stripe = stripeDe();
   const customerId = await getOrCreateCustomer(stripe, uid, userSnap.data() || {});
 
@@ -2106,17 +2224,25 @@ async function processarCompraCurso(stripe, session) {
   const cursoSnap = await db.collection('cursos').doc(cursoId).get();
   const curso = cursoSnap.data() || {};
   const profissionalId = curso.profissionalId || null;
-  const prof = profissionalId ? (await db.collection('profissionais').doc(profissionalId).get()).data() : null;
+  const [profSnap, profPrivSnap] = profissionalId
+    ? await Promise.all([db.collection('profissionais').doc(profissionalId).get(), db.collection('profissionaisPrivado').doc(profissionalId).get()])
+    : [null, null];
+  const prof = profSnap?.exists ? regraRepasseDe(profSnap.data(), profPrivSnap?.data()) : null;
 
   const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id || null;
   let taxaStripeCentavos = null;
   let chargeId = null;
+  const lerTaxa = (bt) => { if (bt && typeof bt === 'object' && Number.isFinite(bt.fee)) taxaStripeCentavos = bt.fee; };
   if (paymentIntentId) {
     try {
       const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ['latest_charge.balance_transaction'] });
       chargeId = pi.latest_charge?.id || null;
-      const bt = pi.latest_charge?.balance_transaction;
-      if (bt && typeof bt === 'object' && Number.isFinite(bt.fee)) taxaStripeCentavos = bt.fee;
+      lerTaxa(pi.latest_charge?.balance_transaction);
+      // A transação de saldo às vezes ainda não existe no primeiro evento: tenta mais uma vez.
+      if (taxaStripeCentavos == null && chargeId) {
+        await new Promise(r => setTimeout(r, 1500));
+        lerTaxa((await stripe.charges.retrieve(chargeId, { expand: ['balance_transaction'] })).balance_transaction);
+      }
     } catch (e) {
       console.warn('[Cursos] não foi possível ler a taxa da Stripe', session.id, e?.message);
     }
@@ -2164,10 +2290,17 @@ async function processarReembolsoCurso(charge) {
   if (!pi) return;
   const snap = await db.collection('matriculas').where('stripePaymentIntent', '==', pi).get();
   for (const d of snap.docs) {
-    const m = d.data();
-    if (m.status === 'reembolsada') continue;
-    await d.ref.update({ status: 'reembolsada', reembolsadaEm: admin.firestore.FieldValue.serverTimestamp() });
-    await db.collection('usuarios').doc(m.uid).collection('cursos').doc(m.cursoId).delete().catch(() => {});
+    // Idempotente (evento repetido não faz nada) e só remove o acesso que veio
+    // DESTA compra: se a pessoa comprou de novo depois, o acesso novo fica.
+    await db.runTransaction(async (tx) => {
+      const atual = await tx.get(d.ref);
+      const m = atual.data() || {};
+      if (m.status === 'reembolsada' || !m.uid || !m.cursoId) return;
+      const acessoRef = db.collection('usuarios').doc(m.uid).collection('cursos').doc(m.cursoId);
+      const acesso = await tx.get(acessoRef);
+      tx.update(d.ref, { status: 'reembolsada', reembolsadaEm: admin.firestore.FieldValue.serverTimestamp() });
+      if (acesso.exists && (!acesso.data().matriculaId || acesso.data().matriculaId === d.id)) tx.delete(acessoRef);
+    });
   }
 }
 
@@ -2290,8 +2423,9 @@ async function detalhesApi(ids) {
 exports.importarVideosYoutube = onCall({ timeoutSeconds: 120, memory: '256MiB' }, async (request) => {
   await exigirAdmin(request);
   const MAX = 60;
+  if (String(request.data?.texto || '').length > 20000) throw new HttpsError('invalid-argument', 'Texto longo demais: cole até 80 links por vez.');
   const entradas = (Array.isArray(request.data?.links) ? request.data.links : String(request.data?.texto || '').split(/[\s,;]+/))
-    .map(s => String(s).trim()).filter(Boolean).slice(0, 80);
+    .map(s => String(s).trim().slice(0, 500)).filter(Boolean).slice(0, 80);
   if (!entradas.length) throw new HttpsError('invalid-argument', 'Cole ao menos um link de vídeo, playlist ou canal do YouTube.');
 
   const comApi = !!process.env.YOUTUBE_API_KEY;
@@ -2347,44 +2481,109 @@ exports.importarVideosYoutube = onCall({ timeoutSeconds: 120, memory: '256MiB' }
 // O token do portal é gerado aqui (nunca no navegador) e guardado em
 // profissionaisPrivado/{id}, junto com o e-mail — fora da leitura das usuárias.
 exports.salvarProfissional = onCall(async (request) => {
-  await exigirAdmin(request);
+  const adminUid = await exigirAdmin(request);
   const d = request.data || {};
   const nome = String(d.nome || '').trim().slice(0, 120);
   if (!nome) throw new HttpsError('invalid-argument', 'Informe o nome do profissional.');
   const repasseTipo = d.repasseTipo === 'fixo' ? 'fixo' : 'percentual';
   const repasseValor = Number(String(d.repasseValor ?? '').replace(',', '.'));
-  if (!Number.isFinite(repasseValor) || repasseValor < 0 || (repasseTipo === 'percentual' && repasseValor > 100)) {
+  if (!Number.isFinite(repasseValor) || repasseValor < 0 || (repasseTipo === 'percentual' && repasseValor > 100) || repasseValor > 100000) {
     throw new HttpsError('invalid-argument', repasseTipo === 'percentual' ? 'O repasse deve ficar entre 0% e 100%.' : 'Informe um valor de repasse válido.');
   }
-  const id = d.id ? String(d.id) : db.collection('profissionais').doc().id;
-  if (id.includes('/')) throw new HttpsError('invalid-argument', 'Profissional inválido.');
+  const email = String(d.email || '').trim().toLowerCase().slice(0, 200);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Confira o e-mail do profissional.');
+  const fotoUrl = urlHttpsOpcional(d.fotoUrl, 'Foto');
+  const id = d.id ? idValido(d.id, 'Profissional inválido.') : db.collection('profissionais').doc().id;
   const ref = db.collection('profissionais').doc(id);
   const privRef = db.collection('profissionaisPrivado').doc(id);
   const [snap, priv] = await Promise.all([ref.get(), privRef.get()]);
   const agora = admin.firestore.FieldValue.serverTimestamp();
+  const apagar = admin.firestore.FieldValue.delete();
+  // Perfil público: só o que aparece no app. A regra de repasse sai daqui.
   await ref.set({
     nome,
     bio: String(d.bio || '').trim().slice(0, 2000),
-    fotoUrl: String(d.fotoUrl || '').trim(),
-    repasseTipo, repasseValor,
-    repasseBase: d.repasseBase === 'liquido' ? 'liquido' : 'bruto',
+    fotoUrl,
     ativo: d.ativo !== false,
+    repasseTipo: apagar, repasseValor: apagar, repasseBase: apagar,
     atualizadoEm: agora,
     ...(snap.exists ? {} : { criadoEm: agora }),
   }, { merge: true });
-  const tokenPortal = (!d.novoToken && priv.data()?.tokenPortal) || gerarTokenPortal();
-  await privRef.set({ email: String(d.email || '').trim().toLowerCase(), tokenPortal, atualizadoEm: agora }, { merge: true });
-  return { id, linkPortal: `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}` };
+  // Token: criado só no cadastro (ou por "Novo link"); um link revogado
+  // continua revogado ao salvar o perfil.
+  const tokenAtual = priv.data()?.tokenPortal || null;
+  const tokenPortal = d.novoToken === true || !priv.exists ? gerarTokenPortal() : tokenAtual;
+  await privRef.set({
+    email, tokenPortal,
+    repasseTipo, repasseValor, repasseBase: d.repasseBase === 'liquido' ? 'liquido' : 'bruto',
+    atualizadoEm: agora, atualizadoPor: adminUid,
+    ...(tokenPortal !== tokenAtual ? { tokenGeradoEm: agora, tokenRevogadoEm: null } : {}),
+  }, { merge: true });
+  return { id, linkPortal: tokenPortal ? `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}` : null };
+});
+
+// ---- Portal: novo link, revogar link, pedir novo aceite, ativar/desativar (admin)
+exports.gerenciarPortalProfissional = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const id = idValido(request.data?.profissionalId, 'Escolha o profissional.');
+  const acao = String(request.data?.acao || '');
+  const ref = db.collection('profissionais').doc(id);
+  const privRef = db.collection('profissionaisPrivado').doc(id);
+  if (!(await ref.get()).exists) throw new HttpsError('not-found', 'Profissional não encontrado.');
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const marca = { atualizadoEm: agora, atualizadoPor: adminUid };
+  if (acao === 'novoLink') {
+    const tokenPortal = gerarTokenPortal();
+    await privRef.set({ tokenPortal, tokenGeradoEm: agora, tokenRevogadoEm: null, ...marca }, { merge: true });
+    return { ok: true, linkPortal: `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}` };
+  }
+  if (acao === 'revogar') {
+    await privRef.set({ tokenPortal: null, tokenRevogadoEm: agora, ...marca }, { merge: true });
+    return { ok: true };
+  }
+  if (acao === 'pedirNovoAceite') {
+    await privRef.set({ termoPedirNovo: true, termoPedidoEm: agora, ...marca }, { merge: true });
+    return { ok: true };
+  }
+  if (acao === 'ativar' || acao === 'desativar') {
+    await ref.set({ ativo: acao === 'ativar', atualizadoEm: agora }, { merge: true });
+    return { ok: true };
+  }
+  throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+});
+
+// ---- Portal: aceite do termo de parceria (sem login, por token) -------------
+const precisaAceiteTermo = (priv) => !priv?.termoAceitoEm || priv.termoVersao !== TERMO_PROFISSIONAL_VERSAO || priv.termoPedirNovo === true;
+
+exports.aceitarTermoProfissional = onCall(async (request) => {
+  const { ref, ip, ua } = await profissionalPorToken(request);
+  if (request.data?.aceito !== true) throw new HttpsError('invalid-argument', 'Marque "Li e aceito" para continuar.');
+  if (String(request.data?.versao || '') !== TERMO_PROFISSIONAL_VERSAO) {
+    throw new HttpsError('failed-precondition', 'O termo foi atualizado. Recarregue a página para ler a versão nova.');
+  }
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const registro = { termoVersao: TERMO_PROFISSIONAL_VERSAO, termoIp: resumirIp(ip), termoUserAgent: resumirUserAgent(ua) };
+  const lote = db.batch();
+  lote.set(ref, { ...registro, termoAceitoEm: agora, termoPedirNovo: false }, { merge: true });
+  // Histórico de aceites (prova de cada versão aceita).
+  lote.set(ref.collection('aceites').doc(), { versao: registro.termoVersao, ip: registro.termoIp, userAgent: registro.termoUserAgent, aceitoEm: agora });
+  await lote.commit();
+  return { ok: true, versao: TERMO_PROFISSIONAL_VERSAO };
 });
 
 // ---- Portal do profissional (sem login, por token) ---------------------------
 // Só dados agregados e anônimos: nenhuma informação das alunas sai daqui.
+// Sem o aceite da versão atual do termo, devolve só o pedido de aceite.
 exports.portalProfissional = onCall(async (request) => {
-  const token = String(request.data?.token || '');
-  if (token.length < 20) throw new HttpsError('invalid-argument', 'Link inválido.');
-  const privSnap = await db.collection('profissionaisPrivado').where('tokenPortal', '==', token).limit(1).get();
-  if (privSnap.empty) throw new HttpsError('not-found', 'Este link não é mais válido. Peça um novo à equipe Atravessia.');
-  const profissionalId = privSnap.docs[0].id;
+  const { id: profissionalId, priv } = await profissionalPorToken(request);
+  if (precisaAceiteTermo(priv)) {
+    const p = (await db.collection('profissionais').doc(profissionalId).get()).data() || {};
+    return {
+      precisaAceite: true,
+      termo: { versao: TERMO_PROFISSIONAL_VERSAO, versaoAceita: priv.termoVersao || null },
+      profissional: { nome: p.nome || '' },
+    };
+  }
 
   const [profSnap, matSnap, repSnap, cursosSnap] = await Promise.all([
     db.collection('profissionais').doc(profissionalId).get(),
@@ -2392,7 +2591,7 @@ exports.portalProfissional = onCall(async (request) => {
     db.collection('repasses').where('profissionalId', '==', profissionalId).get(),
     db.collection('cursos').where('profissionalId', '==', profissionalId).get(),
   ]);
-  const prof = profSnap.data() || {};
+  const prof = { ...(profSnap.data() || {}), ...regraRepasseDe(profSnap.data(), priv) };
   const titulos = {};
   cursosSnap.forEach(c => { titulos[c.id] = c.data().titulo || 'Curso'; });
   const ms = (t) => t?.toMillis?.() || null;
@@ -2406,7 +2605,7 @@ exports.portalProfissional = onCall(async (request) => {
       valorCentavos: m.valorPagoCentavos || 0,
       taxaStripeCentavos: Number.isFinite(m.taxaStripeCentavos) ? m.taxaStripeCentavos : null,
       repasseCentavos: m.repasseCentavos || 0,
-      regra: m.repasseRegra ? { tipo: m.repasseRegra.tipo, valor: m.repasseRegra.valor, base: m.repasseRegra.base } : null,
+      regra: m.repasseRegra ? { tipo: m.repasseRegra.tipo, valor: m.repasseRegra.valor, base: m.repasseRegra.base, taxaIndisponivel: !!m.repasseRegra.taxaIndisponivel } : null,
       status: m.status,
       repassada: !!m.repasseId,
       ajustePendente: m.status === 'reembolsada' && !!m.repasseId && !m.ajusteRepasseId,
@@ -2445,6 +2644,7 @@ exports.portalProfissional = onCall(async (request) => {
     porCurso: Object.values(porCurso),
     vendas: vendas.slice(0, 500),
     repasses,
+    termo: { versao: priv.termoVersao || null, aceitoEm: priv.termoAceitoEm?.toMillis?.() || null },
     geradoEm: Date.now(),
   };
 });
@@ -2455,13 +2655,16 @@ exports.portalProfissional = onCall(async (request) => {
 // como desconto no repasse seguinte (ajusteMatriculaIds).
 exports.fecharRepasse = onCall(async (request) => {
   const adminUid = await exigirAdmin(request);
-  const profissionalId = String(request.data?.profissionalId || '');
-  if (!profissionalId || profissionalId.includes('/')) throw new HttpsError('invalid-argument', 'Escolha o profissional.');
-  const inicio = Number(request.data?.inicio) || 0;
-  const fim = Number(request.data?.fim) || Date.now();
-  const comprovanteUrl = String(request.data?.comprovanteUrl || '').trim() || null;
+  const profissionalId = idValido(request.data?.profissionalId, 'Escolha o profissional.');
+  const agoraMs = Date.now();
+  const inicio = Math.max(0, Number(request.data?.inicio) || 0);
+  const fim = Math.min(Number(request.data?.fim) || agoraMs, agoraMs + 86400000);
+  if (inicio > fim) throw new HttpsError('invalid-argument', 'A data inicial está depois da final.');
+  const comprovanteUrl = urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante') || null;
   const observacao = String(request.data?.observacao || '').trim().slice(0, 500) || null;
-  const pagoEmMs = Number(request.data?.pagoEm) || Date.now();
+  const pagoEmMs = Number(request.data?.pagoEm) || agoraMs;
+  if (pagoEmMs < Date.UTC(2024, 0, 1) || pagoEmMs > agoraMs + 86400000) throw new HttpsError('invalid-argument', 'Confira a data do pagamento.');
+  if (!(await db.collection('profissionais').doc(profissionalId).get()).exists) throw new HttpsError('not-found', 'Profissional não encontrado.');
   const fmt = (t) => new Date(t).toLocaleDateString('pt-BR', { timeZone: TIMEZONE });
   const rotulo = `${inicio ? fmt(inicio) : 'início'} a ${fmt(fim)}`;
 
@@ -2526,6 +2729,7 @@ exports.criarDemonstracaoCursos = onCall(async (request) => {
   if (remover) {
     demosVendas.docs.forEach(d => lote.delete(d.ref));
     lote.delete(db.collection('cursos').doc(DEMO_CURSO_ID));
+    lote.delete(db.collection('cursosConteudo').doc(DEMO_CURSO_ID));
     lote.delete(db.collection('profissionais').doc(DEMO_PROF_ID));
     lote.delete(db.collection('profissionaisPrivado').doc(DEMO_PROF_ID));
     lote.delete(db.collection('usuarios').doc(adminUid).collection('cursos').doc(DEMO_CURSO_ID));
@@ -2536,22 +2740,32 @@ exports.criarDemonstracaoCursos = onCall(async (request) => {
   lote.set(db.collection('profissionais').doc(DEMO_PROF_ID), {
     nome: 'Yoga para Você (demonstração)',
     bio: 'Canal de yoga e meditação com práticas simples para o dia a dia, para desacelerar a mente e cuidar do corpo com gentileza.',
-    fotoUrl: 'https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg',
-    repasseTipo: 'percentual', repasseValor: 50, repasseBase: 'bruto',
+    fotoUrl: 'https://i.ytimg.com/vi/UBnFUY9CwCo/hqdefault.jpg',
+    repasseTipo: admin.firestore.FieldValue.delete(), repasseValor: admin.firestore.FieldValue.delete(), repasseBase: admin.firestore.FieldValue.delete(),
     ativo: true, demo: true, atualizadoEm: agora, criadoEm: agora,
   }, { merge: true });
   const privRef = db.collection('profissionaisPrivado').doc(DEMO_PROF_ID);
   const priv = await privRef.get();
   const tokenPortal = priv.data()?.tokenPortal || gerarTokenPortal();
-  lote.set(privRef, { email: '', tokenPortal, demo: true, atualizadoEm: agora }, { merge: true });
+  lote.set(privRef, {
+    email: '', tokenPortal, demo: true, atualizadoEm: agora,
+    repasseTipo: 'percentual', repasseValor: 50, repasseBase: 'bruto',
+  }, { merge: true });
+
+  // Aulas pagas protegidas: o youtubeId delas fica só em cursosConteudo.
+  const aulasDemo = DEMO_AULAS.map(([youtubeId, titulo, gratis], i) => ({
+    id: `a${i + 1}`, youtubeId, titulo, duracao: '', ordem: i + 1, gratis,
+    thumb: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
+  }));
+  lote.set(db.collection('cursosConteudo').doc(DEMO_CURSO_ID), { ...conteudoDasAulas(aulasDemo), demo: true, atualizadoEm: agora });
 
   lote.set(db.collection('cursos').doc(DEMO_CURSO_ID), {
     titulo: 'Yoga para acalmar a mente',
     subtitulo: 'Cinco encontros curtos para respirar, desacelerar e olhar para dentro com carinho.',
     descricao: 'Um curso para quem sente a mente acelerada e quer encontrar, no próprio ritmo, um pouco mais de calma. Em cinco aulas, você conhece o que o yoga faz pela mente, pratica uma meditação guiada para dias intensos e aprende, com a sabedoria de mais de 2.000 anos do yoga, a atravessar momentos de ruído com mais presença. Não é preciso experiência: basta um cantinho tranquilo e alguns minutos para você.',
-    capaUrl: 'https://i.ytimg.com/vi/vf0Vqb-TKpA/hqdefault.jpg',
+    capaUrl: 'https://i.ytimg.com/vi/UBnFUY9CwCo/hqdefault.jpg',
     preco: 97,
-    ativo: true, destaque: true, demo: true,
+    ativo: true, destaque: true, demo: true, arquivado: false, protegerAulas: true,
     profissionalId: DEMO_PROF_ID,
     programa: [
       { titulo: 'Módulo 1 · Autocuidado como propósito', descricao: 'Por que cuidar de si não é egoísmo: o yoga como prática de presença e de cuidado.' },
@@ -2559,10 +2773,7 @@ exports.criarDemonstracaoCursos = onCall(async (request) => {
       { titulo: 'Módulo 3 · O que o yoga faz com a mente', descricao: 'Atenção, respiração e emoções: o que acontece por dentro quando praticamos.' },
       { titulo: 'Módulo 4 · Serenidade em tempos de ruído', descricao: 'Como agir com calma em períodos de tensão e não se perder em notícias falsas.' },
     ],
-    aulas: DEMO_AULAS.map(([youtubeId, titulo, gratis], i) => ({
-      id: `a${i + 1}`, youtubeId, titulo, duracao: '', ordem: i + 1, gratis,
-      thumb: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`,
-    })),
+    aulas: aulasPublicasCurso(aulasDemo, true),
     atualizadoEm: agora, criadoEm: agora,
   }, { merge: true });
 
@@ -2597,4 +2808,167 @@ exports.criarDemonstracaoCursos = onCall(async (request) => {
     linkPortal: `${PORTAL_PROFISSIONAL_URL}?t=${tokenPortal}`,
     linkAluna: `${SITE_URL}/curso.html`,
   };
+});
+
+// ============================================================================
+// ADMINISTRAÇÃO DE PARCERIAS
+// ============================================================================
+// 1) Vigência dos contratos: os dados internos de cada parceria (início/fim,
+//    contato e link do contrato) ficam em parceriasPrivado/{id}, que só as
+//    administradoras leem. Todo dia a função alertarVigenciaParcerias avisa as
+//    administradoras por push quando faltam 60, 30 e 7 dias para o fim e no
+//    dia (ou depois, se já venceu sem aviso). Cada marco é enviado uma vez por
+//    data de fim (alertasVigencia.fim/enviados): ao renovar o contrato (nova
+//    data de fim) os avisos recomeçam. A parceria NÃO é desativada sozinha.
+// 2) Comunicação automática: um curso novo publicado (ativo === true, sem
+//    demo) ou uma parceria nova ativa vira um aviso "novidade" para todas as
+//    usuárias em notificacoesEditoriais (origem 'admin' → pushComunicacaoAdmin
+//    envia o push, abrindo a tela de `screen`). Uma vez por item, controlado
+//    em comunicacoesAutomaticas/{tipo_id} (não grava no próprio documento,
+//    para não disparar o gatilho de novo). Liga/desliga em
+//    configuracoes/comunicacaoAutomatica { cursos, parcerias } (padrão: ligado).
+const { onDocumentWritten } = require('firebase-functions/v2/firestore');
+
+const MARCOS_VIGENCIA = [60, 30, 7, 0];
+// Itens criados antes desta data já existiam quando a comunicação automática
+// entrou no ar: reativá-los não é novidade (evita anunciar coisa antiga).
+const INICIO_COMUNICACAO_AUTOMATICA_MS = Date.parse('2026-11-01T00:00:00-03:00');
+
+const hojeISOParcerias = () => new Date().toLocaleDateString('sv-SE', { timeZone: TIMEZONE });
+const ehDataISOParcerias = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(`${s}T12:00:00Z`));
+function diasAteISO(hoje, alvo) {
+  if (!ehDataISOParcerias(hoje) || !ehDataISOParcerias(alvo)) return null;
+  return Math.round((Date.parse(`${alvo}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86400000);
+}
+const isoParaBRParcerias = (s) => String(s).split('-').reverse().join('/');
+
+// Tokens de push das administradoras: role 'admin' e/ou e-mail da lista fixa.
+async function tokensAdministradoras() {
+  const [porRole, porEmail] = await Promise.all([
+    db.collection('usuarios').where('role', '==', 'admin').get(),
+    db.collection('usuarios').where('email', 'in', ADMIN_EMAILS_BENEFICIOS).get(),
+  ]);
+  const tokens = new Set();
+  [...porRole.docs, ...porEmail.docs].forEach(d => { const t = d.data().pushToken; if (t) tokens.add(t); });
+  return [...tokens];
+}
+
+exports.alertarVigenciaParcerias = onSchedule({ schedule: '15 9 * * *', timeZone: TIMEZONE }, async () => {
+  const hoje = hojeISOParcerias();
+  const [privSnap, pubSnap] = await Promise.all([
+    db.collection('parceriasPrivado').get(),
+    db.collection('parcerias').get(),
+  ]);
+  const publicas = new Map(pubSnap.docs.map(d => [d.id, d.data()]));
+  const avisos = [];
+  const marcacoes = [];
+  for (const d of privSnap.docs) {
+    const p = d.data();
+    const pub = publicas.get(d.id);
+    // Parceria apagada ou já desativada pela administradora: sem alerta.
+    if (!pub || pub.ativo === false) continue;
+    const dias = diasAteISO(hoje, p.fimParceria);
+    if (dias == null || dias > MARCOS_VIGENCIA[0]) continue;
+    // Marco atual: o menor marco que já foi alcançado (vencida conta como 0).
+    const marco = dias <= 0 ? 0 : Math.min(...MARCOS_VIGENCIA.filter(m => dias <= m));
+    const reg = p.alertasVigencia && p.alertasVigencia.fim === p.fimParceria ? p.alertasVigencia : null;
+    const enviados = Array.isArray(reg?.enviados) ? reg.enviados.map(String) : [];
+    if (enviados.includes(String(marco))) continue;
+    const nome = String(pub.titulo || p.titulo || 'Parceria').trim();
+    const fimBR = isoParaBRParcerias(p.fimParceria);
+    avisos.push(dias < 0
+      ? `O contrato da parceria "${nome}" venceu em ${fimBR}. Ela segue ativa no app até alguém decidir.`
+      : dias === 0
+        ? `O contrato da parceria "${nome}" vence hoje (${fimBR}).`
+        : `O contrato da parceria "${nome}" vence em ${dias} dia${dias === 1 ? '' : 's'} (${fimBR}).`);
+    // Marca este marco e os maiores (se o fim foi cadastrado já perto, não
+    // manda depois o aviso de "60 dias").
+    const novos = [...new Set([...enviados, ...MARCOS_VIGENCIA.filter(m => m >= marco).map(String)])];
+    marcacoes.push({ ref: d.ref, alertasVigencia: {
+      fim: p.fimParceria, enviados: novos, ultimoMarco: marco,
+      ultimoEm: admin.firestore.FieldValue.serverTimestamp(),
+    } });
+  }
+  if (!avisos.length) return;
+
+  const tokens = await tokensAdministradoras();
+  if (!tokens.length) {
+    // Sem aparelho cadastrado: não marca, para avisar quando houver (o
+    // Dashboard do painel mostra os contratos a vencer de qualquer forma).
+    console.warn('[Vigência] nenhuma administradora com pushToken; avisos pendentes:', avisos.length);
+    return;
+  }
+  const body = avisos.length === 1
+    ? avisos[0]
+    : `${avisos.length} contratos de parceria pedem atenção. ${avisos.slice(0, 3).join(' ')}${avisos.length > 3 ? ' …' : ''}`;
+  await enviarPush(tokens.map(to => ({
+    to, title: 'Painel Atravessia · Contratos', body, data: { screen: 'AdminParcerias' },
+  })));
+
+  const lote = db.batch();
+  marcacoes.forEach(m => lote.set(m.ref, { alertasVigencia: m.alertasVigencia }, { merge: true }));
+  await lote.commit();
+});
+
+async function comunicacaoAutomaticaLigada(tipo) {
+  const s = await db.collection('configuracoes').doc('comunicacaoAutomatica').get();
+  return s.data()?.[tipo] !== false;
+}
+
+// Criado agora ou depois da entrada da comunicação automática no ar.
+function ehItemNovo(antes, depois) {
+  if (!antes?.exists) return true;
+  const criado = depois.data()?.criadoEm?.toMillis?.();
+  return !!criado && criado >= INICIO_COMUNICACAO_AUTOMATICA_MS;
+}
+
+// Grava o aviso uma única vez por item. `create` falha se o controle já
+// existir (outra execução chegou antes), o que evita aviso repetido.
+async function comunicarNovidadeAutomatica({ tipo, id, texto, screen, extra = {} }) {
+  const controle = db.collection('comunicacoesAutomaticas').doc(`${tipo}_${id}`);
+  try {
+    await controle.create({ tipo, refId: id, texto, criadoEm: admin.firestore.FieldValue.serverTimestamp() });
+  } catch (e) {
+    if (e?.code === 6 || /already exists/i.test(e?.message || '')) return;
+    throw e;
+  }
+  const ref = await db.collection('notificacoesEditoriais').add({
+    tipo: 'novidade', alvo: 'todos', texto, ativa: true,
+    criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    origem: 'admin', automatica: true, screen, refId: id, ...extra,
+  });
+  await controle.update({ notificacaoId: ref.id });
+}
+
+exports.comunicarNovoCurso = onDocumentWritten('cursos/{cursoId}', async (event) => {
+  const antes = event.data?.before;
+  const depois = event.data?.after;
+  if (!depois?.exists) return;
+  const id = event.params.cursoId;
+  const c = depois.data();
+  // Só na passagem para publicado (antes não existia ou não estava ativo).
+  if (c.ativo !== true || c.demo === true || id.startsWith('demo')) return;
+  if (antes?.exists && antes.data().ativo === true) return;
+  if (!ehItemNovo(antes, depois)) return;
+  const titulo = String(c.titulo || '').trim();
+  if (!titulo || !(await comunicacaoAutomaticaLigada('cursos'))) return;
+  // cursoId: o toque (push ou sininho) abre direto o curso.
+  await comunicarNovidadeAutomatica({ tipo: 'curso', id, texto: `Novo curso na Atravessia: ${titulo} 💜`, screen: 'Cursos', extra: { cursoId: id } });
+});
+
+exports.comunicarNovaParceria = onDocumentWritten('parcerias/{parceriaId}', async (event) => {
+  const antes = event.data?.before;
+  const depois = event.data?.after;
+  if (!depois?.exists) return;
+  const p = depois.data();
+  // No app, parceria sem `ativo` conta como ativa.
+  if (p.ativo === false) return;
+  if (antes?.exists && antes.data().ativo !== false) return;
+  if (!ehItemNovo(antes, depois)) return;
+  const titulo = String(p.titulo || '').trim();
+  if (!titulo || !(await comunicacaoAutomaticaLigada('parcerias'))) return;
+  await comunicarNovidadeAutomatica({
+    tipo: 'parceria', id: event.params.parceriaId,
+    texto: `Nova parceria no Experimente a vida: ${titulo}`, screen: 'Parcerias',
+  });
 });

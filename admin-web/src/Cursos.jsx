@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { db, functions, storage } from './firebase';
-import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc, getDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import Recolhivel from './Recolhivel';
@@ -19,8 +19,43 @@ const ms = (v) => (typeof v?.toMillis === 'function' ? v.toMillis() : 0);
 const dataBR = (t) => (t ? new Date(t).toLocaleDateString('pt-BR') : '—');
 const novoIdAula = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const thumb = (a) => a.thumb || `https://i.ytimg.com/vi/${a.youtubeId}/hqdefault.jpg`;
-const CURSO_VAZIO = { titulo: '', subtitulo: '', descricao: '', capaUrl: '', preco: '', profissionalId: '', ativo: false, destaque: false, programa: [], aulas: [] };
+const CURSO_VAZIO = { titulo: '', subtitulo: '', descricao: '', capaUrl: '', preco: '', profissionalId: '', ativo: false, destaque: false, protegerAulas: true, programa: [], aulas: [] };
 const PROF_VAZIO = { nome: '', bio: '', fotoUrl: '', email: '', repasseTipo: 'percentual', repasseValor: '50', repasseBase: 'bruto', ativo: true };
+// Mesma versão de functions/index.js (TERMO_PROFISSIONAL_VERSAO) e de termoProfissional.js.
+const TERMO_VERSAO = '1.0';
+
+// A regra de repasse fica em profissionaisPrivado; perfis antigos ainda a
+// tinham no documento público.
+const comRegra = (prof, priv) => ({
+  ...prof,
+  repasseTipo: priv?.repasseTipo ?? prof?.repasseTipo,
+  repasseValor: priv?.repasseValor ?? prof?.repasseValor,
+  repasseBase: priv?.repasseBase ?? prof?.repasseBase,
+});
+
+function statusTermo(priv) {
+  const em = ms(priv?.termoAceitoEm);
+  if (!em) return { ok: false, texto: 'Termo ainda não aceito no portal' };
+  if (priv.termoPedirNovo) return { ok: false, texto: `Novo aceite pedido (aceitou a versão ${priv.termoVersao || '?'} em ${dataBR(em)})` };
+  if (priv.termoVersao !== TERMO_VERSAO) return { ok: false, texto: `Aceitou a versão ${priv.termoVersao || '?'}; falta aceitar a ${TERMO_VERSAO}` };
+  return { ok: true, texto: `Termo aceito em ${dataBR(em)} · versão ${priv.termoVersao}` };
+}
+
+// Documento público (aulas pagas sem vídeo quando protegido) + cursosConteudo
+// com todos os vídeos, no mesmo lote.
+async function gravarCurso(editId, dados, aulas) {
+  const ref = editId ? doc(db, 'cursos', editId) : doc(collection(db, 'cursos'));
+  const publicas = aulas.map(a => ((!dados.protegerAulas || a.gratis) ? a : { id: a.id, titulo: a.titulo, duracao: a.duracao, ordem: a.ordem, gratis: false }));
+  const lote = writeBatch(db);
+  lote.set(ref, { ...dados, aulas: publicas, atualizadoEm: serverTimestamp(), ...(editId ? {} : { criadoEm: serverTimestamp(), arquivado: false }) }, { merge: true });
+  lote.set(doc(db, 'cursosConteudo', ref.id), {
+    aulas: Object.fromEntries(aulas.map(a => [a.id, { youtubeId: a.youtubeId, thumb: a.thumb }])),
+    atualizadoEm: serverTimestamp(),
+  });
+  await lote.commit();
+  return ref.id;
+}
+const portal = (profissionalId, acao) => httpsCallable(functions, 'gerenciarPortalProfissional')({ profissionalId, acao });
 
 export function textoRepasse(p) {
   if (!p) return '—';
@@ -105,6 +140,8 @@ function DemoCursos({ showToast }) {
 export default function Cursos({ showToast }) {
   const cursos = useColecao('cursos', (a, b) => ms(b.criadoEm) - ms(a.criadoEm));
   const profissionais = useColecao('profissionais', (a, b) => String(a.nome).localeCompare(String(b.nome)));
+  const privadosLista = useColecao('profissionaisPrivado');
+  const privados = useMemo(() => Object.fromEntries(privadosLista.map(p => [p.id, p])), [privadosLista]);
   const matriculas = useColecao('matriculas');
   const [aberto, setAberto] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -123,9 +160,15 @@ export default function Cursos({ showToast }) {
   }, [matriculas]);
 
   const limpar = () => { setEditId(null); setC(CURSO_VAZIO); setLinks(''); setAvisos([]); };
-  const editar = (curso) => {
+  // Ao editar, os vídeos das aulas pagas vêm de cursosConteudo/{id}.
+  const editar = async (curso) => {
+    let conteudo = {};
+    try { conteudo = (await getDoc(doc(db, 'cursosConteudo', curso.id))).data()?.aulas || {}; } catch { /* curso antigo */ }
+    const aulas = [...(curso.aulas || [])]
+      .map(a => ({ ...a, id: a.id || novoIdAula(), youtubeId: a.youtubeId || conteudo[a.id]?.youtubeId || '', thumb: a.thumb || conteudo[a.id]?.thumb || '' }))
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
     setEditId(curso.id);
-    setC({ ...CURSO_VAZIO, ...curso, preco: curso.preco != null ? String(curso.preco).replace('.', ',') : '', programa: curso.programa || [], aulas: [...(curso.aulas || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)) });
+    setC({ ...CURSO_VAZIO, ...curso, protegerAulas: curso.protegerAulas !== false, preco: curso.preco != null ? String(curso.preco).replace('.', ',') : '', programa: curso.programa || [], aulas });
     setAvisos([]); setAberto(true);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   };
@@ -186,29 +229,56 @@ export default function Cursos({ showToast }) {
     const titulo = c.titulo.trim();
     const preco = numero(c.preco);
     if (!titulo) { showToast('Dê um título ao curso.', 'error'); return; }
-    if (!(preco >= 1)) { showToast('Informe o preço (a partir de R$ 1,00).', 'error'); return; }
+    if (!(preco >= 1) || preco > 10000) { showToast('Informe o preço (entre R$ 1,00 e R$ 10.000,00).', 'error'); return; }
     if (c.ativo && !c.aulas.length) { showToast('Para publicar, inclua ao menos uma aula.', 'error'); return; }
+    const semVideo = c.aulas.findIndex(a => !/^[A-Za-z0-9_-]{11}$/.test(a.youtubeId || ''));
+    if (semVideo >= 0) { showToast(`A aula ${semVideo + 1} está sem vídeo do YouTube. Tire-a e importe de novo.`, 'error'); return; }
+    const prof = profissionais.find(p => p.id === c.profissionalId);
+    if (c.ativo && prof?.ativo === false) { showToast(`${prof.nome} está desativado(a): reative o profissional ou escolha outra pessoa para publicar.`, 'error'); return; }
     setSalvando(true);
+    const aulas = c.aulas.map((a, i) => ({ id: a.id || novoIdAula(), youtubeId: a.youtubeId, titulo: (a.titulo || '').trim().slice(0, 200), duracao: (a.duracao || '').trim().slice(0, 12), thumb: thumb(a), ordem: i + 1, gratis: !!a.gratis }));
+    // Sem capa: miniatura da primeira aula grátis (a de uma aula paga revelaria o vídeo).
+    const capaPadrao = c.protegerAulas ? (aulas.find(a => a.gratis)?.thumb || '') : (aulas[0]?.thumb || '');
     const dados = {
-      titulo, subtitulo: c.subtitulo.trim(), descricao: c.descricao.trim(), capaUrl: c.capaUrl.trim(),
+      titulo: titulo.slice(0, 160), subtitulo: c.subtitulo.trim().slice(0, 300), descricao: c.descricao.trim().slice(0, 6000),
+      capaUrl: c.capaUrl.trim() || capaPadrao,
       preco: Math.round(preco * 100) / 100, profissionalId: c.profissionalId || null, ativo: !!c.ativo, destaque: !!c.destaque,
-      programa: c.programa.filter(p => p.titulo?.trim() || p.descricao?.trim()).map(p => ({ titulo: (p.titulo || '').trim(), descricao: (p.descricao || '').trim() })),
-      aulas: c.aulas.map((a, i) => ({ id: a.id || novoIdAula(), youtubeId: a.youtubeId, titulo: (a.titulo || '').trim(), duracao: (a.duracao || '').trim(), thumb: thumb(a), ordem: i + 1, gratis: !!a.gratis })),
-      atualizadoEm: serverTimestamp(),
+      protegerAulas: c.protegerAulas !== false,
+      programa: c.programa.filter(p => p.titulo?.trim() || p.descricao?.trim()).map(p => ({ titulo: (p.titulo || '').trim().slice(0, 200), descricao: (p.descricao || '').trim().slice(0, 2000) })),
     };
     try {
-      if (editId) await updateDoc(doc(db, 'cursos', editId), dados);
-      else await addDoc(collection(db, 'cursos'), { ...dados, criadoEm: serverTimestamp() });
+      await gravarCurso(editId, dados, aulas);
       showToast(dados.ativo ? 'Curso publicado no app!' : 'Curso salvo como rascunho.');
       limpar(); setAberto(false);
     } catch (e) { showToast(`Erro ao salvar: ${e?.message || ''}`, 'error'); }
     finally { setSalvando(false); }
   };
 
+  const atualizar = (curso, campos) => updateDoc(doc(db, 'cursos', curso.id), { ...campos, atualizadoEm: serverTimestamp() })
+    .catch(e => showToast(e?.message || 'Não foi possível atualizar.', 'error'));
+
+  // Com vendas, o curso é arquivado (sai da vitrine e quem comprou continua
+  // assistindo). Sem vendas, é excluído de vez. As vendas nunca são apagadas.
   const apagar = async (curso) => {
-    if (!window.confirm(`Apagar "${curso.titulo}"? Quem já comprou perde a página do curso. Prefira ocultar.`)) return;
-    try { await deleteDoc(doc(db, 'cursos', curso.id)); showToast('Curso apagado.'); } catch (e) { showToast(e?.message || '', 'error'); }
+    const n = vendas[curso.id] || 0;
+    if (n > 0) {
+      if (!window.confirm(`${n} pessoa(s) compraram "${curso.titulo}".\n\nO curso será ARQUIVADO: sai da vitrine e do painel principal, mas quem comprou continua assistindo. As vendas e os repasses ficam guardados.`)) return;
+      await atualizar(curso, { arquivado: true, ativo: false, destaque: false });
+      showToast('Curso arquivado.');
+      return;
+    }
+    if (!window.confirm(`Excluir "${curso.titulo}" de vez? Não há vendas ativas. Esta ação não pode ser desfeita.`)) return;
+    try {
+      const lote = writeBatch(db);
+      lote.delete(doc(db, 'cursos', curso.id));
+      lote.delete(doc(db, 'cursosConteudo', curso.id));
+      await lote.commit();
+      showToast('Curso excluído.');
+    } catch (e) { showToast(e?.message || '', 'error'); }
   };
+  const [verArquivados, setVerArquivados] = useState(false);
+  const visiveis = cursos.filter(x => !x.arquivado);
+  const arquivados = cursos.filter(x => x.arquivado);
 
   return (
     <div className="screen-content">
@@ -242,7 +312,7 @@ export default function Cursos({ showToast }) {
               </label>
               <input style={{ flex: 1, minWidth: 220 }} value={c.capaUrl} onChange={campo('capaUrl')} placeholder="ou cole o link de uma imagem" />
             </div>
-            <p className="field-hint">Sem capa, usamos a miniatura da primeira aula.</p>
+            <p className="field-hint">Sem capa, usamos a miniatura da primeira aula grátis.</p>
           </div>
 
           <div className="field-row" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -251,12 +321,14 @@ export default function Cursos({ showToast }) {
               <label>Profissional</label>
               <select value={c.profissionalId || ''} onChange={campo('profissionalId')}>
                 <option value="">Atravessia (sem repasse)</option>
-                {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome} — {textoRepasse(p)}</option>)}
+                {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}{p.ativo === false ? ' (inativo)' : ''} — {textoRepasse(comRegra(p, privados[p.id]))}</option>)}
               </select>
             </div>
           </div>
           <Toggle checked={c.ativo} onChange={campo('ativo')}>Publicado no app <span className="field-hint" style={{ display: 'inline' }}>(desligado, fica como rascunho)</span></Toggle>
           <Toggle checked={c.destaque} onChange={campo('destaque')}>Em destaque na vitrine</Toggle>
+          <Toggle checked={c.protegerAulas} onChange={campo('protegerAulas')}>Proteger os vídeos das aulas pagas</Toggle>
+          <p className="field-hint" style={{ marginTop: -4 }}>Ligado, só quem comprou recebe o link das aulas pagas. Desligue só se alguém que comprou ainda usa o app 1.20 e não consegue assistir.</p>
 
           <h3 className="card-title" style={{ marginTop: 22 }}>Conteúdo programático</h3>
           {c.programa.map((p, i) => (
@@ -301,11 +373,17 @@ export default function Cursos({ showToast }) {
         </Recolhivel>
       </div>
 
-      {cursos.length === 0 && <div className="empty-state"><p>Nenhum curso ainda. Crie o primeiro acima ou importe o exemplo (docs/cursos/exemplo-yoga.json).</p></div>}
+      {visiveis.length === 0 && <div className="empty-state"><p>Nenhum curso ainda. Crie o primeiro acima ou importe o exemplo (docs/cursos/exemplo-yoga.json).</p></div>}
+      {arquivados.length > 0 && (
+        <button type="button" className="btn-ghost" style={{ marginBottom: 10 }} onClick={() => setVerArquivados(v => !v)}>
+          {verArquivados ? 'Esconder arquivados' : `Ver arquivados (${arquivados.length})`}
+        </button>
+      )}
       <div className="list-grid" style={{ display: 'grid', gap: 12 }}>
-        {cursos.map(curso => {
+        {(verArquivados ? [...visiveis, ...arquivados] : visiveis).map(curso => {
           const prof = profissionais.find(p => p.id === curso.profissionalId);
-          const capa = curso.capaUrl || (curso.aulas?.[0] && thumb(curso.aulas[0]));
+          const aulaComThumb = (curso.aulas || []).find(a => a.thumb || a.youtubeId);
+          const capa = curso.capaUrl || (aulaComThumb ? thumb(aulaComThumb) : null);
           return (
             <div key={curso.id} className="card">
               <div className="cz-adm-curso">
@@ -313,16 +391,25 @@ export default function Cursos({ showToast }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 className="card-title" style={{ margin: '0 0 4px' }}>{curso.titulo}</h3>
                   <p className="field-hint" style={{ margin: 0 }}>{brlC(Math.round((curso.preco || 0) * 100))} · {(curso.aulas || []).length} aulas · {vendas[curso.id] || 0} vendas · {prof ? `com ${prof.nome}` : 'Atravessia'}</p>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                    <span className={`badge ${curso.ativo ? 'badge-perceber' : 'badge-inactive'}`}>{curso.ativo ? 'Publicado' : 'Rascunho'}</span>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                    <span className={`badge ${curso.ativo ? 'badge-perceber' : 'badge-inactive'}`}>{curso.arquivado ? 'Arquivado' : curso.ativo ? 'Publicado' : 'Rascunho'}</span>
                     {curso.destaque && <span className="badge badge-total">Destaque</span>}
+                    {curso.protegerAulas === false && <span className="badge badge-inactive">Vídeos sem proteção</span>}
+                    {prof?.ativo === false && <span className="badge badge-inactive">Profissional inativo: venda pausada</span>}
                   </div>
                 </div>
               </div>
-              <AcoesItem onEditar={() => editar(curso)} onApagar={() => apagar(curso)}>
-                <button type="button" className="btn-ghost" onClick={() => updateDoc(doc(db, 'cursos', curso.id), { ativo: !curso.ativo }).catch(e => showToast(e?.message || '', 'error'))}>{curso.ativo ? 'Ocultar' : 'Publicar'}</button>
-                <a className="btn-ghost" href={`${SITE_URL}/curso.html?curso=${curso.id}`} target="_blank" rel="noreferrer">Ver na web</a>
-              </AcoesItem>
+              {curso.arquivado ? (
+                <AcoesItem>
+                  <button type="button" className="btn-ghost" onClick={() => atualizar(curso, { arquivado: false })}>Restaurar (como rascunho)</button>
+                </AcoesItem>
+              ) : (
+                <AcoesItem onEditar={() => editar(curso)} onApagar={() => apagar(curso)} rotuloApagar={vendas[curso.id] ? 'Arquivar' : 'Excluir'}>
+                  <button type="button" className="btn-ghost" onClick={() => atualizar(curso, { ativo: !curso.ativo })}>{curso.ativo ? 'Ocultar' : 'Publicar'}</button>
+                  <button type="button" className="btn-ghost" onClick={() => atualizar(curso, { destaque: !curso.destaque })}>{curso.destaque ? 'Tirar destaque' : 'Destacar'}</button>
+                  <a className="btn-ghost" href={`${SITE_URL}/curso.html?curso=${curso.id}`} target="_blank" rel="noreferrer">Ver na web</a>
+                </AcoesItem>
+              )}
             </div>
           );
         })}
@@ -349,7 +436,12 @@ export function ProfissionaisCursos({ showToast }) {
     try { await navigator.clipboard.writeText(texto); showToast('Link do portal copiado!'); }
     catch { window.prompt('Copie o link do portal:', texto); }
   };
-  const editar = (prof) => { setEditId(prof.id); setP({ ...PROF_VAZIO, ...prof, email: privados[prof.id]?.email || '', repasseValor: String(prof.repasseValor ?? '').replace('.', ',') }); setAberto(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const editar = (prof) => {
+    const x = comRegra(prof, privados[prof.id]);
+    setEditId(prof.id);
+    setP({ ...PROF_VAZIO, ...x, email: privados[prof.id]?.email || '', repasseValor: String(x.repasseValor ?? '').replace('.', ',') });
+    setAberto(true); window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const limpar = () => { setEditId(null); setP(PROF_VAZIO); };
   const dadosEnvio = (x, extra = {}) => ({
     id: x.id || undefined, nome: x.nome, bio: x.bio || '', fotoUrl: x.fotoUrl || '', email: x.email || '',
@@ -365,13 +457,20 @@ export function ProfissionaisCursos({ showToast }) {
     } catch (e) { showToast(e?.message || 'Não foi possível salvar.', 'error'); }
     finally { setSalvando(false); }
   };
-  const novoLink = async (prof) => {
-    if (!window.confirm('Gerar um novo link? O link atual do portal deixa de funcionar.')) return;
+  const acaoPortal = async (prof, acao, pergunta, sucesso) => {
+    if (!window.confirm(pergunta)) return;
     try {
-      const { data } = await httpsCallable(functions, 'salvarProfissional')(dadosEnvio({ ...prof, email: privados[prof.id]?.email || '' }, { novoToken: true }));
-      copiar(data.linkPortal);
-    } catch (e) { showToast(e?.message || '', 'error'); }
+      const { data } = await portal(prof.id, acao);
+      if (data?.linkPortal) copiar(data.linkPortal);
+      else if (sucesso) showToast(sucesso);
+    } catch (e) { showToast(e?.message || 'Não foi possível concluir.', 'error'); }
   };
+  const novoLink = (prof) => acaoPortal(prof, 'novoLink', 'Gerar um novo link? O link atual do portal deixa de funcionar. O novo é copiado para você enviar ao profissional.');
+  const revogar = (prof) => acaoPortal(prof, 'revogar', 'Revogar o link do portal? Ele deixa de funcionar e nenhum outro é criado. Para devolver o acesso, gere um novo link.', 'Link revogado.');
+  const pedirAceite = (prof) => acaoPortal(prof, 'pedirNovoAceite', 'Pedir novo aceite do termo? No próximo acesso, o profissional lê e aceita o termo de novo antes de ver o extrato.', 'Pronto: o portal vai pedir o aceite.');
+  const alternarAtivo = (prof) => (prof.ativo === false
+    ? acaoPortal(prof, 'ativar', 'Reativar este profissional? Os cursos dele(a) voltam a poder ser vendidos.', 'Profissional reativado.')
+    : acaoPortal(prof, 'desativar', 'Desativar este profissional? Os cursos dele(a) param de ser vendidos (quem já comprou continua assistindo). O portal e o extrato continuam funcionando.', 'Profissional desativado.'));
   const foto = async (arquivo) => {
     if (!arquivo) return;
     try { const url = await enviarImagem(arquivo, 'profissionais'); setP(x => ({ ...x, fotoUrl: url })); }
@@ -418,21 +517,32 @@ export function ProfissionaisCursos({ showToast }) {
 
       {profissionais.length === 0 && <div className="empty-state"><p>Nenhum profissional cadastrado.</p></div>}
       <div style={{ display: 'grid', gap: 12 }}>
-        {profissionais.map(prof => (
-          <div key={prof.id} className="card">
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {prof.fotoUrl ? <img className="cz-adm-foto" src={prof.fotoUrl} alt="" /> : <span className="cz-adm-foto">{(prof.nome || '?')[0]}</span>}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="card-title" style={{ margin: 0 }}>{prof.nome} {prof.ativo === false && <span className="badge badge-inactive">Inativo</span>}</h3>
-                <p className="field-hint" style={{ margin: '2px 0 0' }}>Repasse: {textoRepasse(prof)}{privados[prof.id]?.email ? ` · ${privados[prof.id].email}` : ''}</p>
+        {profissionais.map(prof => {
+          const priv = privados[prof.id] || {};
+          const termo = statusTermo(priv);
+          return (
+            <div key={prof.id} className="card">
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                {prof.fotoUrl ? <img className="cz-adm-foto" src={prof.fotoUrl} alt="" /> : <span className="cz-adm-foto">{(prof.nome || '?')[0]}</span>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 className="card-title" style={{ margin: 0 }}>{prof.nome} {prof.ativo === false && <span className="badge badge-inactive">Inativo</span>}</h3>
+                  <p className="field-hint" style={{ margin: '2px 0 0' }}>Repasse: {textoRepasse(comRegra(prof, priv))}{priv.email ? ` · ${priv.email}` : ''}</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                    <span className={`badge ${termo.ok ? 'badge-perceber' : 'badge-total'}`}>{termo.texto}</span>
+                    {!priv.tokenPortal && <span className="badge badge-inactive">Sem link ativo</span>}
+                  </div>
+                </div>
               </div>
+              <AcoesItem onEditar={() => editar(prof)}>
+                {link(prof.id) && <button type="button" className="btn-ghost" onClick={() => copiar(link(prof.id))}><IconCopy size={14} /> Copiar link do portal</button>}
+                <button type="button" className="btn-ghost" onClick={() => novoLink(prof)} title="Gerar novo link"><IconRefresh size={14} /> Novo link</button>
+                {priv.tokenPortal && <button type="button" className="btn-ghost" onClick={() => revogar(prof)}>Revogar link</button>}
+                <button type="button" className="btn-ghost" onClick={() => pedirAceite(prof)}>Pedir novo aceite</button>
+                <button type="button" className="btn-ghost" onClick={() => alternarAtivo(prof)}>{prof.ativo === false ? 'Reativar' : 'Desativar'}</button>
+              </AcoesItem>
             </div>
-            <AcoesItem onEditar={() => editar(prof)}>
-              <button type="button" className="btn-ghost" onClick={() => (link(prof.id) ? copiar(link(prof.id)) : showToast('Salve o profissional para gerar o link.', 'error'))}><IconCopy size={14} /> Copiar link do portal do profissional</button>
-              <button type="button" className="btn-ghost" onClick={() => novoLink(prof)} title="Gerar novo link"><IconRefresh size={14} /> Novo link</button>
-            </AcoesItem>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -478,12 +588,33 @@ export function VendasCursos({ showToast }) {
   const porProf = agrupar('profissionalId');
   const porCurso = agrupar('cursoId');
 
-  const registrar = async (profId) => {
-    const comprovanteUrl = window.prompt(`Registrar o repasse de ${nomeProf(profId)} (vendas de ${dataBR(inicio)} a ${dataBR(fim)} ainda não repassadas).\n\nSe quiser, cole o link do comprovante da transferência (opcional):`, '');
-    if (comprovanteUrl === null) return;
+  // Formulário do repasse: data do pagamento, comprovante (arquivo ou link) e observação.
+  const [form, setForm] = useState(null); // { profId, pagoEm: 'aaaa-mm-dd', comprovanteUrl, observacao }
+  const [enviandoComp, setEnviandoComp] = useState(false);
+  const anexar = async (arquivo) => {
+    if (!arquivo) return;
+    if (!(arquivo.type?.startsWith('image/') || arquivo.type === 'application/pdf')) { showToast('Escolha uma imagem ou um PDF.', 'error'); return; }
+    if (arquivo.size > 10 * 1024 * 1024) { showToast('O arquivo passa de 10 MB.', 'error'); return; }
+    setEnviandoComp(true);
+    try {
+      const ext = arquivo.type === 'application/pdf' ? 'pdf' : ((arquivo.name.split('.').pop() || 'jpg').toLowerCase());
+      const r = sRef(storage, `repassesComprovantes/${form.profId}/${Date.now()}.${ext}`);
+      await uploadBytes(r, arquivo, { contentType: arquivo.type });
+      const url = await getDownloadURL(r);
+      setForm(f => ({ ...f, comprovanteUrl: url }));
+    } catch (e) { showToast(e?.message || 'Falha no envio.', 'error'); }
+    finally { setEnviandoComp(false); }
+  };
+  const registrar = async () => {
+    const profId = form.profId;
+    const pagoEm = form.pagoEm ? new Date(`${form.pagoEm}T12:00:00`).getTime() : Date.now();
+    if (!window.confirm(`Registrar o repasse de ${nomeProf(profId)}?\n\nMarca como repassadas as vendas de ${dataBR(inicio)} a ${dataBR(fim)} ainda não repassadas. Reembolsos de vendas já repassadas entram como desconto.`)) return;
     setRegistrando(profId);
     try {
-      const { data } = await httpsCallable(functions, 'fecharRepasse')({ profissionalId: profId, inicio, fim, comprovanteUrl });
+      const { data } = await httpsCallable(functions, 'fecharRepasse')({
+        profissionalId: profId, inicio, fim, pagoEm, comprovanteUrl: form.comprovanteUrl.trim(), observacao: form.observacao.trim(),
+      });
+      setForm(null);
       showToast(`Repasse registrado: ${data.vendas} venda(s), ${brlC(data.totalCentavos)}. O profissional já vê no portal.`);
     } catch (e) { showToast(e?.message || 'Não foi possível registrar.', 'error'); }
     finally { setRegistrando(null); }
@@ -524,12 +655,38 @@ export function VendasCursos({ showToast }) {
             {porProf.map(x => (
               <tr key={x.id || 'casa'}>
                 <td>{nomeProf(x.id)}</td><td>{x.vendas}</td><td>{brlC(x.bruto)}</td><td>{brlC(x.repasse)}</td><td><strong>{brlC(x.aRepassar)}</strong></td>
-                <td>{x.id && <button className="btn-primary" disabled={registrando === x.id} onClick={() => registrar(x.id)}>{registrando === x.id ? 'Registrando…' : 'Registrar repasse'}</button>}</td>
+                <td>{x.id && <button className="btn-primary" disabled={!!form} onClick={() => setForm({ profId: x.id, pagoEm: hojeISO(), comprovanteUrl: '', observacao: '' })}>Registrar repasse</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {form && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3 className="card-title" style={{ marginTop: 0 }}>Registrar repasse — {nomeProf(form.profId)}</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>Vendas de {dataBR(inicio)} a {dataBR(fim)} ainda não repassadas. O profissional vê o registro e o comprovante no portal.</p>
+          <div className="field-row" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div className="field-group" style={{ maxWidth: 200 }}><label>Data do pagamento</label><input type="date" value={form.pagoEm} max={hojeISO()} onChange={e => setForm(f => ({ ...f, pagoEm: e.target.value }))} /></div>
+            <div className="field-group" style={{ flex: 1, minWidth: 220 }}>
+              <label>Comprovante da transferência</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <label className="btn-secondary" style={{ cursor: 'pointer' }}>
+                  <IconUpload size={15} /> {enviandoComp ? 'Enviando…' : form.comprovanteUrl ? 'Trocar arquivo' : 'Anexar imagem ou PDF'}
+                  <input type="file" accept="image/*,application/pdf" hidden onChange={e => anexar(e.target.files?.[0])} />
+                </label>
+                <input style={{ flex: 1, minWidth: 200 }} value={form.comprovanteUrl} onChange={e => setForm(f => ({ ...f, comprovanteUrl: e.target.value }))} placeholder="ou cole o link (https://...)" />
+              </div>
+            </div>
+          </div>
+          <p className="field-hint">Prefira um comprovante sem dados bancários completos: ele fica visível para o profissional.</p>
+          <div className="field-group"><label>Observação (opcional)</label><input value={form.observacao} maxLength={500} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} placeholder="Ex.: PIX enviado" /></div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button className="btn-primary" disabled={!!registrando || enviandoComp} onClick={registrar}>{registrando ? 'Registrando…' : 'Confirmar repasse'}</button>
+            <button className="btn-secondary" onClick={() => setForm(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       <h3 className="card-title" style={{ marginTop: 20 }}>Por curso</h3>
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
@@ -564,7 +721,7 @@ export function VendasCursos({ showToast }) {
             {repasses.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: 18 }}>Nenhum repasse ainda.</td></tr>}
             {repasses.map(r => (
               <tr key={r.id}><td>{nomeProf(r.profissionalId)}</td><td>{r.periodo?.rotulo}</td><td>{(r.matriculaIds || []).length}</td><td>{brlC(r.descontosCentavos)}</td>
-                <td><strong>{brlC(r.totalCentavos)}</strong></td><td>{dataBR(ms(r.pagoEm))}</td><td>{r.comprovanteUrl ? <a href={r.comprovanteUrl} target="_blank" rel="noreferrer">Ver</a> : '—'}</td></tr>
+                <td><strong>{brlC(r.totalCentavos)}</strong></td><td>{dataBR(ms(r.pagoEm))}</td><td>{r.comprovanteUrl ? <a href={r.comprovanteUrl} target="_blank" rel="noreferrer">Ver</a> : '—'}{r.observacao ? <span className="field-hint" style={{ display: 'block' }}>{r.observacao}</span> : null}</td></tr>
             ))}
           </tbody>
         </table>

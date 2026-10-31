@@ -125,7 +125,7 @@ body:has(.cz-app) { margin: 0; background: var(--cor-fundo); }
 .cz-metas span { font-size: 12.5px; font-weight: 700; color: var(--cor-texto-marca); background: var(--lilas-100); padding: 6px 12px; border-radius: 999px; }
 .cz-prof { display: flex; align-items: center; gap: 12px; }
 .cz-prof img, .cz-prof-ini { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; }
-.cz-prof-ini { display: grid; place-items: center; background: var(--lilas-200); font-family: var(--fonte-marca); font-style: italic; font-size: 24px; color: var(--lilas-800); }
+.cz-prof-ini { display: grid; place-items: center; background: var(--lilas-200); font-weight: 700; font-size: 20px; color: var(--lilas-800); }
 .cz-prof small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--cor-texto-marca); }
 .cz-prof strong { font-size: 16px; }
 .cz-acao { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-top: 4px; }
@@ -233,4 +233,31 @@ body:has(.cz-app) { margin: 0; background: var(--cor-fundo); }
   .cz-usuario-nome { display: none; }
   .cz-grade { grid-template-columns: 1fr; }
   .cz-adm-curso > img, .cz-adm-curso > .cz-adm-sem-capa { width: 110px; }
+}
+
+/* Privacidade antes da compra, aula sem vídeo, termo do profissional -------- */
+.cz-nota-privacidade { display: flex; gap: 8px; align-items: flex-start; margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: var(--cor-texto-2); max-width: 520px; }
+.cz-nota-privacidade > span:first-child { flex: none; color: var(--cor-texto-marca); margin-top: 1px; }
+.cz-nota-privacidade svg { width: 16px; height: 16px; }
+.cz-nota-privacidade a { color: var(--cor-texto-marca); font-weight: 700; }
+.cz-player-msg { display: grid; place-items: center; padding: 24px; text-align: center; color: #fff; }
+.cz-player-msg p { margin: 0; max-width: 420px; font-size: 15px; line-height: 1.5; }
+.cz-obs { display: block; font-size: 11.5px; font-weight: 600; color: var(--cor-texto-2); }
+.cz-termo { max-width: 860px; }
+.cz-termo .cz-cartao { margin-bottom: 18px; }
+.cz-termo-resumo ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.55; }
+.cz-termo-versao { font-size: 12.5px; font-weight: 600; color: var(--cor-texto-2); margin-left: 6px; }
+.cz-termo-texto {
+  max-height: min(52vh, 460px); overflow: auto; padding: 4px 16px 4px 4px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--cor-borda); font-size: 14.5px; line-height: 1.65; overscroll-behavior: contain;
+}
+.cz-termo-texto:focus { outline: none; box-shadow: var(--anel-foco); border-radius: 12px; }
+.cz-termo-texto h3 { font-size: 15.5px; margin: 16px 0 6px; }
+.cz-termo-texto p { margin: 0 0 8px; }
+.cz-termo-check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; font-weight: 600; line-height: 1.45; margin: 0 0 14px; cursor: pointer; }
+.cz-termo-check input { width: 20px; height: 20px; margin-top: 1px; flex: none; accent-color: var(--lilas-700); }
+@media (max-width: 560px) {
+  .cz-btn { width: 100%; padding: 0 18px; }
+  .cz-aula-acoes .cz-btn { width: auto; }
+  .cz-termo-texto { max-height: 48vh; }
 }

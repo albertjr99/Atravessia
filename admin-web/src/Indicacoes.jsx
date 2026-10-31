@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ehDataISO, situacaoAchado } from './vigenciaUtils';
 import { db, storage } from './firebase';
 import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import { ref as sRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -27,8 +28,25 @@ const VAZIO = {
   plataforma: 'amazon', plataformaNome: '', textoBotao: '',
   cashbackAtivo: false, cashbackTipo: 'fixo', cashbackFixo: '', cashbackPercentual: '',
   comissaoPercentual: '', precoReferencia: '',
+  publicarDe: '', publicarAte: '',
 };
 const soNumero = (v) => v.replace(/[^\d,.]/g, '');
+
+// Filtro rápido por situação de publicação (datas opcionais + visível/oculto).
+const SITUACOES = [
+  { id: 'todas', rotulo: 'Todas as situações' },
+  { id: 'no_ar', rotulo: 'No ar' },
+  { id: 'agendado', rotulo: 'Agendados' },
+  { id: 'encerrado', rotulo: 'Encerrados' },
+  { id: 'oculto', rotulo: 'Ocultos' },
+];
+const naSituacao = (item, sit) => {
+  if (sit === 'todas') return true;
+  if (sit === 'oculto') return item.ativo === false;
+  if (sit === 'no_ar') return item.ativo !== false && situacaoAchado(item).id === 'no_ar';
+  return situacaoAchado(item).id === sit;
+};
+const CLASSE_SITUACAO = { agendado: 'vig-futura', no_ar: 'vig-ok', encerrado: 'vig-vencida' };
 
 function normalizarLink(url) {
   const u = String(url || '').trim();
@@ -36,10 +54,11 @@ function normalizarLink(url) {
   return /^https?:\/\//i.test(u) ? u : `https://${u}`;
 }
 
-export default function Indicacoes({ showToast, irPara }) {
+export default function Indicacoes({ showToast, irPara, parametros }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('todas');
+  const [situacao, setSituacao] = useState('todas');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
@@ -56,7 +75,8 @@ export default function Indicacoes({ showToast, irPara }) {
 
   const ordenados = useMemo(() => [...itens].sort((a, b) =>
     (Number(a.ordem) || 999) - (Number(b.ordem) || 999) || String(a.titulo || '').localeCompare(String(b.titulo || ''))), [itens]);
-  const lista = filtro === 'todas' ? ordenados : ordenados.filter(i => (i.categoria || 'outros') === filtro);
+  const lista = (filtro === 'todas' ? ordenados : ordenados.filter(i => (i.categoria || 'outros') === filtro))
+    .filter(i => naSituacao(i, situacao));
   const totalCliques = itens.reduce((s, i) => s + (i.cliques || 0), 0);
   const ativos = itens.filter(i => i.ativo !== false).length;
 
@@ -73,6 +93,8 @@ export default function Indicacoes({ showToast, irPara }) {
       cashbackAtivo: item.cashbackAtivo === true, cashbackTipo: item.cashbackTipo === 'percentual' ? 'percentual' : 'fixo',
       cashbackFixo: centavosParaTexto(item.cashbackFixoCentavos),
       cashbackPercentual: item.cashbackPercentual != null ? String(item.cashbackPercentual).replace('.', ',') : '',
+      publicarDe: ehDataISO(item.publicarDe) ? item.publicarDe : '',
+      publicarAte: ehDataISO(item.publicarAte) ? item.publicarAte : '',
     });
     setModal({ mode: 'edit', item });
     try {
@@ -86,8 +108,24 @@ export default function Indicacoes({ showToast, irPara }) {
   };
   const fechar = () => { setModal(null); setForm(VAZIO); };
 
+  // Atalho do Dashboard ("Achados que encerram"): abre direto a edição.
+  const editarPedido = useRef(null);
+  useEffect(() => {
+    const id = parametros?.editarId;
+    if (!id || loading || editarPedido.current === id) return;
+    const item = itens.find(i => i.id === id);
+    if (item) { editarPedido.current = id; abrirEditar(item); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parametros, loading, itens]);
+
   const salvar = async () => {
     if (!form.titulo.trim()) { showToast('Informe o nome do produto.', 'error'); return; }
+    if ((form.publicarDe && !ehDataISO(form.publicarDe)) || (form.publicarAte && !ehDataISO(form.publicarAte))) {
+      showToast('Confira as datas de publicação.', 'error'); return;
+    }
+    if (form.publicarDe && form.publicarAte && form.publicarAte < form.publicarDe) {
+      showToast('“Publicar até” não pode ser antes de “Publicar a partir de”.', 'error'); return;
+    }
     const link = normalizarLink(form.link);
     if (!link) { showToast('Cole o link de afiliado da loja.', 'error'); return; }
     if (form.plataforma === 'outra' && !form.plataformaNome.trim()) { showToast('Escreva o nome da loja.', 'error'); return; }
@@ -108,6 +146,8 @@ export default function Indicacoes({ showToast, irPara }) {
       textoBotao: form.textoBotao.trim(),
       cashbackAtivo: !!form.cashbackAtivo, cashbackTipo: form.cashbackTipo,
       cashbackFixoCentavos: fixo || null, cashbackPercentual: percentual,
+      // Período no ar ('AAAA-MM-DD', opcionais): fora dele a usuária não vê o item.
+      publicarDe: form.publicarDe || null, publicarAte: form.publicarAte || null,
     };
     const privado = {
       comissaoPercentual: numOuNull(form.comissaoPercentual),
@@ -201,6 +241,20 @@ export default function Indicacoes({ showToast, irPara }) {
           <button key={c.id} className={`chip ${filtro === c.id ? 'chip-active' : ''}`} onClick={() => setFiltro(c.id)}>{c.rotulo}</button>
         ))}
       </div>
+      <div className="filter-row" style={{ flexWrap: 'wrap' }} aria-label="Filtrar por situação">
+        {SITUACOES.map(s => {
+          const n = s.id === 'todas' ? null : itens.filter(i => naSituacao(i, s.id)).length;
+          return (
+            <button key={s.id} className={`chip ${situacao === s.id ? 'chip-active' : ''}`} onClick={() => setSituacao(s.id)}>
+              {s.rotulo}{n ? ` (${n})` : ''}
+            </button>
+          );
+        })}
+      </div>
+
+      {itens.length > 0 && lista.length === 0 && (
+        <div className="empty-state"><p>Nenhum item neste filtro.</p></div>
+      )}
 
       {itens.length === 0 && (
         <div className="empty-state">
@@ -221,6 +275,9 @@ export default function Indicacoes({ showToast, irPara }) {
                 <strong>{item.titulo}</strong>
                 <span className="ind-sub">{nomePlataforma(item)} · {item.cliques || 0} clique{(item.cliques || 0) === 1 ? '' : 's'}{item.ordem ? ` · ordem ${item.ordem}` : ''}</span>
                 {seloCashback(item) && <span className="af-selo">{seloCashback(item)}</span>}
+                {situacaoAchado(item).texto && (
+                  <span className={`vig-selo ind-situacao ${CLASSE_SITUACAO[situacaoAchado(item).id]}`}>{situacaoAchado(item).texto}</span>
+                )}
               </div>
               <div className="ind-acoes">
                 <a className="icon-btn" href={item.link} target="_blank" rel="noreferrer" title="Abrir link"><IconLink size={16} /></a>
@@ -295,6 +352,20 @@ export default function Indicacoes({ showToast, irPara }) {
                 <label>Ordem na vitrine (opcional)</label>
                 <input type="number" min="1" value={form.ordem} onChange={e => set('ordem', e.target.value)} placeholder="1 aparece primeiro" />
               </div>
+              <div className="field-row">
+                <div className="field-group">
+                  <label>Publicar a partir de <span className="aln-opcional">(opcional)</span></label>
+                  <input type="date" value={form.publicarDe} onChange={e => set('publicarDe', e.target.value)} />
+                </div>
+                <div className="field-group">
+                  <label>Publicar até <span className="aln-opcional">(opcional)</span></label>
+                  <input type="date" value={form.publicarAte} min={form.publicarDe || undefined} onChange={e => set('publicarAte', e.target.value)} />
+                </div>
+              </div>
+              <span className="field-hint" style={{ display: 'block', marginTop: -6, marginBottom: 12 }}>
+                Fora deste período o item não aparece no app. Em branco = sem limite.
+                {situacaoAchado(form).texto ? ` Situação: ${situacaoAchado(form).texto}.` : ''}
+              </span>
               <Recolhivel
                 titulo="Cashback e comissão"
                 subtitulo={form.cashbackAtivo ? 'Este item dá cashback' : 'Sem cashback para a usuária'}

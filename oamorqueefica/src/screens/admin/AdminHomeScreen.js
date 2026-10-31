@@ -8,6 +8,39 @@ import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { useAuth } from '../../hooks/AuthContext';
 import { est, acento, F_NUM, Pilula } from './adminEstilo';
+import {
+  hojeISO, seloVigencia, diasEntreISO, situacaoAchado, isoParaBR, DIAS_ALERTA_ACHADO,
+} from '../../utils/vigencia';
+
+// Alertas: contratos de parceria que vencem em até 60 dias (ou já venceram) e
+// achados que saem do ar nos próximos 7 dias. Só itens ativos.
+function useAlertasParcerias() {
+  const [parcerias, setParcerias] = useState([]);
+  const [privados, setPrivados] = useState({});
+  const [achados, setAchados] = useState([]);
+  useEffect(() => {
+    const u = [
+      onSnapshot(collection(db, 'parcerias'), s => setParcerias(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+      onSnapshot(collection(db, 'parceriasPrivado'), s => {
+        const m = {}; s.docs.forEach(d => { m[d.id] = d.data(); }); setPrivados(m);
+      }, () => {}),
+      onSnapshot(collection(db, 'indicacoes'), s => setAchados(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+    ];
+    return () => u.forEach(f => f());
+  }, []);
+  const hoje = hojeISO();
+  const contratos = parcerias
+    .filter(p => p.ativo !== false)
+    .map(p => ({ ...p, selo: seloVigencia(privados[p.id], hoje) }))
+    .filter(p => p.selo && (p.selo.tom === 'alerta' || p.selo.tom === 'vencida'))
+    .sort((a, b) => a.selo.dias - b.selo.dias);
+  const achadosEncerrando = achados
+    .filter(i => i.ativo !== false && situacaoAchado(i, hoje).id === 'no_ar' && i.publicarAte)
+    .map(i => ({ ...i, dias: diasEntreISO(hoje, i.publicarAte) }))
+    .filter(i => i.dias != null && i.dias <= DIAS_ALERTA_ACHADO)
+    .sort((a, b) => a.dias - b.dias);
+  return { contratos, achadosEncerrando };
+}
 
 // "Bom dia, Larissa" — saudação pelo horário de Brasília e primeiro nome.
 function saudacaoAdmin(nome) {
@@ -30,6 +63,7 @@ export default function AdminHomeScreen({ navigation }) {
   // No tablet, a mesma tela do celular (mesma ordem, cartões e estilo), só
   // centralizada com largura máxima; os números seguem em 2 colunas.
   const largo = width >= 700;
+  const { contratos, achadosEncerrando } = useAlertasParcerias();
   const [stats, setStats] = useState({ usuarias: 0, checkinsHoje: 0, porPlano: {} });
   const [conteudo, setConteudo] = useState({ conteudos: 0, audios: 0, parcerias: 0 });
   const [carregando, setCarregando] = useState(true);
@@ -147,6 +181,49 @@ export default function AdminHomeScreen({ navigation }) {
             </View>
           ))}
         </View>
+
+        {/* Alertas: contratos a vencer e achados que saem do ar */}
+        {contratos.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>Contratos a vencer</Text>
+            <View style={s.lista}>
+              {contratos.map((p, i) => {
+                const a = acento(p.selo.tom === 'vencida' ? 'rosa' : 'pessego');
+                return (
+                  <TouchableOpacity key={p.id} style={[s.atalho, i > 0 && s.atalhoDiv]} activeOpacity={0.7} accessibilityRole="button"
+                    onPress={() => navigation.navigate('AdminParcerias', { editarId: p.id })}>
+                    <Pilula icone={p.selo.tom === 'vencida' ? 'alert-circle-outline' : 'calendar-outline'} nome={p.selo.tom === 'vencida' ? 'rosa' : 'pessego'} tam={42} tamIcone={20} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.atalhoLabel} numberOfLines={1}>{p.titulo || 'Parceria sem título'}</Text>
+                      <Text style={[s.atalhoSub, { color: a.texto, fontFamily: fonts.bodyBold }]}>{p.selo.tom === 'vencida' ? 'Vencida' : p.selo.texto} · toque para editar</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.tl} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
+        {achadosEncerrando.length > 0 && (
+          <>
+            <Text style={s.sectionTitle}>Achados que saem do ar</Text>
+            <View style={s.lista}>
+              {achadosEncerrando.map((it, i) => (
+                <TouchableOpacity key={it.id} style={[s.atalho, i > 0 && s.atalhoDiv]} activeOpacity={0.7} accessibilityRole="button"
+                  onPress={() => navigation.navigate('AdminIndicacoes', { editarId: it.id })}>
+                  <Pilula icone="time-outline" nome="dourado" tam={42} tamIcone={20} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.atalhoLabel} numberOfLines={1}>{it.titulo || 'Item sem título'}</Text>
+                    <Text style={s.atalhoSub}>
+                      {it.dias === 0 ? 'Último dia no ar é hoje' : `No ar até ${isoParaBR(it.publicarAte)} · ${it.dias} dia${it.dias === 1 ? '' : 's'}`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.tl} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Gestão do sistema: lista agrupada num só vidro */}
         <Text style={s.sectionTitle}>Gestão do sistema</Text>

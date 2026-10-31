@@ -3,8 +3,39 @@ import { db } from './firebase';
 import { collection, collectionGroup, onSnapshot } from 'firebase/firestore';
 import {
   IconUsers, IconDiamond, IconHeart, IconBell, IconChat, IconDoc,
-  IconMusic, IconGift, IconStar, IconCompass, IconPie,
+  IconMusic, IconGift, IconStar, IconCompass, IconPie, IconAlert, IconTime,
 } from './Icons';
+import { hojeISO, seloVigencia, diasEntreISO, situacaoAchado, isoParaBR, DIAS_ALERTA_ACHADO } from './vigenciaUtils';
+
+// Alertas do painel: contratos de parceria que vencem em até 60 dias (ou já
+// venceram) e achados que saem do ar nos próximos 7 dias. Só itens ativos.
+function useAlertasParcerias() {
+  const [parcerias, setParcerias] = useState([]);
+  const [privados, setPrivados] = useState({});
+  const [achados, setAchados] = useState([]);
+  useEffect(() => {
+    const u = [
+      onSnapshot(collection(db, 'parcerias'), s => setParcerias(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+      onSnapshot(collection(db, 'parceriasPrivado'), s => {
+        const m = {}; s.docs.forEach(d => { m[d.id] = d.data(); }); setPrivados(m);
+      }, () => {}),
+      onSnapshot(collection(db, 'indicacoes'), s => setAchados(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => {}),
+    ];
+    return () => u.forEach(f => f());
+  }, []);
+  const hoje = hojeISO();
+  const contratos = parcerias
+    .filter(p => p.ativo !== false)
+    .map(p => ({ ...p, selo: seloVigencia(privados[p.id], hoje) }))
+    .filter(p => p.selo && (p.selo.tom === 'alerta' || p.selo.tom === 'vencida'))
+    .sort((a, b) => a.selo.dias - b.selo.dias);
+  const achadosEncerrando = achados
+    .filter(i => i.ativo !== false && situacaoAchado(i, hoje).id === 'no_ar' && i.publicarAte)
+    .map(i => ({ ...i, dias: diasEntreISO(hoje, i.publicarAte) }))
+    .filter(i => i.dias != null && i.dias <= DIAS_ALERTA_ACHADO)
+    .sort((a, b) => a.dias - b.dias);
+  return { contratos, achadosEncerrando };
+}
 
 // Mesma conta de "hoje" usada pelo app ao gravar o check-in (AppContext.hojeStr):
 // data local de São Paulo no formato YYYY-MM-DD.
@@ -85,7 +116,8 @@ function saudacaoAdmin(nome) {
   return primeiro ? `${periodo}, ${primeiro}` : periodo;
 }
 
-export default function Dashboard({ perfil }) {
+export default function Dashboard({ perfil, irPara }) {
+  const { contratos, achadosEncerrando } = useAlertasParcerias();
   const [usuarios, setUsuarios] = useState([]);
   const [counts, setCounts] = useState({
     frases: 0, conteudos: 0, audios: 0, parcerias: 0,
@@ -214,6 +246,39 @@ export default function Dashboard({ perfil }) {
 
       {falhas.length > 0 && (
         <div className="dash-aviso">Não foi possível ler: <strong>{falhas.join(', ')}</strong>. Estes números podem estar incompletos.
+        </div>
+      )}
+
+      {(contratos.length > 0 || achadosEncerrando.length > 0) && (
+        <div className="dash-alertas">
+          {contratos.length > 0 && (
+            <section className="card">
+              <h2 className="card-title"><IconAlert size={20} />Contratos a vencer</h2>
+              {contratos.map(p => (
+                <button key={p.id} type="button" className="dash-alerta-item"
+                  onClick={() => irPara?.('parcerias', { editarId: p.id })}>
+                  <span className="dash-alerta-nome">{p.titulo || 'Parceria sem título'}</span>
+                  <span className={`vig-selo vig-${p.selo.tom}`}>{p.selo.tom === 'vencida' ? 'Vencida' : p.selo.texto}</span>
+                  <span className="dash-alerta-editar">Editar →</span>
+                </button>
+              ))}
+            </section>
+          )}
+          {achadosEncerrando.length > 0 && (
+            <section className="card">
+              <h2 className="card-title"><IconTime size={20} />Achados que saem do ar</h2>
+              {achadosEncerrando.map(i => (
+                <button key={i.id} type="button" className="dash-alerta-item"
+                  onClick={() => irPara?.('indicacoes', { editarId: i.id })}>
+                  <span className="dash-alerta-nome">{i.titulo || 'Item sem título'}</span>
+                  <span className="vig-selo vig-alerta">
+                    {i.dias === 0 ? 'Último dia hoje' : `Até ${isoParaBR(i.publicarAte)} · ${i.dias} dia${i.dias === 1 ? '' : 's'}`}
+                  </span>
+                  <span className="dash-alerta-editar">Editar →</span>
+                </button>
+              ))}
+            </section>
+          )}
         </div>
       )}
 

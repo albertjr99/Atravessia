@@ -14,8 +14,8 @@ import { useAuth } from '../../hooks/AuthContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { aquecerPagamento, abrirPagamento, mensagemErroPagamento } from '../../utils/pagamento';
 import {
-  useCurso, useProfissional, useAcessoCurso, TopoCursos, Capa, BotaoCurso, BarraProgresso,
-  aulasOrdenadas, capaCurso, thumbAula, progressoCurso, brl, URL_CURSOS_WEB,
+  useCursoCompleto, useProfissional, TopoCursos, Capa, BotaoCurso, BarraProgresso, MiniaturaAula, NotaPrivacidadeCurso,
+  aulasOrdenadas, capaCurso, progressoCurso, brl, URL_CURSOS_WEB, URL_TERMOS,
 } from './cursosComum';
 
 // Página do curso: capa, profissional, descrição, programa (recolhíveis),
@@ -27,9 +27,8 @@ export default function CursoScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { firebaseUser } = useAuth();
-  const curso = useCurso(cursoId);
+  const { curso, acesso } = useCursoCompleto(cursoId, firebaseUser?.uid);
   const prof = useProfissional(curso?.profissionalId);
-  const acesso = useAcessoCurso(firebaseUser?.uid, cursoId);
   const [comprando, setComprando] = useState(false);
   const [aguardando, setAguardando] = useState(false);
 
@@ -67,7 +66,7 @@ export default function CursoScreen({ navigation, route }) {
   if (curso === undefined) {
     return <View style={[s.safe, s.centro]}><LavandaBg /><ActivityIndicator color={colors.lav4} /></View>;
   }
-  if (!curso || (curso.ativo === false && !temAcesso)) {
+  if (!curso || ((curso.ativo !== true || curso.arquivado === true) && !temAcesso)) {
     return (
       <SafeAreaView style={s.safe} edges={['left', 'right']}>
         <LavandaBg />
@@ -96,13 +95,13 @@ export default function CursoScreen({ navigation, route }) {
           <TouchableOpacity key={a.id} style={s.aula} onPress={() => abrirAula(a)} activeOpacity={0.85}
             accessibilityLabel={`Aula ${i + 1}: ${a.titulo}${aberta ? '' : '. Bloqueada'}`}>
             <View style={s.aulaThumbWrap}>
-              <Image source={{ uri: thumbAula(a) }} style={s.aulaThumb} />
+              <MiniaturaAula aula={a} estilo={s.aulaThumb} />
               <View style={[s.aulaThumbVeu, !aberta && s.aulaThumbVeuForte]}>
                 <Ionicons name={aberta ? 'play' : 'lock-closed'} size={16} color="white" />
               </View>
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <Text style={s.aulaNum}>Aula {i + 1}{a.duracao ? ` · ${a.duracao}` : ''}</Text>
+              <Text style={s.aulaNum} numberOfLines={1}>Aula {i + 1}{a.duracao ? ` · ${a.duracao}` : ''}</Text>
               <Text style={s.aulaTit} numberOfLines={2}>{a.titulo}</Text>
               {a.gratis && !temAcesso && <Text style={s.gratis}>Aula grátis</Text>}
             </View>
@@ -121,7 +120,7 @@ export default function CursoScreen({ navigation, route }) {
       <LavandaBg />
       <TopoCursos titulo="Curso" onVoltar={() => navigation.goBack()} insetTop={insets.top} />
 
-      <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + 130 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + (temAcesso ? 130 : 170) }]} showsVerticalScrollIndicator={false}>
         <View style={s.coluna}>
           <View style={s.heroi}>
             <Capa uri={capaCurso(curso)} raio={0} play={!!proxima} tamPlay={62}>
@@ -175,6 +174,12 @@ export default function CursoScreen({ navigation, route }) {
             <View style={[largo && { flex: 1 }]}>{blocoAulas}</View>
           </View>
 
+          {acesso === null && (
+            <View style={s.cartao}>
+              <NotaPrivacidadeCurso onTermos={() => abrirLink(URL_TERMOS)} />
+            </View>
+          )}
+
           {temAcesso && (
             <TouchableOpacity style={s.web} onPress={() => abrirLink(`${URL_CURSOS_WEB}?curso=${cursoId}`)} activeOpacity={0.85}>
               <Ionicons name="laptop-outline" size={18} color={colors.lilasTexto} />
@@ -198,8 +203,12 @@ export default function CursoScreen({ navigation, route }) {
             )}
             <BotaoCurso rotulo={`Comprar curso por ${brl(curso.preco)}`} onPress={comprar} desativado={comprando}>
               {comprando ? <ActivityIndicator color="white" /> : <Ionicons name="lock-open-outline" size={18} color="white" />}
-              <Text style={s.btnTxt}>{comprando ? 'Abrindo pagamento...' : `Comprar curso — ${brl(curso.preco)}`}</Text>
+              <Text style={s.btnTxt} numberOfLines={1} adjustsFontSizeToFit>{comprando ? 'Abrindo pagamento...' : `Comprar curso — ${brl(curso.preco)}`}</Text>
             </BotaoCurso>
+            <Text style={s.rodapeNota} numberOfLines={2}>
+              Pagamento seguro pela Stripe. Ao comprar, você aceita os{' '}
+              <Text style={s.rodapeLink} onPress={() => abrirLink(URL_TERMOS)}>Termos de Uso</Text>.
+            </Text>
           </>
         )}
       </View>
@@ -233,7 +242,7 @@ const s = criarEstilos(() => ({
   },
   profFoto: { width: 58, height: 58, borderRadius: 29, backgroundColor: colors.lav2 },
   profInicial: { alignItems: 'center', justifyContent: 'center' },
-  profInicialTxt: { fontFamily: 'Marca', fontSize: 30, color: colors.lav6 },
+  profInicialTxt: { fontFamily: fonts.bodyBold, fontSize: 24, color: colors.lav6 },
   profRot: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.joiaLilasTexto },
   profNome: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.joiaLilasTexto },
   profBio: { fontFamily: fonts.body, fontSize: 13.5, lineHeight: 19, color: colors.texto2, marginTop: 4 },
@@ -263,5 +272,7 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.vidroForte, borderTopWidth: 1, borderTopColor: colors.bordaLuz,
   },
   aguardando: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18, color: colors.texto2, textAlign: 'center' },
-  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white' },
+  btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: 'white', flexShrink: 1 },
+  rodapeNota: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16, color: colors.texto2, textAlign: 'center' },
+  rodapeLink: { fontFamily: fonts.bodyBold, color: colors.lilasTexto, textDecorationLine: 'underline' },
 }));

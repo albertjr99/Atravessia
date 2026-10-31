@@ -9,6 +9,8 @@ import { LavandaBg } from '../../components';
 
 const ilVazio = require('../../../assets/images/il_folha_vento.png');
 import { useApp } from '../../hooks/AppContext';
+import { resolverDestino } from '../../navigation/abrirNotificacao';
+import { abrirAvisoAtualizacao } from '../../components/AvisoAtualizacao';
 
 const ICONES = {
   inatividade: 'time-outline',
@@ -20,6 +22,11 @@ const ICONES = {
   incentivo: 'heart-outline',
   live: 'videocam-outline',
   confirmar_resgate: 'gift-outline',
+  cashback: 'wallet-outline',
+  cashback_afiliado: 'wallet-outline',
+  cupom: 'pricetag-outline',
+  curso: 'school-outline',
+  versao: 'arrow-up-circle-outline',
 };
 
 const DESTINO = {
@@ -28,7 +35,7 @@ const DESTINO = {
   data_sensivel: 'DatasSensiveis',
   feedback: 'Relatorios',
   relatorio: 'Relatorios',
-  vitoria: 'Inicio',
+  vitoria: 'PequenasVitorias',
   incentivo: 'CheckIn',
   live: 'Audios',
   // Tipos publicados pelo painel administrativo do app (AdminNotificacoesScreen)
@@ -42,6 +49,12 @@ const DESTINO = {
   cashback: 'Cashback',
   // Resposta a um pedido de cashback de afiliados (recusa com motivo).
   cashback_afiliado: 'MeusPedidosCashback',
+  cupom: 'MeusCupons',
+  curso: 'Cursos',
+  jornada: 'Jornadas',
+  memorial: 'GuardarMemoria',
+  // Aviso de versão: abre o convite de atualização, não uma tela.
+  versao: 'AtualizarApp',
 };
 
 export default function NotificacoesScreen({ navigation }) {
@@ -51,13 +64,13 @@ export default function NotificacoesScreen({ navigation }) {
 
   const handlePress = (n) => {
     marcarLida(n.id);
-    const dest = DESTINO[n.tipo];
-    if (!dest) return;
-    if (n.tipo === 'confirmar_resgate') {
-      navigation.navigate(dest, { resgateId: n.resgateId });
-    } else {
-      navigation.navigate(dest);
-    }
+    // O mesmo caminho do toque na notificação do aparelho (data.screen tem
+    // prioridade; depois o tipo).
+    const destino = resolverDestino({ ...n, screen: n.screen || DESTINO[n.tipo] });
+    if (!destino) return;
+    if (destino.acao === 'atualizar') { abrirAvisoAtualizacao(); return; }
+    if (destino.rota === 'Notificacoes') return;
+    try { navigation.navigate(destino.rota, destino.params); } catch {}
   };
 
   return (
@@ -108,7 +121,7 @@ export default function NotificacoesScreen({ navigation }) {
                   </View>
                 )}
                 <Text style={[styles.itemTexto, !n.lida && styles.itemTextoNaoLido]}>{n.texto}</Text>
-                {DESTINO[n.tipo] && (
+                {(n.screen || DESTINO[n.tipo]) && (
                   <Text style={styles.itemAcao}>Toque para acessar</Text>
                 )}
               </View>

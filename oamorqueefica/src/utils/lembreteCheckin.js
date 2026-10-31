@@ -144,8 +144,9 @@ export async function testarLembrete() {
       content: {
         title: 'Atravessia',
         body: 'Tudo certo! É assim que o seu lembrete de check-in vai aparecer.',
-        data: { screen: 'CheckIn', origem: 'lembreteTeste' },
+        data: { screen: 'CheckIn', origem: 'lembreteTeste', tipo: 'lembrete' },
         sound: 'default',
+        color: '#6B54C6',
         priority: Notifications.AndroidNotificationPriority.HIGH,
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, channelId: CANAL_LEMBRETES },
@@ -226,8 +227,9 @@ async function agendarAgora(pref, jaFezCheckinHoje) {
         content: {
           title: 'Atravessia',
           body: fraseDoLembrete(data),
-          data: { screen: 'CheckIn', origem: 'lembreteCheckin' },
+          data: { screen: 'CheckIn', origem: 'lembreteCheckin', tipo: 'lembrete' },
           sound: 'default',
+          color: '#6B54C6',
           priority: Notifications.AndroidNotificationPriority.HIGH,
         },
         trigger: {

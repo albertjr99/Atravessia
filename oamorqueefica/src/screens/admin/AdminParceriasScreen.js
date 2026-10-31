@@ -5,8 +5,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc,
+  addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, setDoc,
 } from 'firebase/firestore';
+import { abrirLink } from '../../utils/abrirLink';
+import {
+  seloVigencia, mascaraDataBR, brParaISO, isoParaBR, linkWhatsApp, linkLigar,
+  normalizarLinkContrato, ehLinkDrive,
+} from '../../utils/vigencia';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, acento, BotaoAdmin, AcoesItem, useFormRecolhivel } from './adminEstilo';
@@ -37,8 +42,19 @@ function gerarTokenPainel() {
   return Array.from({ length: 3 }, () => Math.random().toString(36).slice(2, 10)).join('');
 }
 
-export default function AdminParceriasScreen({ navigation }) {
+// Cores do selo de vigência: laranja (≤ 60 dias), vermelho (vencida).
+const TOM_SELO = { ok: 'salvia', futura: 'lilas', alerta: 'pessego', vencida: 'rosa' };
+
+export default function AdminParceriasScreen({ navigation, route }) {
   const [parcerias, setParcerias] = useState([]);
+  // Internos (parceriasPrivado/{id}): vigência, contato e contrato.
+  const [privados, setPrivados] = useState({});
+  const [privadosProntos, setPrivadosProntos] = useState(false);
+  const [inicioParceria, setInicioParceria] = useState('');
+  const [fimParceria, setFimParceria] = useState('');
+  const [contatoNome, setContatoNome] = useState('');
+  const [contatoTelefone, setContatoTelefone] = useState('');
+  const [contratoUrl, setContratoUrl] = useState('');
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [link, setLink] = useState('');
@@ -91,6 +107,24 @@ export default function AdminParceriasScreen({ navigation }) {
     }, (e) => setErroLista(e?.message || 'Não foi possível carregar as parcerias.'));
     return unsub;
   }, []);
+
+  useEffect(() => onSnapshot(collection(db, 'parceriasPrivado'), (snap) => {
+    const m = {};
+    snap.docs.forEach(d => { m[d.id] = d.data(); });
+    setPrivados(m);
+    setPrivadosProntos(true);
+  }, () => setPrivadosProntos(true)), []);
+
+  // Atalho do Dashboard ("Contratos a vencer"): abre direto a edição.
+  const editarId = route?.params?.editarId;
+  useEffect(() => {
+    if (!editarId || !privadosProntos) return;
+    const p = parcerias.find(x => x.id === editarId);
+    if (!p) return;
+    editar(p);
+    navigation.setParams?.({ editarId: undefined });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editarId, privadosProntos, parcerias]);
 
   const handleUploadImagem = async () => {
     if (Platform.OS === 'web') {
@@ -158,6 +192,7 @@ export default function AdminParceriasScreen({ navigation }) {
     setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
     setValidadeDiasVoucher('30');
     setCashbackAtivo(true); setCashbackPercentual(''); setCashbackCondicoes('');
+    setInicioParceria(''); setFimParceria(''); setContatoNome(''); setContatoTelefone(''); setContratoUrl('');
   };
 
   const editar = (p) => {
@@ -177,6 +212,12 @@ export default function AdminParceriasScreen({ navigation }) {
     setCashbackAtivo(p.cashback?.ativo !== false);
     setCashbackPercentual(p.cashback?.percentual != null ? String(p.cashback.percentual).replace('.', ',') : '');
     setCashbackCondicoes(p.cashback?.condicoes || '');
+    const priv = privados[p.id] || {};
+    setInicioParceria(isoParaBR(priv.inicioParceria));
+    setFimParceria(isoParaBR(priv.fimParceria));
+    setContatoNome(priv.contatoNome || '');
+    setContatoTelefone(priv.contatoTelefone || '');
+    setContratoUrl(priv.contratoUrl || '');
     form.abrirERolar();
   };
 
@@ -200,6 +241,29 @@ export default function AdminParceriasScreen({ navigation }) {
       Alert.alert('Atenção', 'Informe o percentual total do benefício para o cupom.');
       return;
     }
+    // Vigência, contato e contrato: internos, em parceriasPrivado/{id}.
+    const inicioISO = brParaISO(inicioParceria);
+    const fimISO = brParaISO(fimParceria);
+    if (inicioISO === null || fimISO === null) {
+      Alert.alert('Atenção', 'Confira as datas da parceria (dd/mm/aaaa).');
+      return;
+    }
+    if (inicioISO && fimISO && fimISO < inicioISO) {
+      Alert.alert('Atenção', 'O fim da parceria não pode ser antes do início.');
+      return;
+    }
+    const contratoFinal = normalizarLinkContrato(contratoUrl);
+    if (contratoFinal === null) {
+      Alert.alert('Atenção', 'O link do contrato não parece um endereço válido. Cole o link de compartilhamento do Google Drive.');
+      return;
+    }
+    const privado = {
+      titulo: titulo.trim(),
+      inicioParceria: inicioISO, fimParceria: fimISO,
+      contatoNome: contatoNome.trim(), contatoTelefone: contatoTelefone.trim(),
+      contratoUrl: contratoFinal,
+      atualizadoEm: serverTimestamp(),
+    };
     setEnviando(true);
     try {
       const dados = {
@@ -229,13 +293,14 @@ export default function AdminParceriasScreen({ navigation }) {
         // Ao editar, mantém o token do painel do parceiro.
         if (!editId || !parcerias.find(p => p.id === editId)?.tokenPainel) dados.tokenPainel = gerarTokenPainel();
       }
+      let id = editId;
       if (editId) {
         await updateDoc(doc(db, 'parcerias', editId), dados);
-        Alert.alert('', 'Parceria atualizada!');
       } else {
-        await addDoc(collection(db, 'parcerias'), { ...dados, ativo: true, cliques: 0, criadoEm: serverTimestamp() });
-        Alert.alert('', 'Parceria publicada com sucesso!');
+        id = (await addDoc(collection(db, 'parcerias'), { ...dados, ativo: true, cliques: 0, criadoEm: serverTimestamp() })).id;
       }
+      await setDoc(doc(db, 'parceriasPrivado', id), privado, { merge: true });
+      Alert.alert('', editId ? 'Parceria atualizada!' : 'Parceria publicada com sucesso!');
       limparFormulario();
       form.setAberto(false);
     } catch (e) {
@@ -253,6 +318,7 @@ export default function AdminParceriasScreen({ navigation }) {
   const handleRemover = (id) => {
     confirmar('Remover parceria', 'Tem certeza que deseja remover esta parceria?',
       () => deleteDoc(doc(db, 'parcerias', id))
+        .then(() => deleteDoc(doc(db, 'parceriasPrivado', id)).catch(() => {}))
         .catch((e) => Alert.alert('Erro', `Não foi possível remover a parceria.${e?.message ? `\n${e.message}` : ''}`)),
       'Remover');
   };
@@ -509,6 +575,59 @@ export default function AdminParceriasScreen({ navigation }) {
             </View>
           )}
 
+          <Recolhivel
+            titulo="Contrato, vigência e contato"
+            subtitulo={seloVigencia({ inicioParceria: brParaISO(inicioParceria), fimParceria: brParaISO(fimParceria) })?.texto
+              || 'Uso interno: as usuárias não veem estes dados'}
+            icone="document-text-outline"
+            inicialAberto={!!(fimParceria || contatoNome || contratoUrl)}
+            estilo={{ marginTop: spacing.md }}
+          >
+            <View style={s.infoBase}>
+              <Ionicons name="lock-closed-outline" size={16} color={acento('lilas').texto} />
+              <Text style={s.infoBaseTxt}>Uso interno: só as administradoras veem. Quando faltarem 60, 30 e 7 dias para o fim (e no dia), o painel avisa.</Text>
+            </View>
+            <View style={s.linha2}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.miniLabel}>Início da parceria</Text>
+                <TextInput style={s.input} value={inicioParceria} onChangeText={v => setInicioParceria(mascaraDataBR(v))}
+                  keyboardType="number-pad" maxLength={10} placeholder="dd/mm/aaaa" placeholderTextColor={colors.tl} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.miniLabel}>Fim (vencimento do contrato)</Text>
+                <TextInput style={s.input} value={fimParceria} onChangeText={v => setFimParceria(mascaraDataBR(v))}
+                  keyboardType="number-pad" maxLength={10} placeholder="dd/mm/aaaa" placeholderTextColor={colors.tl} />
+              </View>
+            </View>
+            {(brParaISO(inicioParceria) === null || brParaISO(fimParceria) === null) && (
+              <Text style={[s.hint, { color: acento('dourado').texto }]}>Complete a data no formato dd/mm/aaaa.</Text>
+            )}
+            <Text style={s.formLabel}>Nome do contato</Text>
+            <TextInput style={s.input} value={contatoNome} onChangeText={setContatoNome}
+              placeholder="Quem responde pela parceria" placeholderTextColor={colors.tl} />
+            <Text style={s.formLabel}>Telefone/WhatsApp do contato</Text>
+            <TextInput style={s.input} value={contatoTelefone} onChangeText={setContatoTelefone}
+              keyboardType="phone-pad" placeholder="(27) 99999-9999" placeholderTextColor={colors.tl} />
+            {!!contatoTelefone.trim() && !linkWhatsApp(contatoTelefone) && (
+              <Text style={[s.hint, { color: acento('dourado').texto }]}>Confira o número: use DDD + telefone.</Text>
+            )}
+            <Text style={s.formLabel}>Link do contrato (Google Drive)</Text>
+            <TextInput style={s.input} value={contratoUrl} onChangeText={setContratoUrl}
+              autoCapitalize="none" keyboardType="url" placeholder="https://drive.google.com/..." placeholderTextColor={colors.tl} />
+            {!!contratoUrl.trim() && normalizarLinkContrato(contratoUrl) === null && (
+              <Text style={[s.hint, { color: acento('rosa').texto }]}>Este link não parece um endereço válido.</Text>
+            )}
+            {!!normalizarLinkContrato(contratoUrl) && !ehLinkDrive(contratoUrl) && (
+              <Text style={[s.hint, { color: acento('dourado').texto }]}>Não parece um link do Google Drive, mas será salvo assim mesmo.</Text>
+            )}
+            {!!normalizarLinkContrato(contratoUrl) && (
+              <TouchableOpacity style={[s.acaoInterna, { marginTop: 8 }]} onPress={() => abrirLink(normalizarLinkContrato(contratoUrl))}>
+                <Ionicons name="document-text-outline" size={15} color={colors.lilasTexto} />
+                <Text style={s.acaoInternaTxt}>Abrir contrato</Text>
+              </TouchableOpacity>
+            )}
+          </Recolhivel>
+
           <BotaoAdmin
             title={enviando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Publicar parceria no app'}
             onPress={handlePublicar}
@@ -546,6 +665,17 @@ export default function AdminParceriasScreen({ navigation }) {
             )}
             <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
               <Text style={s.itemTitulo} numberOfLines={1}>{p.titulo}</Text>
+              {!!seloVigencia(privados[p.id]) && (() => {
+                const selo = seloVigencia(privados[p.id]);
+                const a = acento(TOM_SELO[selo.tom]);
+                return (
+                  <View style={[s.seloVig, { backgroundColor: a.fundo }]}>
+                    <Ionicons name={selo.tom === 'vencida' ? 'alert-circle' : 'calendar-outline'} size={12} color={a.tinta} />
+                    <Text style={[s.seloVigTxt, { color: a.texto }]}>{selo.texto}</Text>
+                  </View>
+                );
+              })()}
+              <ContatoContrato priv={privados[p.id]} />
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(p.categorias || []).slice(0, 2).map(cat => (
                   <Text key={cat} style={s.itemTag}>{rotuloCategoria(cat)}</Text>
@@ -611,7 +741,53 @@ export default function AdminParceriasScreen({ navigation }) {
   );
 }
 
+// Contato e contrato da parceria (internos), na lista do painel: tocar no
+// número liga; WhatsApp abre wa.me; contrato abre o link do Drive.
+function ContatoContrato({ priv }) {
+  if (!priv || (!priv.contatoNome && !priv.contatoTelefone && !priv.contratoUrl)) return null;
+  const wa = linkWhatsApp(priv.contatoTelefone);
+  const tel = linkLigar(priv.contatoTelefone);
+  return (
+    <View style={{ gap: 6 }}>
+      {!!(priv.contatoNome || priv.contatoTelefone) && (
+        <Text style={s.itemLocal}>
+          Contato: <Text style={{ fontFamily: fonts.bodyBold }}>{priv.contatoNome || '—'}</Text>
+          {priv.contatoTelefone ? ` · ${priv.contatoTelefone}` : ''}
+        </Text>
+      )}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {!!tel && (
+          <TouchableOpacity style={s.acaoInterna} onPress={() => abrirLink(tel)} accessibilityLabel="Ligar para o contato">
+            <Ionicons name="call-outline" size={14} color={colors.lilasTexto} />
+            <Text style={s.acaoInternaTxt}>Ligar</Text>
+          </TouchableOpacity>
+        )}
+        {!!wa && (
+          <TouchableOpacity style={s.acaoInterna} onPress={() => abrirLink(wa)} accessibilityLabel="Abrir WhatsApp do contato">
+            <Ionicons name="logo-whatsapp" size={14} color={colors.lilasTexto} />
+            <Text style={s.acaoInternaTxt}>WhatsApp</Text>
+          </TouchableOpacity>
+        )}
+        {!!priv.contratoUrl && (
+          <TouchableOpacity style={s.acaoInterna} onPress={() => abrirLink(priv.contratoUrl)} accessibilityLabel="Abrir contrato">
+            <Ionicons name="document-text-outline" size={14} color={colors.lilasTexto} />
+            <Text style={s.acaoInternaTxt}>Abrir contrato</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const s = criarEstilos(() => ({
+  seloVig: { ...est.etiqueta() },
+  seloVigTxt: est.etiquetaTxt(),
+  acaoInterna: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    minHeight: 34, paddingHorizontal: 11, borderRadius: 999,
+    borderWidth: 1, borderColor: colors.lav3, backgroundColor: colors.lav1,
+  },
+  acaoInternaTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.lilasTexto },
   formTopo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
   cancelarEdicao: { ...est.botaoSec(), minHeight: 36, paddingHorizontal: 14 },
   cancelarEdicaoTxt: { ...est.botaoSecTxt(), fontSize: 13 },

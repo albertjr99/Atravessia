@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, criarEstilos } from '../theme';
 import { registrarPushToken } from '../utils/pushNotifications';
 import { garantirCanais } from '../utils/canaisNotificacao';
+import { avisoAtualizacaoVisivel, aoMudarAvisoAtualizacao } from './AvisoAtualizacao';
 
 const CHAVE_ADIADO = 'permissaoNotificacoes.adiadoEm';
 const ESPERA_MS = 3 * 24 * 60 * 60 * 1000;
@@ -35,6 +36,8 @@ export default function PermissaoNotificacoes({ uid }) {
         if (Date.now() - adiado < ESPERA_MS) return;
       }
       setPodePerguntar(atual.canAskAgain !== false);
+      // O aviso de atualização tem a vez: este convite espera ele sair.
+      if (avisoAtualizacaoVisivel()) return;
       setVisivel(true);
     } catch {}
   }, [uid]);
@@ -45,6 +48,12 @@ export default function PermissaoNotificacoes({ uid }) {
     const sub = AppState.addEventListener('change', (e) => { if (e === 'active') conferir(true).catch(() => {}); });
     return () => { clearTimeout(t); sub.remove(); };
   }, [conferir]);
+
+  // Sai da frente quando o aviso de atualização abre; volta a conferir quando ele fecha.
+  useEffect(() => aoMudarAvisoAtualizacao((aberto) => {
+    if (aberto) setVisivel(false);
+    else conferir().catch(() => {});
+  }), [conferir]);
 
   const permitir = async () => {
     try {
