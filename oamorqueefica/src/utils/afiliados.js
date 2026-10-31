@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { uploadToStorage } from './storageUpload';
 
 // Afiliados: lojas, textos dos botões e cálculo do cashback. As mesmas regras
@@ -102,4 +105,18 @@ export async function escolherEnviarImagem(pasta, { maxMB = 8, qualidade = 0.7 }
   if (res.canceled) return null;
   const url = await uploadToStorage(res.assets[0].uri, caminho, 'image/jpeg');
   return { url, caminho };
+}
+
+// Pedidos de cashback de afiliados da própria pessoa (as regras só deixam ler
+// os seus). Usado no Perfil e no extrato para mostrar quantos estão em análise.
+export function useMeusPedidosAfiliado(uid) {
+  const [pedidos, setPedidos] = useState([]);
+  useEffect(() => {
+    if (!uid) { setPedidos([]); return undefined; }
+    return onSnapshot(query(collection(db, 'pedidosCashbackAfiliado'), where('usuarioId', '==', uid)),
+      (snap) => setPedidos(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (e) => console.warn('[Afiliados] pedidos:', e?.message));
+  }, [uid]);
+  const pendentes = pedidos.filter(p => p.status === 'pendente').length;
+  return { pedidos, pendentes };
 }

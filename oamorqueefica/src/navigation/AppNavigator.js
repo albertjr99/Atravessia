@@ -5,7 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, View, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
+import { useAbrirNotificacoes } from './abrirNotificacao';
 import PermissaoNotificacoes from '../components/PermissaoNotificacoes';
 import AvisoAtualizacao from '../components/AvisoAtualizacao';
 import AdminVersaoAppScreen from '../screens/admin/AdminVersaoAppScreen';
@@ -169,14 +169,6 @@ function AdminStack() {
   );
 }
 
-const SCREEN_MAP = {
-  CheckIn: 'CheckIn',
-  DatasSensiveis: 'DatasSensiveis',
-  RedeApoio: 'RedeApoio',
-  Relatorios: 'Relatorios',
-  Inicio: 'MainTabs',
-};
-
 export default function AppNavigator() {
   const { firebaseUser, isAdmin, carregando, perfil, verComoUsuaria, setVerComoUsuaria } = useAuth();
   const insets = useSafeAreaInsets();
@@ -207,17 +199,8 @@ export default function AppNavigator() {
   }, [uid, precisaOnboarding]);
   const comecaNoOnboarding = !!uid && (precisaOnboarding || onboardingDoUid === uid);
 
-  useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(response => {
-      const screen = response.notification.request.content.data?.screen;
-      if (!screen || !navigationRef.current) return;
-      const target = SCREEN_MAP[screen] || screen;
-      try {
-        navigationRef.current.navigate(target);
-      } catch {}
-    });
-    return () => sub.remove();
-  }, []);
+  // Toque numa notificação (inclusive com o app fechado): ver abrirNotificacao.js.
+  useAbrirNotificacoes(navigationRef);
 
   let content;
   if (carregando) {
@@ -229,7 +212,7 @@ export default function AppNavigator() {
   } else if (!firebaseUser) {
     content = <AuthStack />;
   } else if (isAdmin && !verComoUsuaria) {
-    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /><AvisoAtualizacao uid={uid} /></>;
+    content = <><AdminStack /><PermissaoNotificacoes uid={uid} /></>;
   } else {
     content = (
       <>
@@ -239,7 +222,6 @@ export default function AppNavigator() {
         />
         {/* Convite das notificações logo no primeiro acesso. */}
         <PermissaoNotificacoes uid={uid} />
-        <AvisoAtualizacao uid={uid} />
       </>
     );
   }
@@ -265,6 +247,9 @@ export default function AppNavigator() {
           <Text style={styles.voltarPainelTxt}>Voltar ao painel</Text>
         </TouchableOpacity>
       )}
+      {/* Por último e fora das pilhas: aparece na frente de tudo, também antes
+          do login, e não é remontado ao trocar de tela ou de tema. */}
+      <AvisoAtualizacao uid={uid} />
     </GestureHandlerRootView>
   );
 }

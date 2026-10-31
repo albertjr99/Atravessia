@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Image, useWindowDimensions,
+  View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,8 +11,8 @@ import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { useAuth } from '../../hooks/AuthContext';
 import {
-  useCurso, useAcessoCurso, TopoCursos, BotaoCurso, BarraProgresso,
-  aulasOrdenadas, thumbAula, progressoCurso,
+  useCursoCompleto, TopoCursos, BotaoCurso, BarraProgresso, MiniaturaAula,
+  aulasOrdenadas, progressoCurso,
 } from './cursosComum';
 
 // Player da aula (YouTube não listado, sem vídeos relacionados de outros
@@ -26,8 +26,7 @@ export default function AulaScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const { firebaseUser } = useAuth();
   const uid = firebaseUser?.uid;
-  const curso = useCurso(cursoId);
-  const acesso = useAcessoCurso(uid, cursoId);
+  const { curso, acesso, conteudo } = useCursoCompleto(cursoId, uid);
   const [terminou, setTerminou] = useState(false);
   const [carregandoVideo, setCarregandoVideo] = useState(true);
 
@@ -43,6 +42,8 @@ export default function AulaScreen({ navigation, route }) {
   const proxima = aulas[idx + 1];
   const temAcesso = !!acesso;
   const podeVer = !!aula && (temAcesso || aula.gratis);
+  // Com acesso, o vídeo da aula paga chega de cursosConteudo (pode demorar um instante).
+  const esperandoVideo = podeVer && !aula.youtubeId && temAcesso && conteudo === undefined;
   const feita = !!acesso?.progresso?.[aula?.id];
   const prog = progressoCurso(curso, acesso);
 
@@ -88,12 +89,12 @@ export default function AulaScreen({ navigation, route }) {
           <TouchableOpacity key={a.id} style={[s.item, atual && s.itemAtual]} onPress={() => irPara(a)} activeOpacity={0.85}
             accessibilityLabel={`Aula ${i + 1}: ${a.titulo}`} accessibilityState={{ selected: atual }}>
             <View style={s.itemThumbWrap}>
-              <Image source={{ uri: thumbAula(a) }} style={s.itemThumb} />
+              <MiniaturaAula aula={a} estilo={s.itemThumb} />
               {atual && <View style={s.itemTocando}><Ionicons name="volume-high" size={14} color="white" /></View>}
               {!aberta && <View style={s.itemTocando}><Ionicons name="lock-closed" size={14} color="white" /></View>}
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={s.itemNum}>Aula {i + 1}{a.duracao ? ` · ${a.duracao}` : ''}</Text>
+              <Text style={s.itemNum} numberOfLines={1}>Aula {i + 1}{a.duracao ? ` · ${a.duracao}` : ''}</Text>
               <Text style={[s.itemTit, atual && { color: colors.lilasTexto }]} numberOfLines={2}>{a.titulo}</Text>
             </View>
             {ok && <Ionicons name="checkmark-circle" size={20} color={colors.sage} />}
@@ -112,7 +113,14 @@ export default function AulaScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
         <View style={[s.coluna, tablet && s.colunaLado]}>
           <View style={{ width: larguraPlayer, gap: spacing.md }}>
-            {podeVer ? (
+            {esperandoVideo ? (
+              <View style={[s.player, s.bloqueado, { height: alturaPlayer }]}><ActivityIndicator color="white" /></View>
+            ) : podeVer && !aula.youtubeId ? (
+              <View style={[s.player, s.bloqueado, { height: alturaPlayer }]}>
+                <Ionicons name="cloud-offline-outline" size={30} color="white" />
+                <Text style={s.bloqueadoTxt}>Não conseguimos carregar esta aula agora. Confira sua conexão e tente de novo em instantes.</Text>
+              </View>
+            ) : podeVer ? (
               <View style={[s.player, { height: alturaPlayer }]}>
                 <YoutubePlayer
                   key={aula.youtubeId}

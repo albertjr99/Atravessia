@@ -87,8 +87,9 @@ async function agendarAgora(frases, uid, pref) {
         content: {
           title: 'Frase do dia',
           body: `“${frase.texto}”${frase.autor ? ` — ${frase.autor}` : ''}`,
-          data: { screen: 'MainTabs', origem: 'fraseDoDia' },
+          data: { screen: 'MainTabs', origem: 'fraseDoDia', tipo: 'frase' },
           sound: 'default',
+          color: '#6B54C6',
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: data, channelId: CANAL_FRASE },
       });

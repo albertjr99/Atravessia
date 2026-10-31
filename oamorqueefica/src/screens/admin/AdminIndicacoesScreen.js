@@ -20,6 +20,23 @@ import AdminSubTabs from './AdminSubTabs';
 import { urlDeImagem } from '../../utils/imagemUrl';
 import { normalizarUrl } from '../../utils/abrirLink';
 import { CATEGORIAS_INDICACAO } from '../indicacoes/IndicacoesScreen';
+import { situacaoAchado, mascaraDataBR, brParaISO, isoParaBR } from '../../utils/vigencia';
+
+// Filtro rápido por situação de publicação (datas opcionais + visível/oculto).
+const SITUACOES = [
+  { id: 'todas', rotulo: 'Todas as situações' },
+  { id: 'no_ar', rotulo: 'No ar' },
+  { id: 'agendado', rotulo: 'Agendados' },
+  { id: 'encerrado', rotulo: 'Encerrados' },
+  { id: 'oculto', rotulo: 'Ocultos' },
+];
+const naSituacao = (item, sit) => {
+  if (sit === 'todas') return true;
+  if (sit === 'oculto') return item.ativo === false;
+  if (sit === 'no_ar') return item.ativo !== false && situacaoAchado(item).id === 'no_ar';
+  return situacaoAchado(item).id === sit;
+};
+const ACENTO_SITUACAO = { agendado: 'lilas', no_ar: 'salvia', encerrado: 'rosa' };
 
 // Afiliados (antes "Indicações Amazon"): vitrine de produtos com link de
 // afiliado de várias lojas, na coleção `indicacoes` (id mantido). Cada clique
@@ -30,12 +47,15 @@ const VAZIO = {
   plataforma: 'amazon', plataformaNome: '', textoBotao: '',
   cashbackAtivo: false, cashbackTipo: 'fixo', cashbackFixo: '', cashbackPercentual: '',
   comissaoPercentual: '', precoReferencia: '',
+  // Período no ar (dd/mm/aaaa no formulário; gravado como 'AAAA-MM-DD').
+  publicarDe: '', publicarAte: '',
 };
 const numOuNull = (v) => { const n = Number(String(v || '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : null; };
 
-export default function AdminIndicacoesScreen({ navigation }) {
+export default function AdminIndicacoesScreen({ navigation, route }) {
   const [itens, setItens] = useState([]);
   const [filtro, setFiltro] = useState('todas');
+  const [situacao, setSituacao] = useState('todas');
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
@@ -51,7 +71,8 @@ export default function AdminIndicacoesScreen({ navigation }) {
 
   const ordenados = useMemo(() => [...itens].sort((a, b) =>
     (Number(a.ordem) || 999) - (Number(b.ordem) || 999) || String(a.titulo || '').localeCompare(String(b.titulo || ''))), [itens]);
-  const lista = filtro === 'todas' ? ordenados : ordenados.filter(i => (i.categoria || 'outros') === filtro);
+  const lista = (filtro === 'todas' ? ordenados : ordenados.filter(i => (i.categoria || 'outros') === filtro))
+    .filter(i => naSituacao(i, situacao));
   const totalCliques = itens.reduce((s, i) => s + (i.cliques || 0), 0);
   const ativos = itens.filter(i => i.ativo !== false).length;
 
@@ -68,6 +89,7 @@ export default function AdminIndicacoesScreen({ navigation }) {
       cashbackAtivo: item.cashbackAtivo === true, cashbackTipo: item.cashbackTipo === 'percentual' ? 'percentual' : 'fixo',
       cashbackFixo: centavosParaTexto(item.cashbackFixoCentavos),
       cashbackPercentual: item.cashbackPercentual != null ? String(item.cashbackPercentual).replace('.', ',') : '',
+      publicarDe: isoParaBR(item.publicarDe), publicarAte: isoParaBR(item.publicarAte),
     };
     setForm(base);
     setModal({ mode: 'edit', item });
@@ -83,8 +105,23 @@ export default function AdminIndicacoesScreen({ navigation }) {
   };
   const fechar = () => { setModal(null); setForm(VAZIO); };
 
+  // Atalho do Dashboard ("Achados que saem do ar"): abre direto a edição.
+  const editarId = route?.params?.editarId;
+  useEffect(() => {
+    if (!editarId) return;
+    const item = itens.find(i => i.id === editarId);
+    if (!item) return;
+    abrirEditar(item);
+    navigation.setParams?.({ editarId: undefined });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editarId, itens]);
+
   const salvar = async () => {
     if (!form.titulo.trim()) { Alert.alert('Atenção', 'Informe o nome do produto.'); return; }
+    const publicarDe = brParaISO(form.publicarDe);
+    const publicarAte = brParaISO(form.publicarAte);
+    if (publicarDe === null || publicarAte === null) { Alert.alert('Atenção', 'Confira as datas de publicação (dd/mm/aaaa).'); return; }
+    if (publicarDe && publicarAte && publicarAte < publicarDe) { Alert.alert('Atenção', '“Publicar até” não pode ser antes de “Publicar a partir de”.'); return; }
     const link = normalizarUrl(form.link);
     if (!link) { Alert.alert('Atenção', 'Cole o link de afiliado da loja.'); return; }
     if (form.plataforma === 'outra' && !form.plataformaNome.trim()) { Alert.alert('Atenção', 'Escreva o nome da loja.'); return; }
@@ -105,6 +142,8 @@ export default function AdminIndicacoesScreen({ navigation }) {
       textoBotao: form.textoBotao.trim(),
       cashbackAtivo: !!form.cashbackAtivo, cashbackTipo: form.cashbackTipo,
       cashbackFixoCentavos: fixo || null, cashbackPercentual: percentual,
+      // Fora deste período a usuária não vê o item (datas opcionais).
+      publicarDe: publicarDe || null, publicarAte: publicarAte || null,
     };
     const privado = {
       comissaoPercentual: numOuNull(form.comissaoPercentual),
@@ -200,6 +239,20 @@ export default function AdminIndicacoesScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
+          {SITUACOES.map(sit => {
+            const n = sit.id === 'todas' ? null : itens.filter(i => naSituacao(i, sit.id)).length;
+            return (
+              <TouchableOpacity key={sit.id} style={[st.chip, situacao === sit.id && st.chipSel]} onPress={() => setSituacao(sit.id)}>
+                <Text style={[st.chipText, situacao === sit.id && st.chipTextSel]}>{sit.rotulo}{n ? ` (${n})` : ''}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {itens.length > 0 && lista.length === 0 && (
+          <Text style={[st.itemSub, { marginBottom: spacing.md }]}>Nenhum item neste filtro.</Text>
+        )}
 
         {itens.length === 0 && (
           <View style={st.dica}>
@@ -224,6 +277,16 @@ export default function AdminIndicacoesScreen({ navigation }) {
                 <Text style={st.itemTit} numberOfLines={2}>{item.titulo}</Text>
                 <Text style={st.itemSub}>{nomePlataforma(item)} · {item.cliques || 0} clique{(item.cliques || 0) === 1 ? '' : 's'}{item.ordem ? ` · ordem ${item.ordem}` : ''}</Text>
                 {!!seloCashback(item) && <Text style={st.itemCashback}>{seloCashback(item)}</Text>}
+                {!!situacaoAchado(item).texto && (() => {
+                  const sit = situacaoAchado(item);
+                  const a = acento(ACENTO_SITUACAO[sit.id]);
+                  return (
+                    <View style={[st.seloSit, { backgroundColor: a.fundo }]}>
+                      <Ionicons name="calendar-outline" size={12} color={a.tinta} />
+                      <Text style={[st.seloSitTxt, { color: a.texto }]}>{sit.texto}</Text>
+                    </View>
+                  );
+                })()}
               </View>
               <View style={st.acoes}>
                 <TouchableOpacity style={st.acaoBtn} onPress={() => abrirEditar(item)} accessibilityLabel="Editar">
@@ -297,6 +360,26 @@ export default function AdminIndicacoesScreen({ navigation }) {
 
                 <Text style={st.label}>Ordem na vitrine (opcional)</Text>
                 <TextInput style={st.input} value={form.ordem} onChangeText={v => set('ordem', v.replace(/\D/g, ''))} keyboardType="number-pad" placeholder="1 aparece primeiro" placeholderTextColor={colors.tl} />
+
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.label}>Publicar a partir de</Text>
+                    <TextInput style={st.input} value={form.publicarDe} onChangeText={v => set('publicarDe', mascaraDataBR(v))} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/aaaa" placeholderTextColor={colors.tl} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.label}>Publicar até</Text>
+                    <TextInput style={st.input} value={form.publicarAte} onChangeText={v => set('publicarAte', mascaraDataBR(v))} keyboardType="number-pad" maxLength={10} placeholder="dd/mm/aaaa" placeholderTextColor={colors.tl} />
+                  </View>
+                </View>
+                <Text style={st.ajuda}>
+                  Opcionais. Fora deste período o item não aparece no app.
+                  {(() => {
+                    const de = brParaISO(form.publicarDe); const ate = brParaISO(form.publicarAte);
+                    if (de === null || ate === null) return ' Complete a data no formato dd/mm/aaaa.';
+                    const t = situacaoAchado({ publicarDe: de, publicarAte: ate }).texto;
+                    return t ? ` Situação: ${t}.` : '';
+                  })()}
+                </Text>
 
                 <Recolhivel
                   titulo="Cashback e comissão"
@@ -393,6 +476,8 @@ const st = criarEstilos(() => ({
   itemTit: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.titulo, marginTop: 2 },
   itemSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
   itemCashback: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.sageFg, marginTop: 2 },
+  seloSit: { ...est.etiqueta(), marginTop: 5 },
+  seloSitTxt: est.etiquetaTxt(),
   pedidosAviso: { ...est.vidro(20), flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, marginBottom: spacing.md },
   pedidosTit: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.titulo },
   pedidosSub: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },

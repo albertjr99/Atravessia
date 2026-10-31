@@ -93,7 +93,9 @@ function icone(nome, cor, tam = 18, preenchido = false) {
 
 // ── Gráficos (SVG inline) ────────────────────────────────────────────────────
 // Rosca com pequenas fendas entre as fatias e o total ao centro.
-function roscaSVG(dados, { tamanho = 160, espessura = 26, total, rotulo = 'registros', trilho = C.lav1, corNum = C.titulo } = {}) {
+function roscaSVG(dados, { tamanho = 160, espessura = 26, total, rotulo, trilho = C.lav1, corNum = C.titulo } = {}) {
+  // O número do centro é sempre de check-ins (um por dia), com o mesmo rótulo da tela.
+  if (!rotulo) rotulo = (total ?? dados.reduce((s, d) => s + d.value, 0)) === 1 ? 'check-in' : 'check-ins';
   const r = (tamanho - espessura) / 2;
   const cx = tamanho / 2;
   const circ = 2 * Math.PI * r;
@@ -372,7 +374,7 @@ function destaqueCapaHTML({ donut, total, dominante, texto }) {
   const e = emoPorId(dominante);
   const cor = e?.color || C.lilasTexto;
   return `<div class="capa-hero">
-    ${roscaSVG(donut, { tamanho: 190, espessura: 32, total, rotulo: 'registros' })}
+    ${roscaSVG(donut, { tamanho: 190, espessura: 32, total })}
     <div class="lado">
       <div class="rot">Emoção predominante</div>
       <div class="domn serif" style="color:${cor}">${esc(e?.label || dominante || '—')}</div>
@@ -426,7 +428,7 @@ function cartaoAreas(num, areaData, nota) {
     }).join('');
     return `<div class="area">
       <div class="t">${esc(a.label || loc.label)}</div>
-      ${roscaSVG(a.donut || [], { tamanho: 92, espessura: 15, total: a.total, rotulo: a.total === 1 ? 'registro' : 'registros' })}
+      ${roscaSVG(a.donut || [], { tamanho: 92, espessura: 15, total: a.total })}
       ${a.total ? top : '<div class="vazio">Sem registros</div>'}
     </div>`;
   }).join('');
@@ -548,6 +550,15 @@ function contador() {
   return () => ++n;
 }
 
+// Nota das áreas da vida (tela e PDF): só entram check-ins com área escolhida.
+export function resumoAreasTexto(areaData, total) {
+  if (!total) return '';
+  const soma = (areaData || []).reduce((s, a) => s + (a.total || 0), 0);
+  if (soma >= total) return 'Cada check-in conta uma vez, na área da vida escolhida naquele dia.';
+  if (soma === 0) return 'Os check-ins deste período foram feitos sem escolher uma área da vida.';
+  return `${soma} de ${total} check-ins tiveram uma área da vida escolhida; os outros foram feitos sem escolher área.`;
+}
+
 // ── Insights (mesmas regras de antes, com linguagem neutra) ──────────────────
 function gerarInsightsMensais(mesal, diasPassados) {
   if (mesal.total === 0) return [];
@@ -556,11 +567,11 @@ function gerarInsightsMensais(mesal, diasPassados) {
   const emoObj = emoPorId(mesal.dominante);
 
   if (pctDias >= 80) {
-    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Constância admirável', texto: `Você registrou ${mesal.com} de ${diasPassados} dias deste mês (${pctDias}%). Esse compromisso com o autoconhecimento é um gesto genuíno de cuidado com você.` });
+    insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Constância admirável', texto: `Você fez check-in em ${mesal.com} de ${diasPassados} dias deste mês (${pctDias}%). Esse compromisso com o autoconhecimento é um gesto genuíno de cuidado com você.` });
   } else if (pctDias >= 50) {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Boa frequência de registros', texto: `Você registrou ${mesal.com} de ${diasPassados} dias passados (${pctDias}%). Tente incluir o check-in nos dias sem registro para uma análise ainda mais completa.` });
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Boa frequência de registros', texto: `Você fez check-in em ${mesal.com} de ${diasPassados} dias passados (${pctDias}%). Tente incluir o check-in nos dias sem registro para uma análise ainda mais completa.` });
   } else if (mesal.com > 0) {
-    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Continue registrando', texto: `Você registrou ${mesal.com} dia(s) este mês. Cada check-in, mesmo nos dias difíceis, é uma forma de cuidado próprio. Tente tornar esse hábito parte da rotina.` });
+    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Continue registrando', texto: `Você fez check-in em ${plural(mesal.com, 'dia', 'dias')} este mês. Cada check-in, mesmo nos dias difíceis, é uma forma de cuidado próprio. Tente tornar esse hábito parte da rotina.` });
   }
 
   if (emoObj) {
@@ -584,11 +595,11 @@ function gerarInsightsAnuais(anual) {
   const emoObj = emoPorId(anual.sorted[0]?.[0]);
 
   if (anual.consistencia >= 70) {
-    insights.push({ tipo: 'positivo', icone: '🏆', titulo: 'Constância ao longo do ano', texto: `Você registrou ${anual.uniqueDays} dias únicos — ${anual.consistencia}% de constância anual. Esse compromisso ao longo de meses inteiros é extraordinário.` });
+    insights.push({ tipo: 'positivo', icone: '🏆', titulo: 'Constância ao longo do ano', texto: `Você fez check-in em ${anual.uniqueDays} dias — ${anual.consistencia}% de constância anual. Esse compromisso ao longo de meses inteiros é extraordinário.` });
   } else if (anual.consistencia >= 40) {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Presença ao longo do ano', texto: `Você manteve registros em ${anual.uniqueDays} dias no ano (${anual.consistencia}% de constância). Cada período registrado conta uma parte importante da sua jornada.` });
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Presença ao longo do ano', texto: `Você fez check-in em ${anual.uniqueDays} dias no ano (${anual.consistencia}% de constância). Cada período registrado conta uma parte importante da sua jornada.` });
   } else {
-    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Construa o hábito em doses', texto: `Você fez ${anual.total} check-ins este ano. No próximo período, tente pelo menos uma vez por semana — pequenos hábitos constantes constroem uma memória emocional muito valiosa.` });
+    insights.push({ tipo: 'dica', icone: '💡', titulo: 'Construa o hábito em doses', texto: `Você fez check-in em ${plural(anual.total, 'dia', 'dias')} este ano. No próximo período, tente pelo menos uma vez por semana — pequenos hábitos constantes constroem uma memória emocional muito valiosa.` });
   }
 
   if (emoObj) {
@@ -615,7 +626,7 @@ function gerarInsightsPeriodo(rangeData, diasPeriodo) {
   if (pctDias >= 70) {
     insights.push({ tipo: 'positivo', icone: '⭐', titulo: 'Alta frequência no período', texto: `Você registrou ${rangeData.uniqueDays} de ${diasPeriodo} dias do período (${pctDias}%). Essa frequência fornece uma análise consistente da sua jornada emocional.` });
   } else {
-    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Seus registros no período', texto: `Você fez ${rangeData.total} check-ins em ${rangeData.uniqueDays} dias dentro do período selecionado. Cada registro contribui para a sua análise emocional.` });
+    insights.push({ tipo: 'neutro', icone: '📅', titulo: 'Seus registros no período', texto: `Você fez check-in em ${plural(rangeData.uniqueDays, 'dia', 'dias')} dentro do período selecionado. Cada registro contribui para a sua análise emocional.` });
   }
 
   if (emoObj) {
@@ -647,6 +658,7 @@ export function gerarRelatorioMensalHTML({ mesal, usuario, month, year, vitorias
   const periodo = `${MESES[month]} de ${year}`;
   const nome = nomePessoa(usuario);
   const diasPassados = mesal.com + mesal.semRegistro;
+  const mesParcial = diasPassados < new Date(year, month + 1, 0).getDate();
   const e = emoPorId(mesal.dominante);
   const n = contador();
 
@@ -660,9 +672,9 @@ export function gerarRelatorioMensalHTML({ mesal, usuario, month, year, vitorias
       texto: e ? `foi a emoção mais presente neste mês, entre ${plural(mesal.sorted.length, 'emoção registrada', 'emoções registradas')}.` : '',
     }),
     numeros: mesal.total ? [
-      { valor: mesal.total, rotulo: 'check-ins no mês', icone: 'calendario', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
-      { valor: mesal.com, rotulo: 'dias com registro', icone: 'coracao', cor: C.pessegoTexto, fundo: C.pessegoFundo, tinta: C.pessego },
-      { valor: `${diasPassados > 0 ? Math.round((mesal.com / diasPassados) * 100) : 0}%`, rotulo: 'dos dias do mês', icone: 'estrela', cor: C.douradoTexto, fundo: C.douradoFundo, tinta: C.dourado },
+      { valor: mesal.total, rotulo: mesal.total === 1 ? 'dia com check-in' : 'dias com check-in', icone: 'coracao', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
+      { valor: diasPassados, rotulo: mesParcial ? 'dias do mês até hoje' : 'dias no mês', icone: 'calendario', cor: C.pessegoTexto, fundo: C.pessegoFundo, tinta: C.pessego },
+      { valor: `${diasPassados > 0 ? Math.round((mesal.total / diasPassados) * 100) : 0}%`, rotulo: 'de constância', icone: 'estrela', cor: C.douradoTexto, fundo: C.douradoFundo, tinta: C.dourado },
     ] : [],
     frase: 'Perceber é o início.',
     agora,
@@ -680,11 +692,10 @@ export function gerarRelatorioMensalHTML({ mesal, usuario, month, year, vitorias
       const em = emoPorId(id);
       return `<span><i style="background:${mesal.donut[i]?.color || corDado(em, i)}"></i>${esc(em?.label || id)}</span>`;
     }).join('');
-    const somaAreas = (mesal.areaData || []).reduce((s, a) => s + (a.total || 0), 0);
     corpo = `${topoHTML('Relatório mensal', periodo)}
       ${cartaoEmocoes(n(), 'Seu mês em emoções', mesal,
-        `Você fez registros em <b>${mesal.com}</b> de <b>${diasPassados}</b> dias deste mês.`)}
-      ${cartaoAreas(n(), mesal.areaData, `A soma dos registros nas áreas é <b>${somaAreas}</b> (cada check-in conta para a área escolhida).`)}
+        `Você fez check-in em <b>${mesal.total}</b> de <b>${diasPassados}</b> dias deste mês${mesParcial ? ' até hoje' : ''}.`)}
+      ${cartaoAreas(n(), mesal.areaData, esc(resumoAreasTexto(mesal.areaData, mesal.total)))}
       ${cartaoVitorias(n(), vitorias, 'este mês')}
       <div class="card">
         ${secao(n(), 'Calendário emocional', 'Cada cor representa a emoção predominante do dia')}
@@ -696,8 +707,8 @@ export function gerarRelatorioMensalHTML({ mesal, usuario, month, year, vitorias
         <div class="card">
           ${secao(n(), 'Seus registros')}
           <div class="nums">
-            <div class="numbox" style="background:${C.lav1}"><div class="n" style="color:${C.lilasTexto}">${mesal.com}</div><div class="l">dias com check-in</div></div>
-            <div class="numbox" style="background:${C.pessegoFundo}"><div class="n" style="color:${C.pessegoTexto}">${mesal.semRegistro}</div><div class="l">dias sem registro</div></div>
+            <div class="numbox" style="background:${C.lav1}"><div class="n" style="color:${C.lilasTexto}">${mesal.total}</div><div class="l">dias com check-in</div></div>
+            <div class="numbox" style="background:${C.pessegoFundo}"><div class="n" style="color:${C.pessegoTexto}">${mesal.semRegistro}</div><div class="l">dias sem check-in</div></div>
           </div>
         </div>
       </div>
@@ -727,8 +738,8 @@ export function gerarRelatorioAnualHTML({ anual, usuario, year, vitorias = [] })
       texto: e ? 'foi a emoção mais registrada ao longo do ano.' : '',
     }),
     numeros: [
-      { valor: anual.total, rotulo: 'check-ins realizados', icone: 'calendario', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
-      { valor: anual.uniqueDays, rotulo: 'dias com registro', icone: 'coracao', cor: C.pessegoTexto, fundo: C.pessegoFundo, tinta: C.pessego },
+      { valor: anual.uniqueDays, rotulo: anual.uniqueDays === 1 ? 'dia com check-in' : 'dias com check-in', icone: 'coracao', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
+      ...(anual.totalDias > 0 ? [{ valor: anual.totalDias, rotulo: 'dias do ano até hoje', icone: 'calendario', cor: C.pessegoTexto, fundo: C.pessegoFundo, tinta: C.pessego }] : []),
       { valor: `${anual.consistencia}%`, rotulo: 'de constância no ano', icone: 'estrela', cor: C.douradoTexto, fundo: C.douradoFundo, tinta: C.dourado },
     ],
     frase: 'Siga se cuidando. Você vale!',
@@ -746,8 +757,8 @@ export function gerarRelatorioAnualHTML({ anual, usuario, year, vitorias = [] })
     <div class="trim-rot">${trimRot.map(t => `<div>${t}</div>`).join('')}</div>
   </div>`;
   const corpo = `${topoHTML('Relatório anual', String(year))}
-    ${anual.total ? cartaoEmocoes(n(), 'Emoções do ano', anual) : `<div class="card">${secao(n(), 'Emoções do ano')}<div class="nota">Ainda não há check-ins registrados neste ano.</div></div>`}
-    ${cartaoAreas(n(), anual.areaData, 'Total de registros por área ao longo do ano.')}
+    ${anual.total ? cartaoEmocoes(n(), 'Emoções do ano', anual, 'O check-in é um por dia: cada dia com check-in conta uma vez. A constância é a parte dos dias do ano em que você fez check-in.') :`<div class="card">${secao(n(), 'Emoções do ano')}<div class="nota">Ainda não há check-ins registrados neste ano.</div></div>`}
+    ${cartaoAreas(n(), anual.areaData, esc(resumoAreasTexto(anual.areaData, anual.total)))}
     ${trimestres(n())}
     ${cartaoVitorias(n(), vitorias, 'este ano')}
     ${cartaoMensagem(n(), MSG_ANUAL)}
@@ -780,8 +791,7 @@ export function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeF
       texto: e ? 'foi a emoção mais presente no período.' : '',
     }),
     numeros: [
-      { valor: rangeData.total, rotulo: 'check-ins no período', icone: 'calendario', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
-      { valor: rangeData.uniqueDays, rotulo: 'dias com registro', icone: 'coracao', cor: C.pessegoTexto, fundo: C.pessegoFundo, tinta: C.pessego },
+      { valor: rangeData.uniqueDays, rotulo: rangeData.uniqueDays === 1 ? 'dia com check-in' : 'dias com check-in', icone: 'coracao', cor: C.lilasTexto, fundo: C.lav1, tinta: C.lilas },
       ...(diasPeriodo > 0 ? [{ valor: diasPeriodo, rotulo: diasPeriodo === 1 ? 'dia no período' : 'dias no período', icone: 'estrela', cor: C.douradoTexto, fundo: C.douradoFundo, tinta: C.dourado }] : []),
     ],
     frase: 'Perceber é o início.',
@@ -790,7 +800,7 @@ export function gerarRelatorioPersonalizadoHTML({ rangeData, rangeInicio, rangeF
 
   const corpo = `${topoHTML('Relatório por período', periodo)}
     ${cartaoEmocoes(n(), 'Emoções no período', rangeData)}
-    ${cartaoAreas(n(), rangeData.areaData, 'Total de registros por área no período selecionado.')}
+    ${cartaoAreas(n(), rangeData.areaData, esc(resumoAreasTexto(rangeData.areaData, rangeData.total)))}
     ${cartaoPredominante(n(), rangeData.dominante, 'foi a emoção mais presente no período.')}
     ${cartaoVitorias(n(), vitorias, 'no período')}
     ${cartaoMensagem(n(), MSG_PERIODO)}

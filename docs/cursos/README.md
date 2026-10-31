@@ -20,22 +20,26 @@ Profissional abre o link  →  função portalProfissional  →  extrato agregad
 
 | Coleção | Quem grava | Quem lê | Conteúdo |
 |---|---|---|---|
-| `cursos/{id}` | admin | quem está logada | titulo, subtitulo, descricao, capaUrl, programa[{titulo, descricao}], aulas[{id, youtubeId, titulo, duracao, thumb, ordem, gratis}], preco (reais), ativo, destaque, profissionalId, criadoEm |
+| `cursos/{id}` | admin | publicados: quem está logada; rascunhos/arquivados: admin e quem comprou | titulo, subtitulo, descricao, capaUrl, programa[{titulo, descricao}], aulas[{id, titulo, duracao, ordem, gratis, youtubeId e thumb só nas grátis quando `protegerAulas`}], preco (reais), ativo, destaque, arquivado, protegerAulas, profissionalId, criadoEm |
+| `cursosConteudo/{id}` | admin (painel grava junto com o curso) | admin e quem comprou | aulas { aulaId: { youtubeId, thumb } } — vídeos de todas as aulas |
 | `profissionais/{id}` | função `salvarProfissional` (admin) | quem está logada | nome, bio, fotoUrl, repasseTipo ('percentual'\|'fixo'), repasseValor, repasseBase ('bruto'\|'liquido'), ativo |
-| `profissionaisPrivado/{id}` | só servidor | admin | email, tokenPortal (gerado no servidor) |
-| `matriculas/{stripeSessionId}` | só servidor (webhook) | admin e a própria usuária | uid, cursoId, profissionalId, valorPagoCentavos, taxaStripeCentavos, repasseCentavos, repasseRegra, stripeSessionId, stripePaymentIntent, criadaEm, status ('ativa'\|'reembolsada'), repasseId |
+| `profissionaisPrivado/{id}` | só servidor | admin | email, tokenPortal (gerado no servidor), repasseTipo/Valor/Base, termoAceitoEm, termoVersao, termoIp e termoUserAgent (resumidos), termoPedirNovo; subcoleção `aceites/` com o histórico |
+| `limitesPortal/{hash}` | só servidor | ninguém | contador de chamadas do portal por IP (campo `expiraEm` para TTL opcional) |
+| `matriculas/{stripeSessionId}` | só servidor (webhook) | só admin | uid, cursoId, profissionalId, valorPagoCentavos, taxaStripeCentavos, repasseCentavos, repasseRegra, stripeSessionId, stripePaymentIntent, criadaEm, status ('ativa'\|'reembolsada'), repasseId |
 | `usuarios/{uid}/cursos/{cursoId}` | servidor cria; a usuária só altera `progresso`, `ultimaAulaId`, `progressoEm` | a usuária e admin | cursoId, matriculaId, liberadoEm, progresso { aulaId: true } |
 | `repasses/{id}` | só servidor (`fecharRepasse`) | admin (e o profissional, pelo portal) | profissionalId, periodo, matriculaIds, ajusteMatriculaIds, vendas/descontos/totalCentavos, pagoEm, comprovanteUrl |
 
-Storage: `cursos/capas/…` e `cursos/profissionais/…` (só admin envia; leitura pública, porque a capa também aparece na página de pagamento da Stripe).
+Storage: `cursos/capas/…` e `cursos/profissionais/…` (só admin envia; leitura pública, porque a capa também aparece na página de pagamento da Stripe). Comprovantes de repasse em `repassesComprovantes/{profissionalId}/…` (só admin envia e lista; o profissional abre pelo link do portal).
 
 ### Funções (functions/index.js, seção CURSOS)
 
 - `criarCheckoutCurso` — sessão de pagamento avulso (mode `payment`), sem código promocional nem cashback, para o valor pago ser sempre o preço do curso.
 - `stripeWebhook` — ramo `tipo === 'curso'` em `checkout.session.completed`, mais `checkout.session.async_payment_succeeded` (ex.: boleto) e `charge.refunded`. É idempotente: o id da matrícula é o id da sessão da Stripe.
 - `importarVideosYoutube` (admin) — links de vídeos, playlist ou canal → título, miniatura e (com chave) duração.
-- `salvarProfissional` (admin) — grava o perfil público e gera o token do portal no servidor.
-- `portalProfissional` (sem login, por token) — extrato com totais por curso, vendas (data, valor, taxa, repasse, situação e código de verificação = últimos 8 caracteres do pagamento na Stripe) e repasses. Sem nome nem e-mail das alunas.
+- `salvarProfissional` (admin) — grava o perfil público (nome, bio, foto, ativo) e, em `profissionaisPrivado`, o e-mail, a regra de repasse e o token do portal (só no cadastro).
+- `gerenciarPortalProfissional` (admin) — `novoLink`, `revogar`, `pedirNovoAceite`, `ativar`, `desativar` (profissional inativo: os cursos dele param de ser vendidos).
+- `aceitarTermoProfissional` (por token) — registra o aceite do termo de parceria (`docs/cursos/termo-profissional-parceiro.md`).
+- `portalProfissional` (sem login, por token) — extrato com totais por curso, vendas (data, valor, taxa, repasse, situação e código de verificação = últimos 8 caracteres do pagamento na Stripe) e repasses. Sem nome nem e-mail das alunas. Só aparece depois do aceite da versão atual do termo. Limite de 60 chamadas a cada 10 min e de 8 links inválidos a cada 30 min por IP.
 - `fecharRepasse` (admin) — junta as vendas ativas ainda não repassadas do período, desconta reembolsos de vendas já repassadas e registra o repasse.
 
 **No painel da Stripe**, acrescente ao endpoint do webhook os eventos `checkout.session.async_payment_succeeded` e `charge.refunded` (o `checkout.session.completed` já está lá).

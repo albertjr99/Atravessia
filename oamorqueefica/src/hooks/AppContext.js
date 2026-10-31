@@ -11,6 +11,7 @@ import { useAuth } from './AuthContext';
 import { registrarPushToken } from '../utils/pushNotifications';
 import { jornadas as jornadasBase, emocoes } from '../data';
 import { FRASES_SEED } from '../data/frasesSeed';
+import { achadoNoAr } from '../utils/vigencia';
 
 const AppContext = createContext();
 
@@ -355,13 +356,20 @@ export function AppProvider({ children }) {
   const registrarCliqueParceria = (id) => registrarClique('parceria', id);
 
   // ---- Indicações Atravessia (afiliados Amazon) -------------------------------
-  const [indicacoes, setIndicacoes] = useState([]);
+  const [indicacoesAtivas, setIndicacoesAtivas] = useState([]);
   useColecaoGlobal(uid, 'indicacoes', (snap) => {
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.ativo !== false);
     docs.sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999)
       || (b.criadoEm?.toMillis?.() ?? 0) - (a.criadoEm?.toMillis?.() ?? 0));
-    setIndicacoes(docs);
+    setIndicacoesAtivas(docs);
   });
+  // Só os achados dentro do período de publicação (publicarDe/publicarAte,
+  // opcionais). Recalcula quando o dia muda (Home e Achados usam esta lista).
+  const diaAchados = hojeStr();
+  const indicacoes = useMemo(
+    () => indicacoesAtivas.filter(i => achadoNoAr(i, diaAchados)),
+    [indicacoesAtivas, diaAchados],
+  );
 
   // ---- Cashback ---------------------------------------------------------------
   // Créditos, usos e estornos da usuária (gravados só pelo servidor).
@@ -609,7 +617,7 @@ export function AppProvider({ children }) {
     if (ultimaDataCheckin && !fezCheckinHoje) {
       const dias = Math.floor((new Date(hoje) - new Date(ultimaDataCheckin)) / DIA_MS);
       if (dias >= 14) {
-        lista.push({ id: `inat-14-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Você não precisa passar por tudo sozinho. Quando quiser, estaremos aqui.' });
+        lista.push({ id: `inat-14-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Você não precisa passar por tudo sem companhia. Quando quiser, estaremos aqui.' });
       } else if (dias >= 7) {
         lista.push({ id: `inat-7-${ultimaDataCheckin}`, tipo: 'inatividade', texto: 'Já faz alguns dias que você não passa por aqui. Se desejar, estamos prontos para caminhar com você.' });
       } else if (dias >= 3) {

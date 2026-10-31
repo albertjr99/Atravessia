@@ -14,8 +14,24 @@ export const brl = (reais) => Number(reais || 0).toLocaleString('pt-BR', { style
 export const brlC = (centavos) => brl((Number(centavos) || 0) / 100);
 export const dataBR = (ms) => (ms ? new Date(ms).toLocaleDateString('pt-BR') : '—');
 export const thumbAula = (a) => a?.thumb || (a?.youtubeId ? `https://i.ytimg.com/vi/${a.youtubeId}/hqdefault.jpg` : '');
-export const aulasOrdenadas = (c) => [...(c?.aulas || [])].filter(a => a?.youtubeId).sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
-export const capaCurso = (c) => c?.capaUrl || thumbAula(aulasOrdenadas(c)[0]);
+// Aulas pagas de cursos protegidos vêm sem youtubeId (ele fica em
+// cursosConteudo/{id}, que só quem comprou lê): a lista usa o id da aula.
+export const aulasOrdenadas = (c) => [...(c?.aulas || [])]
+  .filter(a => a && (a.id || a.youtubeId))
+  .map(a => (a.id ? a : { ...a, id: a.youtubeId }))
+  .sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
+export const capaCurso = (c) => c?.capaUrl || thumbAula(aulasOrdenadas(c).find(a => thumbAula(a)));
+export const URL_TERMOS = 'https://o-amor-que-fica.web.app/termos.html';
+export function mesclarConteudo(curso, conteudo) {
+  if (!curso || !conteudo?.aulas) return curso;
+  return {
+    ...curso,
+    aulas: (curso.aulas || []).map(a => {
+      const extra = conteudo.aulas[a.id];
+      return extra?.youtubeId ? { ...a, youtubeId: a.youtubeId || extra.youtubeId, thumb: a.thumb || extra.thumb } : a;
+    }),
+  };
+}
 export function progressoCurso(curso, acesso) {
   const aulas = aulasOrdenadas(curso);
   return aulas.length ? aulas.filter(a => acesso?.progresso?.[a.id]).length / aulas.length : 0;
@@ -145,6 +161,13 @@ export function PaginaCurso({ curso, prof, acesso, onAula, onComprar, comprando,
             <div className="cz-acao">
               <button type="button" className="cz-btn" onClick={onComprar} disabled={comprando}>{comprando ? 'Abrindo pagamento…' : `Comprar curso — ${brl(curso.preco)}`}</button>
               <small>Pagamento seguro pela Stripe. O acesso é liberado assim que o pagamento é confirmado.</small>
+              <p className="cz-nota-privacidade">
+                <span aria-hidden="true">{I.escudo}</span>
+                <span>
+                  Registramos as aulas que você conclui só para mostrar o seu avanço. Quem conduz o curso não recebe seu nome, e-mail
+                  nem outros dados pessoais. Ao comprar, você concorda com os <a href={URL_TERMOS} target="_blank" rel="noreferrer">Termos de Uso</a>.
+                </span>
+              </p>
               {aviso && <p className="cz-aviso">{aviso}</p>}
             </div>
           )}
@@ -185,7 +208,7 @@ export function ListaAulas({ aulas, acesso, atualId, onAula }) {
         return (
           <li key={a.id}>
             <button type="button" className={`cz-item ${a.id === atualId ? 'cz-item-atual' : ''}`} onClick={() => onAula(a)}>
-              <span className="cz-item-thumb"><img src={thumbAula(a)} alt="" loading="lazy" />{(!aberta || a.id === atualId) && <span className="cz-item-veu">{aberta ? I.play : I.cadeado}</span>}</span>
+              <span className="cz-item-thumb">{thumbAula(a) ? <img src={thumbAula(a)} alt="" loading="lazy" /> : <span className="cz-thumb-vazia" />}{(!aberta || a.id === atualId) && <span className="cz-item-veu">{aberta ? I.play : I.cadeado}</span>}</span>
               <span className="cz-item-txt">
                 <small>Aula {i + 1}{a.duracao ? ` · ${a.duracao}` : ''}{a.gratis && !acesso ? ' · grátis' : ''}</small>
                 <span>{a.titulo}</span>
@@ -247,7 +270,7 @@ export function PlayerYoutube({ videoId, poster, onTerminou, iniciar = false }) 
   );
 }
 
-export function TelaAula({ curso, aula, acesso, onAula, onConcluir, onVoltar, iniciar }) {
+export function TelaAula({ curso, aula, acesso, onAula, onConcluir, onVoltar, iniciar, carregandoVideo = false }) {
   const aulas = aulasOrdenadas(curso);
   const idx = aulas.findIndex(a => a.id === aula.id);
   const proxima = aulas[idx + 1];
@@ -258,7 +281,13 @@ export function TelaAula({ curso, aula, acesso, onAula, onConcluir, onVoltar, in
       <button type="button" className="cz-voltar" onClick={onVoltar}>{I.voltar} {curso.titulo}</button>
       <div className="cz-aula">
         <div className="cz-aula-principal">
-          <PlayerYoutube videoId={aula.youtubeId} poster={thumbAula(aula)} iniciar={iniciar} onTerminou={() => acesso && onConcluir(aula, true)} />
+          {aula.youtubeId ? (
+            <PlayerYoutube videoId={aula.youtubeId} poster={thumbAula(aula)} iniciar={iniciar} onTerminou={() => acesso && onConcluir(aula, true)} />
+          ) : (
+            <div className="cz-player cz-player-msg">
+              {carregandoVideo ? <div className="cz-spinner" /> : <p>Não conseguimos carregar esta aula agora. Confira sua conexão e recarregue a página.</p>}
+            </div>
+          )}
           <section className="cz-cartao cz-aula-info">
             <small className="cz-sobre">Aula {idx + 1} de {aulas.length}{aula.duracao ? ` · ${aula.duracao}` : ''}</small>
             <h1>{aula.titulo}</h1>
@@ -284,7 +313,7 @@ export function TelaAula({ curso, aula, acesso, onAula, onConcluir, onVoltar, in
 
 // ---- Portal do profissional ---------------------------------------------------
 const STATUS = { ativa: 'Paga', reembolsada: 'Reembolsada' };
-const regraTxt = (r) => (!r ? '—' : r.tipo === 'fixo' ? `${brl(r.valor)} por venda` : `${r.valor}% ${r.base === 'liquido' ? 'do líquido' : 'do valor pago'}`);
+const regraTxt = (r) => (!r ? '—' : r.tipo === 'fixo' ? `${brl(r.valor)} por venda` : `${r.valor}% ${r.base === 'liquido' ? 'do valor após a taxa da Stripe' : 'do valor pago'}`);
 
 export function Extrato({ dados }) {
   const { profissional: p, resumo: r } = dados;
@@ -332,7 +361,7 @@ export function Extrato({ dados }) {
               <tr key={i} className={v.status === 'reembolsada' ? 'cz-riscada' : ''}>
                 <td>{dataBR(v.data)}</td><td>{v.curso}</td><td>{brlC(v.valorCentavos)}</td>
                 <td>{v.taxaStripeCentavos == null ? '—' : brlC(v.taxaStripeCentavos)}</td>
-                <td><strong>{brlC(v.repasseCentavos)}</strong></td>
+                <td><strong>{brlC(v.repasseCentavos)}</strong>{v.regra?.taxaIndisponivel && <small className="cz-obs" title="A taxa da Stripe não estava disponível na hora da venda; o repasse foi calculado sobre o valor pago."> sobre o valor pago*</small>}</td>
                 <td><span className={`cz-status cz-status-${v.status}`}>{STATUS[v.status] || v.status}{v.repassada ? ' · repassada' : ''}</span></td>
                 <td><code>{v.codigo || '—'}</code></td>
               </tr>
@@ -355,6 +384,11 @@ export function Extrato({ dados }) {
         </table>
       </div>
       <p className="cz-rodape-nota">Os nomes e e-mails das alunas não aparecem aqui, por privacidade. Para conferir uma venda, informe o código à equipe Atravessia: ele corresponde ao pagamento registrado na Stripe. Extrato gerado em {new Date(dados.geradoEm || Date.now()).toLocaleString('pt-BR')}.</p>
+      {dados.termo?.aceitoEm && (
+        <p className="cz-rodape-nota" style={{ marginTop: 8 }}>
+          Termo de parceria aceito em {dataBR(dados.termo.aceitoEm)} (versão {dados.termo.versao}). Este link é pessoal: não o compartilhe.
+        </p>
+      )}
     </div>
   );
 }

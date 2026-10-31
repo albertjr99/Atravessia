@@ -41,7 +41,10 @@ service cloud.firestore {
       match /cursos/{cursoId} {
         allow update: if isSignedIn() && request.auth.uid == userId
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['progresso', 'ultimaAulaId', 'progressoEm']);
+               .hasOnly(['progresso', 'ultimaAulaId', 'progressoEm'])
+          && (!('progresso' in request.resource.data) || request.resource.data.progresso is map)
+          && (!('ultimaAulaId' in request.resource.data)
+              || (request.resource.data.ultimaAulaId is string && request.resource.data.ultimaAulaId.size() <= 64));
       }
     }
 
@@ -104,6 +107,12 @@ service cloud.firestore {
     match /configuracoes/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // Aviso de atualização do app: o app confere a versão logo ao abrir,
+    // também antes do login. Só números de versão e o texto de novidades.
+    match /configuracoes/versaoApp {
+      allow read: if true;
     }
 
     // Atravessia Artes: galeria de artes geradas por IA (painel). Só as
@@ -187,6 +196,20 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // ── ADMINISTRAÇÃO DE PARCERIAS ─────────────────────────────────────────
+    // Vigência, contato e link do contrato de cada parceria (mesmo id de
+    // parcerias/{id}). Internos: a usuária nunca lê. O campo alertasVigencia
+    // é gravado pela função alertarVigenciaParcerias (Admin SDK).
+    match /parceriasPrivado/{parceriaId} {
+      allow read, write: if isAdmin();
+    }
+    // Controle da comunicação automática (curso/parceria já anunciado).
+    // Gravado só pelas Cloud Functions.
+    match /comunicacoesAutomaticas/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Rastreio do clique (prova de que a compra começou pelo app). Gravado só
     // pela Cloud Function registrarCliqueAfiliado; a usuária lê os seus.
     match /rastreiosAfiliados/{docId} {
@@ -204,26 +227,46 @@ service cloud.firestore {
     }
 
     // ===== Cursos Atravessia =====
-    // Vitrine: leitura para quem está logada; criação e edição só admin.
+    function temCurso(cursoId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/cursos/$(cursoId));
+    }
+    // Vitrine: publicados para quem está logada; rascunhos e arquivados só
+    // para admin ou para quem já comprou. Criação e edição só admin.
     match /cursos/{cursoId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (resource.data.ativo == true || isAdmin() || temCurso(cursoId));
       allow write: if isAdmin();
     }
-    // Perfil público do profissional (sem e-mail nem token do portal).
-    // Gravado pela função salvarProfissional; a admin pode ativar/ocultar.
+    // Vídeos das aulas pagas (youtubeId): só quem comprou e admin. As aulas
+    // grátis continuam abertas no documento público do curso.
+    match /cursosConteudo/{cursoId} {
+      allow read: if isAdmin() || temCurso(cursoId);
+      allow write: if isAdmin();
+    }
+    // Perfil público do profissional (nome, bio, foto, ativo). Sem e-mail,
+    // token nem regra de repasse. Gravado pela função salvarProfissional.
     match /profissionais/{profId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-    // E-mail e token do portal do profissional: só admin lê; só o servidor grava.
+    // E-mail, token do portal, regra de repasse e aceite do termo: só admin
+    // lê; só o servidor grava (inclui o histórico de aceites).
     match /profissionaisPrivado/{profId} {
       allow read: if isAdmin();
       allow write: if false;
+      match /aceites/{aceiteId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
     }
-    // Vendas: criadas só pelo webhook do Stripe; valores congelados.
+    // Vendas: criadas só pelo webhook do Stripe; valores congelados. Só admin lê.
     match /matriculas/{matriculaId} {
-      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow read: if isAdmin();
       allow write: if false;
+    }
+    // Limite de tentativas do portal do profissional (só servidor).
+    match /limitesPortal/{id} {
+      allow read, write: if false;
     }
     // Histórico de repasses aos profissionais (função fecharRepasse).
     match /repasses/{repasseId} {

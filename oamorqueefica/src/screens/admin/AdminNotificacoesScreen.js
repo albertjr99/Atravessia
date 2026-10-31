@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, acento, BotaoAdmin } from './adminEstilo';
@@ -39,6 +39,46 @@ function agruparCopias(docs) {
     if (g) { g.ids.push(n.id); if (n.ativa) g.ativa = true; } else grupos.set(chave, { ...n, ids: [n.id], ativa: !!n.ativa });
   });
   return [...grupos.values()];
+}
+
+// Comunicação automática: ao publicar um novo curso ou uma nova parceria, as
+// Cloud Functions criam um aviso "novidade" para todas as usuárias, com push.
+// Liga/desliga em configuracoes/comunicacaoAutomatica { cursos, parcerias }.
+function ComunicacaoAutomatica() {
+  const [cfg, setCfg] = useState({ cursos: true, parcerias: true });
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'comunicacaoAutomatica'), (s) => {
+    const d = s.data() || {};
+    setCfg({ cursos: d.cursos !== false, parcerias: d.parcerias !== false });
+  }, () => {}), []);
+  const alternar = (k) => {
+    const valor = !cfg[k];
+    setCfg(c => ({ ...c, [k]: valor }));
+    setDoc(doc(db, 'configuracoes', 'comunicacaoAutomatica'), { [k]: valor, atualizadoEm: serverTimestamp() }, { merge: true })
+      .catch(() => Alert.alert('Erro', 'Não foi possível salvar a configuração.'));
+  };
+  const itens = [
+    { k: 'cursos', rotulo: 'Novo curso publicado', ex: 'Novo curso na Atravessia: {título} 💜' },
+    { k: 'parcerias', rotulo: 'Nova parceria ativa', ex: 'Nova parceria no Experimente a vida: {título}' },
+  ];
+  return (
+    <Recolhivel
+      titulo="Comunicação automática"
+      subtitulo={`Cursos: ${cfg.cursos ? 'ligada' : 'desligada'} · Parcerias: ${cfg.parcerias ? 'ligada' : 'desligada'}`}
+      icone="flash-outline"
+      estilo={{ marginBottom: spacing.md }}
+    >
+      <Text style={styles.autoDica}>Quando um curso novo for publicado ou uma parceria nova ficar ativa, todas as usuárias recebem um aviso (com notificação no aparelho). Cada item é anunciado uma única vez.</Text>
+      {itens.map(({ k, rotulo, ex }) => (
+        <View key={k} style={styles.autoLinha}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.autoRotulo}>{rotulo}</Text>
+            <Text style={styles.autoEx}>“{ex}”</Text>
+          </View>
+          <Switch value={cfg[k]} onValueChange={() => alternar(k)} trackColor={{ true: colors.lav4 }} />
+        </View>
+      ))}
+    </Recolhivel>
+  );
 }
 
 export default function AdminNotificacoesScreen({ navigation }) {
@@ -90,6 +130,8 @@ export default function AdminNotificacoesScreen({ navigation }) {
         <Text style={styles.sobre}>Comunicação</Text>
         <Text style={styles.pageTitle}>Notificações</Text>
         <Text style={styles.pageSub}>Publique avisos e mensagens para as usuárias do app.</Text>
+
+        <ComunicacaoAutomatica />
 
         <Recolhivel titulo="Nova notificação" subtitulo="Toque para escrever e publicar um aviso" icone="add-circle-outline" estilo={{ marginBottom: spacing.xl }}>
           <Text style={styles.formLabel}>Tipo</Text>
@@ -186,4 +228,8 @@ const styles = criarEstilos(() => ({
   itemAlvo: { color: acento('salvia').texto, backgroundColor: acento('salvia').fundo },
   itemTexto: { fontFamily: fonts.body, fontSize: 15, color: colors.td, lineHeight: 22 },
   acaoBtn: { padding: 6 },
+  autoDica: { ...est.dica(), marginTop: 0, marginBottom: 6 },
+  autoLinha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.bordaSuave },
+  autoRotulo: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.td },
+  autoEx: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 },
 }), { escalar: false });

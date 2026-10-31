@@ -3,7 +3,7 @@ import { auth, db, functions } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { collection, doc, onSnapshot, query, updateDoc, where, serverTimestamp, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { Topo, Vitrine, PaginaCurso, TelaAula, aulasOrdenadas } from './cursosVisual';
+import { Topo, Vitrine, PaginaCurso, TelaAula, aulasOrdenadas, mesclarConteudo } from './cursosVisual';
 
 // Área web da aluna — curso.html. Login com a mesma conta do app (e-mail e
 // senha). Mostra "Meus cursos", a vitrine e o player das aulas. O acesso vem
@@ -111,8 +111,21 @@ export default function CursoAluna() {
   useEffect(() => { if (rota.cursoId && meus[rota.cursoId]) setAviso(''); }, [meus, rota.cursoId]);
 
   const todos = useMemo(() => [...(cursos || []), ...Object.values(extras)], [cursos, extras]);
-  const curso = todos.find(c => c.id === rota.cursoId);
-  const acesso = curso ? meus[curso.id] || null : null;
+  const cursoBase = todos.find(c => c.id === rota.cursoId);
+  const acesso = cursoBase ? meus[cursoBase.id] || null : null;
+
+  // Vídeos das aulas pagas: cursosConteudo/{id}, que só quem comprou consegue ler.
+  const [conteudo, setConteudo] = useState({ id: null, dados: undefined });
+  const temAcesso = !!acesso;
+  useEffect(() => {
+    if (!cursoBase?.id || !temAcesso) { setConteudo({ id: null, dados: null }); return undefined; }
+    setConteudo({ id: cursoBase.id, dados: undefined });
+    return onSnapshot(doc(db, 'cursosConteudo', cursoBase.id),
+      (s) => setConteudo({ id: cursoBase.id, dados: s.exists() ? s.data() : null }),
+      () => setConteudo({ id: cursoBase.id, dados: null }));
+  }, [cursoBase?.id, temAcesso]);
+  const curso = useMemo(() => mesclarConteudo(cursoBase, conteudo.id === cursoBase?.id ? conteudo.dados : null), [cursoBase, conteudo]);
+  const carregandoVideo = temAcesso && conteudo.dados === undefined;
   const aula = curso && rota.aulaId ? aulasOrdenadas(curso).find(a => a.id === rota.aulaId) : null;
 
   const abrirAula = (a) => {
@@ -143,21 +156,21 @@ export default function CursoAluna() {
     }
   };
 
-  let conteudo;
-  if (usuario === undefined || (usuario && cursos === null)) conteudo = <div className="cz-centro"><div className="cz-spinner" /></div>;
-  else if (!usuario) conteudo = <Entrar />;
+  let tela;
+  if (usuario === undefined || (usuario && cursos === null)) tela = <div className="cz-centro"><div className="cz-spinner" /></div>;
+  else if (!usuario) tela = <Entrar />;
   else if (curso && aula) {
-    conteudo = <TelaAula curso={curso} aula={aula} acesso={acesso} onAula={abrirAula} onConcluir={concluir} iniciar={iniciar} onVoltar={() => irUrl({ cursoId: curso.id })} />;
+    tela = <TelaAula curso={curso} aula={aula} acesso={acesso} onAula={abrirAula} onConcluir={concluir} iniciar={iniciar} carregandoVideo={carregandoVideo} onVoltar={() => irUrl({ cursoId: curso.id })} />;
   } else if (curso) {
-    conteudo = <PaginaCurso curso={curso} prof={profs[curso.profissionalId]} acesso={acesso} onAula={abrirAula} onComprar={comprar} comprando={comprando} aviso={aviso} onVoltar={() => irUrl({})} />;
+    tela = <PaginaCurso curso={curso} prof={profs[curso.profissionalId]} acesso={acesso} onAula={abrirAula} onComprar={comprar} comprando={comprando} aviso={aviso} onVoltar={() => irUrl({})} />;
   } else {
-    conteudo = <Vitrine cursos={todos} meus={meus} profs={profs} nome={nome} onAbrir={(c) => irUrl({ cursoId: c.id })} />;
+    tela = <Vitrine cursos={todos} meus={meus} profs={profs} nome={nome} onAbrir={(c) => irUrl({ cursoId: c.id })} />;
   }
 
   return (
     <div className="cz-app">
       <Topo usuario={usuario ? (nome || usuario.email) : null} onSair={() => signOut(auth)} onInicio={() => irUrl({})} />
-      {conteudo}
+      {tela}
     </div>
   );
 }

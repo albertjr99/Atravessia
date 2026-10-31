@@ -9,6 +9,11 @@ import { LavandaBg } from '../../components';
 import Recolhivel from '../../components/Recolhivel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../hooks/AppContext';
+import { useAuth } from '../../hooks/AuthContext';
+import { useMeusPedidosAfiliado } from '../../utils/afiliados';
+
+// De onde veio cada crédito (campo `origem` gravado por creditarCashback).
+const ORIGEM = { afiliado: 'Achados (afiliados)', cupom: 'Cupom de parceria', manual: 'Crédito da Atravessia' };
 
 // Meu cashback: saldo, créditos que vencem logo, como funciona e extrato.
 // Os valores são gravados só pelo servidor (Cloud Functions).
@@ -24,6 +29,8 @@ const TIPO = {
 export default function CashbackScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { cashback } = useApp();
+  const { firebaseUser } = useAuth();
+  const { pedidos: pedidosAfiliado, pendentes: pendentesAfiliado } = useMeusPedidosAfiliado(firebaseUser?.uid);
   const [cfg, setCfg] = useState({ percentual: 1, validadeMeses: 6, ativo: true });
 
   useEffect(() => onSnapshot(doc(db, 'configuracoes', 'cashback'), (snap) => {
@@ -76,7 +83,7 @@ export default function CashbackScreen({ navigation }) {
             ) : cashback.proximoVencimento ? (
               <Text style={s.saldoSub}>Próximo vencimento: {dataCurta(cashback.proximoVencimento)}</Text>
             ) : (
-              <Text style={s.saldoSub}>Use cupons de parceria para começar a juntar.</Text>
+              <Text style={s.saldoSub}>Use cupons de parceria ou compre pelos Achados para começar a juntar.</Text>
             )}
             {cashback.saldoCentavos > 0 && (
               <TouchableOpacity style={s.usar} onPress={() => navigation.navigate('Planos')} activeOpacity={0.85}>
@@ -89,7 +96,7 @@ export default function CashbackScreen({ navigation }) {
           {/* Explicação secundária: recolhida; abre sozinha só para quem ainda não tem movimentações. */}
           <Recolhivel
             titulo="Como funciona"
-            subtitulo={`${percentualTxt}% de volta nos atendimentos de parceria`}
+            subtitulo={`${percentualTxt}% de volta nas parcerias e créditos nos Achados`}
             icone="help-circle-outline"
             inicialAberto={cashback.movimentos.length === 0}
             estilo={{ marginBottom: 0 }}
@@ -98,6 +105,7 @@ export default function CashbackScreen({ navigation }) {
             {[
               { icone: 'ticket-outline', titulo: 'Use um cupom de parceria', texto: 'Gere o cupom em Experimente a vida e apresente no atendimento.' },
               { icone: 'checkmark-circle-outline', titulo: 'Confirme o atendimento', texto: `Ao confirmar, você ganha ${percentualTxt}% do valor do serviço em cashback.` },
+              { icone: 'bag-handle-outline', titulo: 'Ou compre pelos Achados', texto: 'Compre pelo botão da loja nos Achados da Atravessia e envie o pedido. Aprovado, o crédito entra aqui.' },
               { icone: 'wallet-outline', titulo: 'Use como desconto', texto: `O saldo vira desconto no seu plano ou no relatório personalizado. Cada crédito vale por ${cfg.validadeMeses} meses.` },
             ].map((p, i) => (
               <View key={p.titulo} style={[s.passo, i > 0 && s.passoBorda]}>
@@ -110,6 +118,27 @@ export default function CashbackScreen({ navigation }) {
             ))}
           </Recolhivel>
           {!cfg.ativo && <Text style={s.pausado}>O programa de cashback está pausado no momento. Seu saldo continua valendo até a data de cada crédito.</Text>}
+
+          {/* Pedidos dos Achados (afiliados): em análise ainda não viram crédito. */}
+          <TouchableOpacity
+            style={[s.cartao, s.pedidosLinha]}
+            onPress={() => navigation.navigate('MeusPedidosCashback')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Meus pedidos de cashback dos afiliados${pendentesAfiliado > 0 ? `, ${pendentesAfiliado} em análise` : ''}`}
+          >
+            <View style={s.passoIcone}><Ionicons name="receipt-outline" size={20} color={colors.lilasIcone} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.passoTit}>Meus pedidos de cashback (afiliados)</Text>
+              <Text style={s.movSub}>
+                {pendentesAfiliado > 0
+                  ? `${pendentesAfiliado} em análise · o crédito aparece no extrato quando for aprovado`
+                  : pedidosAfiliado.length > 0 ? 'Nenhum pedido em análise agora' : 'Compras pelos Achados da Atravessia'}
+              </Text>
+            </View>
+            {pendentesAfiliado > 0 && <View style={s.badge}><Text style={s.badgeTxt}>{pendentesAfiliado}</Text></View>}
+            <Ionicons name="chevron-forward" size={16} color={colors.tl} />
+          </TouchableOpacity>
 
           <Text style={s.secTit}>Extrato</Text>
           {cashback.movimentos.length === 0 ? (
@@ -133,7 +162,7 @@ export default function CashbackScreen({ navigation }) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.movTit}>{m.descricao || (positivo ? 'Crédito' : 'Desconto')}</Text>
-                      <Text style={s.movSub}>{dataCurta(m.criadoEm?.toMillis?.())}{status ? ` · ${status}` : ''}</Text>
+                      <Text style={s.movSub}>{[dataCurta(m.criadoEm?.toMillis?.()), positivo ? ORIGEM[m.origem] : null, status].filter(Boolean).join(' · ')}</Text>
                     </View>
                     <Text style={[s.movValor, positivo ? s.movPositivo : null]}>{tp.sinal} {brl(m.valorCentavos)}</Text>
                   </View>
@@ -204,4 +233,7 @@ const s = criarEstilos(() => ({
   movValor: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.texto2 },
   movPositivo: { color: colors.sageFg },
   nota: { fontFamily: fonts.body, fontSize: 11.5, color: colors.tl, textAlign: 'center', lineHeight: 17 },
+  pedidosLinha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+  badge: { minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 7, backgroundColor: colors.douradoFundo, alignItems: 'center', justifyContent: 'center' },
+  badgeTxt: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.douradoTitulo },
 }));

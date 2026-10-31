@@ -14,17 +14,54 @@ import { SITE_URL } from '../../utils/cupons';
 
 // Área web da aluna (mesma conta do app).
 export const URL_CURSOS_WEB = `${SITE_URL}/curso.html`;
+export const URL_TERMOS = `${SITE_URL}/termos.html`;
 
 export const brl = (reais) => Number(reais || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// As aulas pagas de cursos protegidos chegam sem youtubeId (ele fica em
+// cursosConteudo/{id}, que só quem comprou consegue ler). Por isso a lista
+// usa o id da aula, e o vídeo é completado por mesclarConteudo.
 export function aulasOrdenadas(curso) {
   return [...(curso?.aulas || [])]
-    .filter(a => a && a.youtubeId)
+    .filter(a => a && (a.id || a.youtubeId))
+    .map(a => (a.id ? a : { ...a, id: a.youtubeId }))
     .sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
 }
 
 export const thumbAula = (a) => a?.thumb || (a?.youtubeId ? `https://i.ytimg.com/vi/${a.youtubeId}/hqdefault.jpg` : null);
-export const capaCurso = (c) => c?.capaUrl || thumbAula(aulasOrdenadas(c)[0]);
+export const capaCurso = (c) => c?.capaUrl || thumbAula(aulasOrdenadas(c).find(a => thumbAula(a)));
+
+// Curso com os vídeos das aulas pagas (quando a usuária tem acesso).
+export function mesclarConteudo(curso, conteudo) {
+  if (!curso || !conteudo?.aulas) return curso;
+  return {
+    ...curso,
+    aulas: (curso.aulas || []).map(a => {
+      const extra = conteudo.aulas[a.id];
+      return extra?.youtubeId ? { ...a, youtubeId: a.youtubeId || extra.youtubeId, thumb: a.thumb || extra.thumb } : a;
+    }),
+  };
+}
+
+// cursosConteudo/{cursoId}: só é lido por quem comprou (regra do Firestore).
+// undefined = carregando · null = sem conteúdo protegido (curso antigo).
+export function useConteudoCurso(cursoId, temAcesso) {
+  const [conteudo, setConteudo] = useState(undefined);
+  useEffect(() => {
+    if (!cursoId || !temAcesso) { setConteudo(null); return undefined; }
+    return onSnapshot(doc(db, 'cursosConteudo', cursoId), (snap) => setConteudo(snap.exists() ? snap.data() : null),
+      () => setConteudo(null));
+  }, [cursoId, temAcesso]);
+  return conteudo;
+}
+
+// Curso + acesso + vídeos protegidos, num só lugar (página do curso e aula).
+export function useCursoCompleto(cursoId, uid) {
+  const curso = useCurso(cursoId);
+  const acesso = useAcessoCurso(uid, cursoId);
+  const conteudo = useConteudoCurso(cursoId, !!acesso);
+  return { curso: mesclarConteudo(curso, conteudo), acesso, conteudo };
+}
 
 // Percentual concluído (0..1) a partir do mapa progresso { aulaId: true }.
 export function progressoCurso(curso, acesso) {
@@ -65,6 +102,21 @@ export function useProfissional(id) {
       () => setProf(null));
   }, [id]);
   return prof;
+}
+
+// Cursos comprados que saíram da vitrine (ocultos ou arquivados): a usuária
+// mantém o acesso, então busca cada um direto.
+export function useCursosForaDaVitrine(meus, vitrine) {
+  const [extras, setExtras] = useState({});
+  const faltando = Object.keys(meus || {}).filter(id => !(vitrine || []).some(c => c.id === id)).sort().join('|');
+  useEffect(() => {
+    if (!vitrine || !faltando) { setExtras({}); return undefined; }
+    const subs = faltando.split('|').map(id => onSnapshot(doc(db, 'cursos', id),
+      (snap) => setExtras(x => ({ ...x, [id]: snap.exists() ? { id, ...snap.data() } : null })),
+      () => {}));
+    return () => subs.forEach(f => f());
+  }, [faltando, !!vitrine]); // eslint-disable-line react-hooks/exhaustive-deps
+  return Object.values(extras).filter(Boolean);
 }
 
 // Mapa { cursoId: acesso } dos cursos que a usuária comprou.
@@ -143,6 +195,28 @@ export function Capa({ uri, raio = 22, play = false, tamPlay = 54, children, est
   );
 }
 
+// Miniatura da aula; aula paga ainda bloqueada mostra um degradê com cadeado.
+export function MiniaturaAula({ aula, estilo }) {
+  const uri = thumbAula(aula);
+  return uri ? <Image source={{ uri }} style={estilo} /> : (
+    <LinearGradient colors={[colors.lav3, colors.lav5]} style={estilo} />
+  );
+}
+
+// Aviso curto antes da compra: progresso registrado, privacidade e Termos.
+export function NotaPrivacidadeCurso({ onTermos, estilo }) {
+  return (
+    <View style={[c.nota, estilo]}>
+      <Ionicons name="shield-checkmark-outline" size={16} color={colors.lilasTexto} style={{ marginTop: 1 }} />
+      <Text style={c.notaTxt}>
+        Registramos as aulas que você conclui só para mostrar o seu avanço. Quem conduz o curso não recebe seu nome, e-mail
+        nem outros dados pessoais. Ao comprar, você concorda com os{' '}
+        <Text style={c.notaLink} onPress={onTermos} accessibilityRole="link">Termos de Uso</Text>.
+      </Text>
+    </View>
+  );
+}
+
 export function BarraProgresso({ valor = 0, altura = 6, estilo }) {
   return (
     <View style={[c.barra, { height: altura, borderRadius: altura / 2 }, estilo]}>
@@ -175,4 +249,7 @@ const c = criarEstilos(() => ({
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
   },
   barra: { width: '100%', backgroundColor: colors.escuro ? 'rgba(255,255,255,0.10)' : colors.lav1, overflow: 'hidden' },
+  nota: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  notaTxt: { flex: 1, fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: colors.texto2 },
+  notaLink: { fontFamily: fonts.bodyBold, color: colors.lilasTexto, textDecorationLine: 'underline' },
 }));

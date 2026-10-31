@@ -20,7 +20,7 @@ import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
 import { Profundo } from '../../components/Efeitos';
 import { functions, db } from '../../services/firebase';
-import { gerarRelatorioMensalHTML, gerarRelatorioAnualHTML, gerarRelatorioPersonalizadoHTML } from '../../utils/relatorioHtml';
+import { gerarRelatorioMensalHTML, gerarRelatorioAnualHTML, gerarRelatorioPersonalizadoHTML, resumoAreasTexto } from '../../utils/relatorioHtml';
 import UsarCashback from '../cashback/UsarCashback';
 
 
@@ -130,15 +130,40 @@ function dadoEmo(e, i = 0) { return e?.dado || e?.color || EMO_CHART_COLORS[i % 
 function tintaEmo(e) { return (colors.escuro ? (e?.dado || e?.color) : e?.color) || colors.lilasIcone; }
 function veuEmo(e) { return colors.escuro ? `${dadoEmo(e)}33` : (e?.bg || colors.lav1); }
 
-function calcMes(checkins, year, month) {
-  return checkins.filter(c => {
-    const d = new Date(c.data);
-    return d.getFullYear() === year && d.getMonth() === month;
+// Dia do check-in (AAAA-MM-DD) no fuso de Brasília. O app grava a data já
+// assim, mas versões antigas gravaram data e hora em ISO (UTC).
+const FUSO = 'America/Sao_Paulo';
+function diaDoCheckin(c) {
+  const v = String(c?.data || '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v.slice(0, 10) : d.toLocaleDateString('sv-SE', { timeZone: FUSO });
+}
+
+// Um check-in por dia (o app só permite um). Duplicados do mesmo dia — de
+// versões antigas, de dois aparelhos ou de toque duplo antes de sincronizar —
+// inflavam "check-ins" em relação a "dias". Fica o mais recente do dia.
+function umCheckinPorDia(checkins) {
+  const porDia = new Map();
+  (checkins || []).forEach((c, i) => {
+    const dia = diaDoCheckin(c);
+    if (!dia) return;
+    const ordem = c.criadoEm?.toMillis?.() ?? i;
+    const atual = porDia.get(dia);
+    if (!atual || ordem >= atual.ordem) porDia.set(dia, { ordem, item: { ...c, data: dia } });
   });
+  return [...porDia.values()].map(v => v.item).sort((a, b) => a.data.localeCompare(b.data));
+}
+
+// Compara como texto (AAAA-MM): new Date('AAAA-MM-DD') é meia-noite UTC, que
+// em Brasília ainda é o dia anterior — o dia 1º caía no mês (ou ano) anterior.
+function calcMes(checkins, year, month) {
+  const prefixo = `${year}-${String(month + 1).padStart(2, '0')}`;
+  return checkins.filter(c => String(c.data || '').startsWith(prefixo));
 }
 
 function calcAno(checkins, year) {
-  return checkins.filter(c => new Date(c.data).getFullYear() === year);
+  return checkins.filter(c => String(c.data || '').startsWith(`${year}-`));
 }
 
 function contagemEmo(lista) {
@@ -198,6 +223,14 @@ function avaliarPeriodo(checkins, inicio, fim) {
   if (!lista.length) return { ok: false, motivo: 'Não há check-ins nesse período. Escolha outras datas para o seu relatório.' };
   const dias = new Set(lista.map(c => String(c.data).slice(0, 10))).size;
   return { ok: true, total: lista.length, dias };
+}
+
+// Dias do período (contando início e fim), a partir de DD/MM/AAAA.
+function diasNoPeriodo(inicio, fim) {
+  const ini = paraIso(inicio);
+  const f = paraIso(fim);
+  if (!ini || !f || ini > f) return 0;
+  return Math.round((Date.parse(`${f}T12:00:00Z`) - Date.parse(`${ini}T12:00:00Z`)) / 86400000) + 1;
 }
 
 function diasComRegistro(checkins, year, month) {
@@ -262,7 +295,7 @@ function AreaDonutCard({ area, largo }) {
         </View>
         <Text style={areaStyles.name} numberOfLines={2}>{area.label}</Text>
       </View>
-      <DonutChart data={chartData} size={largo ? 110 : 96} thickness={largo ? 18 : 16} total={empty ? 0 : area.total} label="reg." />
+      <DonutChart data={chartData} size={largo ? 110 : 96} thickness={largo ? 18 : 16} total={empty ? 0 : area.total} label={area.total === 1 ? 'check-in' : 'check-ins'} />
       <View style={areaStyles.breakdown}>
         {empty ? (
           <Text style={areaStyles.empty}>Sem registros</Text>
@@ -280,7 +313,7 @@ function AreaDonutCard({ area, largo }) {
           })
         )}
       </View>
-      <Text style={areaStyles.total}>Total: {area.total} reg.</Text>
+      <Text style={areaStyles.total}>Total: {area.total} {area.total === 1 ? 'check-in' : 'check-ins'}</Text>
     </View>
   );
 }
@@ -412,7 +445,9 @@ export default function RelatoriosScreen({ navigation, route }) {
   const { width: larguraTela } = useWindowDimensions();
   const largo = larguraTela >= 700;
   const tamanhoRosca = largo ? 200 : 148;
-  const { checkins, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
+  const { checkins: checkinsBrutos, usuario, temAcesso, mensagensRelatorio, vitorias } = useApp();
+  // Todos os relatórios (tela e PDF) contam no máximo um check-in por dia.
+  const checkins = useMemo(() => umCheckinPorDia(checkinsBrutos), [checkinsBrutos]);
   const { perfil, firebaseUser } = useAuth();
   const uid = firebaseUser?.uid || null;
   const [tab, setTab] = useState(() => (['mensal', 'anual', 'personalizado'].includes(route?.params?.tab) ? route.params.tab : 'mensal'));
@@ -484,7 +519,7 @@ export default function RelatoriosScreen({ navigation, route }) {
     const trimPct = trims.map(v => Math.round((v / totalTrims) * 100));
 
     const areaData = calcAreaData(lista);
-    return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, consistencia, trimPct, areaData };
+    return { lista, sorted, total, donut, uniqueDays: uniqueDays.size, totalDias, consistencia, trimPct, areaData };
   }, [checkins, year]);
 
   const vitoriasMes = useMemo(() => {
@@ -716,7 +751,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                 <View style={s.card}>
                   <TituloCartao num="1">Suas emoções no mês</TituloCartao>
                   <View style={s.donutRow}>
-                    <DonutChart data={mesal.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={mesal.total} label="registros" />
+                    <DonutChart data={mesal.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={mesal.total} label={mesal.total === 1 ? 'check-in' : 'check-ins'} />
                     <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                       {mesal.sorted.slice(0, 6).map(([id, v], i) => {
                         const emo = getEmoObj(id);
@@ -732,7 +767,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                     </View>
                   </View>
                   <Text style={s.registrosTxt}>
-                    Você fez registros em <Text style={s.registrosBold}>{mesal.com}</Text> de <Text style={s.registrosBold}>{mesal.totalDias}</Text> dias deste mês.
+                    Você fez check-in em <Text style={s.registrosBold}>{mesal.total}</Text> de <Text style={s.registrosBold}>{mesal.totalDias}</Text> dias deste mês{mesal.totalDias < new Date(calAno, calMes + 1, 0).getDate() ? ' até hoje' : ''}.
                   </Text>
                 </View>
 
@@ -741,9 +776,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                   <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
                   <AreasDaVida areas={mesal.areaData} largo={largo} />
                   <Text style={s.areasSummaryTxt}>
-                    A soma dos registros nas áreas é{' '}
-                    <Text style={s.registrosBold}>{mesal.areaData.reduce((acc, a) => acc + a.total, 0)}</Text> dias
-                    {' '}(cada check-in conta para a área escolhida).
+                    {resumoAreasTexto(mesal.areaData, mesal.total)}
                   </Text>
                 </View>
 
@@ -845,8 +878,8 @@ export default function RelatoriosScreen({ navigation, route }) {
                 {/* Tiles de estatística */}
                 <View style={s.tilesRow}>
                   {[
-                    { icon: 'calendar-outline', v: anual.total, lbl: 'check-ins realizados', acento: acentoLilas() },
-                    { icon: 'heart-outline', v: anual.uniqueDays, lbl: 'dias com registro', acento: acentoPessego() },
+                    { icon: 'heart-outline', v: anual.uniqueDays, lbl: anual.uniqueDays === 1 ? 'dia com check-in' : 'dias com check-in', acento: acentoLilas() },
+                    { icon: 'calendar-outline', v: anual.totalDias, lbl: 'dias do ano até hoje', acento: acentoPessego() },
                     { icon: 'star-outline', v: `${anual.consistencia}%`, lbl: 'de constância', acento: acentoDourado() },
                   ].map((t, i) => (
                     <View key={i} style={s.tile}>
@@ -858,12 +891,15 @@ export default function RelatoriosScreen({ navigation, route }) {
                     </View>
                   ))}
                 </View>
+                <Text style={s.tilesNota}>
+                  O check-in é um por dia: cada dia com check-in conta uma vez. A constância é a parte dos dias do ano em que você fez check-in.
+                </Text>
 
                 {/* 1. Emoções do ano */}
                 <View style={s.card}>
                   <TituloCartao num="1">Emoções do ano</TituloCartao>
                   <View style={s.donutRow}>
-                    <DonutChart data={anual.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={anual.total} label="registros" />
+                    <DonutChart data={anual.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={anual.total} label={anual.total === 1 ? 'check-in' : 'check-ins'} />
                     <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                       {anual.sorted.slice(0, 7).map(([id, v], i) => {
                         const emo = getEmoObj(id);
@@ -885,7 +921,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                   <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
                   <AreasDaVida areas={anual.areaData} largo={largo} />
                   <Text style={s.areasSummaryTxt}>
-                    Total de registros por área ao longo do ano.
+                    {resumoAreasTexto(anual.areaData, anual.total)}
                   </Text>
                 </View>
 
@@ -999,7 +1035,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                       />
                       <Text style={[s.periodoStatusTxt, periodo.ok && { color: colors.sageFg }]}>
                         {periodo.ok
-                          ? `${periodo.total} check-in${periodo.total === 1 ? '' : 's'} em ${periodo.dias} dia${periodo.dias === 1 ? '' : 's'} nesse período — pronto para gerar.`
+                          ? `${periodo.dias} dia${periodo.dias === 1 ? '' : 's'} com check-in nesse período — pronto para gerar.`
                           : periodo.motivo}
                       </Text>
                     </View>
@@ -1036,8 +1072,8 @@ export default function RelatoriosScreen({ navigation, route }) {
 
                     <View style={s.tilesRow}>
                       {[
-                        { icon: 'calendar-outline', v: rangeData.total, lbl: 'check-ins no período', acento: acentoLilas() },
-                        { icon: 'today-outline', v: rangeData.uniqueDays, lbl: 'dias com registro', acento: acentoPessego() },
+                        { icon: 'heart-outline', v: rangeData.uniqueDays, lbl: rangeData.uniqueDays === 1 ? 'dia com check-in' : 'dias com check-in', acento: acentoLilas() },
+                        { icon: 'calendar-outline', v: diasNoPeriodo(rangeInicio, rangeFim), lbl: 'dias no período', acento: acentoPessego() },
                       ].map((t, i) => (
                         <View key={i} style={s.tile}>
                           <View style={[s.tileIcone, { backgroundColor: t.acento.fundo }]}>
@@ -1052,7 +1088,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                     <View style={s.card}>
                       <TituloCartao num="1">Emoções no período</TituloCartao>
                       <View style={s.donutRow}>
-                        <DonutChart data={rangeData.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={rangeData.total} label="registros" />
+                        <DonutChart data={rangeData.donut} size={tamanhoRosca} thickness={largo ? 34 : 26} total={rangeData.total} label={rangeData.total === 1 ? 'check-in' : 'check-ins'} />
                         <View style={[s.donutLegend, largo && s.donutLegendLargo]}>
                           {rangeData.sorted.slice(0, 7).map(([id, v], i) => {
                             const emo = getEmoObj(id);
@@ -1075,7 +1111,7 @@ export default function RelatoriosScreen({ navigation, route }) {
                         <TituloCartao num="2">Suas emoções nas áreas da vida</TituloCartao>
                         <AreasDaVida areas={rangeData.areaData} largo={largo} />
                         <Text style={s.areasSummaryTxt}>
-                          Total de registros por área no período selecionado.
+                          {resumoAreasTexto(rangeData.areaData, rangeData.total)}
                         </Text>
                       </View>
                     )}
@@ -1378,6 +1414,7 @@ const s = criarEstilos(() => ({
   btnTxt: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.white, textAlign: 'center', flexShrink: 1 },
 
   registrosTxt: { fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 14, lineHeight: 19 },
+  tilesNota: { fontFamily: fonts.body, fontSize: 12.5, color: colors.texto2, lineHeight: 18, textAlign: 'center', marginTop: -6, marginBottom: spacing.md, paddingHorizontal: 8 },
   registrosBold: { fontFamily: fonts.bodyBold, color: colors.lilasTexto },
   areasSummaryTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.texto2, marginTop: 2, lineHeight: 17 },
   calNavRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, marginBottom: 4 },

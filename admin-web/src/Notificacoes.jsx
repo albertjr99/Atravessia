@@ -2,10 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { ordenarPor } from './ordenar';
 import { db } from './firebase';
 import {
-  collection, addDoc, getDocs, serverTimestamp, onSnapshot, doc, updateDoc, deleteDoc,
+  collection, addDoc, getDocs, serverTimestamp, onSnapshot, doc, updateDoc, deleteDoc, setDoc,
 } from 'firebase/firestore';
 import { IconTrash } from './Icons';
 import Recolhivel from './Recolhivel';
+
+// Comunicação automática: ao publicar um novo curso ou uma nova parceria, as
+// Cloud Functions (seção ADMINISTRAÇÃO DE PARCERIAS) criam um aviso "novidade"
+// para todas as usuárias, com push. Aqui liga/desliga cada tipo.
+function ComunicacaoAutomatica({ showToast }) {
+  const [cfg, setCfg] = useState({ cursos: true, parcerias: true });
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'comunicacaoAutomatica'), s => {
+    const d = s.data() || {};
+    setCfg({ cursos: d.cursos !== false, parcerias: d.parcerias !== false });
+  }, () => {}), []);
+  const alternar = (k) => {
+    const valor = !cfg[k];
+    setCfg(c => ({ ...c, [k]: valor }));
+    setDoc(doc(db, 'configuracoes', 'comunicacaoAutomatica'), { [k]: valor, atualizadoEm: serverTimestamp() }, { merge: true })
+      .then(() => showToast(valor ? 'Comunicação automática ligada.' : 'Comunicação automática desligada.'))
+      .catch(e => showToast('Erro ao salvar: ' + (e.message || ''), 'error'));
+  };
+  const itens = [
+    { k: 'cursos', rotulo: 'Novo curso publicado', ex: 'Novo curso na Atravessia: {título} 💜' },
+    { k: 'parcerias', rotulo: 'Nova parceria ativa', ex: 'Nova parceria no Experimente a vida: {título}' },
+  ];
+  return (
+    <Recolhivel titulo="Comunicação automática"
+      subtitulo={`Cursos: ${cfg.cursos ? 'ligada' : 'desligada'} · Parcerias: ${cfg.parcerias ? 'ligada' : 'desligada'}`}
+      className="recolhivel-espaco">
+      <p className="field-hint" style={{ marginTop: 0 }}>Quando um curso novo for publicado ou uma parceria nova ficar ativa, todas as usuárias recebem um aviso (com notificação no aparelho). Cada item é anunciado uma única vez.</p>
+      {itens.map(({ k, rotulo, ex }) => (
+        <div key={k} className="toggle-row">
+          <label className="toggle">
+            <input type="checkbox" checked={cfg[k]} onChange={() => alternar(k)} />
+            <span className="toggle-slider" />
+          </label>
+          <span style={{ fontSize: 13, color: 'var(--text-dark)' }}>
+            <strong>{rotulo}</strong><br /><span style={{ color: 'var(--text-mid)' }}>“{ex}”</span>
+          </span>
+        </div>
+      ))}
+    </Recolhivel>
+  );
+}
 
 const TIPOS = [
   { id: 'incentivo', label: 'Incentivo', desc: 'Mensagem motivacional' },
@@ -15,6 +55,7 @@ const TIPOS = [
   { id: 'inatividade', label: 'Inatividade', desc: 'Usuária sem acesso há dias' },
   { id: 'data_sensivel', label: 'Data sensível', desc: 'Datas emocionalmente difíceis' },
   { id: 'feedback', label: 'Feedback', desc: 'Pedido de relatório emocional' },
+  { id: 'novidade', label: 'Novidade', desc: 'Novo curso, parceria ou recurso' },
 ];
 
 const ALVOS = [
@@ -114,6 +155,8 @@ export default function Notificacoes({ showToast }) {
         <h1 className="screen-title">Notificações</h1>
         <p className="screen-sub">Envie notificações personalizadas para as usuárias do app.</p>
       </div>
+
+      <ComunicacaoAutomatica showToast={showToast} />
 
       <Recolhivel titulo="Nova notificação" subtitulo="Clique para escrever e enviar uma notificação" className="recolhivel-espaco">
 

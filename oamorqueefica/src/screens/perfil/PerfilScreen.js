@@ -15,6 +15,7 @@ import { escolherEnviarFoto } from '../../utils/fotoPerfil';
 import { planos } from '../../data';
 import { pareceNome, nomeDeExibicao } from '../../utils/nome';
 import { brl } from '../cashback/CashbackScreen';
+import { useMeusPedidosAfiliado } from '../../utils/afiliados';
 import { pedirPermissao } from '../../utils/lembreteCheckin';
 import { normalizarPrefFrase } from '../../utils/fraseNotificacao';
 
@@ -31,6 +32,11 @@ export default function PerfilScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { usuario, cashback, cashbackVisivel } = useApp();
   const { perfil, firebaseUser, atualizarPerfil, sair } = useAuth();
+  // Cashback (cupons de parceria e Achados/afiliados). Mesmo se o painel
+  // esconder o programa, quem já tem saldo, extrato ou pedidos continua vendo.
+  const { pedidos: pedidosAfiliado, pendentes: pendentesAfiliado } = useMeusPedidosAfiliado(firebaseUser?.uid);
+  const mostrarCashback = cashbackVisivel || cashback?.saldoCentavos > 0
+    || cashback?.movimentos?.length > 0 || pedidosAfiliado.length > 0;
   const [dados, setDados] = useState({
     nome: perfil?.nome || '',
     apelido: perfil?.apelido || '',
@@ -102,7 +108,6 @@ export default function PerfilScreen({ navigation }) {
     {
       titulo: 'Benefícios',
       itens: [
-        cashbackVisivel && { icone: 'wallet-outline', rotulo: 'Meu cashback', sub: cashback?.saldoCentavos > 0 ? `Saldo de ${brl(cashback.saldoCentavos)}` : 'Créditos dos cupons de parceria', tela: 'Cashback', cor: ['sageFundo', 'sageFg'] },
         { icone: 'ticket-outline', rotulo: 'Meus cupons', sub: 'Cupons das parcerias que você gerou', tela: 'MeusCupons', cor: ['douradoFundo', 'douradoTitulo'] },
       ],
     },
@@ -174,6 +179,53 @@ export default function PerfilScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
           </TouchableOpacity>
         </View>
+
+        {/* Meu cashback: saldo + extrato e pedidos dos Achados (afiliados) */}
+        {mostrarCashback && (
+          <View style={s.cartao}>
+            <Text style={s.sobretitulo}>Meu cashback</Text>
+            <TouchableOpacity
+              style={s.cbLinha}
+              onPress={() => navigation.navigate('Cashback')}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`Meu cashback: saldo de ${brl(cashback?.saldoCentavos)}. Ver extrato`}
+            >
+              <View style={[s.pilula, { backgroundColor: colors.sageFundo }]}>
+                <Ionicons name="wallet-outline" size={18} color={colors.sageFg} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.itemSub}>Saldo disponível</Text>
+                <Text style={s.cbValor}>{brl(cashback?.saldoCentavos)}</Text>
+              </View>
+              <Text style={s.cbLink}>Ver extrato</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.cbLinha, s.itemBorda]}
+              onPress={() => navigation.navigate('MeusPedidosCashback')}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`Meus pedidos de cashback dos afiliados${pendentesAfiliado > 0 ? `, ${pendentesAfiliado} em análise` : ''}`}
+            >
+              <View style={[s.pilula, { backgroundColor: colors.lav1 }]}>
+                <Ionicons name="receipt-outline" size={18} color={colors.lav5} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.itemRotulo}>Meus pedidos de cashback (afiliados)</Text>
+                <Text style={s.itemSub}>
+                  {pendentesAfiliado > 0
+                    ? `${pendentesAfiliado} ${pendentesAfiliado === 1 ? 'pedido em análise' : 'pedidos em análise'}`
+                    : pedidosAfiliado.length > 0 ? 'Nenhum pedido em análise agora' : 'Compras pelos Achados da Atravessia'}
+                </Text>
+              </View>
+              {pendentesAfiliado > 0 && (
+                <View style={s.cbBadge}><Text style={s.cbBadgeTxt}>{pendentesAfiliado}</Text></View>
+              )}
+              <Ionicons name="chevron-forward" size={16} color={colors.tl} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Frase do dia no celular */}
         <View style={[s.cartao, s.linhaSwitch]}>
@@ -308,4 +360,9 @@ const s = criarEstilos(() => ({
   },
   sairTxt: { fontFamily: 'Figtree_700Bold', fontSize: 15, color: colors.roseTexto },
   linhaSwitch: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+  cbLinha: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  cbValor: { fontFamily: 'Figtree_700Bold', fontSize: 22, color: colors.titulo, marginTop: 1 },
+  cbLink: { fontFamily: 'Figtree_700Bold', fontSize: 13.5, color: colors.lilasTexto },
+  cbBadge: { minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 7, backgroundColor: colors.douradoFundo, alignItems: 'center', justifyContent: 'center' },
+  cbBadgeTxt: { fontFamily: 'Figtree_700Bold', fontSize: 12.5, color: colors.douradoTitulo },
 }));
