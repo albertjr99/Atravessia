@@ -60,6 +60,40 @@ export default function RecursosIA({ showToast }) {
         </div>
       ))}
       <button className="btn-primary" onClick={salvar} disabled={salvando}><IconCheck size={16} /> {salvando ? 'Salvando…' : 'Salvar e publicar'}</button>
+      <ChaveTravessinhos showToast={showToast} />
+    </div>
+  );
+}
+
+// Os Travessinhos (Nanda, Brian e Maju): liga/desliga todas as aparições no
+// app (dicas, listas vazias, comemorações e apresentação). Salva na hora em
+// configuracoes/travessinhos { ativo } — o app lê em src/components/Travessinho.js.
+function ChaveTravessinhos({ showToast }) {
+  const [ativo, setAtivo] = useState(true);
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'travessinhos'),
+    (snap) => setAtivo(!snap.exists() || snap.data()?.ativo !== false), () => {}), []);
+  const alternar = async (v) => {
+    setAtivo(v);
+    try {
+      await setDoc(doc(db, 'configuracoes', 'travessinhos'), { ativo: v, atualizadoEm: serverTimestamp() }, { merge: true });
+      showToast(v ? 'Os Travessinhos voltaram a aparecer no app.' : 'Os Travessinhos foram desligados no app.');
+    } catch (e) {
+      setAtivo(!v);
+      showToast('Não foi possível salvar: ' + (e?.message || ''), 'error');
+    }
+  };
+  return (
+    <div className="card" style={{ marginTop: 28, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <h3 className="card-title" style={{ marginBottom: 4 }}>Os Travessinhos</h3>
+        <p className="field-hint" style={{ margin: 0 }}>
+          Nanda, Brian e Maju aparecem no app com dicas nas primeiras visitas, nas listas vazias, nas comemorações e na apresentação inicial.
+        </p>
+      </div>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}>
+        <input type="checkbox" checked={ativo} onChange={e => alternar(e.target.checked)} />
+        {ativo ? 'Ligados' : 'Desligados'}
+      </label>
     </div>
   );
 }

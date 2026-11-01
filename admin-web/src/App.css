@@ -1735,3 +1735,35 @@ input[type="checkbox"] { accent-color: var(--cor-primaria); }
 .dash-alerta-item:hover .dash-alerta-nome { color: var(--primary-600); }
 .dash-alerta-nome { flex: 1; min-width: 0; font-weight: 650; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-alerta-editar { font-size: 12px; font-weight: 700; color: var(--primary-600); white-space: nowrap; }
+
+/* ============================================================
+   Sem rolagem lateral (SeletorOpcoes.jsx): sub-abas quebram linha;
+   com mais de 4 opções, vira lista suspensa.
+   ============================================================ */
+.subtabs { flex-wrap: wrap; overflow-x: visible; border-radius: 22px; }
+.subtab { flex: 0 1 auto; }
+.sel-chips { margin-bottom: 0; }
+.sel-lista { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 14px 6px 4px; }
+.sel-lista-abas { position: sticky; top: 10px; z-index: 20; width: fit-content; max-width: calc(100% - 12px); }
+.page-top + .sel-lista { margin-top: 12px; }
+.sel-lista-rotulo { font: 700 12px/1.2 var(--fonte-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--cor-texto-marca); }
+.sel-lista-caixa { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
+.sel-lista-caixa select {
+  appearance: none; -webkit-appearance: none;
+  min-height: 42px; max-width: 100%; min-width: 220px;
+  padding: 9px 42px 9px 18px;
+  border-radius: var(--raio-pill);
+  border: 1px solid var(--cor-borda-forte);
+  background: var(--cor-vidro-forte);
+  box-shadow: var(--sombra-1);
+  color: var(--cor-texto-marca);
+  font: 700 14px/1.2 var(--fonte-ui);
+  cursor: pointer;
+}
+.sel-lista-caixa select:hover { border-color: var(--primary-200); }
+.sel-lista-caixa select:focus-visible { outline: none; border-color: var(--cor-foco); box-shadow: var(--anel-foco); }
+.sel-lista-seta { position: absolute; right: 16px; pointer-events: none; color: var(--cor-texto-marca); }
+@media (max-width: 520px) {
+  .sel-lista-caixa, .sel-lista-caixa select { width: 100%; min-width: 0; }
+  .sel-lista-abas { width: auto; }
+}

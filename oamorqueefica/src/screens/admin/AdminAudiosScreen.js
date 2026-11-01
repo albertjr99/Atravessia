@@ -16,6 +16,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 
 const EMOCOES = [
   { id: 'triste',      label: 'Triste' },
@@ -228,23 +229,13 @@ export default function AdminAudiosScreen({ navigation }) {
         </View>
 
         {/* Filtro por emoção */}
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
-          <TouchableOpacity
-            style={[s.chip, filtroEmocao === 'todos' && s.chipSel]}
-            onPress={() => setFiltroEmocao('todos')}
-          >
-            <Text style={[s.chipTxt, filtroEmocao === 'todos' && s.chipTxtSel]}>Todos</Text>
-          </TouchableOpacity>
-          {EMOCOES.map(e => (
-            <TouchableOpacity
-              key={e.id}
-              style={[s.chip, filtroEmocao === e.id && s.chipSel]}
-              onPress={() => setFiltroEmocao(e.id)}
-            >
-              <Text style={[s.chipTxt, filtroEmocao === e.id && s.chipTxtSel]}>{e.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <SeletorOpcoes
+          titulo="Filtrar por emoção"
+          estilo={s.filtroScroll}
+          opcoes={[{ id: 'todos', label: 'Todos' }, ...EMOCOES.map(e => ({ id: e.id, label: e.label }))]}
+          valor={filtroEmocao}
+          onChange={setFiltroEmocao}
+        />
 
         {/* Lista */}
         {audiosFiltrados.length === 0 ? (

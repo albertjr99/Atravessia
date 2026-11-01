@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, criarEstilos } from '../../theme';
 import { est } from './adminEstilo';
@@ -32,6 +33,7 @@ export const GRUPOS_SUBTABS = {
     { label: 'Cashback', screen: 'AdminCashback' },
     { label: 'Afiliados', screen: 'AdminIndicacoes' },
     { label: 'Pedidos de cashback', screen: 'AdminPedidosCashback' },
+    { label: 'Imobiliárias', screen: 'AdminImobiliarias' },
   ],
 };
 
@@ -41,9 +43,24 @@ export default function AdminSubTabs({ grupo, atual }) {
   const abas = GRUPOS_SUBTABS[grupo] || [];
   if (abas.length === 0) return null;
 
+  // Mais de 4 sub-abas: lista suspensa (sem arrastar para achar a opção).
+  if (abas.length > 4) {
+    return (
+      <View style={[s.wrap, s.row]}>
+        <SeletorOpcoes
+          titulo="Seções"
+          opcoes={abas.map(a => ({ id: a.screen, label: a.label }))}
+          valor={atual}
+          onChange={(tela) => navigation.navigate(tela)}
+        />
+      </View>
+    );
+  }
+
+  // Até 4: pílulas no trilho de vidro, que quebram linha se faltar espaço.
   return (
     <View style={s.wrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.row}>
+      <View style={s.row}>
         <View style={s.trilho} accessibilityRole="tablist">
           {abas.map(aba => {
             const ativa = aba.screen === atual;
@@ -61,7 +78,7 @@ export default function AdminSubTabs({ grupo, atual }) {
             );
           })}
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -74,6 +91,7 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.escuro ? colors.card : colors.vidro,
     ...est.sombra(),
     shadowOpacity: colors.escuro ? 0.25 : 0.07,
+    flexWrap: 'wrap', maxWidth: '100%', borderRadius: 22,
   },
   tab: est.aba(),
   tabAtiva: est.abaSel(),

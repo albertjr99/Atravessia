@@ -24,6 +24,8 @@ Profissional abre o link  →  função portalProfissional  →  extrato agregad
 | `cursosConteudo/{id}` | admin (painel grava junto com o curso) | admin e quem comprou | aulas { aulaId: { youtubeId, thumb } } — vídeos de todas as aulas |
 | `profissionais/{id}` | função `salvarProfissional` (admin) | quem está logada | nome, bio, fotoUrl, repasseTipo ('percentual'\|'fixo'), repasseValor, repasseBase ('bruto'\|'liquido'), ativo |
 | `profissionaisPrivado/{id}` | só servidor | admin | email, tokenPortal (gerado no servidor), repasseTipo/Valor/Base, termoAceitoEm, termoVersao, termoIp e termoUserAgent (resumidos), termoPedirNovo; subcoleção `aceites/` com o histórico |
+| `configuracoes/termoProfissional` | função `publicarTermoProfissional` (admin) | quem está logada (o portal recebe pela função) | versao, texto (markdown com marcadores `{{campo}}`), resumo[], campos { razaoSocial, cnpj, endereco, cidadeUf, encarregadoNome, encarregadoEmail, periodicidadeRepasse, prazoGuarda1, prazoGuarda2, prazoAcessoAlunas, prazoAvisoEncerramento }, publicadoEm, publicadoPor, rascunho? |
+| `configuracoes/termoProfissional/versoes/{versao}` | só servidor | admin | texto congelado de cada versão publicada (texto, textoFinal com os campos aplicados, resumo, resumoFinal, campos, publicadoEm, publicadoPor, versaoAnterior) |
 | `limitesPortal/{hash}` | só servidor | ninguém | contador de chamadas do portal por IP (campo `expiraEm` para TTL opcional) |
 | `matriculas/{stripeSessionId}` | só servidor (webhook) | só admin | uid, cursoId, profissionalId, valorPagoCentavos, taxaStripeCentavos, repasseCentavos, repasseRegra, stripeSessionId, stripePaymentIntent, criadaEm, status ('ativa'\|'reembolsada'), repasseId |
 | `usuarios/{uid}/cursos/{cursoId}` | servidor cria; a usuária só altera `progresso`, `ultimaAulaId`, `progressoEm` | a usuária e admin | cursoId, matriculaId, liberadoEm, progresso { aulaId: true } |
@@ -38,8 +40,9 @@ Storage: `cursos/capas/…` e `cursos/profissionais/…` (só admin envia; leitu
 - `importarVideosYoutube` (admin) — links de vídeos, playlist ou canal → título, miniatura e (com chave) duração.
 - `salvarProfissional` (admin) — grava o perfil público (nome, bio, foto, ativo) e, em `profissionaisPrivado`, o e-mail, a regra de repasse e o token do portal (só no cadastro).
 - `gerenciarPortalProfissional` (admin) — `novoLink`, `revogar`, `pedirNovoAceite`, `ativar`, `desativar` (profissional inativo: os cursos dele param de ser vendidos).
-- `aceitarTermoProfissional` (por token) — registra o aceite do termo de parceria (`docs/cursos/termo-profissional-parceiro.md`).
-- `portalProfissional` (sem login, por token) — extrato com totais por curso, vendas (data, valor, taxa, repasse, situação e código de verificação = últimos 8 caracteres do pagamento na Stripe) e repasses. Sem nome nem e-mail das alunas. Só aparece depois do aceite da versão atual do termo. Limite de 60 chamadas a cada 10 min e de 8 links inválidos a cada 30 min por IP.
+- `publicarTermoProfissional` (admin) — publica nova versão do termo de parceria (sobe 1.0 → 1.1 → …, congela o texto em `versoes/`, recusa marcadores sem valor, HTML e publicação por cima de outra feita enquanto se editava) ou, com `somenteRascunho`, só guarda o rascunho.
+- `aceitarTermoProfissional` (por token) — registra o aceite da versão publicada do termo (sem versão publicada, vale a 1.0 embutida).
+- `portalProfissional` (sem login, por token) — sem o aceite da versão vigente, devolve o termo `{ versao, texto, resumo, publicadoEm }` com os campos já aplicados; depois do aceite, o extrato com totais por curso, vendas (data, valor, taxa, repasse, situação e código de verificação = últimos 8 caracteres do pagamento na Stripe) e repasses. Sem nome nem e-mail das alunas. Só aparece depois do aceite da versão atual do termo. Limite de 60 chamadas a cada 10 min e de 8 links inválidos a cada 30 min por IP.
 - `fecharRepasse` (admin) — junta as vendas ativas ainda não repassadas do período, desconta reembolsos de vendas já repassadas e registra o repasse.
 
 **No painel da Stripe**, acrescente ao endpoint do webhook os eventos `checkout.session.async_payment_succeeded` e `charge.refunded` (o `checkout.session.completed` já está lá).
@@ -56,6 +59,19 @@ Storage: `cursos/capas/…` e `cursos/profissionais/…` (só admin envia; leitu
 1. **Profissional:** Cursos → Profissionais → Novo profissional. Preencha nome, mini bio, foto e o repasse combinado (percentual sobre o valor pago ou sobre o valor após a taxa da Stripe, ou valor fixo por venda). Salve e copie o link do portal para enviar ao profissional. “Novo link” invalida o anterior.
 2. **Curso:** Cursos → Novo curso. Título, subtítulo, descrição, capa (16:9; sem capa vale a miniatura da 1ª aula), preço e profissional. Em “Importar do YouTube”, cole os links das aulas e clique em importar; depois ajuste títulos, ordem (setas), duração e marque 1 ou 2 aulas como **grátis** (amostra aberta para todas). Monte o conteúdo programático. Deixe “Publicado” desligado até revisar.
 3. **Exemplo pronto:** no painel web, “Importar curso (JSON)” e escolha `docs/cursos/exemplo-yoga.json` (5 aulas do canal Yoga para Você). Ele cria o profissional e carrega o curso no formulário como rascunho.
+
+## Como editar o termo do profissional
+
+O Termo de Parceria, Consentimento e Tratamento de Dados que o profissional aceita no portal é editado no painel, sem mexer em código: **Cursos → Profissionais → “Termo do profissional”** (web e app).
+
+1. **Dados da empresa:** preencha razão social, CNPJ, endereço, encarregado de dados (DPO), prazos, periodicidade do repasse e cidade do foro. Eles entram no texto nos marcadores `{{razaoSocial}}`, `{{cnpj}}` etc. (pode usar os marcadores em qualquer parte do texto ou do resumo).
+2. **Texto:** markdown simples — `## Título` em linha própria, linha em branco entre parágrafos, `- item` para listas e `**negrito**`. HTML não é aceito (o portal desenha só texto). O resumo “Em poucas palavras” é um item por linha. Use “Pré-visualizar” para ver como o profissional vai ler.
+3. **Salvar rascunho** guarda sem mudar nada para os profissionais. **Publicar nova versão** sobe a versão (1.0 → 1.1 → …), grava o texto congelado no histórico e **todos os profissionais precisam aceitar de novo** no próximo acesso (o painel avisa antes). Só publica com todos os marcadores usados preenchidos.
+4. Na mesma tela: “Quem já aceitou” (versão e data de cada profissional) e “Versões publicadas” (texto de cada versão).
+
+Enquanto nada for publicado, o portal mostra o texto 1.0 embutido em `admin-web/src/termoProfissional.js`, que também é o **rascunho inicial** do editor (os antigos [colchetes] viram marcadores). `docs/cursos/termo-profissional-parceiro.md` é só a referência da versão 1.0. Para pedir o aceite de um profissional sem mudar a versão, use “Pedir novo aceite” no cartão dele.
+
+Recomendamos revisão por advogado(a) (LGPD e consumidor) antes de publicar para profissionais reais.
 
 ## Como obter os vídeos não listados
 

@@ -9,6 +9,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { useComemoracaoTravessinho } from '../../components/Travessinho';
 import { useAuth } from '../../hooks/AuthContext';
 import {
   useCursoCompleto, TopoCursos, BotaoCurso, BarraProgresso, MiniaturaAula,
@@ -29,6 +30,8 @@ export default function AulaScreen({ navigation, route }) {
   const { curso, acesso, conteudo } = useCursoCompleto(cursoId, uid);
   const [terminou, setTerminou] = useState(false);
   const [carregandoVideo, setCarregandoVideo] = useState(true);
+  const { comemorar, elemento: festaTravessinho } = useComemoracaoTravessinho();
+  const parabensAula = useCallback(() => comemorar('brian', 'Aula concluída! Seu progresso já ficou guardado. Mandou bem!'), [comemorar]);
 
   const tablet = width >= 900;
   const larguraConteudo = Math.min(width, 1280) - spacing.lg * 2;
@@ -65,8 +68,8 @@ export default function AulaScreen({ navigation, route }) {
   };
 
   const aoMudarEstado = useCallback((estado) => {
-    if (estado === 'ended') { setTerminou(true); marcar(true); }
-  }, [marcar]);
+    if (estado === 'ended') { setTerminou(true); marcar(true); if (temAcesso) parabensAula(); }
+  }, [marcar, temAcesso, parabensAula]);
 
   if (curso === undefined || acesso === undefined) {
     return <View style={[s.safe, s.centro]}><LavandaBg /><ActivityIndicator color={colors.lav4} /></View>;
@@ -153,7 +156,7 @@ export default function AulaScreen({ navigation, route }) {
                 {terminou && <Text style={s.parabens}>Aula concluída. Que bom ter você aqui! 💜</Text>}
                 <View style={s.acoes}>
                   {temAcesso && (
-                    <TouchableOpacity style={[s.btnSec, feita && s.btnSecFeita]} onPress={() => marcar(!feita)} activeOpacity={0.85}
+                    <TouchableOpacity style={[s.btnSec, feita && s.btnSecFeita]} onPress={() => { marcar(!feita); if (!feita) parabensAula(); }} activeOpacity={0.85}
                       accessibilityLabel={feita ? 'Desmarcar aula concluída' : 'Marcar aula como concluída'}>
                       <Ionicons name={feita ? 'checkmark-circle' : 'checkmark-circle-outline'} size={18} color={feita ? colors.sageFg : colors.lilasTexto} />
                       <Text style={[s.btnSecTxt, feita && { color: colors.sageFg }]}>{feita ? 'Concluída' : 'Marcar como concluída'}</Text>
@@ -173,6 +176,7 @@ export default function AulaScreen({ navigation, route }) {
           {lista}
         </View>
       </ScrollView>
+      {festaTravessinho}
     </SafeAreaView>
   );
 }

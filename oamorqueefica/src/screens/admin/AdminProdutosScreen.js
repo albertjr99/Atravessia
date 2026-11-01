@@ -411,14 +411,14 @@ export default function AdminProdutosScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
+        <View style={[s.filtroScroll, s.filtroRow, { flexWrap: 'wrap' }]}>
           {TIPOS.map(tp => (
             <TouchableOpacity key={tp.id} style={s.chip} onPress={() => abrirNovo(tp.id)}>
               <Ionicons name={tp.icon} size={14} color={colors.texto2} />
               <Text style={s.chipTxt}>+ {tp.label}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         {erroLeitura ? (
           <View style={s.erroBox}>

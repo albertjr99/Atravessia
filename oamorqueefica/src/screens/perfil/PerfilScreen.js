@@ -18,6 +18,7 @@ import { brl } from '../cashback/CashbackScreen';
 import { useMeusPedidosAfiliado } from '../../utils/afiliados';
 import { pedirPermissao } from '../../utils/lembreteCheckin';
 import { normalizarPrefFrase } from '../../utils/fraseNotificacao';
+import { CartaoMeusAtendimentos } from '../atendimentos/MeusAtendimentosScreen';
 
 // Cor de cada plano (a mesma das outras telas).
 const COR_PLANO = {
@@ -117,6 +118,7 @@ export default function PerfilScreen({ navigation }) {
         { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', tela: 'Aparencia', cor: ['lav1', 'lav5'] },
         { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', tela: 'Onboarding', params: { revisita: true }, cor: ['lav1', 'lav5'] },
         { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', tela: 'Sobre', cor: ['lav1', 'lav5'] },
+        { icone: 'happy-outline', rotulo: 'Conheça os Travessinhos', sub: 'Nanda, Brian e Maju, a turma que ajuda você', tela: 'Travessinhos', cor: ['douradoFundo', 'douradoTitulo'] },
         { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Saiba como', tela: 'SejaParceiro', cor: ['douradoFundo', 'douradoTitulo'] },
       ],
     },
@@ -179,6 +181,9 @@ export default function PerfilScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
           </TouchableOpacity>
         </View>
+
+        {/* Atendimentos online (só aparece para quem aceitou algum convite) */}
+        <CartaoMeusAtendimentos navigation={navigation} />
 
         {/* Meu cashback: saldo + extrato e pedidos dos Achados (afiliados) */}
         {mostrarCashback && (

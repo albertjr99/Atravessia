@@ -20,6 +20,7 @@ import Beneficios from './Beneficios';
 import Cashback from './Cashback';
 import Indicacoes from './Indicacoes';
 import PedidosCashback from './PedidosCashback';
+import Imobiliarias from './Imobiliarias';
 import Usuarias from './Usuarias';
 import Notificacoes from './Notificacoes';
 import Mensagens from './Mensagens';
@@ -28,10 +29,13 @@ import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
 import VersaoApp from './VersaoApp';
+import SeletorOpcoes from './SeletorOpcoes';
 import RecursosIA from './RecursosIA';
 import Artes from './Artes';
 import Cursos, { ProfissionaisCursos, VendasCursos } from './Cursos';
 import Preview from './Preview';
+import Atendimentos from './Atendimentos';
+import { IconVideo } from './Icons';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
   IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
@@ -89,6 +93,7 @@ const NAV_GRUPOS = [
           { id: 'cashback', label: 'Cashback' },
           { id: 'indicacoes', label: 'Afiliados' },
           { id: 'pedidosCashback', label: 'Pedidos de cashback' },
+          { id: 'imobiliarias', label: 'Imobiliárias' },
         ],
       },
     ],
@@ -97,6 +102,7 @@ const NAV_GRUPOS = [
     titulo: 'Pessoas',
     itens: [
       { id: 'usuarias', Icon: IconUsers, label: 'Usuárias', sub: 'Planos e acessos' },
+      { id: 'atendimentos', Icon: IconVideo, label: 'Atendimentos', sub: 'Sessões online · Convites · Sala' },
       {
         id: 'comunicacao', Icon: IconMegaphone, label: 'Comunicação',
         abas: [
@@ -142,7 +148,9 @@ const SCREENS = {
   cashback:        Cashback,
   indicacoes:      Indicacoes,
   pedidosCashback: PedidosCashback,
+  imobiliarias:    Imobiliarias,
   usuarias:        Usuarias,
+  atendimentos:    Atendimentos,
   notificacoes:    Notificacoes,
   mensagens:       Mensagens,
   relatorios:      Relatorios,
@@ -341,17 +349,14 @@ export default function App() {
           )}
 
           {itemAtual?.abas && (
-            <div className="subtabs">
-              {itemAtual.abas.map(a => (
-                <button
-                  key={a.id}
-                  className={`subtab ${screen === a.id ? 'active' : ''}`}
-                  onClick={() => navigate(a.id)}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
+            // Até 4 sub-abas: pílulas que quebram linha; mais: lista suspensa (sem arrastar).
+            <SeletorOpcoes
+              variante="abas"
+              titulo="Seção"
+              opcoes={itemAtual.abas.map(a => ({ id: a.id, label: a.label }))}
+              valor={screen}
+              onChange={navigate}
+            />
           )}
 
           <Screen key={screen} showToast={showToast} perfil={perfil} irPara={navigate} parametros={parametros} />

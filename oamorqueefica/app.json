@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atravessia",
     "slug": "atravessia",
-    "version": "1.21.0",
+    "version": "1.23.0",
     "sdkVersion": "54.0.0",
     "newArchEnabled": true,
     "orientation": "portrait",
@@ -17,6 +17,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.atravessia",
       "infoPlist": {
+        "NSCameraUsageDescription": "O Atravessia usa a câmera nos atendimentos online por vídeo, só quando você entra na sala.",
+        "NSMicrophoneUsageDescription": "O Atravessia usa o microfone nos atendimentos online por vídeo, só quando você entra na sala.",
         "UIBackgroundModes": [
           "audio"
         ]
@@ -28,10 +30,12 @@
         "backgroundColor": "#FAF7F3"
       },
       "package": "com.atravessia",
-      "versionCode": 51,
+      "versionCode": 53,
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.POST_NOTIFICATIONS",
@@ -76,7 +80,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": false
+          "microphonePermission": "O Atravessia usa o microfone nos atendimentos online por vídeo, só quando você entra na sala."
         }
       ],
       [

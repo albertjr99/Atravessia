@@ -11,6 +11,7 @@ import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, acento, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 import {
   STATUS_PEDIDO, brlCentavos, calcularCashback, reaisParaCentavos, centavosParaTexto,
 } from '../../utils/afiliados';
@@ -116,13 +117,13 @@ export default function AdminPedidosCashbackScreen({ navigation }) {
           <View style={st.statBox}><Text style={st.statN} numberOfLines={1} adjustsFontSizeToFit>{brlCentavos(creditado)}</Text><Text style={st.statL}>Creditado</Text></View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow} keyboardShouldPersistTaps="handled">
-          {FILTROS.map(f => (
-            <TouchableOpacity key={f.id} style={[st.chip, filtro === f.id && st.chipSel]} onPress={() => setFiltro(f.id)}>
-              <Text style={[st.chipText, filtro === f.id && st.chipTextSel]}>{f.rotulo}{f.id !== 'todos' && contagem[f.id] ? ` (${contagem[f.id]})` : ''}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <SeletorOpcoes
+          titulo="Situação do pedido"
+          estilo={st.chipRow}
+          opcoes={FILTROS.map(f => ({ id: f.id, label: `${f.rotulo}${f.id !== 'todos' && contagem[f.id] ? ` (${contagem[f.id]})` : ''}` }))}
+          valor={filtro}
+          onChange={setFiltro}
+        />
 
         {carregando && <ActivityIndicator color={colors.lav4} style={{ marginTop: spacing.lg }} />}
         {!carregando && lista.length === 0 && (

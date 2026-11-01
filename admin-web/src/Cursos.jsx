@@ -5,6 +5,7 @@ import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import Recolhivel from './Recolhivel';
 import AcoesItem from './AcoesItem';
+import TermoProfissionalPainel, { useTermoProfissional } from './TermoProfissionalPainel';
 import { IconPlus, IconUp, IconDown, IconTrash, IconCopy, IconRefresh, IconUpload, IconPlay, IconUsers, IconChart } from './Icons';
 import './cursos.css';
 
@@ -21,8 +22,8 @@ const novoIdAula = () => `a${Date.now().toString(36)}${Math.random().toString(36
 const thumb = (a) => a.thumb || `https://i.ytimg.com/vi/${a.youtubeId}/hqdefault.jpg`;
 const CURSO_VAZIO = { titulo: '', subtitulo: '', descricao: '', capaUrl: '', preco: '', profissionalId: '', ativo: false, destaque: false, protegerAulas: true, programa: [], aulas: [] };
 const PROF_VAZIO = { nome: '', bio: '', fotoUrl: '', email: '', repasseTipo: 'percentual', repasseValor: '50', repasseBase: 'bruto', ativo: true };
-// Mesma versão de functions/index.js (TERMO_PROFISSIONAL_VERSAO) e de termoProfissional.js.
-const TERMO_VERSAO = '1.0';
+// A versão vigente do termo vem do Firestore (configuracoes/termoProfissional),
+// editada em TermoProfissionalPainel; não há constante para manter em sincronia.
 
 // A regra de repasse fica em profissionaisPrivado; perfis antigos ainda a
 // tinham no documento público.
@@ -33,11 +34,11 @@ const comRegra = (prof, priv) => ({
   repasseBase: priv?.repasseBase ?? prof?.repasseBase,
 });
 
-function statusTermo(priv) {
+function statusTermo(priv, versaoVigente) {
   const em = ms(priv?.termoAceitoEm);
   if (!em) return { ok: false, texto: 'Termo ainda não aceito no portal' };
   if (priv.termoPedirNovo) return { ok: false, texto: `Novo aceite pedido (aceitou a versão ${priv.termoVersao || '?'} em ${dataBR(em)})` };
-  if (priv.termoVersao !== TERMO_VERSAO) return { ok: false, texto: `Aceitou a versão ${priv.termoVersao || '?'}; falta aceitar a ${TERMO_VERSAO}` };
+  if (priv.termoVersao !== versaoVigente) return { ok: false, texto: `Aceitou a versão ${priv.termoVersao || '?'}; falta aceitar a ${versaoVigente}` };
   return { ok: true, texto: `Termo aceito em ${dataBR(em)} · versão ${priv.termoVersao}` };
 }
 
@@ -425,6 +426,7 @@ export function ProfissionaisCursos({ showToast }) {
   const profissionais = useColecao('profissionais', (a, b) => String(a.nome).localeCompare(String(b.nome)));
   const privadosLista = useColecao('profissionaisPrivado');
   const privados = useMemo(() => Object.fromEntries(privadosLista.map(p => [p.id, p])), [privadosLista]);
+  const termoProf = useTermoProfissional();
   const [aberto, setAberto] = useState(false);
   const [editId, setEditId] = useState(null);
   const [p, setP] = useState(PROF_VAZIO);
@@ -515,11 +517,13 @@ export function ProfissionaisCursos({ showToast }) {
         </div>
       </Recolhivel>
 
+      <TermoProfissionalPainel showToast={showToast} termo={termoProf} profissionais={profissionais} privados={privados} />
+
       {profissionais.length === 0 && <div className="empty-state"><p>Nenhum profissional cadastrado.</p></div>}
       <div style={{ display: 'grid', gap: 12 }}>
         {profissionais.map(prof => {
           const priv = privados[prof.id] || {};
-          const termo = statusTermo(priv);
+          const termo = statusTermo(priv, termoProf.versao);
           return (
             <div key={prof.id} className="card">
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

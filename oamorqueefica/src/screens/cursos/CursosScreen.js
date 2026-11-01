@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { DicaTravessinho, VazioTravessinho } from '../../components/Travessinho';
 import { useAuth } from '../../hooks/AuthContext';
 import { abrirLink } from '../../utils/abrirLink';
 import {
@@ -87,11 +88,14 @@ export default function CursosScreen({ navigation }) {
               <Text style={s.heroTxt}>Aulas em vídeo com profissionais que cuidam com carinho. Assista no seu ritmo, quantas vezes quiser.</Text>
             </View>
 
-            {lista.length === 0 && meusCursos.length === 0 && (
-              <View style={s.vazio}>
-                <Ionicons name="sparkles-outline" size={26} color={colors.lilasIcone} />
-                <Text style={s.vazioTxt}>Os primeiros cursos estão sendo preparados com carinho. Volte em breve!</Text>
-              </View>
+            {lista.length === 0 && meusCursos.length === 0 ? (
+              <VazioTravessinho quem="brian" fala="Os primeiros cursos estão sendo preparados com carinho. Volte em breve!" />
+            ) : (
+              <DicaTravessinho
+                chave="cursos"
+                quem="brian"
+                fala="Os cursos ficam com você: dá para pausar, voltar e rever cada aula quantas vezes quiser. Seu progresso fica guardado em “Meus cursos”."
+              />
             )}
 
             {meusCursos.length > 0 && (

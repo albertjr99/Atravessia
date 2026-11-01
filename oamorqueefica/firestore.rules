@@ -109,6 +109,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Termo do profissional de cursos: histórico congelado de cada versão
+    // publicada. Só admin lê; só o servidor grava (publicarTermoProfissional).
+    // O documento configuracoes/termoProfissional segue a regra acima.
+    match /configuracoes/termoProfissional/versoes/{versao} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Aviso de atualização do app: o app confere a versão logo ao abrir,
     // também antes do login. Só números de versão e o texto de novidades.
     match /configuracoes/versaoApp {
@@ -268,8 +276,76 @@ service cloud.firestore {
     match /limitesPortal/{id} {
       allow read, write: if false;
     }
+    // ---- IMOBILIÁRIAS ("Lar e recomeço") ------------------------------------
+    // Vitrine pública para quem está logado; edição só admin.
+    match /imobiliarias/{imobId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    // Responsável, contatos internos, regra de repasse, contrato e token do
+    // portal: só admin. O token só é criado/trocado pelo servidor.
+    match /imobiliariasPrivado/{imobId} {
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && !('tokenPortal' in request.resource.data);
+      allow update: if isAdmin()
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokenPortal']);
+    }
+    match /imoveis/{imovelId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /arquitetos/{arqId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /arquitetosPrivado/{arqId} {
+      allow read, write: if isAdmin();
+    }
+    // Lead: a usuária lê só as próprias indicações; gravação só pelo servidor.
+    match /indicacoesImoveis/{leadId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+    // Valores do negócio, do repasse e do arquiteto: só admin lê; só servidor grava.
+    match /indicacoesImoveisPrivado/{leadId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
     // Histórico de repasses aos profissionais (função fecharRepasse).
     match /repasses/{repasseId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ---- ATENDIMENTOS (docs/atendimentos/PLANO.md) --------------------------
+    // Agenda: a profissional do atendimento e as participantes que aceitaram o
+    // convite leem. Não há e-mails nem links aqui. Só o servidor grava.
+    match /atendimentos/{atendimentoId} {
+      allow read: if isSignedIn() && (
+        resource.data.profissionalUid == request.auth.uid
+        || request.auth.uid in resource.data.participantesUids
+      );
+      allow write: if false;
+    }
+    // Participantes (nome, e-mail, convite) e anotações privadas: sigilo
+    // profissional — só a própria profissional (nem outras administradoras).
+    // Ela só altera as anotações; o resto é gravado pelo servidor.
+    match /atendimentosPrivado/{atendimentoId} {
+      allow read: if isSignedIn() && resource.data.profissionalUid == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.profissionalUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['anotacoes', 'anotacoesAtualizadasEm'])
+        && request.resource.data.anotacoes is string
+        && request.resource.data.anotacoes.size() <= 50000;
+      allow create, delete: if false;
+    }
+    // Sala no provedor de vídeo, convites e registros de consentimento: só servidor.
+    match /atendimentosSala/{atendimentoId} {
+      allow read, write: if false;
+    }
+    match /convitesAtendimento/{token} {
+      allow read, write: if false;
+    }
+    match /consentimentosAtendimento/{id} {
       allow read: if isAdmin();
       allow write: if false;
     }

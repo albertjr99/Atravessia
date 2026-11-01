@@ -5,6 +5,7 @@ import { IconAlert, IconChart, IconClose, IconStar, IconUsers, IconSpark } from 
 import { EMOCOES, emocaoPorId, nDiasAtras, formatDataBR } from './emocoes';
 import { calcularMetricasFunil, planoNumero } from './metricasFunil';
 import Recolhivel from './Recolhivel';
+import SeletorOpcoes from './SeletorOpcoes';
 
 // Porte de oamorqueefica/src/screens/admin/AdminRelatoriosScreen.js
 // Abas: Geral · Funil · Emoções · Usuárias · Empresas. Mesmos cálculos do app.
@@ -628,11 +629,7 @@ export default function Relatorios() {
 
   return (
     <>
-      <div className="subtabs">
-        {ABAS.map(t => (
-          <button key={t.id} className={`subtab ${aba === t.id ? 'active' : ''}`} onClick={() => setAba(t.id)}>{t.label}</button>
-        ))}
-      </div>
+      <SeletorOpcoes variante="abas" titulo="Relatório" opcoes={ABAS} valor={aba} onChange={setAba} />
 
       <div className="screen-content">
         <div className="screen-header-row">

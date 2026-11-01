@@ -5,7 +5,7 @@
 > **Para as responsáveis pelo Atravessia (apague este bloco antes de publicar):**
 > - Preencha todos os trechos **[entre colchetes]**: razão social, CNPJ, endereço, nome e e-mail do encarregado de dados (DPO), prazos, periodicidade do repasse e cidade do foro.
 > - **Recomendamos revisão por um advogado ou advogada** (direito digital/LGPD e consumidor) antes de usar com profissionais reais. Este texto é um ponto de partida, não um parecer jurídico.
-> - O mesmo texto aparece no portal do profissional (`admin-web/src/termoProfissional.js`). Ao mudar qualquer coisa, atualize os dois lugares e **suba a versão** também em `functions/index.js` (`TERMO_PROFISSIONAL_VERSAO`) e no painel (`TERMO_VERSAO` em `admin-web/src/Cursos.jsx` e `oamorqueefica/src/screens/admin/AdminCursosScreen.js`). O portal passa a pedir o novo aceite sozinho. Para pedir o aceite de novo sem mudar a versão, use “Pedir novo aceite” no cartão do profissional.
+> - **Este arquivo é só a referência da versão 1.0.** O termo agora é editado e publicado no painel (Cursos → Profissionais → “Termo do profissional”), que parte deste texto com os [colchetes] trocados por campos da empresa. Publicar sobe a versão e o portal pede o novo aceite sozinho; não há versão para mudar em código. Veja “Como editar o termo do profissional” em `docs/cursos/README.md`.
 
 ## Resumo em linguagem simples
 

@@ -2016,9 +2016,11 @@ const PORTAL_PROFISSIONAL_URL = `${SITE_URL}/profissional.html`;
 // Endereços aceitos como retorno do pagamento feito pela área web do curso
 // (comparados pela origem inteira, para não aceitar "…web.app.outro.com").
 const ORIGENS_RETORNO_CURSO = [SITE_URL, 'https://o-amor-que-fica.firebaseapp.com'];
-// Versão do termo de parceria do profissional. Ao mudar o texto
-// (docs/cursos/termo-profissional-parceiro.md e admin-web/src/termoProfissional.js),
-// suba a versão AQUI e LÁ: o portal volta a pedir o aceite.
+// Termo de parceria do profissional: o texto vigente fica em
+// configuracoes/termoProfissional e é publicado pelo painel
+// (publicarTermoProfissional). Esta constante é só a versão "de fábrica"
+// (texto de admin-web/src/termoProfissional.js), usada enquanto nenhuma
+// versão tiver sido publicada. Não é preciso mudá-la.
 const TERMO_PROFISSIONAL_VERSAO = '1.0';
 const ID_SEGURO = /^[A-Za-z0-9_-]{1,128}$/;
 // 32+ caracteres: aceita também os links já enviados (24 bytes = 32 caracteres).
@@ -2552,23 +2554,104 @@ exports.gerenciarPortalProfissional = onCall(async (request) => {
   throw new HttpsError('invalid-argument', 'Ação desconhecida.');
 });
 
+// ---- Termo de parceria editável pelo painel ---------------------------------
+//   configuracoes/termoProfissional { versao, texto (markdown com {{campos}}), resumo[],
+//                                     campos{}, publicadoEm, publicadoPor, rascunho? }
+//   configuracoes/termoProfissional/versoes/{versao} { versao, texto, textoFinal, resumo,
+//                                     resumoFinal, campos, publicadoEm, publicadoPor }  (congelado)
+// O portal recebe o texto final (campos aplicados) por portalProfissional.
+const refTermoProfissional = () => db.collection('configuracoes').doc('termoProfissional');
+const CAMPO_TERMO = /\{\{\s*([A-Za-z][A-Za-z0-9_]{0,39})\s*\}\}/g;
+const aplicarCamposTermo = (texto, campos) => String(texto || '')
+  .replace(CAMPO_TERMO, (_, k) => String(campos?.[k] ?? '').trim() || `[${k}]`);
+const proximaVersaoTermo = (atual) => {
+  const m = /^(\d+)\.(\d+)$/.exec(String(atual || ''));
+  return m ? `${m[1]}.${Number(m[2]) + 1}` : '1.1';
+};
+
+// Versão publicada (ou a "de fábrica", com texto null: o portal usa o texto embutido).
+async function termoProfissionalPublicado() {
+  const d = (await refTermoProfissional().get()).data();
+  if (!d?.versao || !d?.texto) return { versao: TERMO_PROFISSIONAL_VERSAO, texto: null, resumo: null, publicadoEm: null };
+  const campos = d.campos || {};
+  return {
+    versao: String(d.versao),
+    texto: aplicarCamposTermo(d.texto, campos),
+    resumo: (Array.isArray(d.resumo) ? d.resumo : []).map(r => aplicarCamposTermo(r, campos)),
+    publicadoEm: d.publicadoEm?.toMillis?.() || null,
+  };
+}
+
+// ---- Publicar nova versão do termo (admin) ----------------------------------
+// Sobe a versão (1.0 → 1.1 …), congela o texto em versoes/{versao} e, como a
+// versão muda, todos os profissionais aceitam de novo no próximo acesso.
+// Com somenteRascunho, só guarda o rascunho (sem mudar a versão).
+exports.publicarTermoProfissional = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const d = request.data || {};
+  const texto = String(d.texto || '').replace(/\r\n?/g, '\n').trim();
+  if (texto.length < 200) throw new HttpsError('invalid-argument', 'O texto do termo está vazio ou curto demais.');
+  if (texto.length > 80000) throw new HttpsError('invalid-argument', 'O texto do termo passou de 80 mil caracteres.');
+  if (/<\s*\/?\s*[a-z!]/i.test(texto)) throw new HttpsError('invalid-argument', 'O termo não aceita HTML. Use ## para títulos, linha em branco entre parágrafos e "- " para listas.');
+  const resumo = (Array.isArray(d.resumo) ? d.resumo : []).map(r => String(r ?? '').trim()).filter(Boolean);
+  if (resumo.length > 15 || resumo.some(r => r.length > 600)) throw new HttpsError('invalid-argument', 'O resumo aceita até 15 itens de até 600 caracteres.');
+  const campos = {};
+  for (const [k, v] of Object.entries(d.campos && typeof d.campos === 'object' ? d.campos : {}).slice(0, 40)) {
+    if (/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(k)) campos[k] = String(v ?? '').trim().slice(0, 400);
+  }
+  const ref = refTermoProfissional();
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  if (d.somenteRascunho === true) {
+    await ref.set({ rascunho: { texto, resumo, campos, salvoEm: agora, salvoPor: adminUid } }, { merge: true });
+    return { ok: true, rascunho: true };
+  }
+
+  const faltando = new Set();
+  [texto, ...resumo].forEach(t => { for (const m of t.matchAll(CAMPO_TERMO)) if (!campos[m[1]]) faltando.add(m[1]); });
+  if (faltando.size) throw new HttpsError('failed-precondition', `Preencha antes de publicar: ${[...faltando].join(', ')}.`);
+
+  const versao = await db.runTransaction(async (tx) => {
+    const atual = (await tx.get(ref)).data() || {};
+    const versaoAtual = atual.versao ? String(atual.versao) : TERMO_PROFISSIONAL_VERSAO;
+    // Evita publicar por cima de quem publicou enquanto você editava.
+    if (d.versaoBase != null && String(d.versaoBase) !== versaoAtual) {
+      throw new HttpsError('aborted', `Outra pessoa publicou a versão ${versaoAtual} enquanto você editava. Recarregue e confira antes de publicar.`);
+    }
+    const nova = proximaVersaoTermo(versaoAtual);
+    const verRef = ref.collection('versoes').doc(nova);
+    if ((await tx.get(verRef)).exists) throw new HttpsError('already-exists', `A versão ${nova} já existe no histórico.`);
+    const registro = { versao: nova, texto, resumo, campos, publicadoEm: agora, publicadoPor: adminUid };
+    tx.set(ref, registro); // sem merge: descarta o rascunho
+    tx.set(verRef, {
+      ...registro,
+      textoFinal: aplicarCamposTermo(texto, campos),
+      resumoFinal: resumo.map(r => aplicarCamposTermo(r, campos)),
+      versaoAnterior: versaoAtual,
+    });
+    return nova;
+  });
+  return { ok: true, versao };
+});
+
 // ---- Portal: aceite do termo de parceria (sem login, por token) -------------
-const precisaAceiteTermo = (priv) => !priv?.termoAceitoEm || priv.termoVersao !== TERMO_PROFISSIONAL_VERSAO || priv.termoPedirNovo === true;
+const precisaAceiteTermo = (priv, versao) => !priv?.termoAceitoEm || priv.termoVersao !== versao || priv.termoPedirNovo === true;
 
 exports.aceitarTermoProfissional = onCall(async (request) => {
   const { ref, ip, ua } = await profissionalPorToken(request);
   if (request.data?.aceito !== true) throw new HttpsError('invalid-argument', 'Marque "Li e aceito" para continuar.');
-  if (String(request.data?.versao || '') !== TERMO_PROFISSIONAL_VERSAO) {
+  const { versao: versaoVigente } = await termoProfissionalPublicado();
+  if (String(request.data?.versao || '') !== versaoVigente) {
     throw new HttpsError('failed-precondition', 'O termo foi atualizado. Recarregue a página para ler a versão nova.');
   }
   const agora = admin.firestore.FieldValue.serverTimestamp();
-  const registro = { termoVersao: TERMO_PROFISSIONAL_VERSAO, termoIp: resumirIp(ip), termoUserAgent: resumirUserAgent(ua) };
+  const registro = { termoVersao: versaoVigente, termoIp: resumirIp(ip), termoUserAgent: resumirUserAgent(ua) };
   const lote = db.batch();
   lote.set(ref, { ...registro, termoAceitoEm: agora, termoPedirNovo: false }, { merge: true });
   // Histórico de aceites (prova de cada versão aceita).
   lote.set(ref.collection('aceites').doc(), { versao: registro.termoVersao, ip: registro.termoIp, userAgent: registro.termoUserAgent, aceitoEm: agora });
   await lote.commit();
-  return { ok: true, versao: TERMO_PROFISSIONAL_VERSAO };
+  return { ok: true, versao: versaoVigente };
 });
 
 // ---- Portal do profissional (sem login, por token) ---------------------------
@@ -2576,11 +2659,13 @@ exports.aceitarTermoProfissional = onCall(async (request) => {
 // Sem o aceite da versão atual do termo, devolve só o pedido de aceite.
 exports.portalProfissional = onCall(async (request) => {
   const { id: profissionalId, priv } = await profissionalPorToken(request);
-  if (precisaAceiteTermo(priv)) {
+  const termoVigente = await termoProfissionalPublicado();
+  if (precisaAceiteTermo(priv, termoVigente.versao)) {
     const p = (await db.collection('profissionais').doc(profissionalId).get()).data() || {};
     return {
       precisaAceite: true,
-      termo: { versao: TERMO_PROFISSIONAL_VERSAO, versaoAceita: priv.termoVersao || null },
+      // texto null = nenhuma versão publicada ainda: o portal usa o texto embutido (1.0).
+      termo: { ...termoVigente, versaoAceita: priv.termoVersao || null },
       profissional: { nome: p.nome || '' },
     };
   }
@@ -2971,4 +3056,1017 @@ exports.comunicarNovaParceria = onDocumentWritten('parcerias/{parceriaId}', asyn
     tipo: 'parceria', id: event.params.parceriaId,
     texto: `Nova parceria no Experimente a vida: ${titulo}`, screen: 'Parcerias',
   });
+});
+
+// ============================================================================
+// ATENDIMENTOS — atendimento psicológico online (individual e em grupo)
+// ============================================================================
+// Plano completo: docs/atendimentos/PLANO.md. Termo (TCLE): docs/atendimentos/tcle-modelo.md
+//
+// Coleções:
+//   atendimentos/{id}          agenda; lida pela profissional e pelas participantes
+//                              (participantesUids). Sem e-mails, nomes de outras
+//                              pessoas do grupo nem links de convite (sigilo).
+//   atendimentosPrivado/{id}   participantes (nome, e-mail, convite, status) e
+//                              anotações privadas (prontuário mínimo). Só a
+//                              profissional do atendimento lê; ela só grava as anotações.
+//   atendimentosSala/{id}      sala no provedor de vídeo (só servidor).
+//   convitesAtendimento/{tok}  um convite por pessoa (só servidor).
+//   consentimentosAtendimento  registro do aceite do TCLE (só servidor).
+//
+// Configuração (configuracoes/atendimentos, editada no painel):
+//   { provedor: 'daily' | 'jitsi', ativo: true|false, beneficioDias: 60,
+//     salaDeEspera: true, crp: '06/000000', nomeProfissional?: 'Carla ...' }
+//
+// CHAVE DO DAILY — lida de process.env para o deploy não falhar enquanto ela
+// não existe (mesmo cuidado do Atravessia Artes). Quando a conta existir:
+//   1) firebase functions:secrets:set DAILY_API_KEY
+//   2) troque a linha de chaveDaily() por:
+//        const DAILY_API_KEY = defineSecret('DAILY_API_KEY');
+//        const chaveDaily = () => DAILY_API_KEY.value();
+//   3) em OPCOES_ATEND, acrescente: secrets: [DAILY_API_KEY]
+// Sem a chave (ou com provedor 'jitsi'), as salas são criadas no Jitsi público
+// (meet.jit.si) com nome aleatório longo: MODO DE TESTE, sem token por pessoa.
+// ============================================================================
+
+const chaveDaily = () => process.env.DAILY_API_KEY || '';
+const OPCOES_ATEND = { memory: '256MiB', timeoutSeconds: 60 };
+const TCLE_ATENDIMENTO_VERSAO = '1.0';
+const ATEND_LIBERA_ANTES_MIN = 10;          // participante entra 10 min antes
+const ATEND_LIBERA_ANTES_PROF_MIN = 30;     // profissional entra 30 min antes
+const ATEND_TOLERANCIA_FIM_MIN = 30;        // sala segue aberta 30 min após o fim
+const ATEND_MAX_GRUPO = 12;
+const ATEND_URL_CONVITE = `${SITE_URL}/atendimento.html`;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+async function configAtendimentos() {
+  const d = (await db.collection('configuracoes').doc('atendimentos').get()).data() || {};
+  const dias = Number(d.beneficioDias);
+  return {
+    provedor: d.provedor === 'jitsi' ? 'jitsi' : 'daily',
+    ativo: d.ativo !== false,
+    beneficioDias: Number.isFinite(dias) && dias >= 0 && dias <= 365 ? Math.round(dias) : 60,
+    salaDeEspera: d.salaDeEspera !== false,
+    crp: String(d.crp || '').slice(0, 40),
+    nomeProfissional: String(d.nomeProfissional || '').slice(0, 120),
+  };
+}
+// Provedor que vale de fato: Daily só com a chave configurada.
+function provedorEfetivo(cfg) {
+  return cfg.provedor === 'daily' && chaveDaily() ? 'daily' : 'jitsi';
+}
+
+// ---- Adaptador de provedor de vídeo ----------------------------------------
+async function dailyApi(caminho, metodo = 'GET', corpo) {
+  const r = await fetch(`https://api.daily.co/v1${caminho}`, {
+    method: metodo,
+    headers: { authorization: `Bearer ${chaveDaily()}`, 'content-type': 'application/json' },
+    body: corpo ? JSON.stringify(corpo) : undefined,
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    console.error('[Atendimentos] Daily respondeu', r.status, caminho, JSON.stringify(json).slice(0, 400));
+    throw new HttpsError('unavailable', 'O serviço de vídeo não respondeu agora. Tente de novo em instantes.');
+  }
+  return json;
+}
+
+const PROVEDORES_VIDEO = {
+  // Daily.co: sala privada, com início/fim, sem gravação (enable_recording
+  // ausente = desligada), sala de espera (knocking) e token por pessoa.
+  daily: {
+    async criarSala({ inicioMs, fimMs, maxParticipantes }) {
+      const nome = `atv-${crypto.randomBytes(12).toString('hex')}`;
+      const sala = await dailyApi('/rooms', 'POST', {
+        name: nome,
+        privacy: 'private',
+        properties: {
+          nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_PROF_MIN * 60000) / 1000),
+          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
+          max_participants: maxParticipantes,
+          enable_knocking: true,
+          enable_prejoin_ui: true,
+          enable_chat: true,
+          enable_screenshare: true,
+          eject_at_room_exp: true,
+          lang: 'pt-BR',
+        },
+      });
+      return { roomName: sala.name, salaUrl: sala.url };
+    },
+    async atualizarSala(sala, { inicioMs, fimMs }) {
+      await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'POST', {
+        properties: {
+          nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_PROF_MIN * 60000) / 1000),
+          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
+        },
+      });
+    },
+    async excluirSala(sala) {
+      await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'DELETE').catch(() => {});
+    },
+    // Anfitriã: token de dona (admite quem bate na sala de espera, remove
+    // pessoas). Participante: token com nome; com sala de espera ligada vai
+    // sem token e "bate na porta" até a profissional admitir.
+    async urlParticipante(sala, { nome, uid, anfitria, fimMs, salaDeEspera }) {
+      if (!anfitria && salaDeEspera) return sala.salaUrl;
+      const { token } = await dailyApi('/meeting-tokens', 'POST', {
+        properties: {
+          room_name: sala.roomName,
+          user_name: String(nome || 'Participante').slice(0, 60),
+          user_id: String(uid).slice(0, 36),
+          is_owner: !!anfitria,
+          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
+          eject_at_token_exp: true,
+          lang: 'pt-BR',
+        },
+      });
+      return `${sala.salaUrl}?t=${encodeURIComponent(token)}`;
+    },
+  },
+  // Jitsi público (meet.jit.si) — MODO DE TESTE: o nome longo e aleatório é a
+  // única proteção; não há token por pessoa nem expiração. A primeira pessoa
+  // a entrar precisa se identificar no próprio Jitsi para virar moderadora.
+  jitsi: {
+    async criarSala() {
+      const nome = `Atravessia-${crypto.randomBytes(16).toString('hex')}`;
+      return { roomName: nome, salaUrl: `https://meet.jit.si/${nome}` };
+    },
+    async atualizarSala() {},
+    async excluirSala() {},
+    async urlParticipante(sala, { nome }) {
+      const cfg = [
+        'config.prejoinConfig.enabled=true',
+        'config.disableDeepLinking=true',
+        'config.fileRecordingsEnabled=false',
+        'config.liveStreamingEnabled=false',
+        'config.localRecording.disable=true',
+        `config.defaultLanguage=${encodeURIComponent('"ptBR"')}`,
+        `userInfo.displayName=${encodeURIComponent(JSON.stringify(String(nome || '').slice(0, 60)))}`,
+      ];
+      return `${sala.salaUrl}#${cfg.join('&')}`;
+    },
+  },
+};
+
+// ---- Utilitários -------------------------------------------------------------
+const linkConvite = (token) => `${ATEND_URL_CONVITE}?c=${token}`;
+const idParticipante = () => crypto.randomBytes(6).toString('hex');
+
+function limparPessoa(p) {
+  const nome = String(p?.nome || '').trim().slice(0, 80);
+  const email = String(p?.email || '').trim().toLowerCase().slice(0, 120);
+  if (!nome) throw new HttpsError('invalid-argument', 'Informe o nome de cada pessoa.');
+  if (email && !EMAIL_RE.test(email)) throw new HttpsError('invalid-argument', `E-mail inválido: ${email}`);
+  return { nome, email };
+}
+function horarioValido(inicio, duracaoMin) {
+  const inicioMs = Number(inicio);
+  const dur = Math.round(Number(duracaoMin));
+  if (!Number.isFinite(inicioMs) || inicioMs < Date.now() - 6 * 3600000 || inicioMs > Date.now() + 400 * 86400000) {
+    throw new HttpsError('invalid-argument', 'Escolha uma data e um horário válidos.');
+  }
+  if (!Number.isFinite(dur) || dur < 15 || dur > 240) throw new HttpsError('invalid-argument', 'A duração vai de 15 a 240 minutos.');
+  return { inicioMs, duracaoMin: dur, fimMs: inicioMs + dur * 60000 };
+}
+function valorOpcional(v) {
+  if (v === '' || v == null) return null;
+  const c = centavos(v);
+  if (c == null || c > 10000000) throw new HttpsError('invalid-argument', 'Valor inválido.');
+  return c;
+}
+
+async function novoConvite(atendimentoId, participanteId, nome, email, fimMs) {
+  const token = gerarTokenPortal();
+  await db.collection('convitesAtendimento').doc(token).set({
+    atendimentoId, participanteId, nome, email: email || '', uid: null, revogado: false,
+    criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    expiraEm: admin.firestore.Timestamp.fromMillis(fimMs + 24 * 3600000),
+  });
+  return token;
+}
+
+async function carregarAtendimentoDaProfissional(request, id) {
+  const uid = await exigirAdmin(request);
+  idValido(id, 'Atendimento inválido.');
+  const ref = db.collection('atendimentos').doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Atendimento não encontrado.');
+  if (snap.data().profissionalUid !== uid) throw new HttpsError('permission-denied', 'Só a profissional deste atendimento pode alterá-lo.');
+  return { uid, ref, a: snap.data() };
+}
+
+// Cortesia de acompanhamento: acesso completo ao app até X dias depois da
+// sessão. Nunca encurta uma cortesia maior e não mexe em quem já assina.
+async function concederBeneficioAtendimento(uid, fimMs, dias) {
+  if (!dias) return { tipo: 'nenhum' };
+  const ref = db.collection('usuarios').doc(uid);
+  const u = (await ref.get()).data() || {};
+  if (u.acessoTotal === true || planoNumero(u) >= 1) return { tipo: 'ja-assinante' };
+  const alvo = Math.max(Date.now(), fimMs) + dias * 86400000;
+  const atual = u.cortesia?.ativo === true ? (u.cortesia?.expiracao?.toMillis?.() || 0) : 0;
+  if (atual >= alvo) return { tipo: 'cortesia', ate: atual };
+  await ref.set({ cortesia: { ativo: true, expiracao: admin.firestore.Timestamp.fromMillis(alvo), origem: 'atendimento' } }, { merge: true });
+  return { tipo: 'cortesia', ate: alvo };
+}
+
+function dadosPublicosAtendimento(a) {
+  return {
+    titulo: a.titulo, tipo: a.tipo, status: a.status,
+    inicio: a.inicio?.toMillis?.() || 0, fim: a.fim?.toMillis?.() || 0, duracaoMin: a.duracaoMin,
+    profissionalNome: a.profissionalNome || '', crp: a.crp || '',
+    modoTeste: a.provedor !== 'daily',
+  };
+}
+
+// ---- Admin: estado do provedor -------------------------------------------------
+exports.statusAtendimentos = onCall(OPCOES_ATEND, async (request) => {
+  await exigirAdmin(request);
+  const cfg = await configAtendimentos();
+  const efetivo = provedorEfetivo(cfg);
+  return { provedorConfigurado: cfg.provedor, provedor: efetivo, modoTeste: efetivo !== 'daily', temChaveDaily: !!chaveDaily(), ativo: cfg.ativo };
+});
+
+// ---- Admin: criar atendimento ------------------------------------------------
+exports.criarAtendimento = onCall(OPCOES_ATEND, async (request) => {
+  const uid = await exigirAdmin(request);
+  const cfg = await configAtendimentos();
+  if (!cfg.ativo) throw new HttpsError('failed-precondition', 'Os atendimentos estão desligados em Atendimentos › Configurações.');
+  const d = request.data || {};
+  const tipo = d.tipo === 'grupo' ? 'grupo' : 'individual';
+  const titulo = String(d.titulo || '').trim().slice(0, 120) || (tipo === 'grupo' ? 'Atendimento em grupo' : 'Atendimento individual');
+  const { inicioMs, duracaoMin, fimMs } = horarioValido(d.inicio, d.duracaoMin);
+  const pessoas = (Array.isArray(d.participantes) ? d.participantes : []).map(limparPessoa);
+  if (!pessoas.length) throw new HttpsError('invalid-argument', 'Adicione pelo menos uma pessoa.');
+  if (tipo === 'individual' && pessoas.length > 1) throw new HttpsError('invalid-argument', 'No atendimento individual há uma pessoa. Para mais, escolha "Em grupo".');
+  if (pessoas.length > ATEND_MAX_GRUPO) throw new HttpsError('invalid-argument', `O grupo pode ter até ${ATEND_MAX_GRUPO} pessoas.`);
+
+  const prof = (await db.collection('usuarios').doc(uid).get()).data() || {};
+  const provedor = provedorEfetivo(cfg);
+  const sala = await PROVEDORES_VIDEO[provedor].criarSala({ inicioMs, fimMs, maxParticipantes: Math.max(pessoas.length + 2, 3) });
+
+  const ref = db.collection('atendimentos').doc();
+  const participantes = [];
+  for (const p of pessoas) {
+    const id = idParticipante();
+    const convite = await novoConvite(ref.id, id, p.nome, p.email, fimMs);
+    participantes.push({ id, nome: p.nome, email: p.email, convite, status: 'convidado', uid: null });
+  }
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const batch = db.batch();
+  batch.set(ref, {
+    tipo, titulo, status: 'agendado', provedor,
+    profissionalUid: uid,
+    profissionalNome: cfg.nomeProfissional || prof.nome || 'Psicóloga Atravessia',
+    crp: cfg.crp,
+    inicio: admin.firestore.Timestamp.fromMillis(inicioMs),
+    fim: admin.firestore.Timestamp.fromMillis(fimMs),
+    duracaoMin,
+    participantesUids: [],
+    totalParticipantes: participantes.length,
+    valorCentavos: valorOpcional(d.valor),
+    pago: d.pago === true,
+    lembrete60Enviado: false, lembrete10Enviado: false,
+    criadoEm: agora, atualizadoEm: agora,
+  });
+  batch.set(db.collection('atendimentosPrivado').doc(ref.id), {
+    profissionalUid: uid, participantes, anotacoes: '', criadoEm: agora,
+  });
+  batch.set(db.collection('atendimentosSala').doc(ref.id), { provedor, ...sala, criadoEm: agora });
+  await batch.commit();
+  return {
+    id: ref.id, provedor, modoTeste: provedor !== 'daily',
+    convites: participantes.map(p => ({ participanteId: p.id, nome: p.nome, link: linkConvite(p.convite) })),
+  };
+});
+
+// ---- Admin: atualizar (horário, título, pessoas, status, valor) --------------
+exports.atualizarAtendimento = onCall(OPCOES_ATEND, async (request) => {
+  const d = request.data || {};
+  const { ref, a } = await carregarAtendimentoDaProfissional(request, d.id);
+  const privRef = db.collection('atendimentosPrivado').doc(d.id);
+  const priv = (await privRef.get()).data() || { participantes: [] };
+  const salaSnap = await db.collection('atendimentosSala').doc(d.id).get();
+  const sala = salaSnap.data();
+  const prov = PROVEDORES_VIDEO[sala?.provedor] || PROVEDORES_VIDEO.jitsi;
+  const upd = { atualizadoEm: admin.firestore.FieldValue.serverTimestamp() };
+  let participantes = [...(priv.participantes || [])];
+  let fimMs = a.fim?.toMillis?.() || Date.now();
+
+  if (d.titulo != null) upd.titulo = String(d.titulo).trim().slice(0, 120) || a.titulo;
+  if (d.valor !== undefined) upd.valorCentavos = valorOpcional(d.valor);
+  if (d.pago !== undefined) upd.pago = d.pago === true;
+  if (d.inicio != null || d.duracaoMin != null) {
+    const h = horarioValido(d.inicio ?? a.inicio.toMillis(), d.duracaoMin ?? a.duracaoMin);
+    fimMs = h.fimMs;
+    Object.assign(upd, {
+      inicio: admin.firestore.Timestamp.fromMillis(h.inicioMs), fim: admin.firestore.Timestamp.fromMillis(h.fimMs),
+      duracaoMin: h.duracaoMin, lembrete60Enviado: false, lembrete10Enviado: false,
+    });
+    if (sala) await prov.atualizarSala(sala, h);
+    // Convites passam a valer até 1 dia depois do novo fim.
+    const exp = admin.firestore.Timestamp.fromMillis(h.fimMs + 24 * 3600000);
+    await Promise.all(participantes.filter(p => p.convite).map(p => db.collection('convitesAtendimento').doc(p.convite).set({ expiraEm: exp }, { merge: true })));
+  }
+  if (Array.isArray(d.adicionar) && d.adicionar.length) {
+    const novos = d.adicionar.map(limparPessoa);
+    const ativos = participantes.filter(p => p.status !== 'removido').length;
+    if (a.tipo === 'individual' && ativos + novos.length > 1) throw new HttpsError('invalid-argument', 'O atendimento individual já tem uma pessoa.');
+    if (ativos + novos.length > ATEND_MAX_GRUPO) throw new HttpsError('invalid-argument', `O grupo pode ter até ${ATEND_MAX_GRUPO} pessoas.`);
+    for (const p of novos) {
+      const id = idParticipante();
+      participantes.push({ id, nome: p.nome, email: p.email, convite: await novoConvite(d.id, id, p.nome, p.email, fimMs), status: 'convidado', uid: null });
+    }
+  }
+  if (Array.isArray(d.remover) && d.remover.length) {
+    participantes = participantes.map(p => {
+      if (!d.remover.includes(p.id)) return p;
+      if (p.convite) db.collection('convitesAtendimento').doc(p.convite).set({ revogado: true }, { merge: true }).catch(() => {});
+      return { ...p, status: 'removido', convite: null };
+    });
+  }
+  if (d.status && ['agendado', 'cancelado', 'concluido'].includes(d.status)) {
+    upd.status = d.status;
+    if (d.status === 'cancelado' && sala) await prov.excluirSala(sala);
+  }
+  upd.participantesUids = [...new Set(participantes.filter(p => p.status !== 'removido' && p.uid).map(p => p.uid))];
+  upd.totalParticipantes = participantes.filter(p => p.status !== 'removido').length;
+  await ref.update(upd);
+  await privRef.set({ participantes }, { merge: true });
+
+  // Aviso de cancelamento ou de novo horário para quem já aceitou.
+  if ((upd.status === 'cancelado' && a.status !== 'cancelado') || upd.inicio) {
+    const quando = (upd.inicio || a.inicio).toDate().toLocaleString('pt-BR', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
+    const texto = upd.status === 'cancelado' ? `O atendimento de ${quando} foi cancelado. Se precisar, fale com a sua psicóloga.` : `Seu atendimento mudou para ${quando}.`;
+    await avisarParticipantesAtendimento(upd.participantesUids, texto);
+  }
+  return { ok: true };
+});
+
+async function avisarParticipantesAtendimento(uids, texto, screen = 'MeusAtendimentos') {
+  if (!uids?.length) return;
+  const snaps = await Promise.all(uids.map(u => db.collection('usuarios').doc(u).get()));
+  await enviarPush(snaps.map(s => s.data()?.pushToken).filter(Boolean)
+    .map(to => ({ to, title: 'Atravessia · Atendimento', body: texto, data: { screen, tipo: 'atendimento' } })));
+}
+
+// ---- Admin: novo link de convite (o anterior deixa de valer) -----------------
+exports.gerarConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
+  const d = request.data || {};
+  const { a } = await carregarAtendimentoDaProfissional(request, d.id);
+  const privRef = db.collection('atendimentosPrivado').doc(d.id);
+  const priv = (await privRef.get()).data() || {};
+  const participantes = [...(priv.participantes || [])];
+  const i = participantes.findIndex(p => p.id === d.participanteId && p.status !== 'removido');
+  if (i < 0) throw new HttpsError('not-found', 'Pessoa não encontrada neste atendimento.');
+  const p = participantes[i];
+  if (p.convite) await db.collection('convitesAtendimento').doc(p.convite).set({ revogado: true }, { merge: true });
+  const token = await novoConvite(d.id, p.id, p.nome, p.email, a.fim?.toMillis?.() || Date.now());
+  // Se a pessoa já tinha aceitado, o novo link continua ligado à mesma conta.
+  if (p.uid) await db.collection('convitesAtendimento').doc(token).set({ uid: p.uid }, { merge: true });
+  participantes[i] = { ...p, convite: token };
+  await privRef.set({ participantes }, { merge: true });
+  return { link: linkConvite(token) };
+});
+
+// ---- Público: dados mínimos do convite ---------------------------------------
+async function conviteValido(request, { contarFalha = true } = {}) {
+  const { ip } = origemChamada(request);
+  const chave = ip || 'sem-ip';
+  const LIM_FALHA = { max: 10, janelaMs: 30 * 60 * 1000 };
+  if (await passouDoLimite(`atend:${chave}`, { max: 60, janelaMs: 10 * 60 * 1000 })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  if (await passouDoLimite(`atendfalha:${chave}`, { ...LIM_FALHA, incrementar: false })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  const falhar = async (codigo, msg) => {
+    if (contarFalha) await passouDoLimite(`atendfalha:${chave}`, LIM_FALHA);
+    throw new HttpsError(codigo, msg);
+  };
+  const token = String(request.data?.token || '');
+  if (!TOKEN_PORTAL.test(token)) await falhar('invalid-argument', 'Link inválido. Abra o link exatamente como você recebeu.');
+  const cRef = db.collection('convitesAtendimento').doc(token);
+  const c = (await cRef.get()).data();
+  if (!c || c.revogado) await falhar('not-found', 'Este convite não é mais válido. Peça um novo link à sua psicóloga.');
+  const aSnap = await db.collection('atendimentos').doc(c.atendimentoId).get();
+  if (!aSnap.exists) await falhar('not-found', 'Este atendimento não existe mais.');
+  return { token, cRef, c, aRef: aSnap.ref, a: aSnap.data() };
+}
+
+exports.obterConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
+  const { c, a } = await conviteValido(request);
+  const uid = request.auth?.uid || null;
+  const expirado = (c.expiraEm?.toMillis?.() || 0) < Date.now();
+  return {
+    atendimento: dadosPublicosAtendimento(a),
+    convidada: { nome: c.nome, email: c.uid ? '' : (c.email || '') },
+    aceito: !!c.uid,
+    vinculadoAVoce: !!uid && c.uid === uid,
+    atendimentoId: !!uid && c.uid === uid ? c.atendimentoId : null,
+    usadoPorOutraConta: !!c.uid && c.uid !== uid,
+    expirado,
+    liberaAntesMin: ATEND_LIBERA_ANTES_MIN,
+    tcleVersao: TCLE_ATENDIMENTO_VERSAO,
+    agora: Date.now(),
+  };
+});
+
+// ---- Autenticada: aceitar o convite, vincular a conta e ganhar o benefício ----
+exports.aceitarConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre ou crie sua conta para aceitar o convite.');
+  const { cRef, c, aRef, a } = await conviteValido(request);
+  if (request.data?.aceiteTcle !== true || request.data?.tcleVersao !== TCLE_ATENDIMENTO_VERSAO) {
+    throw new HttpsError('failed-precondition', 'Para continuar, leia e aceite o termo do atendimento online.');
+  }
+  if (c.uid && c.uid !== uid) throw new HttpsError('permission-denied', 'Este convite já foi aceito por outra conta. Entre com a conta usada antes ou peça um novo link.');
+  if (!c.uid && (c.expiraEm?.toMillis?.() || 0) < Date.now()) throw new HttpsError('deadline-exceeded', 'Este convite expirou. Peça um novo link à sua psicóloga.');
+  if (a.status === 'cancelado') throw new HttpsError('failed-precondition', 'Este atendimento foi cancelado.');
+
+  const email = String(request.auth.token?.email || '').toLowerCase();
+  const nome = String(request.data?.nome || c.nome || '').trim().slice(0, 80) || c.nome;
+  // Conta nova criada pelo link: perfil igual ao do cadastro do app.
+  const uRef = db.collection('usuarios').doc(uid);
+  const uSnap = await uRef.get();
+  if (!uSnap.exists) {
+    await uRef.set({
+      nome, apelido: '', telefone: '', cidade: '', email, linkEmpresa: null, empresa: '',
+      plano: 0, role: ADMIN_EMAILS_BENEFICIOS.includes(email) ? 'admin' : 'user',
+      onboardingPendente: true, origem: 'atendimento',
+      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  }
+
+  const privRef = db.collection('atendimentosPrivado').doc(c.atendimentoId);
+  await db.runTransaction(async (tx) => {
+    const priv = (await tx.get(privRef)).data() || {};
+    const aAtual = (await tx.get(aRef)).data() || {};
+    const participantes = (priv.participantes || []).map(p => (p.id === c.participanteId
+      ? { ...p, uid, status: p.status === 'removido' ? 'removido' : 'aceito', aceitoEm: p.aceitoEm || admin.firestore.Timestamp.now(), emailConta: email, tcleVersao: TCLE_ATENDIMENTO_VERSAO }
+      : p));
+    tx.set(privRef, { participantes }, { merge: true });
+    tx.update(aRef, { participantesUids: [...new Set([...(aAtual.participantesUids || []), uid])] });
+    tx.set(cRef, { uid, aceitoEm: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  });
+
+  const { ip, ua } = origemChamada(request);
+  await db.collection('consentimentosAtendimento').add({
+    uid, atendimentoId: c.atendimentoId, participanteId: c.participanteId, tcleVersao: TCLE_ATENDIMENTO_VERSAO,
+    ip: resumirIp(ip), dispositivo: resumirUserAgent(ua),
+    aceitoEm: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  const cfg = await configAtendimentos();
+  const beneficio = await concederBeneficioAtendimento(uid, a.fim?.toMillis?.() || Date.now(), cfg.beneficioDias);
+  return { ok: true, atendimentoId: c.atendimentoId, beneficio };
+});
+
+// ---- Autenticada: entrar na sala ---------------------------------------------
+exports.entrarNaSala = onCall(OPCOES_ATEND, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta para acessar a sala.');
+  const id = idValido(request.data?.atendimentoId, 'Atendimento inválido.');
+  const aSnap = await db.collection('atendimentos').doc(id).get();
+  if (!aSnap.exists) throw new HttpsError('not-found', 'Atendimento não encontrado.');
+  const a = aSnap.data();
+  const anfitria = a.profissionalUid === uid;
+  if (!anfitria && !(a.participantesUids || []).includes(uid)) throw new HttpsError('permission-denied', 'Você não está neste atendimento.');
+  if (a.status === 'cancelado') throw new HttpsError('failed-precondition', 'Este atendimento foi cancelado.');
+  const inicioMs = a.inicio.toMillis();
+  const fimMs = a.fim.toMillis();
+  const antes = (anfitria ? ATEND_LIBERA_ANTES_PROF_MIN : ATEND_LIBERA_ANTES_MIN) * 60000;
+  const agora = Date.now();
+  if (agora < inicioMs - antes) {
+    throw new HttpsError('failed-precondition', `A sala abre ${anfitria ? ATEND_LIBERA_ANTES_PROF_MIN : ATEND_LIBERA_ANTES_MIN} minutos antes do horário.`);
+  }
+  if (agora > fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) throw new HttpsError('failed-precondition', 'Este atendimento já terminou.');
+
+  const sala = (await db.collection('atendimentosSala').doc(id).get()).data();
+  if (!sala) throw new HttpsError('not-found', 'A sala deste atendimento não foi encontrada.');
+  const cfg = await configAtendimentos();
+  const priv = (await db.collection('atendimentosPrivado').doc(id).get()).data() || {};
+  const eu = (priv.participantes || []).find(p => p.uid === uid);
+  if (!anfitria && eu?.status === 'removido') throw new HttpsError('permission-denied', 'Você não está mais neste atendimento.');
+  const nome = anfitria ? `${a.profissionalNome || 'Psicóloga'} (anfitriã)` : (eu?.nome || 'Participante');
+  const prov = PROVEDORES_VIDEO[sala.provedor] || PROVEDORES_VIDEO.jitsi;
+  const url = await prov.urlParticipante(sala, { nome, uid, anfitria, fimMs, salaDeEspera: cfg.salaDeEspera });
+
+  if (!anfitria) {
+    // Presença (sem conteúdo da sessão) e renovação da cortesia de acompanhamento.
+    const participantes = (priv.participantes || []).map(p => (p.uid === uid ? { ...p, ultimaEntradaEm: admin.firestore.Timestamp.now() } : p));
+    await db.collection('atendimentosPrivado').doc(id).set({ participantes }, { merge: true });
+    await concederBeneficioAtendimento(uid, fimMs, cfg.beneficioDias).catch(e => console.warn('[Atendimentos] benefício', e?.message));
+  }
+  return { url, provedor: sala.provedor, modoTeste: sala.provedor !== 'daily', embutir: sala.provedor === 'daily', anfitria };
+});
+
+// ---- Lembretes: 1 h e 10 min antes -------------------------------------------
+exports.lembretesAtendimento = onSchedule({ schedule: 'every 5 minutes', timeZone: TIMEZONE }, async () => {
+  const agora = Date.now();
+  const snap = await db.collection('atendimentos')
+    .where('inicio', '>=', admin.firestore.Timestamp.fromMillis(agora - 60000))
+    .where('inicio', '<=', admin.firestore.Timestamp.fromMillis(agora + 61 * 60000))
+    .get();
+  for (const docSnap of snap.docs) {
+    const a = docSnap.data();
+    if (a.status !== 'agendado') continue;
+    const faltaMin = (a.inicio.toMillis() - agora) / 60000;
+    let marca = null;
+    let texto = '';
+    if (faltaMin <= 12 && !a.lembrete10Enviado) {
+      marca = { lembrete10Enviado: true, lembrete60Enviado: true };
+      texto = 'Seu atendimento começa em 10 minutos. A sala já está aberta: toque para entrar.';
+    } else if (faltaMin <= 61 && faltaMin > 12 && !a.lembrete60Enviado) {
+      marca = { lembrete60Enviado: true };
+      texto = 'Seu atendimento começa em 1 hora. Se puder, procure um lugar reservado e teste a câmera e o microfone.';
+    }
+    if (!marca) continue;
+    await docSnap.ref.update(marca);
+    await avisarParticipantesAtendimento(a.participantesUids || [], texto);
+    await avisarParticipantesAtendimento([a.profissionalUid],
+      `${a.titulo}: começa em ${faltaMin <= 12 ? '10 minutos' : '1 hora'}.`, 'AdminAtendimentos');
+  }
+});
+
+// =============================================================================
+// IMOBILIÁRIAS — "Lar e recomeço" (parceria Atravessia + imobiliária + arquiteto)
+// =============================================================================
+// A usuária demonstra interesse numa imobiliária parceira e recebe um código
+// (ATR-IMV-XXXX) e um QR Code. A imobiliária acompanha os leads pelo portal
+// imobiliaria.html?t=<token> (sem login). Quando o negócio fecha, a imobiliária
+// repassa o valor combinado; a Atravessia confirma o recebimento (valor
+// congelado) e agenda uma consultoria online com arquiteto parceiro.
+// Coleções: imobiliarias, imobiliariasPrivado, imoveis, arquitetos,
+// arquitetosPrivado, indicacoesImoveis (lead; a usuária lê o próprio) e
+// indicacoesImoveisPrivado (valores do negócio e do repasse; só admin).
+// Ver docs/imobiliarias/README.md.
+
+const PORTAL_IMOBILIARIA_URL = `${SITE_URL}/imobiliaria.html`;
+const STATUS_IMV = ['novo', 'em_contato', 'visita', 'proposta', 'fechado', 'pago', 'consultoria_agendada', 'concluido', 'perdido'];
+const ABERTOS_IMV = ['novo', 'em_contato', 'visita', 'proposta'];
+// Mudanças de status que a imobiliária pode fazer pelo portal. "pago" em
+// diante é só da Atravessia. "fechado → fechado" serve para corrigir o valor
+// do negócio enquanto o repasse não foi confirmado.
+const TRANSICOES_IMOBILIARIA = {
+  novo: ['em_contato', 'visita', 'proposta', 'fechado', 'perdido'],
+  em_contato: ['visita', 'proposta', 'fechado', 'perdido'],
+  visita: ['em_contato', 'proposta', 'fechado', 'perdido'],
+  proposta: ['em_contato', 'visita', 'fechado', 'perdido'],
+  fechado: ['fechado'],
+  perdido: ['em_contato'],
+};
+const VERSAO_CONSENTIMENTO_IMV = '1.0';
+const TEXTO_CONSENTIMENTO_IMV = 'Autorizo a Atravessia a compartilhar meu nome, meu telefone e o que escrevi aqui com esta imobiliária, '
+  + 'só para que ela entre em contato sobre este interesse. A imobiliária não recebe nenhum outro dado meu '
+  + '(nem check-ins, nem diário, nem plano). Posso pedir a exclusão a qualquer momento.';
+
+const limparTextoImv = (v, max) => String(v ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, max);
+// Valor em reais vindo do portal/painel: número ou texto ("1.234,56" ou "1234.56").
+function centavosImv(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return centavos(v);
+  let t = String(v).replace(/[^\d.,]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  return centavos(t);
+}
+const agoraTsImv = () => admin.firestore.Timestamp.now();
+const eventoImv = (status, por, extra = {}) => ({ status, em: agoraTsImv(), por, ...extra });
+
+async function gerarCodigoImv() {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let tentativa = 0; tentativa < 8; tentativa++) {
+    const tam = tentativa < 5 ? 4 : 5;
+    let s = '';
+    for (let i = 0; i < tam; i++) s += alfabeto[crypto.randomInt(alfabeto.length)];
+    const codigo = `ATR-IMV-${s}`;
+    const existe = await db.collection('indicacoesImoveis').where('codigo', '==', codigo).limit(1).get();
+    if (existe.empty) return codigo;
+  }
+  throw new HttpsError('unavailable', 'Não foi possível gerar o código agora. Tente de novo.');
+}
+
+// Regra combinada com a imobiliária (imobiliariasPrivado): venda e aluguel
+// separados; 'percentual' sobre o valor do negócio (no aluguel, sobre o
+// aluguel mensal informado) ou 'fixo' em reais por negócio.
+function regraRepasseImv(priv, interesse) {
+  const chave = interesse === 'alugar' ? 'Aluguel' : 'Venda';
+  return {
+    tipo: priv?.[`repasse${chave}Tipo`] === 'percentual' ? 'percentual' : 'fixo',
+    valor: Number(priv?.[`repasse${chave}Valor`]) || 0,
+  };
+}
+function calcularRepasseImv(priv, interesse, valorNegocioCentavos) {
+  const r = regraRepasseImv(priv, interesse);
+  if (r.valor <= 0) return 0;
+  if (r.tipo === 'percentual') return Math.max(0, Math.round((Number(valorNegocioCentavos) || 0) * Math.min(r.valor, 100) / 100));
+  return Math.round(r.valor * 100);
+}
+
+const MSG_USUARIA_IMV = {
+  em_contato: (l) => `A ${l.imobiliariaNome} recebeu sua indicação e vai falar com você em breve.`,
+  visita: (l) => `Visita registrada com a ${l.imobiliariaNome}. Que seja um bom encontro com o novo lar.`,
+  proposta: (l) => `Sua proposta com a ${l.imobiliariaNome} está em andamento. Seguimos com você.`,
+  fechado: (l) => `Negócio fechado com a ${l.imobiliariaNome}! Assim que a imobiliária confirmar o repasse, liberamos sua consultoria com arquiteto parceiro.`,
+  pago: () => 'Sua consultoria online com arquiteto parceiro está liberada. Em breve combinamos a data com você.',
+  consultoria_agendada: (l, x) => `Sua consultoria com arquiteto parceiro está marcada${x?.quando ? ` para ${x.quando}` : ''}. O link está no app.`,
+  concluido: () => 'Consultoria concluída. Que esse novo lar acolha os seus recomeços.',
+  perdido: (l) => `A negociação com a ${l.imobiliariaNome} foi encerrada. Quando quiser, você pode fazer uma nova indicação.`,
+};
+
+// Aviso no sininho (sem detalhes: o texto fica no lead, que só a dona lê) + push.
+async function avisarUsuariaImv(lead, status, extra) {
+  const msg = MSG_USUARIA_IMV[status];
+  if (!msg || !lead?.uid) return;
+  try {
+    await db.collection('notificacoesEditoriais').add({
+      usuarioId: lead.uid, tipo: 'imovel', screen: 'MinhasIndicacoesImoveis',
+      texto: 'Sua indicação de imóvel tem novidades. Toque para acompanhar.',
+      ativa: true, criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { console.warn('[imoveis] aviso não gravado:', e?.message); }
+  await pushParaUsuaria(lead.uid, msg(lead, extra), 'MinhasIndicacoesImoveis');
+}
+
+async function avisarAdminsImv(body) {
+  try {
+    const tokens = await tokensAdministradoras();
+    await enviarPush(tokens.map(to => ({ to, title: 'Atravessia · Imobiliárias', body, data: { screen: 'AdminImobiliarias' } })));
+  } catch (e) { console.warn('[imoveis] push admin não enviado:', e?.message); }
+}
+
+// Data "AAAA-MM-DDTHH:mm" no horário de Brasília (sem horário de verão).
+function dataHoraBrasiliaImv(s) {
+  const t = String(s || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(t)) return null;
+  const ms = Date.parse(`${t}:00-03:00`);
+  return Number.isNaN(ms) ? null : ms;
+}
+const textoDataHoraImv = (ms) => new Date(ms).toLocaleString('pt-BR', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
+
+// ---- 1) Usuária envia o interesse (gera código + QR) -------------------------
+exports.criarIndicacaoImovel = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta para enviar o interesse.');
+  const d = request.data || {};
+  if (d.consentimento !== true) throw new HttpsError('invalid-argument', 'Para enviar, é preciso autorizar o compartilhamento do nome e do telefone com a imobiliária.');
+  const imobiliariaId = idValido(d.imobiliariaId, 'Imobiliária inválida.');
+  const interesse = d.interesse === 'alugar' ? 'alugar' : 'comprar';
+  const nome = limparTextoImv(d.nome, 120);
+  const telefone = String(d.telefone || '').replace(/\D/g, '').slice(0, 15);
+  if (nome.length < 2) throw new HttpsError('invalid-argument', 'Informe seu nome.');
+  if (telefone.length < 10) throw new HttpsError('invalid-argument', 'Informe um telefone com DDD.');
+
+  if (await passouDoLimite(`imv-lead:${uid}`, { max: 10, janelaMs: 24 * 60 * 60 * 1000 })) {
+    throw new HttpsError('resource-exhausted', 'Você já enviou muitas indicações hoje. Tente de novo amanhã.');
+  }
+
+  const imobSnap = await db.collection('imobiliarias').doc(imobiliariaId).get();
+  if (!imobSnap.exists || imobSnap.data().ativo === false) throw new HttpsError('failed-precondition', 'Esta imobiliária não está disponível no momento.');
+  const imob = imobSnap.data();
+
+  let imovelId = null;
+  let imovelTitulo = '';
+  if (d.imovelId) {
+    imovelId = idValido(d.imovelId, 'Imóvel inválido.');
+    const im = await db.collection('imoveis').doc(imovelId).get();
+    if (!im.exists || im.data().imobiliariaId !== imobiliariaId || im.data().ativo === false) throw new HttpsError('failed-precondition', 'Este imóvel não está mais disponível.');
+    imovelTitulo = limparTextoImv(im.data().titulo, 160);
+  }
+
+  // Já existe uma indicação em aberto para o mesmo destino: devolve a mesma.
+  const minhas = await db.collection('indicacoesImoveis').where('uid', '==', uid).get();
+  const repetida = minhas.docs.find(x => {
+    const v = x.data();
+    return v.imobiliariaId === imobiliariaId && (v.imovelId || null) === imovelId && ABERTOS_IMV.includes(v.status);
+  });
+  if (repetida) return { id: repetida.id, codigo: repetida.data().codigo, existente: true };
+
+  const codigo = await gerarCodigoImv();
+  const tokenSeguro = crypto.randomBytes(18).toString('base64url');
+  const ref = db.collection('indicacoesImoveis').doc();
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const { ip, ua } = origemChamada(request);
+  await ref.set({
+    uid, nome, telefone,
+    imobiliariaId, imobiliariaNome: limparTextoImv(imob.nome, 120),
+    imovelId, imovelTitulo,
+    codigo, tokenSeguro,
+    linkValidacao: `${PORTAL_IMOBILIARIA_URL}?c=${encodeURIComponent(codigo)}&v=${tokenSeguro}`,
+    interesse,
+    faixaPreco: limparTextoImv(d.faixaPreco, 60),
+    bairros: limparTextoImv(d.bairros, 200),
+    prazo: limparTextoImv(d.prazo, 60),
+    observacoes: limparTextoImv(d.observacoes, 600),
+    consentimento: {
+      aceito: true,
+      versao: limparTextoImv(d.versaoConsentimento, 10) || VERSAO_CONSENTIMENTO_IMV,
+      texto: TEXTO_CONSENTIMENTO_IMV,
+      em: agoraTsImv(),
+      ip: resumirIp(ip), navegador: resumirUserAgent(ua),
+    },
+    status: 'novo',
+    historico: [eventoImv('novo', 'usuaria')],
+    criadoEm: agora, atualizadoEm: agora,
+  });
+  await db.collection('indicacoesImoveisPrivado').doc(ref.id).set({ imobiliariaId, criadoEm: agora });
+  await avisarAdminsImv(`Nova indicação ${codigo} para ${imob.nome || 'imobiliária'} (${interesse === 'alugar' ? 'aluguel' : 'compra'}).`);
+  return { id: ref.id, codigo, existente: false };
+});
+
+// ---- Portal da imobiliária: identificação pelo token (limite por IP) ---------
+async function imobiliariaPorToken(request) {
+  const { ip } = origemChamada(request);
+  const chave = ip || 'sem-ip';
+  const LIM_FALHA = { max: 8, janelaMs: 30 * 60 * 1000 };
+  if (await passouDoLimite(`imv-portal:${chave}`, { max: 90, janelaMs: 10 * 60 * 1000 })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  if (await passouDoLimite(`imv-falha:${chave}`, { ...LIM_FALHA, incrementar: false })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  const falhar = async (codigo, msg) => {
+    await passouDoLimite(`imv-falha:${chave}`, LIM_FALHA);
+    throw new HttpsError(codigo, msg);
+  };
+  const token = String(request.data?.token || '');
+  if (!TOKEN_PORTAL.test(token)) await falhar('invalid-argument', 'Link inválido. Abra o link exatamente como a equipe Atravessia enviou.');
+  const snap = await db.collection('imobiliariasPrivado').where('tokenPortal', '==', token).limit(1).get();
+  if (snap.empty) await falhar('not-found', 'Este link não é mais válido. Peça um novo à equipe Atravessia.');
+  const id = snap.docs[0].id;
+  const pub = await db.collection('imobiliarias').doc(id).get();
+  return { id, priv: snap.docs[0].data(), pub: pub.data() || {}, falhar };
+}
+
+const msImv = (ts) => (ts?.toMillis ? ts.toMillis() : null);
+
+// Lead como a imobiliária vê: nome e telefone só de quem consentiu.
+function leadParaPortal(id, l, p) {
+  const consentiu = l.consentimento?.aceito === true;
+  return {
+    id, codigo: l.codigo, status: l.status,
+    nome: consentiu ? l.nome || '' : '', telefone: consentiu ? l.telefone || '' : '', consentiu,
+    interesse: l.interesse, faixaPreco: l.faixaPreco || '', bairros: l.bairros || '', prazo: l.prazo || '',
+    observacoes: consentiu ? l.observacoes || '' : '', imovelTitulo: l.imovelTitulo || '',
+    criadoEm: msImv(l.criadoEm), validadoEm: msImv(l.validadoEm),
+    historico: (l.historico || []).filter(h => h?.status).map(h => ({ status: h.status, em: msImv(h.em), por: h.por || '' })),
+    valorNegocio: p?.valorNegocioCentavos != null ? p.valorNegocioCentavos / 100 : null,
+    repassePrevisto: p?.repassePrevistoCentavos != null ? p.repassePrevistoCentavos / 100 : null,
+    repasseEnviadoEm: msImv(p?.repasseEnviado?.em),
+    repasseConfirmado: p?.repasseCentavos != null ? p.repasseCentavos / 100 : null,
+    pagoEm: msImv(p?.pagoEm),
+    beneficioEntregue: l.status === 'concluido',
+  };
+}
+
+exports.portalImobiliaria = onCall(async (request) => {
+  const { id, priv, pub } = await imobiliariaPorToken(request);
+  // Mesmo desativada no app, o portal segue aberto para concluir os leads em andamento.
+  const [leadsSnap, privSnap] = await Promise.all([
+    db.collection('indicacoesImoveis').where('imobiliariaId', '==', id).get(),
+    db.collection('indicacoesImoveisPrivado').where('imobiliariaId', '==', id).get(),
+  ]);
+  const privados = new Map(privSnap.docs.map(x => [x.id, x.data()]));
+  const leads = leadsSnap.docs.map(x => leadParaPortal(x.id, x.data(), privados.get(x.id)))
+    .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+
+  // Validação de código / QR (opcional).
+  let validacao = null;
+  const codigoBruto = String(request.data?.codigo || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (codigoBruto) {
+    const codigo = codigoBruto.startsWith('ATR-IMV-') ? codigoBruto : `ATR-IMV-${codigoBruto.replace(/^ATR-?IMV-?/, '')}`;
+    const doc = leadsSnap.docs.find(x => x.data().codigo === codigo);
+    if (!doc) {
+      validacao = { ok: false, mensagem: 'Não encontramos este código entre as indicações da sua imobiliária. Confira as letras e os números.' };
+    } else {
+      const l = doc.data();
+      const v = String(request.data?.v || '');
+      const viaQr = !!v && v === l.tokenSeguro;
+      if (!l.validadoEm) {
+        await doc.ref.update({ validadoEm: agoraTsImv(), validadoViaQr: viaQr, atualizadoEm: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      validacao = { ok: true, leadId: doc.id, codigo, viaQr, jaValidado: !!l.validadoEm };
+      const item = leads.find(x => x.id === doc.id);
+      if (item && !item.validadoEm) item.validadoEm = Date.now();
+    }
+  }
+
+  const fechadosAbertos = leads.filter(l => l.status === 'fechado');
+  const resumo = {
+    total: leads.length,
+    emAndamento: leads.filter(l => ABERTOS_IMV.includes(l.status)).length,
+    fechados: leads.filter(l => ['fechado', 'pago', 'consultoria_agendada', 'concluido'].includes(l.status)).length,
+    aRepassar: fechadosAbertos.reduce((s, l) => s + (l.repassePrevisto || 0), 0),
+    repassado: leads.reduce((s, l) => s + (l.repasseConfirmado || 0), 0),
+  };
+  return {
+    imobiliaria: { nome: pub.nome || '', logoUrl: pub.logoUrl || '', creci: pub.creci || '' },
+    regra: {
+      venda: regraRepasseImv(priv, 'comprar'),
+      aluguel: regraRepasseImv(priv, 'alugar'),
+      prazoDias: Number(priv.prazoRepasseDias) || null,
+      dadosPagamento: limparTextoImv(priv.dadosPagamentoAtravessia, 400),
+    },
+    leads, resumo, validacao,
+  };
+});
+
+// ---- 2) Imobiliária atualiza o lead (status, valor, repasse enviado) ---------
+exports.atualizarLeadImobiliaria = onCall(async (request) => {
+  const { id: imobId, priv, falhar } = await imobiliariaPorToken(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const acao = String(request.data?.acao || 'status');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  if (acao === 'repasseEnviado') {
+    const comprovanteUrl = urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante');
+    const observacao = limparTextoImv(request.data?.observacao, 300);
+    const lead = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.data().imobiliariaId !== imobId) return null;
+      if (snap.data().status !== 'fechado') throw new HttpsError('failed-precondition', 'Só dá para informar o repasse de um negócio fechado e ainda não confirmado.');
+      tx.set(privRef, { imobiliariaId: imobId, repasseEnviado: { em: agoraTsImv(), comprovanteUrl, observacao }, atualizadoEm: agora }, { merge: true });
+      return snap.data();
+    });
+    if (!lead) await falhar('not-found', 'Indicação não encontrada.');
+    await avisarAdminsImv(`A imobiliária ${lead.imobiliariaNome} informou o repasse da indicação ${lead.codigo}. Confira e confirme o recebimento.`);
+    return { ok: true };
+  }
+
+  if (acao !== 'status') throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+  const novo = String(request.data?.status || '');
+  if (!STATUS_IMV.includes(novo)) throw new HttpsError('invalid-argument', 'Status inválido.');
+  let valorNegocioCentavos = null;
+  if (novo === 'fechado') {
+    valorNegocioCentavos = centavosImv(request.data?.valorNegocio);
+    if (!valorNegocioCentavos || valorNegocioCentavos > 10000000000) throw new HttpsError('invalid-argument', 'Informe o valor do negócio (venda ou aluguel mensal).');
+  }
+  const resultado = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.data().imobiliariaId !== imobId) return null;
+    const l = snap.data();
+    const permitidos = TRANSICOES_IMOBILIARIA[l.status] || [];
+    if (!permitidos.includes(novo)) throw new HttpsError('failed-precondition', 'Esta mudança de etapa não é permitida agora.');
+    const upd = { status: novo, atualizadoEm: agora };
+    if (novo !== l.status) upd.historico = admin.firestore.FieldValue.arrayUnion(eventoImv(novo, 'imobiliaria'));
+    tx.update(ref, upd);
+    if (novo === 'fechado') {
+      tx.set(privRef, {
+        imobiliariaId: imobId, valorNegocioCentavos,
+        repassePrevistoCentavos: calcularRepasseImv(priv, l.interesse, valorNegocioCentavos),
+        regraAplicada: regraRepasseImv(priv, l.interesse),
+        fechadoEm: agoraTsImv(), atualizadoEm: agora,
+      }, { merge: true });
+    }
+    return { lead: l, mudou: novo !== l.status };
+  });
+  if (!resultado) await falhar('not-found', 'Indicação não encontrada.');
+  if (resultado.mudou) {
+    await avisarUsuariaImv(resultado.lead, novo);
+    if (novo === 'fechado') await avisarAdminsImv(`Negócio fechado: indicação ${resultado.lead.codigo} (${resultado.lead.imobiliariaNome}). Aguarde o repasse.`);
+  }
+  return { ok: true };
+});
+
+// ---- 3) Admin: link do portal da imobiliária ---------------------------------
+exports.gerenciarPortalImobiliaria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const id = idValido(request.data?.imobiliariaId, 'Escolha a imobiliária.');
+  const acao = String(request.data?.acao || '');
+  if (!(await db.collection('imobiliarias').doc(id).get()).exists) throw new HttpsError('not-found', 'Imobiliária não encontrada.');
+  const privRef = db.collection('imobiliariasPrivado').doc(id);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  if (acao === 'novoLink') {
+    const tokenPortal = gerarTokenPortal();
+    await privRef.set({ tokenPortal, tokenGeradoEm: agora, tokenRevogadoEm: null, atualizadoEm: agora, atualizadoPor: adminUid }, { merge: true });
+    return { ok: true, linkPortal: `${PORTAL_IMOBILIARIA_URL}?t=${tokenPortal}` };
+  }
+  if (acao === 'revogar') {
+    await privRef.set({ tokenPortal: null, tokenRevogadoEm: agora, atualizadoEm: agora, atualizadoPor: adminUid }, { merge: true });
+    return { ok: true };
+  }
+  throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+});
+
+// ---- 4) Admin: confirma o recebimento do repasse (congela o valor) -----------
+exports.confirmarRepasseImobiliaria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const informado = centavosImv(request.data?.valorRecebido);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lead = await db.runTransaction(async (tx) => {
+    const [snap, pSnap] = await Promise.all([tx.get(ref), tx.get(privRef)]);
+    if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+    const l = snap.data();
+    if (l.status !== 'fechado') throw new HttpsError('failed-precondition', 'Só dá para confirmar o repasse de um negócio fechado (e ainda não confirmado).');
+    const p = pSnap.data() || {};
+    let previsto = p.repassePrevistoCentavos;
+    if (previsto == null) {
+      const imobPriv = (await tx.get(db.collection('imobiliariasPrivado').doc(l.imobiliariaId))).data();
+      previsto = calcularRepasseImv(imobPriv, l.interesse, p.valorNegocioCentavos || 0);
+    }
+    const repasseCentavos = informado != null ? informado : previsto;
+    if (!repasseCentavos || repasseCentavos <= 0) throw new HttpsError('invalid-argument', 'Informe o valor recebido da imobiliária.');
+    tx.update(ref, { status: 'pago', atualizadoEm: agora, historico: admin.firestore.FieldValue.arrayUnion(eventoImv('pago', 'admin')) });
+    tx.set(privRef, {
+      imobiliariaId: l.imobiliariaId, repasseCentavos, repassePrevistoCentavos: previsto,
+      pagoEm: agoraTsImv(), pagoPor: adminUid, atualizadoEm: agora,
+    }, { merge: true });
+    return l;
+  });
+  await registrarAuditoriaBeneficio('IMOVEL_REPASSE_CONFIRMADO', 'indicacaoImovel', leadId, { adminUid });
+  await avisarUsuariaImv(lead, 'pago');
+  return { ok: true };
+});
+
+// ---- 5) Admin: atribui arquiteto e agenda a consultoria -----------------------
+exports.agendarConsultoria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const arquitetoId = idValido(request.data?.arquitetoId, 'Escolha o arquiteto.');
+  const ms = dataHoraBrasiliaImv(request.data?.dataHora);
+  if (!ms) throw new HttpsError('invalid-argument', 'Informe a data e o horário da consultoria.');
+  const link = urlHttpsOpcional(request.data?.link, 'Link da chamada');
+  const duracaoHoras = Math.min(8, Math.max(0.5, Number(request.data?.duracaoHoras) || 2));
+  const observacao = limparTextoImv(request.data?.observacao, 300);
+  const [arqSnap, arqPriv] = await Promise.all([
+    db.collection('arquitetos').doc(arquitetoId).get(),
+    db.collection('arquitetosPrivado').doc(arquitetoId).get(),
+  ]);
+  if (!arqSnap.exists) throw new HttpsError('not-found', 'Arquiteto não encontrado.');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lead = await db.runTransaction(async (tx) => {
+    const [snap, pSnap] = await Promise.all([tx.get(ref), tx.get(privRef)]);
+    if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+    const l = snap.data();
+    if (!['pago', 'consultoria_agendada'].includes(l.status)) throw new HttpsError('failed-precondition', 'A consultoria só pode ser agendada depois de confirmado o repasse da imobiliária.');
+    const p = pSnap.data() || {};
+    tx.update(ref, {
+      status: 'consultoria_agendada',
+      arquitetoId, arquitetoNome: limparTextoImv(arqSnap.data().nome, 120),
+      consultoria: { data: admin.firestore.Timestamp.fromMillis(ms), link, duracaoHoras, observacao, status: 'agendada' },
+      atualizadoEm: agora,
+      ...(l.status !== 'consultoria_agendada' ? { historico: admin.firestore.FieldValue.arrayUnion(eventoImv('consultoria_agendada', 'admin')) } : {}),
+    });
+    // Custo do arquiteto congelado na primeira atribuição (ou ao trocar de arquiteto, se ainda não pago).
+    if (p.custoArquitetoCentavos == null || (p.arquitetoId !== arquitetoId && !p.arquitetoPagoEm)) {
+      tx.set(privRef, {
+        imobiliariaId: l.imobiliariaId, arquitetoId,
+        custoArquitetoCentavos: Math.round((Number(arqPriv.data()?.valorConsultoria) || 0) * 100),
+        atualizadoEm: agora, agendadoPor: adminUid,
+      }, { merge: true });
+    }
+    return l;
+  });
+  await avisarUsuariaImv(lead, 'consultoria_agendada', { quando: textoDataHoraImv(ms) });
+  return { ok: true };
+});
+
+// ---- 6) Admin: concluir consultoria, pagar arquiteto, corrigir etapa --------
+exports.atualizarLeadAdmin = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const acao = String(request.data?.acao || '');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+  const l = snap.data();
+
+  if (acao === 'concluirConsultoria') {
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada nesta indicação.');
+    await ref.update({
+      status: 'concluido', 'consultoria.status': 'concluida', atualizadoEm: agora,
+      historico: admin.firestore.FieldValue.arrayUnion(eventoImv('concluido', 'admin')),
+    });
+    await avisarUsuariaImv(l, 'concluido');
+    return { ok: true };
+  }
+  if (acao === 'pagarArquiteto') {
+    const p = (await privRef.get()).data() || {};
+    if (p.arquitetoPagoEm) throw new HttpsError('failed-precondition', 'O pagamento ao arquiteto já foi registrado.');
+    if (!['consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Agende a consultoria antes de registrar o pagamento ao arquiteto.');
+    const valor = centavosImv(request.data?.valor) ?? p.custoArquitetoCentavos;
+    if (valor == null) throw new HttpsError('invalid-argument', 'Informe o valor pago ao arquiteto.');
+    await privRef.set({
+      arquitetoPagoEm: agoraTsImv(), arquitetoPagoCentavos: valor,
+      arquitetoComprovanteUrl: urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante'),
+      atualizadoEm: agora, arquitetoPagoPor: adminUid,
+    }, { merge: true });
+    return { ok: true };
+  }
+  if (acao === 'status') {
+    // Correções manuais. "pago" e "consultoria_agendada" têm ações próprias.
+    const novo = String(request.data?.status || '');
+    if (!['novo', 'em_contato', 'visita', 'proposta', 'perdido'].includes(novo)) throw new HttpsError('invalid-argument', 'Use as ações próprias para fechar, confirmar repasse ou agendar.');
+    if (['pago', 'consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Depois do repasse confirmado a etapa não volta atrás.');
+    if (novo === l.status) return { ok: true };
+    await ref.update({ status: novo, atualizadoEm: agora, historico: admin.firestore.FieldValue.arrayUnion(eventoImv(novo, 'admin')) });
+    await avisarUsuariaImv(l, novo);
+    return { ok: true };
+  }
+  if (acao === 'cancelarConsultoria') {
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada.');
+    await ref.update({ status: 'pago', 'consultoria.status': 'cancelada', atualizadoEm: agora });
+    return { ok: true };
+  }
+  throw new HttpsError('invalid-argument', 'Ação desconhecida.');
 });

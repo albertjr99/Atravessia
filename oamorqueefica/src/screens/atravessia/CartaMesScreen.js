@@ -76,13 +76,13 @@ export default function CartaMesScreen({ navigation }) {
       <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
         <View style={s.coluna}>
           <View style={s.trilho}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.meses}>
+            <View style={s.meses}>
               {meses.map((m, i) => (
                 <TouchableOpacity key={m.rotulo} style={[s.mes, i === sel && s.mesSel]} onPress={() => setSel(i)} accessibilityState={{ selected: i === sel }}>
                   <Text style={[s.mesTxt, i === sel && s.mesTxtSel]}>{m.rotulo}</Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           </View>
 
           {!carta.vazio && (
@@ -129,8 +129,8 @@ const s = criarEstilos(() => ({
   conteudo: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   coluna: { width: '100%', gap: spacing.md },
   // Meses num trilho de vidro (o escolhido em branco sólido)
-  trilho: { borderRadius: radius.full, overflow: 'hidden', backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz },
-  meses: { padding: 4, gap: 4 },
+  trilho: { borderRadius: 22, overflow: 'hidden', backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz },
+  meses: { padding: 4, gap: 4, flexDirection: 'row', flexWrap: 'wrap' }, // meses quebram linha, sem arrastar
   mes: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 15, borderRadius: radius.full },
   mesSel: {
     backgroundColor: colors.escuro ? colors.lav2 : colors.cardSolido,

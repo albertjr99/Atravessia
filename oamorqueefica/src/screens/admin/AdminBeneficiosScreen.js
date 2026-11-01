@@ -10,6 +10,7 @@ import { db, functions } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout, { LARGURA_LATERAL } from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 import { est, acento, Degrade } from './adminEstilo';
 
 // ============================================================================
@@ -636,26 +637,31 @@ export default function AdminBeneficiosScreen({ navigation, route }) {
         {/* ---------------- Filtros ---------------- */}
         <View style={s.filtros}>
           <Text style={s.filtroRotulo}>PARCERIA</Text>
-          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
-            <Chip label="Todas" ativo={filtroParceria === 'todas'} onPress={() => setFiltroParceria('todas')} />
-            {parceriasCupom.map(p => (
-              <Chip key={p.id} label={`${p.titulo || 'Sem nome'}${p.ativo === false ? ' (inativa)' : ''}`}
-                ativo={filtroParceria === p.id} onPress={() => setFiltroParceria(p.id)} />
-            ))}
-          </ScrollView>
+          <SeletorOpcoes
+            titulo="Parceria"
+            estilo={s.chipsLinha}
+            opcoes={[{ id: 'todas', label: 'Todas' }, ...parceriasCupom.map(p => ({ id: p.id, label: `${p.titulo || 'Sem nome'}${p.ativo === false ? ' (inativa)' : ''}` }))]}
+            valor={filtroParceria}
+            onChange={setFiltroParceria}
+          />
 
           <Text style={s.filtroRotulo}>PERÍODO</Text>
-          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
-            {PERIODOS.map(p => <Chip key={p.id} label={p.label} ativo={periodo === p.id} onPress={() => setPeriodo(p.id)} />)}
-          </ScrollView>
+          <SeletorOpcoes
+            titulo="Período"
+            estilo={s.chipsLinha}
+            opcoes={PERIODOS.map(p => ({ id: p.id, label: p.label }))}
+            valor={periodo}
+            onChange={setPeriodo}
+          />
 
           <Text style={s.filtroRotulo}>SITUAÇÃO</Text>
-          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipsLinha}>
-            <Chip label="Todas" ativo={filtroStatus === 'todos'} onPress={() => setFiltroStatus('todos')} />
-            {ORDEM_STATUS.map(st => (
-              <Chip key={st} label={STATUS[st].rotulo} ativo={filtroStatus === st} onPress={() => setFiltroStatus(st)} />
-            ))}
-          </ScrollView>
+          <SeletorOpcoes
+            titulo="Situação"
+            estilo={s.chipsLinha}
+            opcoes={[{ id: 'todos', label: 'Todas' }, ...ORDEM_STATUS.map(st => ({ id: st, label: STATUS[st].rotulo }))]}
+            valor={filtroStatus}
+            onChange={setFiltroStatus}
+          />
 
           <View style={s.filtroRodape}>
             <Text style={s.filtroResumo} numberOfLines={2}>

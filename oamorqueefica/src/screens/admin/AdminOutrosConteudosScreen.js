@@ -18,6 +18,7 @@ import Recolhivel from '../../components/Recolhivel';
 import { emocoes as EMOCOES_APP } from '../../data';
 import AdminLayout from './AdminLayout';
 import AdminSubTabs from './AdminSubTabs';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 
 // "Outros conteúdos": imagem, link e texto sugeridos à usuária no check-in
 // conforme a emoção. Áudios têm seção própria (Áudios Check-in) e o antigo
@@ -479,17 +480,13 @@ export default function AdminOutrosConteudosScreen({ navigation }) {
           </Text>
         </Recolhivel>
 
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} style={s.filtroScroll} contentContainerStyle={s.filtroRow}>
-          {filtros.map(f => {
-            const sel = filtroTipo === f.id;
-            return (
-              <TouchableOpacity key={f.id} style={[s.chip, sel && s.chipSel]} onPress={() => setFiltroTipo(f.id)}>
-                {f.icon ? <Ionicons name={f.icon} size={14} color={sel ? colors.lilasTexto : colors.texto2} /> : null}
-                <Text style={[s.chipTxt, sel && s.chipTxtSel]}>{f.label} ({contagem[f.id] ?? 0})</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <SeletorOpcoes
+          titulo="Filtrar por tipo"
+          estilo={s.filtroScroll}
+          opcoes={filtros.map(f => ({ id: f.id, label: `${f.label} (${contagem[f.id] ?? 0})`, icone: f.icon }))}
+          valor={filtroTipo}
+          onChange={setFiltroTipo}
+        />
 
         {erroLeitura ? (
           <View style={s.erroBox}>

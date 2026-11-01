@@ -52,6 +52,12 @@ import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
 import ConfirmarResgateScreen from '../screens/parcerias/ConfirmarResgateScreen';
+import LarRecomecoScreen from '../screens/imoveis/LarRecomecoScreen';
+import ImobiliariaScreen from '../screens/imoveis/ImobiliariaScreen';
+import InteresseImovelScreen from '../screens/imoveis/InteresseImovelScreen';
+import IndicacaoImovelScreen from '../screens/imoveis/IndicacaoImovelScreen';
+import MinhasIndicacoesImoveisScreen from '../screens/imoveis/MinhasIndicacoesImoveisScreen';
+import AdminImobiliariasScreen from '../screens/admin/AdminImobiliariasScreen';
 import FavoritosScreen from '../screens/favoritos/FavoritosScreen';
 import JornadasScreen from '../screens/jornadas/JornadasScreen';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
@@ -73,7 +79,11 @@ import CursosScreen from '../screens/cursos/CursosScreen';
 import CursoScreen from '../screens/cursos/CursoScreen';
 import AulaScreen from '../screens/cursos/AulaScreen';
 import AdminCursosScreen from '../screens/admin/AdminCursosScreen';
+import AdminAtendimentosScreen from '../screens/admin/AdminAtendimentosScreen';
+import MeusAtendimentosScreen from '../screens/atendimentos/MeusAtendimentosScreen';
+import SalaAtendimentoScreen from '../screens/atendimentos/SalaAtendimentoScreen';
 import { SobreScreen, SejaParceiroScreen } from '../screens/institucional/TextoInstitucionalScreen';
+import TravessinhosScreen from '../screens/travessinhos/TravessinhosScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { useTema } from '../hooks/TemaContext';
@@ -109,6 +119,11 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Voucher" component={VoucherScreen} />
       <Stack.Screen name="MeusCupons" component={MeusCuponsScreen} />
       <Stack.Screen name="ConfirmarResgate" component={ConfirmarResgateScreen} />
+      <Stack.Screen name="LarRecomeco" component={LarRecomecoScreen} />
+      <Stack.Screen name="Imobiliaria" component={ImobiliariaScreen} />
+      <Stack.Screen name="InteresseImovel" component={InteresseImovelScreen} />
+      <Stack.Screen name="IndicacaoImovel" component={IndicacaoImovelScreen} />
+      <Stack.Screen name="MinhasIndicacoesImoveis" component={MinhasIndicacoesImoveisScreen} />
       <Stack.Screen name="Favoritos" component={FavoritosScreen} />
       <Stack.Screen name="Jornadas" component={JornadasScreen} />
       <Stack.Screen name="Conteudo" component={ConteudoScreen} />
@@ -130,8 +145,11 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Cursos" component={CursosScreen} />
       <Stack.Screen name="Curso" component={CursoScreen} />
       <Stack.Screen name="Aula" component={AulaScreen} />
+      <Stack.Screen name="MeusAtendimentos" component={MeusAtendimentosScreen} />
+      <Stack.Screen name="SalaAtendimento" component={SalaAtendimentoScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Sobre" component={SobreScreen} />
       <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
+      <Stack.Screen name="Travessinhos" component={TravessinhosScreen} />
     </Stack.Navigator>
   );
 }
@@ -161,10 +179,13 @@ function AdminStack() {
       {IA_PAINEL && <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />}
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
       <Stack.Screen name="AdminPedidosCashback" component={AdminPedidosCashbackScreen} />
+      <Stack.Screen name="AdminImobiliarias" component={AdminImobiliariasScreen} />
       <Stack.Screen name="AdminCashback" component={AdminCashbackScreen} />
       <Stack.Screen name="AdminArtes" component={AdminArtesScreen} />
       <Stack.Screen name="AdminCursos" component={AdminCursosScreen} />
       <Stack.Screen name="AdminVersaoApp" component={AdminVersaoAppScreen} />
+      <Stack.Screen name="AdminAtendimentos" component={AdminAtendimentosScreen} />
+      <Stack.Screen name="SalaAtendimento" component={SalaAtendimentoScreen} options={{ gestureEnabled: false }} />
     </Stack.Navigator>
   );
 }

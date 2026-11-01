@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { emocoes, audios as audiosEstaticos } from '../../data';
 import { LavandaBg } from '../../components';
+import { DicaTravessinho, useComemoracaoTravessinho } from '../../components/Travessinho';
 import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
@@ -134,6 +135,7 @@ export default function CheckInScreen({ navigation, route }) {
   const [emocaoSel, setEmocaoSel] = useState(() => (emocoes.some(e => e.id === route?.params?.emocao) ? route.params.emocao : null));
   const [localSel, setLocalSel] = useState(null);
   const [salvo, setSalvo] = useState(false);
+  const { comemorar, elemento: festaTravessinho } = useComemoracaoTravessinho({ duracao: 3600 });
   const [audioLiberado, setAudioLiberado] = useState(false);
 
   const confettiAnims = useRef(
@@ -189,6 +191,9 @@ export default function CheckInScreen({ navigation, route }) {
     adicionarCheckin(emocaoSel, localSel);
     vibrarSucesso();
     setSalvo(true);
+    comemorar('nanda', emocaoObj?.positiva
+      ? 'Check-in feito! Que alegria ver você se cuidando hoje.'
+      : 'Obrigada por parar um minutinho para se escutar. Estou aqui com você.');
   };
 
   const handleOuvirAudio = () => {
@@ -381,6 +386,7 @@ export default function CheckInScreen({ navigation, route }) {
             <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
           </ScrollView>
           <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
+          {festaTravessinho}
         </SafeAreaView>
       );
     }
@@ -500,6 +506,7 @@ export default function CheckInScreen({ navigation, route }) {
           <BotaoLuz titulo="Voltar ao início" onPress={() => navigation.goBack()} style={{ marginTop: 24 }} />
         </ScrollView>
         <AvisoRapido aviso={aviso} onFechar={fechar} inferior={insets.bottom} />
+        {festaTravessinho}
       </SafeAreaView>
     );
   }
@@ -517,6 +524,11 @@ export default function CheckInScreen({ navigation, route }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        <DicaTravessinho
+          chave="checkin"
+          quem="nanda"
+          fala="Não existe resposta certa por aqui. Escolha o que estiver mais perto do que você sente agora, e eu sugiro algo para acolher você."
+        />
         {/* Pergunta + grade de emoções em "gotas" */}
         <View style={s.cartao}>
           <View style={s.headerRow}>
