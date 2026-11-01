@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, ActivityIndicator, Platform,
-  Share, Image, KeyboardAvoidingView, Switch,
+  Share, Image, KeyboardAvoidingView, Switch, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -120,7 +120,7 @@ function Suspensa({ valor, opcoes, onMudar, placeholder = 'Escolher' }) {
       </TouchableOpacity>
       <Modal visible={aberta} transparent animationType="fade" onRequestClose={() => setAberta(false)}>
         <TouchableOpacity style={[st.veu, { justifyContent: 'center', padding: 20 }]} activeOpacity={1} onPress={() => setAberta(false)}>
-          <View style={[st.modal, { maxHeight: 480 }]}>
+          <Pressable style={[st.modal, { maxHeight: 480 }]} onPress={() => {}}>
             <ScrollView>
               {opcoes.map(o => (
                 <TouchableOpacity key={o.id} style={st.opcao} onPress={() => { onMudar(o.id); setAberta(false); }}>
@@ -128,7 +128,7 @@ function Suspensa({ valor, opcoes, onMudar, placeholder = 'Escolher' }) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </Pressable>
         </TouchableOpacity>
       </Modal>
     </>

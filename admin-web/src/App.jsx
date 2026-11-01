@@ -20,6 +20,7 @@ import Beneficios from './Beneficios';
 import Cashback from './Cashback';
 import Indicacoes from './Indicacoes';
 import PedidosCashback from './PedidosCashback';
+import Imobiliarias from './Imobiliarias';
 import Usuarias from './Usuarias';
 import Notificacoes from './Notificacoes';
 import Mensagens from './Mensagens';
@@ -92,6 +93,7 @@ const NAV_GRUPOS = [
           { id: 'cashback', label: 'Cashback' },
           { id: 'indicacoes', label: 'Afiliados' },
           { id: 'pedidosCashback', label: 'Pedidos de cashback' },
+          { id: 'imobiliarias', label: 'Imobiliárias' },
         ],
       },
     ],
@@ -146,6 +148,7 @@ const SCREENS = {
   cashback:        Cashback,
   indicacoes:      Indicacoes,
   pedidosCashback: PedidosCashback,
+  imobiliarias:    Imobiliarias,
   usuarias:        Usuarias,
   atendimentos:    Atendimentos,
   notificacoes:    Notificacoes,
