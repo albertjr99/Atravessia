@@ -16,6 +16,7 @@ import { confirmar } from '../../utils/confirm';
 import { SITE_URL } from '../../utils/cupons';
 import Recolhivel from '../../components/Recolhivel';
 import AdminLayout from './AdminLayout';
+import TermoProfissionalAdmin, { useTermoProfissional } from './TermoProfissionalAdmin';
 import { est, acento, Degrade, AcoesItem, useFormRecolhivel, F_NUM } from './adminEstilo';
 
 // Cursos Atravessia — painel no app (mesma tela do painel web: admin-web/src/Cursos.jsx).
@@ -35,8 +36,8 @@ const CURSO_VAZIO = {
   ativo: false, destaque: false, protegerAulas: true, programa: [], aulas: [],
 };
 const PROF_VAZIO = { nome: '', bio: '', fotoUrl: '', email: '', repasseTipo: 'percentual', repasseValor: '50', repasseBase: 'bruto', ativo: true };
-// Mesma versão de functions/index.js (TERMO_PROFISSIONAL_VERSAO).
-const TERMO_VERSAO = '1.0';
+// A versão vigente do termo vem do Firestore (configuracoes/termoProfissional),
+// editada em TermoProfissionalAdmin; não há constante para manter em sincronia.
 
 // Regra de repasse: agora fica em profissionaisPrivado; perfis antigos ainda
 // tinham os campos no documento público.
@@ -48,11 +49,11 @@ const comRegra = (prof, priv) => ({
 });
 
 // Situação do aceite do termo de parceria, para o cartão do profissional.
-export function statusTermo(priv) {
+export function statusTermo(priv, versaoVigente) {
   const em = ms(priv?.termoAceitoEm);
   if (!em) return { ok: false, texto: 'Termo ainda não aceito no portal' };
   if (priv.termoPedirNovo) return { ok: false, texto: `Novo aceite pedido (aceitou a versão ${priv.termoVersao || '?'} em ${dataBR(em)})` };
-  if (priv.termoVersao !== TERMO_VERSAO) return { ok: false, texto: `Aceitou a versão ${priv.termoVersao || '?'}; falta aceitar a ${TERMO_VERSAO}` };
+  if (priv.termoVersao !== versaoVigente) return { ok: false, texto: `Aceitou a versão ${priv.termoVersao || '?'}; falta aceitar a ${versaoVigente}` };
   return { ok: true, texto: `Termo aceito em ${dataBR(em)} · versão ${priv.termoVersao}` };
 }
 
@@ -427,6 +428,7 @@ function AbaCursos({ cursos, profissionais, matriculas, rolagem }) {
 // ---------------------------------------------------------------------------
 function AbaProfissionais({ profissionais, privados, rolagem }) {
   const form = useFormRecolhivel(rolagem);
+  const termoProf = useTermoProfissional();
   const [editId, setEditId] = useState(null);
   const [p, setP] = useState(PROF_VAZIO);
   const [salvando, setSalvando] = useState(false);
@@ -521,10 +523,12 @@ function AbaProfissionais({ profissionais, privados, rolagem }) {
         </Recolhivel>
       </View>
 
+      <TermoProfissionalAdmin termo={termoProf} profissionais={profissionais} privados={privados} />
+
       {profissionais.length === 0 && <Text style={s.vazio}>Nenhum profissional cadastrado.</Text>}
       {profissionais.map(prof => {
         const priv = privados[prof.id] || {};
-        const termo = statusTermo(priv);
+        const termo = statusTermo(priv, termoProf.versao);
         return (
           <View key={prof.id} style={s.card}>
             <View style={s.cardTopo}>

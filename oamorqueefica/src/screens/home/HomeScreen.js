@@ -41,6 +41,11 @@ const NAV_DIREITA = [
   { name: 'Planos', icon: 'diamond', screen: 'Planos' },
   { name: 'Perfil', icon: 'person-circle', screen: 'Perfil' },
 ];
+// Com algum curso publicado, "Cursos" ocupa o lugar de "Planos" na barra
+// (Planos continua no Perfil, nos avisos e nos cadeados).
+const NAV_CURSOS = { name: 'Cursos', icon: 'school', screen: 'Cursos' };
+const DIAS_CURSO_NOVO = 14;
+const msData = (v) => (typeof v?.toMillis === 'function' ? v.toMillis() : 0);
 
 function ItemNav({ item, navigation }) {
   return (
@@ -48,11 +53,12 @@ function ItemNav({ item, navigation }) {
       style={s.navItem}
       onPress={() => item.screen && navigation.navigate(item.screen)}
       accessibilityRole="button"
-      accessibilityLabel={item.name}
+      accessibilityLabel={item.novo ? `${item.name}, novidade` : item.name}
       accessibilityState={{ selected: !!item.active }}
     >
       <View style={[s.navIcone, item.active && s.navIconeAtivo]}>
         <Ionicons name={item.active ? item.icon : `${item.icon}-outline`} size={20} color={item.active ? colors.lilasTexto : colors.texto2} />
+        {item.novo && <Text style={s.navNovo} accessibilityLabel="Novo">Novo</Text>}
       </View>
       <Text style={[s.navLbl, item.active && s.navLblActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{item.name}</Text>
     </TouchableOpacity>
@@ -103,10 +109,19 @@ export default function HomeScreen({ navigation }) {
     (e) => console.warn('[Home] produtosItens:', e?.message)), []);
   const temProdutos = temProdutosVideo || temProdutosItens;
   // "Cursos Atravessia": linha discreta que só aparece com algum curso publicado.
+  // Também decide o item "Cursos" da barra e o selo "Novo" (curso publicado há < 14 dias).
   const [temCursos, setTemCursos] = useState(false);
-  useEffect(() => onSnapshot(query(collection(db, 'cursos'), where('ativo', '==', true), limit(1)),
-    (snap) => setTemCursos(!snap.empty),
+  const [cursoNovo, setCursoNovo] = useState(false);
+  useEffect(() => onSnapshot(query(collection(db, 'cursos'), where('ativo', '==', true)),
+    (snap) => {
+      setTemCursos(!snap.empty);
+      const corte = Date.now() - DIAS_CURSO_NOVO * 24 * 60 * 60 * 1000;
+      setCursoNovo(snap.docs.some(d => msData(d.data().criadoEm) > corte));
+    },
     (e) => console.warn('[Home] cursos:', e?.message)), []);
+  const navDireita = temCursos
+    ? NAV_DIREITA.map(item => (item.screen === 'Planos' ? { ...NAV_CURSOS, novo: cursoNovo } : item))
+    : NAV_DIREITA;
   const naoLidas = notificacoes.filter(n => !n.lida).length;
   const primeiraNaoLida = notificacoes.find(n => !n.lida);
   // Cupons que ainda pedem algo dela: prontos para usar ou aguardando confirmação.
@@ -544,7 +559,7 @@ export default function HomeScreen({ navigation }) {
           </View>
           {temIA && <View style={s.bnavCentroVaga} />}
           <View style={s.bnavLado}>
-            {NAV_DIREITA.map(item => <ItemNav key={item.name} item={item} navigation={navigation} />)}
+            {navDireita.map(item => <ItemNav key={item.name} item={item} navigation={navigation} />)}
           </View>
         </Vidro>
         {temIA && (
@@ -922,6 +937,12 @@ const s = criarEstilos(() => ({
   bnavCentroVaga: { width: 66 },
   navIcone: { width: 42, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   navIconeAtivo: { backgroundColor: colors.lav1 },
+  navNovo: {
+    position: 'absolute', top: -6, right: -8, overflow: 'hidden',
+    fontFamily: 'Figtree_700Bold', fontSize: 8, lineHeight: 11, letterSpacing: 0.2,
+    color: colors.lilasTexto, backgroundColor: colors.lav1, borderRadius: 999, paddingHorizontal: 5, paddingVertical: 1,
+    borderWidth: 1, borderColor: colors.lav3,
+  },
   iaBotaoLinha: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   iaBotao: { alignItems: 'center', width: 84 },
   iaBotaoCirculo: {

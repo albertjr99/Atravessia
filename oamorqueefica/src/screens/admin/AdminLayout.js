@@ -24,10 +24,14 @@ const logo = require('../../../assets/images/travessia_logo.png');
 // ignora a trava de orientação em telas grandes) o painel ficava com a barra
 // lateral numa janela estreita, ou com a gaveta numa larga, diferente das
 // telas internas, que já usam a largura atual.
-const SIDEBAR_W = 264;
+// Tablet: a barra cresce com a tela (280 até 900 px de largura, 300 acima),
+// para rótulos como "Funções da AtravessIA" caberem sem passar da margem.
+const SIDEBAR_W = 300;
+const larguraSidebar = (larguraTela) => (larguraTela >= 900 ? 300 : 280);
 const SIDEBAR_MARGEM = 10;
 const { OS: SISTEMA } = Platform;
 // Largura ocupada pela barra lateral (com a margem), para telas que calculam colunas.
+// (Valor máximo: as telas usam como estimativa quando ainda não mediram o conteúdo.)
 export const LARGURA_LATERAL = SIDEBAR_W + SIDEBAR_MARGEM;
 
 // Agrupado por finalidade: 14 itens soltos poluíam a barra e não deixavam
@@ -94,7 +98,7 @@ const NAV_GRUPOS = [
 // Anel suave do avatar (lilás → pêssego → sálvia).
 const ANEL = ['#B9A6F0', '#F3B9A5', '#A9D3B9'];
 
-function SidebarContent({ navigate, currentScreen, perfil, sair }) {
+function SidebarContent({ navigate, currentScreen, perfil, sair, largo = false }) {
   // Desde que o app desenha sob as barras do sistema, o rodapé da barra lateral
   // (com "Encerrar sessão") ficava escondido atrás da barra de navegação do
   // Android. Agora a barra e a gaveta flutuam com margem acima dessa barra
@@ -160,8 +164,15 @@ function SidebarContent({ navigate, currentScreen, perfil, sair }) {
                     </View>
                   )}
                   <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[sty.navLabel, active && sty.navLabelActive]}>{item.label}</Text>
-                    {item.sub && <Text style={sty.navSub}>{item.sub}</Text>}
+                    {/* Tablet: até 2 linhas, fonte um pouco menor e teto para o zoom do sistema. */}
+                    <Text
+                      style={[sty.navLabel, largo && sty.navLabelLargo, active && sty.navLabelActive]}
+                      numberOfLines={largo ? 2 : undefined}
+                      maxFontSizeMultiplier={largo ? 1.3 : undefined}
+                    >
+                      {item.label}
+                    </Text>
+                    {item.sub && <Text style={[sty.navSub, largo && sty.navSubLargo]} maxFontSizeMultiplier={largo ? 1.3 : undefined}>{item.sub}</Text>}
                   </View>
                 </TouchableOpacity>
               );
@@ -233,12 +244,13 @@ export default function AdminLayout({ children, currentScreen }) {
       <LavandaBg />
       {isWide ? (
         <View style={sty.rootWide}>
-          <View style={[sty.sidebar, { marginTop: insets.top + SIDEBAR_MARGEM, marginBottom: insets.bottom + SIDEBAR_MARGEM }]}>
+          <View style={[sty.sidebar, { width: larguraSidebar(larguraTela), marginTop: insets.top + SIDEBAR_MARGEM, marginBottom: insets.bottom + SIDEBAR_MARGEM }]}>
             <SidebarContent
               navigate={navigateTo}
               currentScreen={currentScreen}
               perfil={perfil}
               sair={sair}
+              largo
             />
           </View>
           <View style={[sty.main, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>{children}</View>
@@ -378,6 +390,8 @@ const sty = criarEstilos(() => ({
   navLabel: { fontFamily: fonts.bodySemi, fontSize: 15, lineHeight: 20, color: colors.td, paddingTop: 6 },
   navSub: { fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 16, color: colors.tl, marginTop: 1, paddingBottom: 3 },
   navLabelActive: { fontFamily: fonts.bodyBold, color: colors.lav6 },
+  navLabelLargo: { fontSize: 14, lineHeight: 19, flexShrink: 1 },
+  navSubLargo: { fontSize: 11.5, lineHeight: 15, flexShrink: 1 },
 
   // Rodapé fixo
   rodape: { gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.bordaSuave },

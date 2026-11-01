@@ -28,6 +28,7 @@ import PrecosPlanos from './PrecosPlanos';
 import Perfil from './Perfil';
 import Institucional from './Institucional';
 import VersaoApp from './VersaoApp';
+import SeletorOpcoes from './SeletorOpcoes';
 import RecursosIA from './RecursosIA';
 import Artes from './Artes';
 import Cursos, { ProfissionaisCursos, VendasCursos } from './Cursos';
@@ -341,17 +342,14 @@ export default function App() {
           )}
 
           {itemAtual?.abas && (
-            <div className="subtabs">
-              {itemAtual.abas.map(a => (
-                <button
-                  key={a.id}
-                  className={`subtab ${screen === a.id ? 'active' : ''}`}
-                  onClick={() => navigate(a.id)}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
+            // Até 4 sub-abas: pílulas que quebram linha; mais: lista suspensa (sem arrastar).
+            <SeletorOpcoes
+              variante="abas"
+              titulo="Seção"
+              opcoes={itemAtual.abas.map(a => ({ id: a.id, label: a.label }))}
+              valor={screen}
+              onChange={navigate}
+            />
           )}
 
           <Screen key={screen} showToast={showToast} perfil={perfil} irPara={navigate} parametros={parametros} />

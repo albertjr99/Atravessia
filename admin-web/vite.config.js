@@ -12,6 +12,7 @@ export default defineConfig({
         parceiro: resolve(__dirname, 'parceiro.html'),
         curso: resolve(__dirname, 'curso.html'),
         profissional: resolve(__dirname, 'profissional.html'),
+        atendimento: resolve(__dirname, 'atendimento.html'),
       },
     },
   },

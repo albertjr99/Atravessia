@@ -1,9 +1,18 @@
 // Termo de Parceria, Consentimento e Tratamento de Dados do profissional
-// parceiro dos Cursos Atravessia — exibido no portal (profissional.html).
-// Fonte: docs/cursos/termo-profissional-parceiro.md. Ao mudar o texto, suba a
-// versão AQUI, no .md e em functions/index.js (TERMO_PROFISSIONAL_VERSAO) e
-// no painel (TERMO_VERSAO em Cursos.jsx e AdminCursosScreen.js).
-// Os trechos [entre colchetes] são preenchidos pelas responsáveis do Atravessia.
+// parceiro dos Cursos Atravessia.
+//
+// ATENÇÃO: este arquivo NÃO é mais a fonte do termo. O texto vigente fica no
+// Firestore (configuracoes/termoProfissional) e é editado e publicado pelo
+// painel: Cursos → Profissionais → "Termo do profissional" (web e app). O
+// portal recebe o texto pronto da função portalProfissional.
+// Aqui ficam só:
+//   - o texto da versão 1.0 (TERMO_SECOES/TERMO_RESUMO), usado como RASCUNHO
+//     INICIAL no painel (convertido para marcadores {{razaoSocial}} etc.) e
+//     como reserva no portal enquanto nenhuma versão tiver sido publicada;
+//   - utilitários puros (sem JSX) do editor: campos, marcadores, versão e o
+//     leitor de markdown simples (## títulos, parágrafos e listas "- ").
+// Há uma cópia idêntica em oamorqueefica/src/config/termoProfissional.js —
+// altere as duas juntas. Não é preciso mudar versão em nenhum arquivo.
 
 export const TERMO_VERSAO = '1.0';
 export const TERMO_DATA = '31 de outubro de 2026';
@@ -116,3 +125,106 @@ export const TERMO_SECOES = [
     ],
   },
 ];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Editor do termo (painel) e leitura no portal — funções puras, sem JSX.
+// O texto publicado é markdown simples: "## Título", parágrafos separados por
+// linha em branco, itens de lista começando com "- " e **negrito**.
+// Os dados da empresa entram por marcadores {{campo}}, preenchidos pelo
+// formulário do painel (e aplicados no servidor antes de chegar ao portal).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Campos da empresa (os antigos [colchetes] do termo).
+export const CAMPOS_TERMO = [
+  { k: 'razaoSocial', rotulo: 'Razão social', exemplo: 'Nome da empresa Ltda.' },
+  { k: 'cnpj', rotulo: 'CNPJ', exemplo: '00.000.000/0001-00' },
+  { k: 'endereco', rotulo: 'Endereço da sede', exemplo: 'Rua, número, bairro, cidade/UF, CEP' },
+  { k: 'cidadeUf', rotulo: 'Cidade/UF do foro', exemplo: 'São Paulo/SP' },
+  { k: 'encarregadoNome', rotulo: 'Encarregado de dados (DPO): nome', exemplo: 'Nome completo' },
+  { k: 'encarregadoEmail', rotulo: 'Encarregado de dados (DPO): e-mail', exemplo: 'privacidade@exemplo.com' },
+  { k: 'periodicidadeRepasse', rotulo: 'Periodicidade do repasse', exemplo: 'mensalmente, até o dia 10 do mês seguinte' },
+  { k: 'prazoGuarda1', rotulo: 'Guarda do perfil público após o fim da parceria', exemplo: '90 dias' },
+  { k: 'prazoGuarda2', rotulo: 'Guarda dos registros de vendas e repasses (confirme com a contabilidade)', exemplo: 'em geral, 5 anos' },
+  { k: 'prazoAcessoAlunas', rotulo: 'Prazo de acesso de quem já comprou', exemplo: 'acesso sem prazo enquanto o aplicativo existir' },
+  { k: 'prazoAvisoEncerramento', rotulo: 'Aviso prévio para encerrar a parceria', exemplo: '30 dias' },
+];
+
+// [colchetes] da versão 1.0 → marcadores {{campo}}.
+const MARCADORES_INICIAIS = [
+  ['[RAZÃO SOCIAL]', '{{razaoSocial}}'],
+  ['[CNPJ]', '{{cnpj}}'],
+  ['[ENDEREÇO]', '{{endereco}}'],
+  ['[PRAZO, ex.: 90 dias]', '{{prazoGuarda1}}'],
+  ['(em geral, 5 anos) [CONFIRMAR COM A CONTABILIDADE]', '({{prazoGuarda2}})'],
+  ['[NOME DO ENCARREGADO]', '{{encarregadoNome}}'],
+  ['[E-MAIL DO ENCARREGADO]', '{{encarregadoEmail}}'],
+  ['([ex.: acesso sem prazo enquanto o aplicativo existir])', '({{prazoAcessoAlunas}})'],
+  ['[PERIODICIDADE, ex.: mensalmente, até o dia 10 do mês seguinte]', '{{periodicidadeRepasse}}'],
+  ['[PRAZO, ex.: 30 dias]', '{{prazoAvisoEncerramento}}'],
+  ['[CIDADE/UF]', '{{cidadeUf}}'],
+];
+const paraMarcadores = (t) => MARCADORES_INICIAIS.reduce((s, [de, para]) => s.split(de).join(para), t);
+const secoesParaMarkdown = (secoes) => secoes.map(s => `## ${s.titulo}\n\n${s.paragrafos.join('\n\n')}`).join('\n\n');
+
+// Texto da versão 1.0 como estava no código (com [colchetes]): reserva do
+// portal enquanto nenhuma versão tiver sido publicada pelo painel.
+export const TERMO_LEGADO_MARKDOWN = secoesParaMarkdown(TERMO_SECOES);
+
+// Rascunho inicial do editor quando configuracoes/termoProfissional não existe.
+export function rascunhoInicialTermo() {
+  return {
+    texto: paraMarcadores(TERMO_LEGADO_MARKDOWN),
+    resumo: TERMO_RESUMO.map(paraMarcadores),
+    campos: Object.fromEntries(CAMPOS_TERMO.map(c => [c.k, ''])),
+  };
+}
+
+const RE_CAMPO = /\{\{\s*([A-Za-z][A-Za-z0-9_]{0,39})\s*\}\}/g;
+const rotuloCampo = (k) => CAMPOS_TERMO.find(c => c.k === k)?.rotulo || k;
+
+// Troca {{campo}} pelo valor; campo vazio aparece como [Rótulo] na prévia.
+export function aplicarCamposTermo(texto, campos) {
+  return String(texto || '').replace(RE_CAMPO, (_, k) => String(campos?.[k] ?? '').trim() || `[${rotuloCampo(k)}]`);
+}
+
+// Marcadores usados no texto/resumo que ainda estão sem valor.
+export function camposFaltandoTermo(texto, resumo, campos) {
+  const usados = new Set();
+  [texto, ...(resumo || [])].forEach(t => { for (const m of String(t || '').matchAll(RE_CAMPO)) usados.add(m[1]); });
+  return [...usados].filter(k => !String(campos?.[k] ?? '').trim()).map(k => ({ k, rotulo: rotuloCampo(k) }));
+}
+
+// 1.0 → 1.1 → … → 1.10 (mesma regra de publicarTermoProfissional no servidor).
+export function proximaVersaoTermo(atual) {
+  const m = /^(\d+)\.(\d+)$/.exec(String(atual || ''));
+  return m ? `${m[1]}.${Number(m[2]) + 1}` : '1.1';
+}
+
+export const linhasParaResumo = (t) => String(t || '').split('\n').map(l => l.replace(/^[-*•]\s+/, '').trim()).filter(Boolean);
+
+// Markdown simples → blocos { tipo: 'titulo' | 'paragrafo', texto } ou
+// { tipo: 'lista', itens }. Nada de HTML: quem desenha usa só texto.
+export function blocosTermo(texto) {
+  const blocos = [];
+  let par = [];
+  let lista = null;
+  const fecharPar = () => { if (par.length) { blocos.push({ tipo: 'paragrafo', texto: par.join(' ') }); par = []; } };
+  const fecharLista = () => { if (lista) { blocos.push({ tipo: 'lista', itens: lista }); lista = null; } };
+  for (const bruta of String(texto || '').replace(/\r\n?/g, '\n').split('\n')) {
+    const l = bruta.trim();
+    if (!l) { fecharPar(); fecharLista(); continue; }
+    const titulo = /^#{1,6}\s+(.*)$/.exec(l);
+    if (titulo) { fecharPar(); fecharLista(); blocos.push({ tipo: 'titulo', texto: titulo[1].trim() }); continue; }
+    const item = /^[-*•]\s+(.*)$/.exec(l);
+    if (item) { fecharPar(); (lista || (lista = [])).push(item[1]); continue; }
+    if (lista && /^\s/.test(bruta)) { lista[lista.length - 1] += ` ${l}`; continue; }
+    fecharLista();
+    par.push(l);
+  }
+  fecharPar(); fecharLista();
+  return blocos;
+}
+
+// "**negrito**" → [{ texto, negrito }].
+export const trechosTermo = (texto) => String(texto || '').split(/\*\*(.+?)\*\*/g)
+  .map((t, i) => ({ texto: t, negrito: i % 2 === 1 })).filter(p => p.texto);

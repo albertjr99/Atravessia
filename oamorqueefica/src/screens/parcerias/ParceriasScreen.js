@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
 import { Profundo } from '../../components/Efeitos';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 import { useApp } from '../../hooks/AppContext';
 import { abrirLink } from '../../utils/abrirLink';
 import { situacaoCupom } from '../../utils/cupons';
@@ -293,28 +294,20 @@ export default function ParceriasScreen({ navigation }) {
 
         {/* Filtro: área da vida */}
         <Text style={s.filtroRotulo}>Área da vida</Text>
-        <View style={s.trilho}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
-            {FILTROS.map(f => (
-              <TouchableOpacity
-                key={f.id}
-                style={[s.filtroChip, filtroAtivo === f.id && s.filtroChipAtivo]}
-                onPress={() => setFiltroAtivo(f.id)}
-                activeOpacity={0.75}
-                accessibilityState={{ selected: filtroAtivo === f.id }}
-              >
-                <Text style={[s.filtroChipTxt, filtroAtivo === f.id && s.filtroChipTxtAtivo]}>{f.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        <SeletorOpcoes
+          titulo="Área da vida"
+          estilo={s.seletor}
+          opcoes={FILTROS.map(f => ({ id: f.id, label: f.label }))}
+          valor={filtroAtivo}
+          onChange={setFiltroAtivo}
+        />
 
         {/* Filtro: onde */}
         {filtrosLocalAtivos && (
           <>
             <Text style={s.filtroRotulo}>Onde</Text>
-            <View style={s.trilho}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtrosRow}>
+            <View style={[s.trilho, s.trilhoQuebra]}>
+            <View style={[s.filtrosRow, s.filtrosQuebra]}>
               <TouchableOpacity
                 style={[s.filtroChip, onde === 'todos' && s.filtroChipAtivo]}
                 onPress={() => setOnde('todos')}
@@ -351,7 +344,7 @@ export default function ParceriasScreen({ navigation }) {
                   <Ionicons name="chevron-down" size={14} color={cidadeSel ? colors.lilasTexto : colors.tl} />
                 </TouchableOpacity>
               )}
-            </ScrollView>
+            </View>
             </View>
             {estadoSel && temOnline && (
               <Text style={s.notaFiltro}>Também aparecem as parcerias com atendimento on-line.</Text>
@@ -487,6 +480,10 @@ const s = criarEstilos(() => ({
     backgroundColor: colors.vidro, borderWidth: 1, borderColor: colors.bordaLuz,
   },
   filtrosRow: { padding: 4, gap: 4 },
+  // Sem arrastar: as opções quebram linha / viram lista suspensa.
+  trilhoQuebra: { borderRadius: 22 },
+  filtrosQuebra: { flexDirection: 'row', flexWrap: 'wrap' },
+  seletor: { marginHorizontal: spacing.lg },
   filtroChip: {
     minHeight: 38, justifyContent: 'center', borderRadius: radius.full, paddingHorizontal: 14,
   },

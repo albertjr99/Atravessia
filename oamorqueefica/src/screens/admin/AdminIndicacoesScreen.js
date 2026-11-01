@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import Recolhivel from '../../components/Recolhivel';
+import SeletorOpcoes from '../../components/SeletorOpcoes';
 import {
   PLATAFORMAS_AFILIADO, nomePlataforma, textoBotaoAfiliado, seloCashback, regraCashback, calcularCashback,
   reaisParaCentavos, centavosParaTexto, brlCentavos, escolherEnviarImagem, LIMITES_AFILIADO,
@@ -232,23 +233,23 @@ export default function AdminIndicacoesScreen({ navigation, route }) {
           <Text style={st.addBtnTxt}>Novo item de afiliado</Text>
         </TouchableOpacity>
 
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
-          {[{ id: 'todas', rotulo: 'Todas' }, ...CATEGORIAS_INDICACAO].map(c => (
-            <TouchableOpacity key={c.id} style={[st.chip, filtro === c.id && st.chipSel]} onPress={() => setFiltro(c.id)}>
-              <Text style={[st.chipText, filtro === c.id && st.chipTextSel]}>{c.rotulo}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipRow}>
-          {SITUACOES.map(sit => {
+        <SeletorOpcoes
+          titulo="Categoria"
+          estilo={st.chipRow}
+          opcoes={[{ id: 'todas', rotulo: 'Todas' }, ...CATEGORIAS_INDICACAO].map(c => ({ id: c.id, label: c.rotulo }))}
+          valor={filtro}
+          onChange={setFiltro}
+        />
+        <SeletorOpcoes
+          titulo="Situação"
+          estilo={st.chipRow}
+          opcoes={SITUACOES.map(sit => {
             const n = sit.id === 'todas' ? null : itens.filter(i => naSituacao(i, sit.id)).length;
-            return (
-              <TouchableOpacity key={sit.id} style={[st.chip, situacao === sit.id && st.chipSel]} onPress={() => setSituacao(sit.id)}>
-                <Text style={[st.chipText, situacao === sit.id && st.chipTextSel]}>{sit.rotulo}{n ? ` (${n})` : ''}</Text>
-              </TouchableOpacity>
-            );
+            return { id: sit.id, label: `${sit.rotulo}${n ? ` (${n})` : ''}` };
           })}
-        </ScrollView>
+          valor={situacao}
+          onChange={setSituacao}
+        />
 
         {itens.length > 0 && lista.length === 0 && (
           <Text style={[st.itemSub, { marginBottom: spacing.md }]}>Nenhum item neste filtro.</Text>
