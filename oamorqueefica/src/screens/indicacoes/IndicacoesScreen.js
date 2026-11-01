@@ -12,6 +12,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { DicaTravessinho } from '../../components/Travessinho';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Profundo } from '../../components/Efeitos';
 import SeletorOpcoes from '../../components/SeletorOpcoes';
@@ -157,6 +158,12 @@ export default function IndicacoesScreen({ navigation }) {
       <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
         <View style={s.coluna}>
           <Text style={s.intro}>Escolhemos com carinho livros, objetos e cuidados que podem acompanhar você nessa travessia.</Text>
+          <DicaTravessinho
+            chave="achados"
+            quem="maju"
+            fala="Cada achado aqui foi escolhido a dedo. Você paga o mesmo preço da loja e, quando tem cashback, ainda volta crédito para usar no app."
+            style={{ marginBottom: 0 }}
+          />
 
           {temCashback && (
             <View style={s.comoFunciona}>

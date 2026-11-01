@@ -8,6 +8,37 @@ import AdminLayout from './AdminLayout';
 import Recolhivel from '../../components/Recolhivel';
 import { RECURSOS_IA, NOME_PLANO, normalizarRecursosIA } from '../../config/recursosIA';
 
+// Os Travessinhos (Nanda, Brian e Maju): liga/desliga todas as aparições no
+// app (dicas, estados vazios, comemorações e apresentação). Salva na hora em
+// configuracoes/travessinhos { ativo }.
+function ChaveTravessinhos() {
+  const [ativo, setAtivo] = useState(true);
+  useEffect(() => onSnapshot(doc(db, 'configuracoes', 'travessinhos'),
+    (snap) => setAtivo(!snap.exists() || snap.data()?.ativo !== false), () => {}), []);
+  const alternar = async (v) => {
+    setAtivo(v);
+    try {
+      await setDoc(doc(db, 'configuracoes', 'travessinhos'), { ativo: v, atualizadoEm: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      setAtivo(!v);
+      Alert.alert('Erro', e?.message || 'Não foi possível salvar.');
+    }
+  };
+  return (
+    <View style={[s.card, { marginTop: spacing.xl }]}>
+      <View style={s.linha}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.titulo}>Os Travessinhos</Text>
+          <Text style={s.desc}>
+            Nanda, Brian e Maju aparecem no app com dicas nas primeiras visitas, nas listas vazias, nas comemorações e na apresentação. {ativo ? 'Ligados.' : 'Desligados.'}
+          </Text>
+        </View>
+        <Switch value={ativo} onValueChange={alternar} trackColor={{ true: colors.lav4 }} accessibilityLabel="Mostrar os Travessinhos no app" />
+      </View>
+    </View>
+  );
+}
+
 // Liga/desliga cada função da AtravessIA e escolhe o plano mínimo de cada uma.
 export default function AdminRecursosIAScreen({ navigation }) {
   const [cfg, setCfg] = useState(() => normalizarRecursosIA(null));
@@ -57,6 +88,7 @@ export default function AdminRecursosIAScreen({ navigation }) {
           </Recolhivel>
         ))}
         <BotaoAdmin title={salvando ? 'Salvando…' : 'Salvar e publicar'} icone="checkmark" onPress={salvar} disabled={salvando} />
+        <ChaveTravessinhos />
       </ScrollView>
     </AdminLayout>
   );

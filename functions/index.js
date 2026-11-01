@@ -3583,3 +3583,490 @@ exports.lembretesAtendimento = onSchedule({ schedule: 'every 5 minutes', timeZon
       `${a.titulo}: começa em ${faltaMin <= 12 ? '10 minutos' : '1 hora'}.`, 'AdminAtendimentos');
   }
 });
+
+// =============================================================================
+// IMOBILIÁRIAS — "Lar e recomeço" (parceria Atravessia + imobiliária + arquiteto)
+// =============================================================================
+// A usuária demonstra interesse numa imobiliária parceira e recebe um código
+// (ATR-IMV-XXXX) e um QR Code. A imobiliária acompanha os leads pelo portal
+// imobiliaria.html?t=<token> (sem login). Quando o negócio fecha, a imobiliária
+// repassa o valor combinado; a Atravessia confirma o recebimento (valor
+// congelado) e agenda uma consultoria online com arquiteto parceiro.
+// Coleções: imobiliarias, imobiliariasPrivado, imoveis, arquitetos,
+// arquitetosPrivado, indicacoesImoveis (lead; a usuária lê o próprio) e
+// indicacoesImoveisPrivado (valores do negócio e do repasse; só admin).
+// Ver docs/imobiliarias/README.md.
+
+const PORTAL_IMOBILIARIA_URL = `${SITE_URL}/imobiliaria.html`;
+const STATUS_IMV = ['novo', 'em_contato', 'visita', 'proposta', 'fechado', 'pago', 'consultoria_agendada', 'concluido', 'perdido'];
+const ABERTOS_IMV = ['novo', 'em_contato', 'visita', 'proposta'];
+// Mudanças de status que a imobiliária pode fazer pelo portal. "pago" em
+// diante é só da Atravessia. "fechado → fechado" serve para corrigir o valor
+// do negócio enquanto o repasse não foi confirmado.
+const TRANSICOES_IMOBILIARIA = {
+  novo: ['em_contato', 'visita', 'proposta', 'fechado', 'perdido'],
+  em_contato: ['visita', 'proposta', 'fechado', 'perdido'],
+  visita: ['em_contato', 'proposta', 'fechado', 'perdido'],
+  proposta: ['em_contato', 'visita', 'fechado', 'perdido'],
+  fechado: ['fechado'],
+  perdido: ['em_contato'],
+};
+const VERSAO_CONSENTIMENTO_IMV = '1.0';
+const TEXTO_CONSENTIMENTO_IMV = 'Autorizo a Atravessia a compartilhar meu nome, meu telefone e o que escrevi aqui com esta imobiliária, '
+  + 'só para que ela entre em contato sobre este interesse. A imobiliária não recebe nenhum outro dado meu '
+  + '(nem check-ins, nem diário, nem plano). Posso pedir a exclusão a qualquer momento.';
+
+const limparTextoImv = (v, max) => String(v ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, max);
+// Valor em reais vindo do portal/painel: número ou texto ("1.234,56" ou "1234.56").
+function centavosImv(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return centavos(v);
+  let t = String(v).replace(/[^\d.,]/g, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  return centavos(t);
+}
+const agoraTsImv = () => admin.firestore.Timestamp.now();
+const eventoImv = (status, por, extra = {}) => ({ status, em: agoraTsImv(), por, ...extra });
+
+async function gerarCodigoImv() {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let tentativa = 0; tentativa < 8; tentativa++) {
+    const tam = tentativa < 5 ? 4 : 5;
+    let s = '';
+    for (let i = 0; i < tam; i++) s += alfabeto[crypto.randomInt(alfabeto.length)];
+    const codigo = `ATR-IMV-${s}`;
+    const existe = await db.collection('indicacoesImoveis').where('codigo', '==', codigo).limit(1).get();
+    if (existe.empty) return codigo;
+  }
+  throw new HttpsError('unavailable', 'Não foi possível gerar o código agora. Tente de novo.');
+}
+
+// Regra combinada com a imobiliária (imobiliariasPrivado): venda e aluguel
+// separados; 'percentual' sobre o valor do negócio (no aluguel, sobre o
+// aluguel mensal informado) ou 'fixo' em reais por negócio.
+function regraRepasseImv(priv, interesse) {
+  const chave = interesse === 'alugar' ? 'Aluguel' : 'Venda';
+  return {
+    tipo: priv?.[`repasse${chave}Tipo`] === 'percentual' ? 'percentual' : 'fixo',
+    valor: Number(priv?.[`repasse${chave}Valor`]) || 0,
+  };
+}
+function calcularRepasseImv(priv, interesse, valorNegocioCentavos) {
+  const r = regraRepasseImv(priv, interesse);
+  if (r.valor <= 0) return 0;
+  if (r.tipo === 'percentual') return Math.max(0, Math.round((Number(valorNegocioCentavos) || 0) * Math.min(r.valor, 100) / 100));
+  return Math.round(r.valor * 100);
+}
+
+const MSG_USUARIA_IMV = {
+  em_contato: (l) => `A ${l.imobiliariaNome} recebeu sua indicação e vai falar com você em breve.`,
+  visita: (l) => `Visita registrada com a ${l.imobiliariaNome}. Que seja um bom encontro com o novo lar.`,
+  proposta: (l) => `Sua proposta com a ${l.imobiliariaNome} está em andamento. Seguimos com você.`,
+  fechado: (l) => `Negócio fechado com a ${l.imobiliariaNome}! Assim que a imobiliária confirmar o repasse, liberamos sua consultoria com arquiteto parceiro.`,
+  pago: () => 'Sua consultoria online com arquiteto parceiro está liberada. Em breve combinamos a data com você.',
+  consultoria_agendada: (l, x) => `Sua consultoria com arquiteto parceiro está marcada${x?.quando ? ` para ${x.quando}` : ''}. O link está no app.`,
+  concluido: () => 'Consultoria concluída. Que esse novo lar acolha os seus recomeços.',
+  perdido: (l) => `A negociação com a ${l.imobiliariaNome} foi encerrada. Quando quiser, você pode fazer uma nova indicação.`,
+};
+
+// Aviso no sininho (sem detalhes: o texto fica no lead, que só a dona lê) + push.
+async function avisarUsuariaImv(lead, status, extra) {
+  const msg = MSG_USUARIA_IMV[status];
+  if (!msg || !lead?.uid) return;
+  try {
+    await db.collection('notificacoesEditoriais').add({
+      usuarioId: lead.uid, tipo: 'imovel', screen: 'MinhasIndicacoesImoveis',
+      texto: 'Sua indicação de imóvel tem novidades. Toque para acompanhar.',
+      ativa: true, criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (e) { console.warn('[imoveis] aviso não gravado:', e?.message); }
+  await pushParaUsuaria(lead.uid, msg(lead, extra), 'MinhasIndicacoesImoveis');
+}
+
+async function avisarAdminsImv(body) {
+  try {
+    const tokens = await tokensAdministradoras();
+    await enviarPush(tokens.map(to => ({ to, title: 'Atravessia · Imobiliárias', body, data: { screen: 'AdminImobiliarias' } })));
+  } catch (e) { console.warn('[imoveis] push admin não enviado:', e?.message); }
+}
+
+// Data "AAAA-MM-DDTHH:mm" no horário de Brasília (sem horário de verão).
+function dataHoraBrasiliaImv(s) {
+  const t = String(s || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(t)) return null;
+  const ms = Date.parse(`${t}:00-03:00`);
+  return Number.isNaN(ms) ? null : ms;
+}
+const textoDataHoraImv = (ms) => new Date(ms).toLocaleString('pt-BR', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'short' });
+
+// ---- 1) Usuária envia o interesse (gera código + QR) -------------------------
+exports.criarIndicacaoImovel = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError('unauthenticated', 'Entre na sua conta para enviar o interesse.');
+  const d = request.data || {};
+  if (d.consentimento !== true) throw new HttpsError('invalid-argument', 'Para enviar, é preciso autorizar o compartilhamento do nome e do telefone com a imobiliária.');
+  const imobiliariaId = idValido(d.imobiliariaId, 'Imobiliária inválida.');
+  const interesse = d.interesse === 'alugar' ? 'alugar' : 'comprar';
+  const nome = limparTextoImv(d.nome, 120);
+  const telefone = String(d.telefone || '').replace(/\D/g, '').slice(0, 15);
+  if (nome.length < 2) throw new HttpsError('invalid-argument', 'Informe seu nome.');
+  if (telefone.length < 10) throw new HttpsError('invalid-argument', 'Informe um telefone com DDD.');
+
+  if (await passouDoLimite(`imv-lead:${uid}`, { max: 10, janelaMs: 24 * 60 * 60 * 1000 })) {
+    throw new HttpsError('resource-exhausted', 'Você já enviou muitas indicações hoje. Tente de novo amanhã.');
+  }
+
+  const imobSnap = await db.collection('imobiliarias').doc(imobiliariaId).get();
+  if (!imobSnap.exists || imobSnap.data().ativo === false) throw new HttpsError('failed-precondition', 'Esta imobiliária não está disponível no momento.');
+  const imob = imobSnap.data();
+
+  let imovelId = null;
+  let imovelTitulo = '';
+  if (d.imovelId) {
+    imovelId = idValido(d.imovelId, 'Imóvel inválido.');
+    const im = await db.collection('imoveis').doc(imovelId).get();
+    if (!im.exists || im.data().imobiliariaId !== imobiliariaId || im.data().ativo === false) throw new HttpsError('failed-precondition', 'Este imóvel não está mais disponível.');
+    imovelTitulo = limparTextoImv(im.data().titulo, 160);
+  }
+
+  // Já existe uma indicação em aberto para o mesmo destino: devolve a mesma.
+  const minhas = await db.collection('indicacoesImoveis').where('uid', '==', uid).get();
+  const repetida = minhas.docs.find(x => {
+    const v = x.data();
+    return v.imobiliariaId === imobiliariaId && (v.imovelId || null) === imovelId && ABERTOS_IMV.includes(v.status);
+  });
+  if (repetida) return { id: repetida.id, codigo: repetida.data().codigo, existente: true };
+
+  const codigo = await gerarCodigoImv();
+  const tokenSeguro = crypto.randomBytes(18).toString('base64url');
+  const ref = db.collection('indicacoesImoveis').doc();
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const { ip, ua } = origemChamada(request);
+  await ref.set({
+    uid, nome, telefone,
+    imobiliariaId, imobiliariaNome: limparTextoImv(imob.nome, 120),
+    imovelId, imovelTitulo,
+    codigo, tokenSeguro,
+    linkValidacao: `${PORTAL_IMOBILIARIA_URL}?c=${encodeURIComponent(codigo)}&v=${tokenSeguro}`,
+    interesse,
+    faixaPreco: limparTextoImv(d.faixaPreco, 60),
+    bairros: limparTextoImv(d.bairros, 200),
+    prazo: limparTextoImv(d.prazo, 60),
+    observacoes: limparTextoImv(d.observacoes, 600),
+    consentimento: {
+      aceito: true,
+      versao: limparTextoImv(d.versaoConsentimento, 10) || VERSAO_CONSENTIMENTO_IMV,
+      texto: TEXTO_CONSENTIMENTO_IMV,
+      em: agoraTsImv(),
+      ip: resumirIp(ip), navegador: resumirUserAgent(ua),
+    },
+    status: 'novo',
+    historico: [eventoImv('novo', 'usuaria')],
+    criadoEm: agora, atualizadoEm: agora,
+  });
+  await db.collection('indicacoesImoveisPrivado').doc(ref.id).set({ imobiliariaId, criadoEm: agora });
+  await avisarAdminsImv(`Nova indicação ${codigo} para ${imob.nome || 'imobiliária'} (${interesse === 'alugar' ? 'aluguel' : 'compra'}).`);
+  return { id: ref.id, codigo, existente: false };
+});
+
+// ---- Portal da imobiliária: identificação pelo token (limite por IP) ---------
+async function imobiliariaPorToken(request) {
+  const { ip } = origemChamada(request);
+  const chave = ip || 'sem-ip';
+  const LIM_FALHA = { max: 8, janelaMs: 30 * 60 * 1000 };
+  if (await passouDoLimite(`imv-portal:${chave}`, { max: 90, janelaMs: 10 * 60 * 1000 })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  if (await passouDoLimite(`imv-falha:${chave}`, { ...LIM_FALHA, incrementar: false })) throw new HttpsError('resource-exhausted', MSG_MUITAS_TENTATIVAS);
+  const falhar = async (codigo, msg) => {
+    await passouDoLimite(`imv-falha:${chave}`, LIM_FALHA);
+    throw new HttpsError(codigo, msg);
+  };
+  const token = String(request.data?.token || '');
+  if (!TOKEN_PORTAL.test(token)) await falhar('invalid-argument', 'Link inválido. Abra o link exatamente como a equipe Atravessia enviou.');
+  const snap = await db.collection('imobiliariasPrivado').where('tokenPortal', '==', token).limit(1).get();
+  if (snap.empty) await falhar('not-found', 'Este link não é mais válido. Peça um novo à equipe Atravessia.');
+  const id = snap.docs[0].id;
+  const pub = await db.collection('imobiliarias').doc(id).get();
+  return { id, priv: snap.docs[0].data(), pub: pub.data() || {}, falhar };
+}
+
+const msImv = (ts) => (ts?.toMillis ? ts.toMillis() : null);
+
+// Lead como a imobiliária vê: nome e telefone só de quem consentiu.
+function leadParaPortal(id, l, p) {
+  const consentiu = l.consentimento?.aceito === true;
+  return {
+    id, codigo: l.codigo, status: l.status,
+    nome: consentiu ? l.nome || '' : '', telefone: consentiu ? l.telefone || '' : '', consentiu,
+    interesse: l.interesse, faixaPreco: l.faixaPreco || '', bairros: l.bairros || '', prazo: l.prazo || '',
+    observacoes: consentiu ? l.observacoes || '' : '', imovelTitulo: l.imovelTitulo || '',
+    criadoEm: msImv(l.criadoEm), validadoEm: msImv(l.validadoEm),
+    historico: (l.historico || []).filter(h => h?.status).map(h => ({ status: h.status, em: msImv(h.em), por: h.por || '' })),
+    valorNegocio: p?.valorNegocioCentavos != null ? p.valorNegocioCentavos / 100 : null,
+    repassePrevisto: p?.repassePrevistoCentavos != null ? p.repassePrevistoCentavos / 100 : null,
+    repasseEnviadoEm: msImv(p?.repasseEnviado?.em),
+    repasseConfirmado: p?.repasseCentavos != null ? p.repasseCentavos / 100 : null,
+    pagoEm: msImv(p?.pagoEm),
+    beneficioEntregue: l.status === 'concluido',
+  };
+}
+
+exports.portalImobiliaria = onCall(async (request) => {
+  const { id, priv, pub } = await imobiliariaPorToken(request);
+  // Mesmo desativada no app, o portal segue aberto para concluir os leads em andamento.
+  const [leadsSnap, privSnap] = await Promise.all([
+    db.collection('indicacoesImoveis').where('imobiliariaId', '==', id).get(),
+    db.collection('indicacoesImoveisPrivado').where('imobiliariaId', '==', id).get(),
+  ]);
+  const privados = new Map(privSnap.docs.map(x => [x.id, x.data()]));
+  const leads = leadsSnap.docs.map(x => leadParaPortal(x.id, x.data(), privados.get(x.id)))
+    .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+
+  // Validação de código / QR (opcional).
+  let validacao = null;
+  const codigoBruto = String(request.data?.codigo || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (codigoBruto) {
+    const codigo = codigoBruto.startsWith('ATR-IMV-') ? codigoBruto : `ATR-IMV-${codigoBruto.replace(/^ATR-?IMV-?/, '')}`;
+    const doc = leadsSnap.docs.find(x => x.data().codigo === codigo);
+    if (!doc) {
+      validacao = { ok: false, mensagem: 'Não encontramos este código entre as indicações da sua imobiliária. Confira as letras e os números.' };
+    } else {
+      const l = doc.data();
+      const v = String(request.data?.v || '');
+      const viaQr = !!v && v === l.tokenSeguro;
+      if (!l.validadoEm) {
+        await doc.ref.update({ validadoEm: agoraTsImv(), validadoViaQr: viaQr, atualizadoEm: admin.firestore.FieldValue.serverTimestamp() });
+      }
+      validacao = { ok: true, leadId: doc.id, codigo, viaQr, jaValidado: !!l.validadoEm };
+      const item = leads.find(x => x.id === doc.id);
+      if (item && !item.validadoEm) item.validadoEm = Date.now();
+    }
+  }
+
+  const fechadosAbertos = leads.filter(l => l.status === 'fechado');
+  const resumo = {
+    total: leads.length,
+    emAndamento: leads.filter(l => ABERTOS_IMV.includes(l.status)).length,
+    fechados: leads.filter(l => ['fechado', 'pago', 'consultoria_agendada', 'concluido'].includes(l.status)).length,
+    aRepassar: fechadosAbertos.reduce((s, l) => s + (l.repassePrevisto || 0), 0),
+    repassado: leads.reduce((s, l) => s + (l.repasseConfirmado || 0), 0),
+  };
+  return {
+    imobiliaria: { nome: pub.nome || '', logoUrl: pub.logoUrl || '', creci: pub.creci || '' },
+    regra: {
+      venda: regraRepasseImv(priv, 'comprar'),
+      aluguel: regraRepasseImv(priv, 'alugar'),
+      prazoDias: Number(priv.prazoRepasseDias) || null,
+      dadosPagamento: limparTextoImv(priv.dadosPagamentoAtravessia, 400),
+    },
+    leads, resumo, validacao,
+  };
+});
+
+// ---- 2) Imobiliária atualiza o lead (status, valor, repasse enviado) ---------
+exports.atualizarLeadImobiliaria = onCall(async (request) => {
+  const { id: imobId, priv, falhar } = await imobiliariaPorToken(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const acao = String(request.data?.acao || 'status');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  if (acao === 'repasseEnviado') {
+    const comprovanteUrl = urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante');
+    const observacao = limparTextoImv(request.data?.observacao, 300);
+    const lead = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.data().imobiliariaId !== imobId) return null;
+      if (snap.data().status !== 'fechado') throw new HttpsError('failed-precondition', 'Só dá para informar o repasse de um negócio fechado e ainda não confirmado.');
+      tx.set(privRef, { imobiliariaId: imobId, repasseEnviado: { em: agoraTsImv(), comprovanteUrl, observacao }, atualizadoEm: agora }, { merge: true });
+      return snap.data();
+    });
+    if (!lead) await falhar('not-found', 'Indicação não encontrada.');
+    await avisarAdminsImv(`A imobiliária ${lead.imobiliariaNome} informou o repasse da indicação ${lead.codigo}. Confira e confirme o recebimento.`);
+    return { ok: true };
+  }
+
+  if (acao !== 'status') throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+  const novo = String(request.data?.status || '');
+  if (!STATUS_IMV.includes(novo)) throw new HttpsError('invalid-argument', 'Status inválido.');
+  let valorNegocioCentavos = null;
+  if (novo === 'fechado') {
+    valorNegocioCentavos = centavosImv(request.data?.valorNegocio);
+    if (!valorNegocioCentavos || valorNegocioCentavos > 10000000000) throw new HttpsError('invalid-argument', 'Informe o valor do negócio (venda ou aluguel mensal).');
+  }
+  const resultado = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.data().imobiliariaId !== imobId) return null;
+    const l = snap.data();
+    const permitidos = TRANSICOES_IMOBILIARIA[l.status] || [];
+    if (!permitidos.includes(novo)) throw new HttpsError('failed-precondition', 'Esta mudança de etapa não é permitida agora.');
+    const upd = { status: novo, atualizadoEm: agora };
+    if (novo !== l.status) upd.historico = admin.firestore.FieldValue.arrayUnion(eventoImv(novo, 'imobiliaria'));
+    tx.update(ref, upd);
+    if (novo === 'fechado') {
+      tx.set(privRef, {
+        imobiliariaId: imobId, valorNegocioCentavos,
+        repassePrevistoCentavos: calcularRepasseImv(priv, l.interesse, valorNegocioCentavos),
+        regraAplicada: regraRepasseImv(priv, l.interesse),
+        fechadoEm: agoraTsImv(), atualizadoEm: agora,
+      }, { merge: true });
+    }
+    return { lead: l, mudou: novo !== l.status };
+  });
+  if (!resultado) await falhar('not-found', 'Indicação não encontrada.');
+  if (resultado.mudou) {
+    await avisarUsuariaImv(resultado.lead, novo);
+    if (novo === 'fechado') await avisarAdminsImv(`Negócio fechado: indicação ${resultado.lead.codigo} (${resultado.lead.imobiliariaNome}). Aguarde o repasse.`);
+  }
+  return { ok: true };
+});
+
+// ---- 3) Admin: link do portal da imobiliária ---------------------------------
+exports.gerenciarPortalImobiliaria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const id = idValido(request.data?.imobiliariaId, 'Escolha a imobiliária.');
+  const acao = String(request.data?.acao || '');
+  if (!(await db.collection('imobiliarias').doc(id).get()).exists) throw new HttpsError('not-found', 'Imobiliária não encontrada.');
+  const privRef = db.collection('imobiliariasPrivado').doc(id);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  if (acao === 'novoLink') {
+    const tokenPortal = gerarTokenPortal();
+    await privRef.set({ tokenPortal, tokenGeradoEm: agora, tokenRevogadoEm: null, atualizadoEm: agora, atualizadoPor: adminUid }, { merge: true });
+    return { ok: true, linkPortal: `${PORTAL_IMOBILIARIA_URL}?t=${tokenPortal}` };
+  }
+  if (acao === 'revogar') {
+    await privRef.set({ tokenPortal: null, tokenRevogadoEm: agora, atualizadoEm: agora, atualizadoPor: adminUid }, { merge: true });
+    return { ok: true };
+  }
+  throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+});
+
+// ---- 4) Admin: confirma o recebimento do repasse (congela o valor) -----------
+exports.confirmarRepasseImobiliaria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const informado = centavosImv(request.data?.valorRecebido);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lead = await db.runTransaction(async (tx) => {
+    const [snap, pSnap] = await Promise.all([tx.get(ref), tx.get(privRef)]);
+    if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+    const l = snap.data();
+    if (l.status !== 'fechado') throw new HttpsError('failed-precondition', 'Só dá para confirmar o repasse de um negócio fechado (e ainda não confirmado).');
+    const p = pSnap.data() || {};
+    let previsto = p.repassePrevistoCentavos;
+    if (previsto == null) {
+      const imobPriv = (await tx.get(db.collection('imobiliariasPrivado').doc(l.imobiliariaId))).data();
+      previsto = calcularRepasseImv(imobPriv, l.interesse, p.valorNegocioCentavos || 0);
+    }
+    const repasseCentavos = informado != null ? informado : previsto;
+    if (!repasseCentavos || repasseCentavos <= 0) throw new HttpsError('invalid-argument', 'Informe o valor recebido da imobiliária.');
+    tx.update(ref, { status: 'pago', atualizadoEm: agora, historico: admin.firestore.FieldValue.arrayUnion(eventoImv('pago', 'admin')) });
+    tx.set(privRef, {
+      imobiliariaId: l.imobiliariaId, repasseCentavos, repassePrevistoCentavos: previsto,
+      pagoEm: agoraTsImv(), pagoPor: adminUid, atualizadoEm: agora,
+    }, { merge: true });
+    return l;
+  });
+  await registrarAuditoriaBeneficio('IMOVEL_REPASSE_CONFIRMADO', 'indicacaoImovel', leadId, { adminUid });
+  await avisarUsuariaImv(lead, 'pago');
+  return { ok: true };
+});
+
+// ---- 5) Admin: atribui arquiteto e agenda a consultoria -----------------------
+exports.agendarConsultoria = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const arquitetoId = idValido(request.data?.arquitetoId, 'Escolha o arquiteto.');
+  const ms = dataHoraBrasiliaImv(request.data?.dataHora);
+  if (!ms) throw new HttpsError('invalid-argument', 'Informe a data e o horário da consultoria.');
+  const link = urlHttpsOpcional(request.data?.link, 'Link da chamada');
+  const duracaoHoras = Math.min(8, Math.max(0.5, Number(request.data?.duracaoHoras) || 2));
+  const observacao = limparTextoImv(request.data?.observacao, 300);
+  const [arqSnap, arqPriv] = await Promise.all([
+    db.collection('arquitetos').doc(arquitetoId).get(),
+    db.collection('arquitetosPrivado').doc(arquitetoId).get(),
+  ]);
+  if (!arqSnap.exists) throw new HttpsError('not-found', 'Arquiteto não encontrado.');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lead = await db.runTransaction(async (tx) => {
+    const [snap, pSnap] = await Promise.all([tx.get(ref), tx.get(privRef)]);
+    if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+    const l = snap.data();
+    if (!['pago', 'consultoria_agendada'].includes(l.status)) throw new HttpsError('failed-precondition', 'A consultoria só pode ser agendada depois de confirmado o repasse da imobiliária.');
+    const p = pSnap.data() || {};
+    tx.update(ref, {
+      status: 'consultoria_agendada',
+      arquitetoId, arquitetoNome: limparTextoImv(arqSnap.data().nome, 120),
+      consultoria: { data: admin.firestore.Timestamp.fromMillis(ms), link, duracaoHoras, observacao, status: 'agendada' },
+      atualizadoEm: agora,
+      ...(l.status !== 'consultoria_agendada' ? { historico: admin.firestore.FieldValue.arrayUnion(eventoImv('consultoria_agendada', 'admin')) } : {}),
+    });
+    // Custo do arquiteto congelado na primeira atribuição (ou ao trocar de arquiteto, se ainda não pago).
+    if (p.custoArquitetoCentavos == null || (p.arquitetoId !== arquitetoId && !p.arquitetoPagoEm)) {
+      tx.set(privRef, {
+        imobiliariaId: l.imobiliariaId, arquitetoId,
+        custoArquitetoCentavos: Math.round((Number(arqPriv.data()?.valorConsultoria) || 0) * 100),
+        atualizadoEm: agora, agendadoPor: adminUid,
+      }, { merge: true });
+    }
+    return l;
+  });
+  await avisarUsuariaImv(lead, 'consultoria_agendada', { quando: textoDataHoraImv(ms) });
+  return { ok: true };
+});
+
+// ---- 6) Admin: concluir consultoria, pagar arquiteto, corrigir etapa --------
+exports.atualizarLeadAdmin = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
+  const acao = String(request.data?.acao || '');
+  const ref = db.collection('indicacoesImoveis').doc(leadId);
+  const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
+  const l = snap.data();
+
+  if (acao === 'concluirConsultoria') {
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada nesta indicação.');
+    await ref.update({
+      status: 'concluido', 'consultoria.status': 'concluida', atualizadoEm: agora,
+      historico: admin.firestore.FieldValue.arrayUnion(eventoImv('concluido', 'admin')),
+    });
+    await avisarUsuariaImv(l, 'concluido');
+    return { ok: true };
+  }
+  if (acao === 'pagarArquiteto') {
+    const p = (await privRef.get()).data() || {};
+    if (p.arquitetoPagoEm) throw new HttpsError('failed-precondition', 'O pagamento ao arquiteto já foi registrado.');
+    if (!['consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Agende a consultoria antes de registrar o pagamento ao arquiteto.');
+    const valor = centavosImv(request.data?.valor) ?? p.custoArquitetoCentavos;
+    if (valor == null) throw new HttpsError('invalid-argument', 'Informe o valor pago ao arquiteto.');
+    await privRef.set({
+      arquitetoPagoEm: agoraTsImv(), arquitetoPagoCentavos: valor,
+      arquitetoComprovanteUrl: urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante'),
+      atualizadoEm: agora, arquitetoPagoPor: adminUid,
+    }, { merge: true });
+    return { ok: true };
+  }
+  if (acao === 'status') {
+    // Correções manuais. "pago" e "consultoria_agendada" têm ações próprias.
+    const novo = String(request.data?.status || '');
+    if (!['novo', 'em_contato', 'visita', 'proposta', 'perdido'].includes(novo)) throw new HttpsError('invalid-argument', 'Use as ações próprias para fechar, confirmar repasse ou agendar.');
+    if (['pago', 'consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Depois do repasse confirmado a etapa não volta atrás.');
+    if (novo === l.status) return { ok: true };
+    await ref.update({ status: novo, atualizadoEm: agora, historico: admin.firestore.FieldValue.arrayUnion(eventoImv(novo, 'admin')) });
+    await avisarUsuariaImv(l, novo);
+    return { ok: true };
+  }
+  if (acao === 'cancelarConsultoria') {
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada.');
+    await ref.update({ status: 'pago', 'consultoria.status': 'cancelada', atualizadoEm: agora });
+    return { ok: true };
+  }
+  throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+});

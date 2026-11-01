@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { AvatarTravessinho, DicaTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 import { Profundo } from '../../components/Efeitos';
 import SeletorOpcoes from '../../components/SeletorOpcoes';
 import { useApp } from '../../hooks/AppContext';
@@ -158,6 +159,7 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
 
 export default function ParceriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const travessinhosAtivos = useTravessinhosAtivos();
   const { width } = useWindowDimensions();
   const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio, meusVouchers } = useApp();
   const cuponsEmAberto = (meusVouchers || []).filter(v => ['ativo', 'aguardando'].includes(situacaoCupom(v))).length;
@@ -291,6 +293,34 @@ export default function ParceriasScreen({ navigation }) {
           </Text>
           {!!video && <BotaoApresentacao onPress={() => setVerVideo(true)} style={{ alignSelf: 'center', marginTop: 4 }} />}
         </View>
+        <DicaTravessinho
+          chave="parcerias"
+          quem="maju"
+          fala="Escolha uma parceria, gere seu cupom e mostre na hora de usar. Os cupons ficam guardados em “Meus cupons”, e algumas compras ainda devolvem cashback!"
+          style={{ marginHorizontal: spacing.lg }}
+        />
+
+        {/* Lar e recomeço: imobiliárias parceiras + consultoria com arquiteto (screens/imoveis) */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('LarRecomeco')}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: spacing.lg, marginTop: spacing.md,
+            padding: 14, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaLuz,
+          }}
+        >
+          <View style={{ width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.lav1 }}>
+            <Ionicons name="home-outline" size={20} color={colors.lilasIcone} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo }}>Lar e recomeço</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 }}>
+              Imobiliárias parceiras e uma consultoria com arquiteto quando o negócio fechar
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.lilasTexto} />
+        </TouchableOpacity>
 
         {/* Filtro: área da vida */}
         <Text style={s.filtroRotulo}>Área da vida</Text>
@@ -355,7 +385,9 @@ export default function ParceriasScreen({ navigation }) {
         {/* Lista de parcerias */}
         {parcerias.length === 0 ? (
           <View style={s.emptyBox}>
-            <View style={s.emptyIcone}><Ionicons name="hourglass-outline" size={30} color={colors.lilasIcone} /></View>
+            {travessinhosAtivos
+              ? <AvatarTravessinho quem="maju" tamanho={84} comNome style={{ marginBottom: 6 }} />
+              : <View style={s.emptyIcone}><Ionicons name="hourglass-outline" size={30} color={colors.lilasIcone} /></View>}
             <Text style={s.emptyTit}>Em breve</Text>
             <Text style={s.emptySub}>
               Novas parcerias e benefícios exclusivos serão anunciados em breve. Fique de olho!
@@ -363,7 +395,9 @@ export default function ParceriasScreen({ navigation }) {
           </View>
         ) : parceriasExibidas.length === 0 ? (
           <View style={s.emptyBox}>
-            <View style={s.emptyIcone}><Ionicons name="search-outline" size={28} color={colors.lilasIcone} /></View>
+            {travessinhosAtivos
+              ? <AvatarTravessinho quem="maju" tamanho={84} comNome style={{ marginBottom: 6 }} />
+              : <View style={s.emptyIcone}><Ionicons name="search-outline" size={28} color={colors.lilasIcone} /></View>}
             <Text style={s.emptyTit}>Sem parcerias aqui</Text>
             <Text style={s.emptySub}>Nenhuma parceria com esses filtros ainda. Tente outra área ou outro lugar.</Text>
           </View>

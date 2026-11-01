@@ -12,6 +12,7 @@ import { db } from '../../services/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { AvatarTravessinho, useComemoracaoTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 import { ProximoPasso } from '../../components/DiarioDoDia';
 import { useApp } from '../../hooks/AppContext';
 import { hojeStrBR } from '../../utils/date';
@@ -128,6 +129,8 @@ export default function PequenasVitoriasScreen({ navigation }) {
   const [verTodasOpcoes, setVerTodasOpcoes] = useState(false);
   const [mesesAbertos, setMesesAbertos] = useState({});
   const [registrouAgora, setRegistrouAgora] = useState(false);
+  const travessinhosAtivos = useTravessinhosAtivos();
+  const { comemorar, elemento: festaTravessinho } = useComemoracaoTravessinho();
 
   useEffect(() => {
     // Sem orderBy: o Firestore descarta documentos que não tenham o campo
@@ -178,6 +181,12 @@ export default function PequenasVitoriasScreen({ navigation }) {
     adicionarVitoria({ label });
     vibrarSucesso();
     setRegistrouAgora(true);
+    const frases = [
+      'Isso conta, e muito! Que bom ver você celebrando os passos do caminho.',
+      'Mais uma vitória guardada. Cada passinho importa!',
+      'Que orgulho desse passo! Ele já ficou guardado no seu caminho.',
+    ];
+    comemorar(['nanda', 'maju', 'brian'][registradosHoje.length % 3], frases[registradosHoje.length % frases.length]);
   };
 
   // Toque por engano: a vitória de hoje pode ser desfeita. Dias anteriores
@@ -364,7 +373,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
           <Text style={styles.secTit}>Seu caminho de vitórias</Text>
           {vitorias.length === 0 ? (
             <View style={styles.vazio}>
-              <Moldura source={ilVazio} tamanho={112} />
+              {travessinhosAtivos ? <AvatarTravessinho quem="nanda" tamanho={96} comNome /> : <Moldura source={ilVazio} tamanho={112} />}
               <Text style={styles.vazioTit}>Sua primeira vitória está a um toque</Text>
               <Text style={styles.vazioTxt}>
                 Levantar da cama, beber água, pedir ajuda: o que você registrar aparece aqui, organizado por dia.
@@ -400,6 +409,7 @@ export default function PequenasVitoriasScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
+      {festaTravessinho}
     </SafeAreaView>
   );
 }

@@ -60,8 +60,8 @@ const NAV_GRUPOS = [
       { icon: 'play-circle', iconOff: 'play-circle-outline', label: 'Cursos', sub: 'Cursos · Profissionais · Vendas', screen: 'AdminCursos' },
       {
         icon: 'gift', iconOff: 'gift-outline',
-        label: 'Parcerias', sub: 'Cupons · Cashback · Afiliados',
-        screen: 'AdminParcerias', irmas: ['AdminBeneficios', 'AdminCashback', 'AdminIndicacoes', 'AdminPedidosCashback'],
+        label: 'Parcerias', sub: 'Cupons · Cashback · Afiliados · Imobiliárias',
+        screen: 'AdminParcerias', irmas: ['AdminBeneficios', 'AdminCashback', 'AdminIndicacoes', 'AdminPedidosCashback', 'AdminImobiliarias'],
       },
     ],
   },
@@ -69,6 +69,7 @@ const NAV_GRUPOS = [
     titulo: 'Pessoas',
     itens: [
       { icon: 'people', iconOff: 'people-outline', label: 'Usuárias', screen: 'AdminUsuarias' },
+      { icon: 'videocam', iconOff: 'videocam-outline', label: 'Atendimentos', sub: 'Sessões online · Convites · Sala', screen: 'AdminAtendimentos' },
       {
         icon: 'megaphone', iconOff: 'megaphone-outline',
         label: 'Comunicação', sub: 'Notificações · Mensagens',

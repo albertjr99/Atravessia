@@ -33,6 +33,7 @@ export const GRUPOS_SUBTABS = {
     { label: 'Cashback', screen: 'AdminCashback' },
     { label: 'Afiliados', screen: 'AdminIndicacoes' },
     { label: 'Pedidos de cashback', screen: 'AdminPedidosCashback' },
+    { label: 'Imobiliárias', screen: 'AdminImobiliarias' },
   ],
 };
 

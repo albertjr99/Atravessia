@@ -276,6 +276,41 @@ service cloud.firestore {
     match /limitesPortal/{id} {
       allow read, write: if false;
     }
+    // ---- IMOBILIÁRIAS ("Lar e recomeço") ------------------------------------
+    // Vitrine pública para quem está logado; edição só admin.
+    match /imobiliarias/{imobId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    // Responsável, contatos internos, regra de repasse, contrato e token do
+    // portal: só admin. O token só é criado/trocado pelo servidor.
+    match /imobiliariasPrivado/{imobId} {
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && !('tokenPortal' in request.resource.data);
+      allow update: if isAdmin()
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokenPortal']);
+    }
+    match /imoveis/{imovelId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /arquitetos/{arqId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /arquitetosPrivado/{arqId} {
+      allow read, write: if isAdmin();
+    }
+    // Lead: a usuária lê só as próprias indicações; gravação só pelo servidor.
+    match /indicacoesImoveis/{leadId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+    // Valores do negócio, do repasse e do arquiteto: só admin lê; só servidor grava.
+    match /indicacoesImoveisPrivado/{leadId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
     // Histórico de repasses aos profissionais (função fecharRepasse).
     match /repasses/{repasseId} {
       allow read: if isAdmin();

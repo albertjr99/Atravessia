@@ -33,6 +33,8 @@ import RecursosIA from './RecursosIA';
 import Artes from './Artes';
 import Cursos, { ProfissionaisCursos, VendasCursos } from './Cursos';
 import Preview from './Preview';
+import Atendimentos from './Atendimentos';
+import { IconVideo } from './Icons';
 import {
   IconDashboard, IconLibrary, IconCompass, IconGift, IconUsers,
   IconMegaphone, IconChart, IconTag, IconEdit, IconPerson, IconMenu, IconLogout, IconSpark,
@@ -98,6 +100,7 @@ const NAV_GRUPOS = [
     titulo: 'Pessoas',
     itens: [
       { id: 'usuarias', Icon: IconUsers, label: 'Usuárias', sub: 'Planos e acessos' },
+      { id: 'atendimentos', Icon: IconVideo, label: 'Atendimentos', sub: 'Sessões online · Convites · Sala' },
       {
         id: 'comunicacao', Icon: IconMegaphone, label: 'Comunicação',
         abas: [
@@ -144,6 +147,7 @@ const SCREENS = {
   indicacoes:      Indicacoes,
   pedidosCashback: PedidosCashback,
   usuarias:        Usuarias,
+  atendimentos:    Atendimentos,
   notificacoes:    Notificacoes,
   mensagens:       Mensagens,
   relatorios:      Relatorios,

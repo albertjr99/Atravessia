@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { planos as planosPadrao } from '../../data';
 import { Button, LavandaBg } from '../../components';
+import { DicaTravessinho } from '../../components/Travessinho';
 import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
@@ -141,6 +142,12 @@ export default function PlanosScreen({ navigation }) {
           </View>
           <Moldura source={ilustracao} tamanho={80} />
         </View>
+
+        <DicaTravessinho
+          chave="planos"
+          quem="maju"
+          fala="Sem pressa: compare com calma o que cada plano libera. Se tiver saldo de cashback, ele pode virar desconto na assinatura."
+        />
 
         {/* Mensal ou anual: duas opções bem visíveis */}
         {planosAtivos.some(p => p.preco > 0) && !acessoTotal && opcoesPeriodo.length > 1 && (

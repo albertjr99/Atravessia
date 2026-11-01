@@ -6,6 +6,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { AvatarTravessinho, DicaTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 import Recolhivel from '../../components/Recolhivel';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../hooks/AppContext';
@@ -28,6 +29,7 @@ const TIPO = {
 
 export default function CashbackScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const travessinhosAtivos = useTravessinhosAtivos();
   const { cashback } = useApp();
   const { firebaseUser } = useAuth();
   const { pedidos: pedidosAfiliado, pendentes: pendentesAfiliado } = useMeusPedidosAfiliado(firebaseUser?.uid);
@@ -69,6 +71,12 @@ export default function CashbackScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={[s.conteudo, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
         <View style={s.coluna}>
+          <DicaTravessinho
+            chave="cashback"
+            quem="maju"
+            fala="Cada cupom de parceria e cada compra pelos Achados pode virar crédito aqui. Depois é só usar como desconto no seu plano."
+            style={{ marginBottom: 0 }}
+          />
           <View style={s.saldo}>
             {/* Cartão do saldo em degradê lilás, com brilho de vidro no topo */}
             <LinearGradient colors={[colors.botao, colors.botaoForte]} start={{ x: 0, y: 0 }} end={{ x: 0.7, y: 1 }} style={s.saldoGrad} />
@@ -143,8 +151,12 @@ export default function CashbackScreen({ navigation }) {
           <Text style={s.secTit}>Extrato</Text>
           {cashback.movimentos.length === 0 ? (
             <View style={s.vazio}>
-              <View style={s.passoIcone}><Ionicons name="wallet-outline" size={22} color={colors.lilasIcone} /></View>
-              <Text style={s.vazioTxt}>Seus créditos e descontos aparecem aqui.</Text>
+              {travessinhosAtivos
+                ? <AvatarTravessinho quem="maju" tamanho={76} comNome style={{ marginBottom: 4 }} />
+                : <View style={s.passoIcone}><Ionicons name="wallet-outline" size={22} color={colors.lilasIcone} /></View>}
+              <Text style={s.vazioTxt}>{travessinhosAtivos
+                ? 'Seus créditos e descontos aparecem aqui. Que tal começar por uma parceria? Eu adoro um cupom!'
+                : 'Seus créditos e descontos aparecem aqui.'}</Text>
               <TouchableOpacity onPress={() => navigation.navigate('Parcerias')}>
                 <Text style={s.link}>Ver parcerias com cupom</Text>
               </TouchableOpacity>

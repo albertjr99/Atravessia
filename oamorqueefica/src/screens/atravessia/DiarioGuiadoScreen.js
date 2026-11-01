@@ -11,6 +11,7 @@ import Recolhivel from '../../components/Recolhivel';
 import { db } from '../../services/firebase';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
+import { DicaTravessinho, VazioTravessinho } from '../../components/Travessinho';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Profundo } from '../../components/Efeitos';
 import { useApp } from '../../hooks/AppContext';
@@ -172,6 +173,11 @@ export default function DiarioGuiadoScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={s.coluna}>
+          <DicaTravessinho
+            chave="diario"
+            quem="nanda"
+            fala="Aqui não precisa escrever bonito. Uma frase já vale: o diário é um lugar seguro para colocar para fora o que pesa e o que alegra."
+          />
           {retorno && (
             <View style={[s.retorno, retorno.risco && s.retornoRisco]}>
               <View style={s.retornoTopo}>
@@ -258,7 +264,7 @@ export default function DiarioGuiadoScreen({ navigation }) {
 
           <Text style={s.secTit}>Páginas anteriores</Text>
           {entradas === null ? null : anteriores.length === 0 ? (
-            <Text style={s.vazio}>As páginas dos outros dias aparecem aqui, guardadinhas.</Text>
+            <VazioTravessinho quem="nanda" fala="As páginas dos outros dias aparecem aqui, guardadinhas e só para você." style={{ paddingVertical: spacing.md }} />
           ) : anteriores.map(item => (
             <Recolhivel
               key={item.id}

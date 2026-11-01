@@ -42,8 +42,10 @@ export const ROTA_POR_TIPO = {
   cupom: 'MeusCupons',
   cashback: 'Cashback',
   cashback_afiliado: 'MeusPedidosCashback',
+  imovel: 'MinhasIndicacoesImoveis',
   curso: 'Cursos',
   comunicacao: 'Notificacoes',
+  atendimento: 'MeusAtendimentos',
 };
 
 // No painel (administradoras) as telas da usuária não existem: algumas têm
@@ -52,8 +54,10 @@ const NO_PAINEL = {
   Notificacoes: 'AdminNotificacoes',
   Cashback: 'AdminCashback',
   MeusPedidosCashback: 'AdminPedidosCashback',
+  MinhasIndicacoesImoveis: 'AdminImobiliarias',
   Cursos: 'AdminCursos',
   Curso: 'AdminCursos',
+  MeusAtendimentos: 'AdminAtendimentos',
 };
 
 // Tipos/rotas que abrem o aviso de atualização em vez de uma tela.
