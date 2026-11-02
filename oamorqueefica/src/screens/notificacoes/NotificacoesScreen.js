@@ -6,7 +6,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
-import { VazioTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 
 const ilVazio = require('../../../assets/images/il_folha_vento.png');
 import { useApp } from '../../hooks/AppContext';
@@ -60,7 +59,6 @@ const DESTINO = {
 
 export default function NotificacoesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const travessinhosAtivos = useTravessinhosAtivos();
   const { notificacoes, marcarLida } = useApp();
   const naoLidas = notificacoes.filter(n => !n.lida).length;
 
@@ -96,19 +94,10 @@ export default function NotificacoesScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.lista}>
         {notificacoes.length === 0 ? (
-          travessinhosAtivos ? (
-            <VazioTravessinho
-              quem="brian"
-              titulo="Nenhuma notificação por aqui ainda"
-              fala="Quando chegar um recado, um lembrete do check-in ou uma novidade, eu guardo tudo aqui para você. Dá para escolher o horário do lembrete no seu perfil."
-              acao={{ rotulo: 'Escolher o lembrete', onPress: () => navigation.navigate('Lembrete') }}
-            />
-          ) : (
-            <View style={styles.empty}>
-              <Moldura source={ilVazio} tamanho={120} />
-              <Text style={styles.emptyText}>Nenhuma notificação por aqui ainda.</Text>
-            </View>
-          )
+          <View style={styles.empty}>
+            <Moldura source={ilVazio} tamanho={120} />
+            <Text style={styles.emptyText}>Nenhuma notificação por aqui ainda.</Text>
+          </View>
         ) : (
           notificacoes.map(n => (
             <TouchableOpacity

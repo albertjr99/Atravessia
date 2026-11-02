@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { urlDeImagem } from '../../utils/imagemUrl';
 
-// Peças comuns das telas "Lar e recomeço" (vitrine de imobiliárias, imóveis,
-// indicação e acompanhamento).
+// Peças comuns das telas de indicação de imóveis (formulário, indicação e
+// acompanhamento), abertas pelas parcerias ligadas a uma imobiliária.
 
 export function tomDe(tom) {
   switch (tom) {

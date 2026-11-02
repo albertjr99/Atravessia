@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from './firebase';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { IconCheck, IconLink } from './Icons';
+import { EquipeEditor, FaqEditor } from './EquipeFaq';
 
 // Textos institucionais que aparecem no app: "Sobre o app" e "Seja nosso
 // parceiro" (texto + link do formulário de parceria, ex.: Google Forms).
@@ -79,6 +80,22 @@ export default function Institucional({ showToast }) {
       <button className="btn-primary" onClick={salvar} disabled={salvando || !carregado}>
         <IconCheck size={16} /> {salvando ? 'Salvando…' : 'Salvar e publicar'}
       </button>
+
+      <div className="card" style={{ margin: '28px 0 20px' }}>
+        <h2 className="card-title">Quem faz a Atravessia</h2>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          Fotos e integrantes que aparecem no fim do "Sobre o app". As mudanças só valem no app depois de "Publicar no app".
+        </p>
+        <EquipeEditor showToast={showToast} />
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <h2 className="card-title">Perguntas frequentes</h2>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          Aparecem no app em Perfil e no Sobre o app, com busca. Só as publicadas ficam visíveis para as usuárias.
+        </p>
+        <FaqEditor showToast={showToast} />
+      </div>
     </div>
   );
 }

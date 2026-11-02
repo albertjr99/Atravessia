@@ -460,7 +460,7 @@ exports.notificarInatividade = onSchedule({ schedule: '0 10 * * *', timeZone: TI
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     const checkinsSnap = await userDoc.ref.collection('checkins').orderBy('criadoEm', 'desc').limit(1).get();
     if (checkinsSnap.empty) continue;
@@ -493,7 +493,7 @@ exports.notificarDatasSensiveis = onSchedule({ schedule: '0 9 * * *', timeZone: 
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     const datasSnap = await userDoc.ref.collection('datasSensiveis').get();
     let texto = null;
@@ -520,7 +520,7 @@ exports.notificarFeedbackSemanal = onSchedule({ schedule: '0 18 * * 0', timeZone
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
     const checkinsSnap = await userDoc.ref.collection('checkins').get();
     if (checkinsSnap.empty) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
@@ -543,7 +543,7 @@ exports.notificarRedeApoioSugerida = onSchedule({ schedule: '30 19 1 * *', timeZ
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     const checkinsSnap = await userDoc.ref.collection('checkins')
       .where('criadoEm', '>=', admin.firestore.Timestamp.fromMillis(agora - 30 * 86400000))
@@ -569,7 +569,7 @@ exports.notificarEmocaoPersistente = onSchedule({ schedule: '0 20 * * *', timeZo
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     const checkinsSnap = await userDoc.ref.collection('checkins')
       .where('criadoEm', '>=', quinzeDiasAtras)
@@ -619,7 +619,7 @@ exports.pushComunicacaoAdmin = onDocumentCreated('notificacoesEditoriais/{id}', 
   const mensagens = [];
   for (const d of usuarios) {
     const u = d.data();
-    if (!u.pushToken) continue;
+    if (!u.pushToken || contaInativa(u)) continue;
     const plano = Number(u.plano) || 0;
     const total = u.acessoTotal === true;
     if (alvo === 'plano1' && !(total || plano >= 1)) continue;
@@ -649,7 +649,7 @@ exports.notificarJornadaParada = onSchedule({ schedule: '0 18 * * *', timeZone: 
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     const progressoSnap = await userDoc.ref.collection('jornadaProgresso').get();
     let parada = false;
@@ -678,7 +678,7 @@ exports.notificarMemorialSemAtualizacao = onSchedule({ schedule: '0 18 * * *', t
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
 
     if (dados.memorialAvisoEnviado) continue; // já avisamos; só reavisa após nova memória (ver resetarMemorialAvisoAoCriar)
     const memoriasSnap = await userDoc.ref.collection('memorias').orderBy('criadoEm', 'desc').limit(1).get();
@@ -708,7 +708,7 @@ exports.notificarRelatorioMensal = onSchedule({ schedule: '0 19 1 * *', timeZone
 
   for (const userDoc of usuariosSnap.docs) {
     const dados = userDoc.data();
-    if (!dados.pushToken) continue;
+    if (!dados.pushToken || contaInativa(dados)) continue;
     if (!(await podeEnviarAgora(userDoc.ref, agora))) continue;
 
     mensagensPush.push({ to: dados.pushToken, title: 'Atravessia', body: 'Seu relatório emocional do mês está pronto.', data: { screen: 'Relatorios' } });
@@ -3046,8 +3046,8 @@ exports.comunicarNovaParceria = onDocumentWritten('parcerias/{parceriaId}', asyn
   const depois = event.data?.after;
   if (!depois?.exists) return;
   const p = depois.data();
-  // No app, parceria sem `ativo` conta como ativa.
-  if (p.ativo === false) return;
+  // No app, parceria sem `ativo` conta como ativa. Demonstração não é anunciada.
+  if (p.ativo === false || p.demo === true || event.params.parceriaId.startsWith('demo')) return;
   if (antes?.exists && antes.data().ativo !== false) return;
   if (!ehItemNovo(antes, depois)) return;
   const titulo = String(p.titulo || '').trim();
@@ -3076,7 +3076,9 @@ exports.comunicarNovaParceria = onDocumentWritten('parcerias/{parceriaId}', asyn
 //
 // Configuração (configuracoes/atendimentos, editada no painel):
 //   { provedor: 'daily' | 'jitsi', ativo: true|false, beneficioDias: 60,
-//     salaDeEspera: true, crp: '06/000000', nomeProfissional?: 'Carla ...' }
+//     salaDeEspera: true, permitirChat: true, telaPacientes: false,
+//     crp: '06/000000', nomeProfissional?: 'Carla ...' }
+// Segurança da sala (Daily): ver travasSalaDaily (sala) e urlParticipante (token).
 //
 // CHAVE DO DAILY — lida de process.env para o deploy não falhar enquanto ela
 // não existe (mesmo cuidado do Atravessia Artes). Quando a conta existir:
@@ -3107,10 +3109,16 @@ async function configAtendimentos() {
     ativo: d.ativo !== false,
     beneficioDias: Number.isFinite(dias) && dias >= 0 && dias <= 365 ? Math.round(dias) : 60,
     salaDeEspera: d.salaDeEspera !== false,
+    // Travas da sala (valem no Daily; no modo de teste são só "melhor esforço").
+    permitirChat: d.permitirChat !== false,                 // padrão: chat ligado
+    telaPacientes: d.telaPacientes === true,                // padrão: paciente NÃO compartilha tela
     crp: String(d.crp || '').slice(0, 40),
     nomeProfissional: String(d.nomeProfissional || '').slice(0, 120),
   };
 }
+// Página para onde o provedor manda a pessoa ao sair da chamada (o app fecha a
+// sala ao ver esse endereço; a página do convite mostra "Sessão encerrada").
+const ATEND_URL_SAIDA = `${ATEND_URL_CONVITE}?saiu=1`;
 // Provedor que vale de fato: Daily só com a chave configurada.
 function provedorEfetivo(cfg) {
   return cfg.provedor === 'daily' && chaveDaily() ? 'daily' : 'jitsi';
@@ -3131,80 +3139,154 @@ async function dailyApi(caminho, metodo = 'GET', corpo) {
   return json;
 }
 
+// Propriedades da SALA no Daily (POST /rooms e /rooms/:nome). Referência:
+// docs.daily.co › REST API › Rooms › create-room (propriedades "properties").
+// Valem para todas as pessoas; o que é por pessoa vai no token (abaixo).
+//   privacy 'private'          só entra quem tem token (ou bate na porta, se knocking)
+//   enable_knocking            liga a sala de espera (o token pede knocking: true)
+//   enable_prejoin_ui          tela de câmera/microfone antes de entrar (o token decide)
+//   enable_chat                chat da sala (Carla liga/desliga em Configurações)
+//   enable_advanced_chat       false: sem GIFs/emojis no chat
+//   enable_people_ui           lista de pessoas: só em grupo (a Carla remove por ali)
+//   enable_screenshare         true na sala: a anfitriã pode; o token da paciente bloqueia
+//   enable_recording           AUSENTE = sem gravação (não envie esta propriedade)
+//   enable_live_captions_ui / enable_breakout_rooms / enable_emoji_reactions / enable_pip_ui: false
+//   enable_hand_raising        só em grupo
+//   enable_video_processing_ui true: desfoque de fundo (protege o ambiente da pessoa)
+//   eject_at_room_exp          derruba todo mundo quando a sala expira
+//   nbf / exp                  janela em que a sala existe (profissional 30 min antes; +30 min após o fim)
+//   lang 'pt-BR'               interface em português
+// (owner_only_broadcast não é usado: deixaria só a anfitriã com áudio/vídeo.)
+function travasSalaDaily(cfg, tipo) {
+  const grupo = tipo === 'grupo';
+  return {
+    enable_knocking: !!cfg.salaDeEspera,
+    enable_prejoin_ui: true,
+    enable_chat: !!cfg.permitirChat,
+    enable_advanced_chat: false,
+    enable_people_ui: grupo,
+    enable_hand_raising: grupo,
+    enable_screenshare: true,
+    enable_emoji_reactions: false,
+    enable_live_captions_ui: false,
+    enable_breakout_rooms: false,
+    enable_pip_ui: false,
+    enable_video_processing_ui: true,
+    enable_noise_cancellation_ui: true,
+    enable_network_ui: true,
+    eject_at_room_exp: true,
+    lang: 'pt-BR',
+  };
+}
+const janelaSala = (inicioMs, fimMs) => ({
+  nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_PROF_MIN * 60000) / 1000),
+  exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
+});
+
 const PROVEDORES_VIDEO = {
-  // Daily.co: sala privada, com início/fim, sem gravação (enable_recording
-  // ausente = desligada), sala de espera (knocking) e token por pessoa.
+  // Daily.co (Daily Prebuilt): sala privada, com início/fim, sem gravação,
+  // sala de espera (knocking) e token individual com nome fixo.
   daily: {
-    async criarSala({ inicioMs, fimMs, maxParticipantes }) {
+    async criarSala({ inicioMs, fimMs, maxParticipantes, cfg, tipo }) {
       const nome = `atv-${crypto.randomBytes(12).toString('hex')}`;
       const sala = await dailyApi('/rooms', 'POST', {
         name: nome,
         privacy: 'private',
-        properties: {
-          nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_PROF_MIN * 60000) / 1000),
-          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
-          max_participants: maxParticipantes,
-          enable_knocking: true,
-          enable_prejoin_ui: true,
-          enable_chat: true,
-          enable_screenshare: true,
-          eject_at_room_exp: true,
-          lang: 'pt-BR',
-        },
+        properties: { ...janelaSala(inicioMs, fimMs), max_participants: maxParticipantes, ...travasSalaDaily(cfg, tipo) },
       });
       return { roomName: sala.name, salaUrl: sala.url };
     },
     async atualizarSala(sala, { inicioMs, fimMs }) {
-      await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'POST', {
-        properties: {
-          nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_PROF_MIN * 60000) / 1000),
-          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
-        },
-      });
+      await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'POST', { properties: janelaSala(inicioMs, fimMs) });
+    },
+    // Reaplica as travas (ex.: a Carla desligou o chat depois de criar a sessão).
+    async aplicarTravas(sala, cfg, tipo) {
+      await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'POST', { properties: travasSalaDaily(cfg, tipo) });
     },
     async excluirSala(sala) {
       await dailyApi(`/rooms/${encodeURIComponent(sala.roomName)}`, 'DELETE').catch(() => {});
     },
-    // Anfitriã: token de dona (admite quem bate na sala de espera, remove
-    // pessoas). Participante: token com nome; com sala de espera ligada vai
-    // sem token e "bate na porta" até a profissional admitir.
-    async urlParticipante(sala, { nome, uid, anfitria, fimMs, salaDeEspera }) {
-      if (!anfitria && salaDeEspera) return sala.salaUrl;
-      const { token } = await dailyApi('/meeting-tokens', 'POST', {
-        properties: {
-          room_name: sala.roomName,
-          user_name: String(nome || 'Participante').slice(0, 60),
-          user_id: String(uid).slice(0, 36),
-          is_owner: !!anfitria,
-          exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
-          eject_at_token_exp: true,
-          lang: 'pt-BR',
-        },
-      });
+    // TOKEN POR PESSOA (POST /meeting-tokens). Referência: docs.daily.co ›
+    // REST API › Meeting tokens › create-meeting-token.
+    //   user_name / user_id   nome e id vindos do convite/conta (a pessoa não digita)
+    //   is_owner              true só para a anfitriã: admite, remove, silencia,
+    //                         encerra para todos; a paciente é false
+    //   nbf / exp             só entra na janela do horário; eject_at_token_exp derruba no fim
+    //   knocking              true: mesmo com token, a paciente espera a Carla admitir
+    //   enable_prejoin_ui     false para a paciente: sem tela intermediária (e sem campo
+    //                         de nome); o teste de câmera fica na página do convite
+    //   enable_screenshare    paciente: conforme Configurações (padrão: não)
+    //   enable_recording_ui   false: nem aparece o botão de gravar
+    //   permissions.canAdmin  false: a paciente não administra nada da sala
+    //   permissions.canSend   o que ela pode transmitir (sem tela, se bloqueado)
+    //   redirect_on_meeting_exit  ao sair, vai para a página "Sessão encerrada"
+    // Obs.: no Daily Prebuilt, "Configurações" dentro da chamada só troca
+    // câmera/microfone/fone DO PRÓPRIO aparelho; nada da sala.
+    async urlParticipante(sala, { nome, uid, anfitria, inicioMs, fimMs, cfg }) {
+      const base = {
+        room_name: sala.roomName,
+        user_name: String(nome || 'Participante').slice(0, 60),
+        user_id: String(uid).slice(0, 36),
+        exp: Math.floor((fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) / 1000),
+        eject_at_token_exp: true,
+        enable_recording_ui: false,
+        redirect_on_meeting_exit: ATEND_URL_SAIDA,
+        lang: 'pt-BR',
+      };
+      const props = anfitria
+        ? { ...base, is_owner: true, enable_screenshare: true, enable_prejoin_ui: true }
+        : {
+          ...base,
+          is_owner: false,
+          nbf: Math.floor((inicioMs - ATEND_LIBERA_ANTES_MIN * 60000) / 1000),
+          knocking: !!cfg.salaDeEspera,
+          enable_prejoin_ui: false,
+          enable_screenshare: !!cfg.telaPacientes,
+          permissions: {
+            canAdmin: false,
+            canSend: cfg.telaPacientes ? ['video', 'audio', 'screenVideo', 'screenAudio'] : ['video', 'audio'],
+          },
+        };
+      const { token } = await dailyApi('/meeting-tokens', 'POST', { properties: props });
       return `${sala.salaUrl}?t=${encodeURIComponent(token)}`;
     },
   },
-  // Jitsi público (meet.jit.si) — MODO DE TESTE: o nome longo e aleatório é a
-  // única proteção; não há token por pessoa nem expiração. A primeira pessoa
-  // a entrar precisa se identificar no próprio Jitsi para virar moderadora.
+  // Jitsi público (meet.jit.si) — SOMENTE MODO DE TESTE. As travas do Daily
+  // NÃO valem aqui: não há token por pessoa nem expiração; o nome longo e
+  // aleatório é a única proteção, e as opções abaixo vão no próprio link
+  // (a pessoa pode editá-lo). A primeira pessoa a entrar precisa se
+  // identificar no Jitsi para virar moderadora. Nunca usar com pacientes reais.
+  // Opções (configOverwrite via "#config.x=..."): readOnlyName (não troca o
+  // nome), toolbarButtons (esconde configurações, convidar, gravar, compartilhar
+  // tela etc. para a paciente), disableInviteFunctions, disableProfile,
+  // gravação/transmissão desligadas.
   jitsi: {
     async criarSala() {
       const nome = `Atravessia-${crypto.randomBytes(16).toString('hex')}`;
       return { roomName: nome, salaUrl: `https://meet.jit.si/${nome}` };
     },
     async atualizarSala() {},
+    async aplicarTravas() {},
     async excluirSala() {},
-    async urlParticipante(sala, { nome }) {
-      const cfg = [
+    async urlParticipante(sala, { nome, anfitria, cfg }) {
+      const botoes = anfitria
+        ? ['microphone', 'camera', 'desktop', 'chat', 'participants-pane', 'security', 'tileview', 'settings', 'hangup']
+        : ['microphone', 'camera', 'tileview', 'hangup', ...(cfg?.permitirChat ? ['chat'] : []), ...(cfg?.telaPacientes ? ['desktop'] : [])];
+      const j = (v) => encodeURIComponent(JSON.stringify(v));
+      const opcoes = [
         'config.prejoinConfig.enabled=true',
         'config.disableDeepLinking=true',
         'config.fileRecordingsEnabled=false',
         'config.liveStreamingEnabled=false',
         'config.localRecording.disable=true',
-        `config.defaultLanguage=${encodeURIComponent('"ptBR"')}`,
-        `userInfo.displayName=${encodeURIComponent(JSON.stringify(String(nome || '').slice(0, 60)))}`,
+        'config.disableInviteFunctions=true',
+        'config.disableProfile=true',
+        'config.readOnlyName=true',
+        `config.toolbarButtons=${j(botoes)}`,
+        `config.defaultLanguage=${j('ptBR')}`,
+        `userInfo.displayName=${j(String(nome || '').slice(0, 60))}`,
       ];
-      return `${sala.salaUrl}#${cfg.join('&')}`;
+      return `${sala.salaUrl}#${opcoes.join('&')}`;
     },
   },
 };
@@ -3303,7 +3385,7 @@ exports.criarAtendimento = onCall(OPCOES_ATEND, async (request) => {
 
   const prof = (await db.collection('usuarios').doc(uid).get()).data() || {};
   const provedor = provedorEfetivo(cfg);
-  const sala = await PROVEDORES_VIDEO[provedor].criarSala({ inicioMs, fimMs, maxParticipantes: Math.max(pessoas.length + 2, 3) });
+  const sala = await PROVEDORES_VIDEO[provedor].criarSala({ inicioMs, fimMs, maxParticipantes: Math.max(pessoas.length + 2, 3), cfg, tipo });
 
   const ref = db.collection('atendimentos').doc();
   const participantes = [];
@@ -3403,11 +3485,13 @@ exports.atualizarAtendimento = onCall(OPCOES_ATEND, async (request) => {
   return { ok: true };
 });
 
-async function avisarParticipantesAtendimento(uids, texto, screen = 'MeusAtendimentos') {
+// `extra` vai em data (ex.: { atendimentoId }): com screen 'SalaAtendimento',
+// o toque no push abre a sala direto no app.
+async function avisarParticipantesAtendimento(uids, texto, screen = 'MeusAtendimentos', extra = {}) {
   if (!uids?.length) return;
   const snaps = await Promise.all(uids.map(u => db.collection('usuarios').doc(u).get()));
   await enviarPush(snaps.map(s => s.data()?.pushToken).filter(Boolean)
-    .map(to => ({ to, title: 'Atravessia · Atendimento', body: texto, data: { screen, tipo: 'atendimento' } })));
+    .map(to => ({ to, title: 'Atravessia · Atendimento', body: texto, data: { screen, tipo: 'atendimento', ...extra } })));
 }
 
 // ---- Admin: novo link de convite (o anterior deixa de valer) -----------------
@@ -3450,11 +3534,22 @@ async function conviteValido(request, { contarFalha = true } = {}) {
   return { token, cRef, c, aRef: aSnap.ref, a: aSnap.data() };
 }
 
+// A pessoa já aceitou esta versão do termo em outro convite? (lembra o aceite:
+// num segundo atendimento ela não precisa marcar o termo de novo).
+async function tcleJaAceito(uid) {
+  if (!uid) return false;
+  const s = await db.collection('consentimentosAtendimento')
+    .where('uid', '==', uid).where('tcleVersao', '==', TCLE_ATENDIMENTO_VERSAO).limit(1).get()
+    .catch(() => null);
+  return !!s && !s.empty;
+}
+
 exports.obterConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
   const { c, a } = await conviteValido(request);
   const uid = request.auth?.uid || null;
   const expirado = (c.expiraEm?.toMillis?.() || 0) < Date.now();
   return {
+    tcleJaAceito: !c.uid && await tcleJaAceito(uid),
     atendimento: dadosPublicosAtendimento(a),
     convidada: { nome: c.nome, email: c.uid ? '' : (c.email || '') },
     aceito: !!c.uid,
@@ -3473,7 +3568,8 @@ exports.aceitarConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'Entre ou crie sua conta para aceitar o convite.');
   const { cRef, c, aRef, a } = await conviteValido(request);
-  if (request.data?.aceiteTcle !== true || request.data?.tcleVersao !== TCLE_ATENDIMENTO_VERSAO) {
+  const aceiteAgora = request.data?.aceiteTcle === true && request.data?.tcleVersao === TCLE_ATENDIMENTO_VERSAO;
+  if (!aceiteAgora && !(c.uid === uid) && !(await tcleJaAceito(uid))) {
     throw new HttpsError('failed-precondition', 'Para continuar, leia e aceite o termo do atendimento online.');
   }
   if (c.uid && c.uid !== uid) throw new HttpsError('permission-denied', 'Este convite já foi aceito por outra conta. Entre com a conta usada antes ou peça um novo link.');
@@ -3509,6 +3605,7 @@ exports.aceitarConviteAtendimento = onCall(OPCOES_ATEND, async (request) => {
   const { ip, ua } = origemChamada(request);
   await db.collection('consentimentosAtendimento').add({
     uid, atendimentoId: c.atendimentoId, participanteId: c.participanteId, tcleVersao: TCLE_ATENDIMENTO_VERSAO,
+    origem: aceiteAgora ? 'marcado' : 'aceite-anterior-mesma-versao',
     ip: resumirIp(ip), dispositivo: resumirUserAgent(ua),
     aceitoEm: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -3533,7 +3630,9 @@ exports.entrarNaSala = onCall(OPCOES_ATEND, async (request) => {
   const antes = (anfitria ? ATEND_LIBERA_ANTES_PROF_MIN : ATEND_LIBERA_ANTES_MIN) * 60000;
   const agora = Date.now();
   if (agora < inicioMs - antes) {
-    throw new HttpsError('failed-precondition', `A sala abre ${anfitria ? ATEND_LIBERA_ANTES_PROF_MIN : ATEND_LIBERA_ANTES_MIN} minutos antes do horário.`);
+    // details.liberaEm: o app mostra a contagem e entra sozinho quando abrir.
+    throw new HttpsError('failed-precondition', `A sala abre ${anfitria ? ATEND_LIBERA_ANTES_PROF_MIN : ATEND_LIBERA_ANTES_MIN} minutos antes do horário.`,
+      { motivo: 'cedo', liberaEm: inicioMs - antes, agora });
   }
   if (agora > fimMs + ATEND_TOLERANCIA_FIM_MIN * 60000) throw new HttpsError('failed-precondition', 'Este atendimento já terminou.');
 
@@ -3545,7 +3644,13 @@ exports.entrarNaSala = onCall(OPCOES_ATEND, async (request) => {
   if (!anfitria && eu?.status === 'removido') throw new HttpsError('permission-denied', 'Você não está mais neste atendimento.');
   const nome = anfitria ? `${a.profissionalNome || 'Psicóloga'} (anfitriã)` : (eu?.nome || 'Participante');
   const prov = PROVEDORES_VIDEO[sala.provedor] || PROVEDORES_VIDEO.jitsi;
-  const url = await prov.urlParticipante(sala, { nome, uid, anfitria, fimMs, salaDeEspera: cfg.salaDeEspera });
+  // Nome vem do convite (paciente) ou das Configurações (anfitriã): nunca do aparelho.
+  if (anfitria && prov.aplicarTravas) {
+    await prov.aplicarTravas(sala, cfg, a.tipo).catch(e => console.warn('[Atendimentos] travas', e?.message));
+  }
+  const url = await prov.urlParticipante(sala, { nome, uid, anfitria, inicioMs, fimMs, cfg });
+  // Domínios que o app deixa abrir dentro da sala (o resto é bloqueado).
+  const dominios = sala.provedor === 'daily' ? ['daily.co'] : ['meet.jit.si', '8x8.vc', 'jitsi.net'];
 
   if (!anfitria) {
     // Presença (sem conteúdo da sessão) e renovação da cortesia de acompanhamento.
@@ -3553,7 +3658,10 @@ exports.entrarNaSala = onCall(OPCOES_ATEND, async (request) => {
     await db.collection('atendimentosPrivado').doc(id).set({ participantes }, { merge: true });
     await concederBeneficioAtendimento(uid, fimMs, cfg.beneficioDias).catch(e => console.warn('[Atendimentos] benefício', e?.message));
   }
-  return { url, provedor: sala.provedor, modoTeste: sala.provedor !== 'daily', embutir: sala.provedor === 'daily', anfitria };
+  return {
+    url, provedor: sala.provedor, modoTeste: sala.provedor !== 'daily', embutir: sala.provedor === 'daily', anfitria,
+    dominios, urlSaida: ATEND_URL_SAIDA, fim: fimMs,
+  };
 });
 
 // ---- Lembretes: 1 h e 10 min antes -------------------------------------------
@@ -3578,23 +3686,32 @@ exports.lembretesAtendimento = onSchedule({ schedule: 'every 5 minutes', timeZon
     }
     if (!marca) continue;
     await docSnap.ref.update(marca);
-    await avisarParticipantesAtendimento(a.participantesUids || [], texto);
+    // 10 min antes: o toque no push abre a SALA direto (sem passar por listas).
+    const naHora = faltaMin <= 12;
+    const extra = { atendimentoId: docSnap.id };
+    await avisarParticipantesAtendimento(a.participantesUids || [], texto, naHora ? 'SalaAtendimento' : 'MeusAtendimentos', extra);
     await avisarParticipantesAtendimento([a.profissionalUid],
-      `${a.titulo}: começa em ${faltaMin <= 12 ? '10 minutos' : '1 hora'}.`, 'AdminAtendimentos');
+      `${a.titulo}: começa em ${naHora ? '10 minutos. Toque para abrir a sala' : '1 hora'}.`, naHora ? 'SalaAtendimento' : 'AdminAtendimentos', extra);
   }
 });
 
 // =============================================================================
-// IMOBILIÁRIAS — "Lar e recomeço" (parceria Atravessia + imobiliária + arquiteto)
+// IMOBILIÁRIAS — controle de imobiliárias parceiras (painel)
 // =============================================================================
-// A usuária demonstra interesse numa imobiliária parceira e recebe um código
-// (ATR-IMV-XXXX) e um QR Code. A imobiliária acompanha os leads pelo portal
-// imobiliaria.html?t=<token> (sem login). Quando o negócio fecha, a imobiliária
-// repassa o valor combinado; a Atravessia confirma o recebimento (valor
-// congelado) e agenda uma consultoria online com arquiteto parceiro.
+// Para a usuária, cada imobiliária é uma parceria comum em "Experimente a
+// vida" (coleção parcerias, categoria 'ambiente'), com regras e benefício
+// editáveis no cadastro da parceria. A parceria ligada a uma imobiliária deste
+// controle (parcerias.imobiliariaId ↔ imobiliarias.parceriaId) mostra o botão
+// "Quero indicação": a usuária recebe um código (ATR-IMV-XXXX) e um QR Code.
+// A imobiliária acompanha os leads pelo portal imobiliaria.html?t=<token> (sem
+// login). Quando o negócio fecha, a imobiliária repassa o valor combinado; a
+// Atravessia confirma o recebimento (valor congelado) e agenda o serviço
+// parceiro do benefício (ex.: consultoria com arquiteta), feito por um
+// "prestador do benefício" (coleção arquitetos, nome mantido por compatibilidade).
 // Coleções: imobiliarias, imobiliariasPrivado, imoveis, arquitetos,
 // arquitetosPrivado, indicacoesImoveis (lead; a usuária lê o próprio) e
 // indicacoesImoveisPrivado (valores do negócio e do repasse; só admin).
+// Demonstração: criarDemonstracaoImobiliarias (ids com prefixo demo).
 // Ver docs/imobiliarias/README.md.
 
 const PORTAL_IMOBILIARIA_URL = `${SITE_URL}/imobiliaria.html`;
@@ -3662,10 +3779,11 @@ const MSG_USUARIA_IMV = {
   em_contato: (l) => `A ${l.imobiliariaNome} recebeu sua indicação e vai falar com você em breve.`,
   visita: (l) => `Visita registrada com a ${l.imobiliariaNome}. Que seja um bom encontro com o novo lar.`,
   proposta: (l) => `Sua proposta com a ${l.imobiliariaNome} está em andamento. Seguimos com você.`,
-  fechado: (l) => `Negócio fechado com a ${l.imobiliariaNome}! Assim que a imobiliária confirmar o repasse, liberamos sua consultoria com arquiteto parceiro.`,
-  pago: () => 'Sua consultoria online com arquiteto parceiro está liberada. Em breve combinamos a data com você.',
-  consultoria_agendada: (l, x) => `Sua consultoria com arquiteto parceiro está marcada${x?.quando ? ` para ${x.quando}` : ''}. O link está no app.`,
-  concluido: () => 'Consultoria concluída. Que esse novo lar acolha os seus recomeços.',
+  // O benefício vem do cadastro da parceria (lead.beneficioTexto): nada fixo aqui.
+  fechado: (l) => `Negócio fechado com a ${l.imobiliariaNome}! Assim que a imobiliária confirmar, liberamos o seu benefício da parceria.`,
+  pago: () => 'O seu benefício da parceria está liberado. Em breve combinamos os detalhes com você.',
+  consultoria_agendada: (l, x) => `O seu benefício da parceria está marcado${x?.quando ? ` para ${x.quando}` : ''}. Os detalhes estão no app.`,
+  concluido: () => 'Benefício entregue. Que esse novo lar acolha os seus recomeços.',
   perdido: (l) => `A negociação com a ${l.imobiliariaNome} foi encerrada. Quando quiser, você pode fazer uma nova indicação.`,
 };
 
@@ -3720,6 +3838,20 @@ exports.criarIndicacaoImovel = onCall(async (request) => {
   if (!imobSnap.exists || imobSnap.data().ativo === false) throw new HttpsError('failed-precondition', 'Esta imobiliária não está disponível no momento.');
   const imob = imobSnap.data();
 
+  // Parceria de "Experimente a vida" ligada a esta imobiliária: o benefício
+  // mostrado à usuária vem do cadastro dela (texto editável no painel).
+  let parceriaId = null;
+  let beneficioTexto = '';
+  const parceriaPedida = d.parceriaId ? idValido(d.parceriaId, 'Parceria inválida.') : (imob.parceriaId || null);
+  if (parceriaPedida && ID_SEGURO.test(String(parceriaPedida))) {
+    const pSnap = await db.collection('parcerias').doc(String(parceriaPedida)).get();
+    const pd = pSnap.exists ? pSnap.data() : null;
+    if (pd && (pd.imobiliariaId === imobiliariaId || imob.parceriaId === pSnap.id)) {
+      parceriaId = pSnap.id;
+      beneficioTexto = limparTextoImv(pd.beneficioTexto || pd.regras || '', 600);
+    }
+  }
+
   let imovelId = null;
   let imovelTitulo = '';
   if (d.imovelId) {
@@ -3746,6 +3878,7 @@ exports.criarIndicacaoImovel = onCall(async (request) => {
     uid, nome, telefone,
     imobiliariaId, imobiliariaNome: limparTextoImv(imob.nome, 120),
     imovelId, imovelTitulo,
+    parceriaId, beneficioTexto,
     codigo, tokenSeguro,
     linkValidacao: `${PORTAL_IMOBILIARIA_URL}?c=${encodeURIComponent(codigo)}&v=${tokenSeguro}`,
     interesse,
@@ -3978,9 +4111,9 @@ exports.confirmarRepasseImobiliaria = onCall(async (request) => {
 exports.agendarConsultoria = onCall(async (request) => {
   const adminUid = await exigirAdmin(request);
   const leadId = idValido(request.data?.leadId, 'Indicação inválida.');
-  const arquitetoId = idValido(request.data?.arquitetoId, 'Escolha o arquiteto.');
+  const arquitetoId = idValido(request.data?.arquitetoId, 'Escolha o prestador do benefício.');
   const ms = dataHoraBrasiliaImv(request.data?.dataHora);
-  if (!ms) throw new HttpsError('invalid-argument', 'Informe a data e o horário da consultoria.');
+  if (!ms) throw new HttpsError('invalid-argument', 'Informe a data e o horário do serviço do benefício.');
   const link = urlHttpsOpcional(request.data?.link, 'Link da chamada');
   const duracaoHoras = Math.min(8, Math.max(0.5, Number(request.data?.duracaoHoras) || 2));
   const observacao = limparTextoImv(request.data?.observacao, 300);
@@ -3988,7 +4121,7 @@ exports.agendarConsultoria = onCall(async (request) => {
     db.collection('arquitetos').doc(arquitetoId).get(),
     db.collection('arquitetosPrivado').doc(arquitetoId).get(),
   ]);
-  if (!arqSnap.exists) throw new HttpsError('not-found', 'Arquiteto não encontrado.');
+  if (!arqSnap.exists) throw new HttpsError('not-found', 'Prestador do benefício não encontrado.');
   const ref = db.collection('indicacoesImoveis').doc(leadId);
   const privRef = db.collection('indicacoesImoveisPrivado').doc(leadId);
   const agora = admin.firestore.FieldValue.serverTimestamp();
@@ -3996,7 +4129,7 @@ exports.agendarConsultoria = onCall(async (request) => {
     const [snap, pSnap] = await Promise.all([tx.get(ref), tx.get(privRef)]);
     if (!snap.exists) throw new HttpsError('not-found', 'Indicação não encontrada.');
     const l = snap.data();
-    if (!['pago', 'consultoria_agendada'].includes(l.status)) throw new HttpsError('failed-precondition', 'A consultoria só pode ser agendada depois de confirmado o repasse da imobiliária.');
+    if (!['pago', 'consultoria_agendada'].includes(l.status)) throw new HttpsError('failed-precondition', 'O serviço do benefício só pode ser agendado depois de confirmado o repasse da imobiliária.');
     const p = pSnap.data() || {};
     tx.update(ref, {
       status: 'consultoria_agendada',
@@ -4032,7 +4165,7 @@ exports.atualizarLeadAdmin = onCall(async (request) => {
   const l = snap.data();
 
   if (acao === 'concluirConsultoria') {
-    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada nesta indicação.');
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há serviço do benefício agendado nesta indicação.');
     await ref.update({
       status: 'concluido', 'consultoria.status': 'concluida', atualizadoEm: agora,
       historico: admin.firestore.FieldValue.arrayUnion(eventoImv('concluido', 'admin')),
@@ -4042,10 +4175,10 @@ exports.atualizarLeadAdmin = onCall(async (request) => {
   }
   if (acao === 'pagarArquiteto') {
     const p = (await privRef.get()).data() || {};
-    if (p.arquitetoPagoEm) throw new HttpsError('failed-precondition', 'O pagamento ao arquiteto já foi registrado.');
-    if (!['consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Agende a consultoria antes de registrar o pagamento ao arquiteto.');
+    if (p.arquitetoPagoEm) throw new HttpsError('failed-precondition', 'O pagamento ao prestador já foi registrado.');
+    if (!['consultoria_agendada', 'concluido'].includes(l.status)) throw new HttpsError('failed-precondition', 'Agende o serviço do benefício antes de registrar o pagamento ao prestador.');
     const valor = centavosImv(request.data?.valor) ?? p.custoArquitetoCentavos;
-    if (valor == null) throw new HttpsError('invalid-argument', 'Informe o valor pago ao arquiteto.');
+    if (valor == null) throw new HttpsError('invalid-argument', 'Informe o valor pago ao prestador.');
     await privRef.set({
       arquitetoPagoEm: agoraTsImv(), arquitetoPagoCentavos: valor,
       arquitetoComprovanteUrl: urlHttpsOpcional(request.data?.comprovanteUrl, 'Comprovante'),
@@ -4064,9 +4197,315 @@ exports.atualizarLeadAdmin = onCall(async (request) => {
     return { ok: true };
   }
   if (acao === 'cancelarConsultoria') {
-    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há consultoria agendada.');
+    if (l.status !== 'consultoria_agendada') throw new HttpsError('failed-precondition', 'Não há serviço do benefício agendado.');
     await ref.update({ status: 'pago', 'consultoria.status': 'cancelada', atualizadoEm: agora });
     return { ok: true };
   }
   throw new HttpsError('invalid-argument', 'Ação desconhecida.');
+});
+
+// ---- 7) Admin: demonstração do controle de imobiliárias ----------------------
+// Cria (ou atualiza) uma imobiliária fictícia com imóveis, uma prestadora do
+// benefício, a parceria em "Experimente a vida" e 4 leads fictícios em etapas
+// diferentes. Ids fixos com prefixo demo (idempotente) e `demo: true` em tudo.
+// As fotos são ilustrações geradas, servidas pelo hosting (/demo-imoveis/).
+// comunicarNovaParceria ignora a parceria demo (nenhum aviso às usuárias).
+const DEMO_IMOB_ID = 'demo-casa-serena';
+const DEMO_PARCERIA_IMOB_ID = 'demo-casa-serena';
+const DEMO_PRESTADOR_ID = 'demo-arquiteta-helena';
+const DEMO_IMG_IMV = `${SITE_URL}/demo-imoveis`;
+const DEMO_IMOVEIS = [
+  ['demo-imovel-1', 'Casa térrea com quintal e jardim', 'casa', 'venda', 520000, 0, 'Jardim Camburi', 3, 2, 2, 140],
+  ['demo-imovel-2', 'Apartamento iluminado perto do parque', 'apartamento', 'venda', 410000, 620, 'Jardim da Penha', 2, 2, 1, 72],
+  ['demo-imovel-3', 'Casa pequena e acolhedora', 'casa', 'aluguel', 2300, 0, 'Praia do Canto', 2, 1, 1, 80],
+  ['demo-imovel-4', 'Studio prático para recomeçar', 'studio', 'aluguel', 1500, 380, 'Centro', 1, 1, 0, 34],
+  ['demo-imovel-5', 'Apartamento com varanda e vista', 'apartamento', 'venda', 690000, 850, 'Mata da Praia', 3, 2, 2, 110],
+];
+const DEMO_LEADS_IMV = [
+  // id, status, interesse, imóvel, dias atrás, valor do negócio (R$)
+  ['demo-lead-1', 'novo', 'comprar', 'demo-imovel-2', 1, null],
+  ['demo-lead-2', 'visita', 'alugar', 'demo-imovel-3', 6, null],
+  ['demo-lead-3', 'fechado', 'comprar', 'demo-imovel-1', 18, 500000],
+  ['demo-lead-4', 'consultoria_agendada', 'alugar', 'demo-imovel-4', 35, 1500],
+];
+const BENEFICIO_DEMO_IMV = 'Fechou negócio com a Casa Serena pela Atravessia? Você ganha um serviço parceiro sem custo: '
+  + 'nesta demonstração, uma consultoria online de cerca de 2 horas com arquiteta parceira para organizar e decorar o novo lar.';
+
+exports.criarDemonstracaoImobiliarias = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const remover = request.data?.remover === true;
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+  const lote = db.batch();
+
+  if (remover) {
+    DEMO_LEADS_IMV.forEach(([id]) => {
+      lote.delete(db.collection('indicacoesImoveis').doc(id));
+      lote.delete(db.collection('indicacoesImoveisPrivado').doc(id));
+    });
+    DEMO_IMOVEIS.forEach(([id]) => lote.delete(db.collection('imoveis').doc(id)));
+    lote.delete(db.collection('imobiliarias').doc(DEMO_IMOB_ID));
+    lote.delete(db.collection('imobiliariasPrivado').doc(DEMO_IMOB_ID));
+    lote.delete(db.collection('arquitetos').doc(DEMO_PRESTADOR_ID));
+    lote.delete(db.collection('arquitetosPrivado').doc(DEMO_PRESTADOR_ID));
+    lote.delete(db.collection('parcerias').doc(DEMO_PARCERIA_IMOB_ID));
+    lote.delete(db.collection('parceriasPrivado').doc(DEMO_PARCERIA_IMOB_ID));
+    await lote.commit();
+    return { ok: true, removido: true };
+  }
+
+  // Imobiliária (pública) + acordo (privado). O token do portal é mantido.
+  lote.set(db.collection('imobiliarias').doc(DEMO_IMOB_ID), {
+    nome: 'Casa Serena Imóveis (demonstração)',
+    logoUrl: `${DEMO_IMG_IMV}/logo-casa-serena.png`, capaUrl: `${DEMO_IMG_IMV}/imovel-1.png`,
+    descricao: 'Imobiliária fictícia, criada só para demonstrar o controle de imobiliárias da Atravessia.',
+    creci: 'demonstração', cidades: ['Vitória', 'Vila Velha'], bairros: ['Jardim Camburi', 'Jardim da Penha', 'Praia do Canto'],
+    tipos: ['venda', 'aluguel'], site: '', whatsapp: '', instagram: '',
+    destaques: ['Atendimento sem pressa', 'Escuta acolhedora'], ativo: true, ordem: 99,
+    parceriaId: DEMO_PARCERIA_IMOB_ID, demo: true, atualizadoEm: agora, criadoEm: agora,
+  }, { merge: true });
+  const privRef = db.collection('imobiliariasPrivado').doc(DEMO_IMOB_ID);
+  const tokenPortal = (await privRef.get()).data()?.tokenPortal || gerarTokenPortal();
+  lote.set(privRef, {
+    responsavel: 'Responsável fictícia', telefoneInterno: '', emailInterno: '',
+    repasseVendaTipo: 'percentual', repasseVendaValor: 0.5,
+    repasseAluguelTipo: 'fixo', repasseAluguelValor: 400, prazoRepasseDias: 30,
+    contratoUrl: '', vigenciaInicio: '', vigenciaFim: '',
+    dadosPagamentoAtravessia: 'Dados de pagamento fictícios (demonstração).',
+    observacoes: 'Demonstração: nenhum dado real.', tokenPortal, demo: true, atualizadoEm: agora, atualizadoPor: adminUid,
+  }, { merge: true });
+
+  DEMO_IMOVEIS.forEach(([id, titulo, tipo, finalidade, preco, condominio, bairro, quartos, banheiros, vagas, areaM2], i) => {
+    lote.set(db.collection('imoveis').doc(id), {
+      imobiliariaId: DEMO_IMOB_ID, titulo, tipo, finalidade, preco, condominio, bairro, cidade: 'Vitória',
+      quartos, banheiros, vagas, areaM2, fotos: [`${DEMO_IMG_IMV}/imovel-${i + 1}.png`],
+      descricao: 'Imóvel fictício da demonstração.', linkAnuncio: '', ativo: true, ordem: i + 1,
+      demo: true, atualizadoEm: agora, criadoEm: agora,
+    }, { merge: true });
+  });
+
+  // Prestadora do benefício (coleção arquitetos, por compatibilidade).
+  lote.set(db.collection('arquitetos').doc(DEMO_PRESTADOR_ID), {
+    nome: 'Helena Luz (demonstração)', especialidade: 'Arquiteta',
+    especialidades: ['Organização', 'Decoração afetiva', 'Pequenos espaços'],
+    bio: 'Profissional fictícia da demonstração.', cau: '', fotoUrl: '', ativo: true, demo: true, atualizadoEm: agora,
+  }, { merge: true });
+  lote.set(db.collection('arquitetosPrivado').doc(DEMO_PRESTADOR_ID), {
+    valorConsultoria: 350, telefone: '', email: '', dadosPagamento: '', demo: true, atualizadoEm: agora,
+  }, { merge: true });
+
+  // Parceria em "Experimente a vida" (regras e benefício editáveis no painel).
+  lote.set(db.collection('parcerias').doc(DEMO_PARCERIA_IMOB_ID), {
+    titulo: 'Casa Serena Imóveis (demonstração)',
+    descricao: 'Imobiliária parceira para quem está procurando um novo lar, para comprar ou alugar. Demonstração: dados fictícios.',
+    beneficioTexto: BENEFICIO_DEMO_IMV,
+    regras: 'Peça a indicação pelo app e apresente o código ou o QR Code à imobiliária. O benefício vale para negócios fechados a partir da indicação e é liberado depois que a imobiliária confirma o fechamento.',
+    imagemUrl: `${DEMO_IMG_IMV}/logo-casa-serena.png`, link: '',
+    categorias: ['ambiente'], categoriasRevisadas: true,
+    estado: 'ES', cidade: 'Vitória', atendimentoOnline: false,
+    tipoBeneficio: 'link', imobiliariaId: DEMO_IMOB_ID,
+    ativo: true, demo: true, atualizadoEm: agora, criadoEm: agora,
+  }, { merge: true });
+  lote.set(db.collection('parceriasPrivado').doc(DEMO_PARCERIA_IMOB_ID), {
+    titulo: 'Casa Serena Imóveis (demonstração)', demo: true, atualizadoEm: agora,
+  }, { merge: true });
+
+  // Leads fictícios (sem dados reais) em etapas diferentes do funil.
+  const fases = STATUS_IMV; // ordem do funil
+  DEMO_LEADS_IMV.forEach(([id, status, interesse, imovelId, diasAtras, valor], i) => {
+    const criado = Date.now() - diasAtras * 86400000;
+    const ate = fases.slice(0, fases.indexOf(status) + 1);
+    const historico = ate.map((s, k) => ({
+      status: s, em: admin.firestore.Timestamp.fromMillis(criado + k * Math.max(1, diasAtras / ate.length) * 86400000 * 0.8),
+      por: k === 0 ? 'usuaria' : ['pago', 'consultoria_agendada'].includes(s) ? 'admin' : 'imobiliaria',
+    }));
+    const imovel = DEMO_IMOVEIS.find(x => x[0] === imovelId);
+    const codigo = `ATR-IMV-DEM${i + 1}`;
+    const lead = {
+      uid: `demo-usuaria-${i + 1}`, nome: `Cliente fictícia ${i + 1}`, telefone: `0000000000${i + 1}`,
+      imobiliariaId: DEMO_IMOB_ID, imobiliariaNome: 'Casa Serena Imóveis (demonstração)',
+      imovelId, imovelTitulo: imovel ? imovel[1] : '',
+      parceriaId: DEMO_PARCERIA_IMOB_ID, beneficioTexto: BENEFICIO_DEMO_IMV,
+      codigo, tokenSeguro: `demo${i + 1}`,
+      linkValidacao: `${PORTAL_IMOBILIARIA_URL}?c=${encodeURIComponent(codigo)}&v=demo${i + 1}`,
+      interesse, faixaPreco: interesse === 'alugar' ? 'R$ 1.500 a R$ 3.000' : 'R$ 300 mil a R$ 500 mil',
+      bairros: imovel ? imovel[6] : '', prazo: 'Em até 3 meses', observacoes: 'Lead fictício da demonstração.',
+      consentimento: { aceito: true, versao: VERSAO_CONSENTIMENTO_IMV, texto: TEXTO_CONSENTIMENTO_IMV, em: admin.firestore.Timestamp.fromMillis(criado), ip: '', navegador: 'demonstração' },
+      status, historico, demo: true,
+      criadoEm: admin.firestore.Timestamp.fromMillis(criado), atualizadoEm: agora,
+    };
+    const priv = { imobiliariaId: DEMO_IMOB_ID, demo: true, criadoEm: admin.firestore.Timestamp.fromMillis(criado), atualizadoEm: agora };
+    if (valor != null) {
+      const valorNegocioCentavos = Math.round(valor * 100);
+      const regraPriv = { repasseVendaTipo: 'percentual', repasseVendaValor: 0.5, repasseAluguelTipo: 'fixo', repasseAluguelValor: 400 };
+      Object.assign(priv, {
+        valorNegocioCentavos, repassePrevistoCentavos: calcularRepasseImv(regraPriv, interesse, valorNegocioCentavos),
+        regraAplicada: regraRepasseImv(regraPriv, interesse), fechadoEm: admin.firestore.Timestamp.fromMillis(criado + 10 * 86400000),
+      });
+    }
+    if (status === 'consultoria_agendada') {
+      Object.assign(priv, {
+        repasseCentavos: priv.repassePrevistoCentavos, pagoEm: admin.firestore.Timestamp.fromMillis(Date.now() - 3 * 86400000), pagoPor: adminUid,
+        arquitetoId: DEMO_PRESTADOR_ID, custoArquitetoCentavos: 35000,
+      });
+      Object.assign(lead, {
+        arquitetoId: DEMO_PRESTADOR_ID, arquitetoNome: 'Helena Luz (demonstração)',
+        consultoria: { data: admin.firestore.Timestamp.fromMillis(Date.now() + 5 * 86400000), link: '', duracaoHoras: 2, observacao: 'Agendamento fictício da demonstração.', status: 'agendada' },
+      });
+    }
+    lote.set(db.collection('indicacoesImoveis').doc(id), lead);
+    lote.set(db.collection('indicacoesImoveisPrivado').doc(id), priv);
+  });
+
+  await lote.commit();
+  return {
+    ok: true, imobiliariaId: DEMO_IMOB_ID, parceriaId: DEMO_PARCERIA_IMOB_ID,
+    linkPortal: `${PORTAL_IMOBILIARIA_URL}?t=${tokenPortal}`,
+  };
+});
+
+// ============================================================================
+// USUÁRIAS E RELATÓRIOS
+// ============================================================================
+// Status "inativa": a conta e os dados ficam guardados, mas a pessoa não entra
+// em números, avisos automáticos, comunicações nem envios em massa.
+
+function contaInativa(u) {
+  return u?.status === 'inativa';
+}
+
+// Admin marca uma usuária como inativa ou reativa a conta. Nada é apagado.
+// Entrada: { uid, inativa: boolean, motivo?: string }
+exports.definirStatusUsuariaAdmin = onCall(async (request) => {
+  const adminUid = await exigirAdmin(request);
+  const uid = String(request.data?.uid || '').trim();
+  const inativa = request.data?.inativa === true;
+  const motivo = String(request.data?.motivo || '').trim().slice(0, 300);
+  if (!uid || uid.length > 128 || uid.includes('/')) throw new HttpsError('invalid-argument', 'Usuária inválida.');
+  if (uid === adminUid && inativa) throw new HttpsError('failed-precondition', 'Não é possível inativar a própria conta.');
+  const ref = db.collection('usuarios').doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Usuária não encontrada.');
+  const u = snap.data() || {};
+  if (inativa && (u.role === 'admin' || ADMIN_EMAILS_BENEFICIOS.includes(String(u.email || '').toLowerCase()))) {
+    throw new HttpsError('failed-precondition', 'Contas administrativas não podem ser inativadas.');
+  }
+  const agora = admin.firestore.Timestamp.now();
+  const evento = { status: inativa ? 'inativa' : 'ativa', em: agora, por: adminUid, ...(motivo ? { motivo } : {}) };
+  const FV = admin.firestore.FieldValue;
+  await ref.update(inativa
+    ? { status: 'inativa', inativadaEm: agora, inativadaPor: adminUid, motivoInativacao: motivo || null, historicoStatus: FV.arrayUnion(evento) }
+    : { status: 'ativa', reativadaEm: agora, reativadaPor: adminUid, historicoStatus: FV.arrayUnion(evento) });
+  return { ok: true, status: evento.status };
+});
+
+// Palavras sem significado próprio, ignoradas na lista de temas das vitórias.
+const STOPWORDS_VITORIAS = new Set(('a o e é de da do das dos em no na nos nas um uma uns umas com sem por para pra pro ' +
+  'que se me mim meu minha meus minhas eu ele ela eles elas você voce seu sua isso esse essa este esta ' +
+  'hoje ontem dia mais muito pouco bem já ja não nao sim foi fui ter tive tenho estar estou está esta ' +
+  'ao aos às as os ou mas como quando onde também tambem até ate só so lhe nós nos vou vai fiz fez ' +
+  'consegui conseguir depois antes agora ainda todo toda todos todas algo alguém alguem coisa coisas').split(/\s+/));
+
+const normalizarPalavra = (p) => String(p || '').toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// Resumo das Pequenas Vitórias para os relatórios. Lê tudo no servidor e
+// devolve SÓ números agregados — nada de uid, nome ou texto de uma pessoa só.
+// Textos livres (vitórias escritas pela própria usuária) só aparecem quando a
+// mesma frase/palavra veio de 2 ou mais pessoas diferentes.
+// Entrada: { periodo: '30' | '90' | '365' | 'all', estado?: 'SP' }
+exports.relatorioVitoriasAdmin = onCall({ memory: '512MiB', timeoutSeconds: 120 }, async (request) => {
+  await exigirAdmin(request);
+  const periodo = ['30', '90', '365', 'all'].includes(String(request.data?.periodo)) ? String(request.data.periodo) : '30';
+  const estadoFiltro = /^[A-Z]{2}$/.test(String(request.data?.estado || '')) ? String(request.data.estado) : '';
+  const limiar = periodo === 'all' ? null
+    : new Date(Date.now() - Number(periodo) * 86400000).toLocaleDateString('sv-SE', { timeZone: TIMEZONE });
+
+  const [usuariosSnap, vitoriasSnap, opcoesSnap] = await Promise.all([
+    db.collection('usuarios').get(),
+    db.collectionGroup('vitorias').get(),
+    db.collection('vitoriasOpcoes').get(),
+  ]);
+
+  // Só usuárias reais e ativas contam.
+  const perfil = new Map();
+  usuariosSnap.docs.forEach(d => {
+    const u = d.data() || {};
+    if (u.role === 'admin' || contaInativa(u)) return;
+    perfil.set(d.id, { estado: /^[A-Z]{2}$/.test(String(u.estado || '')) ? u.estado : '' });
+  });
+  const opcoes = new Map();
+  opcoesSnap.docs.forEach(d => {
+    const o = d.data() || {};
+    if (o.label) opcoes.set(String(o.label).trim().toLowerCase(), { label: String(o.label).trim(), icone: o.icone || 'star' });
+  });
+
+  const porLabel = new Map(); // chave → { label, icone, tipo, qtd, pessoas:Set }
+  const porIcone = new Map();
+  const porMes = new Map();
+  const porEstado = new Map();
+  const palavras = new Map(); // palavra → { qtd, pessoas:Set }
+  const pessoas = new Set();
+  let total = 0;
+
+  for (const d of vitoriasSnap.docs) {
+    const partes = d.ref.path.split('/');
+    if (partes[0] !== 'usuarios') continue;
+    const uid = partes[1];
+    const p = perfil.get(uid);
+    if (!p) continue;
+    const v = d.data() || {};
+    const data = String(v.data || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue;
+    if (limiar && data < limiar) continue;
+    const label = String(v.label || '').trim().replace(/\s+/g, ' ');
+    if (!label) continue;
+    porEstado.set(p.estado || '—', (porEstado.get(p.estado || '—') || 0) + 1);
+    if (estadoFiltro && p.estado !== estadoFiltro) continue;
+
+    total++;
+    pessoas.add(uid);
+    const chave = label.toLowerCase();
+    const opcao = opcoes.get(chave);
+    const tipo = opcao ? 'opcao' : 'personalizada';
+    const icone = opcao?.icone || (tipo === 'personalizada' ? 'create' : 'star');
+    if (!porLabel.has(chave)) porLabel.set(chave, { label: opcao?.label || label, icone, tipo, qtd: 0, pessoas: new Set() });
+    const item = porLabel.get(chave);
+    item.qtd++;
+    item.pessoas.add(uid);
+    porIcone.set(icone, (porIcone.get(icone) || 0) + 1);
+    porMes.set(data.slice(0, 7), (porMes.get(data.slice(0, 7)) || 0) + 1);
+
+    if (tipo === 'personalizada') {
+      const vistas = new Set();
+      label.split(/[^\p{L}\p{N}]+/u).forEach(w => {
+        const n = normalizarPalavra(w);
+        if (n.length < 3 || STOPWORDS_VITORIAS.has(n) || /^\d+$/.test(n) || vistas.has(n)) return;
+        vistas.add(n);
+        if (!palavras.has(n)) palavras.set(n, { palavra: w.toLowerCase(), qtd: 0, pessoas: new Set() });
+        const pw = palavras.get(n);
+        pw.qtd++;
+        pw.pessoas.add(uid);
+      });
+    }
+  }
+
+  // Anonimato: textos escritos por uma única pessoa não saem do servidor.
+  let outrasPersonalizadas = 0;
+  const ranking = [];
+  for (const it of porLabel.values()) {
+    if (it.tipo === 'personalizada' && it.pessoas.size < 2) { outrasPersonalizadas += it.qtd; continue; }
+    ranking.push({ label: it.label, icone: it.icone, tipo: it.tipo, qtd: it.qtd, pessoas: it.pessoas.size });
+  }
+  ranking.sort((a, b) => b.qtd - a.qtd || a.label.localeCompare(b.label, 'pt-BR'));
+
+  return {
+    periodo, estado: estadoFiltro, total, pessoas: pessoas.size,
+    ranking: ranking.slice(0, 30),
+    outrasPersonalizadas,
+    porIcone: [...porIcone.entries()].map(([icone, qtd]) => ({ icone, qtd })).sort((a, b) => b.qtd - a.qtd),
+    porMes: [...porMes.entries()].map(([mes, qtd]) => ({ mes, qtd })).sort((a, b) => a.mes.localeCompare(b.mes)).slice(-24),
+    porEstado: [...porEstado.entries()].map(([uf, qtd]) => ({ uf, qtd })).sort((a, b) => b.qtd - a.qtd),
+    palavras: [...palavras.values()].filter(p => p.pessoas.size >= 2)
+      .map(p => ({ palavra: p.palavra, qtd: p.qtd })).sort((a, b) => b.qtd - a.qtd).slice(0, 40),
+  };
 });

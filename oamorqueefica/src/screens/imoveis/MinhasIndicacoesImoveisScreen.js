@@ -44,9 +44,9 @@ export default function MinhasIndicacoesImoveisScreen({ navigation }) {
           <View style={s.vazio}>
             <View style={s.vazioIcone}><Ionicons name="key-outline" size={30} color={colors.lilasIcone} /></View>
             <Text style={s.vazioTit}>Nenhuma indicação ainda</Text>
-            <Text style={s.vazioSub}>Quando você demonstrar interesse em uma imobiliária parceira, acompanhe tudo por aqui.</Text>
-            <TouchableOpacity style={s.vazioBtn} onPress={() => navigation.navigate('LarRecomeco')}>
-              <Text style={s.vazioBtnTxt}>Ver imobiliárias parceiras</Text>
+            <Text style={s.vazioSub}>Quando você pedir uma indicação em uma parceria de Experimente a vida, acompanhe tudo por aqui.</Text>
+            <TouchableOpacity style={s.vazioBtn} onPress={() => navigation.navigate('Parcerias')}>
+              <Text style={s.vazioBtnTxt}>Ver parcerias</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
             </TouchableOpacity>
           </View>
@@ -66,8 +66,9 @@ export default function MinhasIndicacoesImoveisScreen({ navigation }) {
                 {l.status !== 'perdido' && (
                   <View style={s.barra}><View style={[s.barraCheia, { width: `${Math.round(progresso * 100)}%` }]} /></View>
                 )}
+                {!!l.beneficioTexto && <Text style={s.det} numberOfLines={2}>Benefício: {l.beneficioTexto}</Text>}
                 {l.consultoria?.status === 'agendada'
-                  ? <Text style={[s.det, { color: colors.sageFg }]}>Consultoria: {dataHoraTexto(l.consultoria.data)}</Text>
+                  ? <Text style={[s.det, { color: colors.sageFg }]}>Benefício agendado: {dataHoraTexto(l.consultoria.data)}</Text>
                   : <Text style={s.data}>Enviada em {dataTexto(l.criadoEm)}</Text>}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.tl} />

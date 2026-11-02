@@ -50,3 +50,8 @@
   .at-teste-grade { grid-template-columns: 1fr; }
   .at-chamada iframe { height: 72vh; min-height: 360px; border-radius: 14px; }
 }
+
+/* Teste de câmera/microfone opcional, recolhido (página do convite) */
+.at-teste-recolhido > summary { cursor: pointer; font-weight: 700; color: var(--lilas-800); min-height: 44px; display: flex; align-items: center; }
+.at-teste-recolhido > .cz-cartao { box-shadow: none; border: 0; padding: 12px 0 0; margin: 0; background: transparent; }
+.at-teste-recolhido > .cz-cartao > h2 { display: none; }

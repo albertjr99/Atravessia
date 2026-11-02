@@ -134,7 +134,7 @@ export default function IndicacaoImovelScreen({ route, navigation }) {
             <View style={s.consult}>
               <View style={s.consultIcone}><Ionicons name="calendar-outline" size={20} color={colors.sageFg} /></View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={s.consultTit}>Sua consultoria com arquiteto parceiro</Text>
+                <Text style={s.consultTit}>Seu benefício está agendado</Text>
                 <Text style={s.consultTxt}>{dataHoraTexto(consult.data)}{consult.duracaoHoras ? ` · cerca de ${consult.duracaoHoras} h` : ''}</Text>
                 {!!lead.arquitetoNome && <Text style={s.consultTxt}>Com {lead.arquitetoNome}</Text>}
                 {!!consult.link && (
@@ -155,7 +155,7 @@ export default function IndicacaoImovelScreen({ route, navigation }) {
 
           <View style={s.beneficio}>
             <Ionicons name="gift-outline" size={18} color={colors.sageFg} />
-            <Text style={s.beneficioTxt}>{TEXTO_BENEFICIO}</Text>
+            <Text style={s.beneficioTxt}>{lead.beneficioTexto || TEXTO_BENEFICIO}</Text>
           </View>
 
           <TouchableOpacity style={s.link} onPress={() => navigation.navigate('MinhasIndicacoesImoveis')}>

@@ -1,5 +1,16 @@
 # Lar e recomeço: imobiliárias e arquitetos parceiros
 
+> **Atualização (nov/2026).** A área “Lar e recomeço” saiu do app da usuária. Cada imobiliária agora é uma
+> **parceria comum** em *Experimente a vida* (coleção `parcerias`, categoria `ambiente` — “Do ambiente em que você
+> vive”), com **benefício e regras editáveis** no cadastro da parceria (`beneficioTexto`, `regras`). A parceria ligada a
+> uma imobiliária do controle (`parcerias.imobiliariaId` ↔ `imobiliarias.parceriaId`, escolhida no cadastro da
+> imobiliária) mostra o botão **“Quero indicação”**, que segue o fluxo abaixo (código ATR-IMV + QR, portal da
+> imobiliária). O benefício pós-negócio é um **serviço parceiro configurável** (arquiteto é só um exemplo); a aba
+> “Arquitetos” virou **“Prestadores do benefício”** (coleção `arquitetos` mantida, com campo `especialidade`).
+> A antiga categoria `voce` (“De você e do ambiente…”) virou “De você”; o painel avisa para revisar as antigas.
+> Demonstração: `criarDemonstracaoImobiliarias` (botão no topo de Parcerias → Imobiliárias). O texto abaixo
+> descreve o fluxo original; onde diz “consultoria com arquiteto”, leia “serviço do benefício”.
+
 Parceria **Atravessia + imobiliária + arquiteto**. A imobiliária aparece no app. A pessoa interessada gera um código (e um QR Code) e negocia direto com a imobiliária. Quando o negócio fecha e o pagamento é confirmado, a imobiliária repassa à Atravessia o valor combinado. Com o repasse recebido, a Atravessia paga um arquiteto parceiro, que dá à usuária uma **consultoria online** (cerca de 2 h sobre organização, decoração e aproveitamento do imóvel).
 
 **A Atravessia não antecipa custo.** O arquiteto só é agendado depois que o repasse da imobiliária entra.

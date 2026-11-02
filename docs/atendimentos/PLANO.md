@@ -3,7 +3,7 @@
 **Para:** Carla (fundadora, administradora e psicóloga) e Larissa
 **Objetivo:** a Carla atende pelo Atravessia, individualmente ou em grupo, com vídeo e áudio no celular (app) e na web. Ela gera um **link pessoal** para cada cliente. Quem aceita o convite **vira usuária do Atravessia** com poucos toques e ganha um benefício no app.
 
-> **Situação (01/11/2026):** o MVP está implementado e funciona em **modo de teste** (Jitsi público). Para atender de verdade, falta a conta do Daily e os itens da seção 8.
+> **Situação (02/11/2026):** o MVP está implementado e funciona em **modo de teste** (Jitsi público). Para atender de verdade, falta a conta do Daily e os itens da seção 8. Nesta revisão: caminho até a sessão encurtado (seção 5 e 10), travas de segurança no Daily (seção 2.1) e comparação final das plataformas (seção 2).
 
 ---
 
@@ -36,6 +36,42 @@ Critérios: salas criadas por API, links que expiram, token por participante, sa
 \* Valores de referência de 2025–2026, em dólar, sem impostos; conferir no site de cada provedor antes de contratar.
 
 **Por que Daily:** é o que atende todos os critérios com o menor esforço e já está implementado no MVP. Se no futuro o controle total dos dados no Brasil for prioridade, LiveKit em servidor próprio é o caminho (mais trabalho, mesmo adaptador).
+
+### 2.0 Comparação final (revisão de 02/11/2026) — Daily × Whereby × JaaS
+
+Caso do Atravessia: poucos atendimentos por mês, sigilo, nada para instalar, precisa funcionar **dentro do app (WebView)** e **dentro da página (iframe)**, e a paciente **não pode** trocar nome, mexer na sala, gravar ou convidar ninguém.
+
+| Critério | **Daily (Prebuilt)** ✅ | Whereby Embedded | JaaS (Jitsi as a Service, 8x8) |
+|---|---|---|---|
+| Entrada só com credencial individual e no horário | Sim: token por pessoa com `nbf`/`exp`, sala `private` | Parcial: link de visitante é o mesmo para todos; anfitriã usa `roomKey` | Sim: JWT por pessoa com `nbf`/`exp` |
+| Nome fixo (paciente não digita) | Sim: `user_name` no token; sem tela de pré-entrada para a paciente | Não: `displayName` vai no link e pode ser editado | Parcial: nome vem do JWT, mas a trava `readOnlyName` é do lado do navegador |
+| Sem gravação / sem botão de gravar | Sim: sala sem `enable_recording` + `enable_recording_ui: false` no token | Sim (gravação é opção paga da sala) | Sim: `features.recording: false` no JWT |
+| Bloquear compartilhar tela só da paciente | Sim: `enable_screenshare` e `permissions.canSend` no token | Não por pessoa | Parcial (por JWT `features` + config) |
+| Sem chat (opcional) | Sim: `enable_chat` da sala | Sim: parâmetro `chat=off` no link (editável) | Sim: config (editável no navegador) |
+| Sala de espera + anfitriã admite/remove/encerra | Sim: `enable_knocking` + `knocking` no token; dona (`is_owner`) admite, remove, encerra para todos | Sim (knock nativo, muito bom) | Sim (lobby) |
+| WebView/iframe | Sim (Prebuilt é uma página) | Sim | Sim (precisa liberar câmera no WebView) |
+| Custo no volume previsto | Grátis (cota de 10 mil min-participante/mês) | Pago desde o início (plano + minutos) | Grátis até 25 usuárias ativas/mês |
+| Esforço (já implementado?) | **Pronto** no código; só falta a chave | Novo adaptador + tela | Novo adaptador + chave RSA + JWT |
+
+**Recomendação: Daily (Prebuilt).** É o único dos três em que **todas** as travas pedidas ficam no servidor (no token e na sala), e não em parâmetros que a pessoa poderia editar no navegador. Cabe na cota gratuita e já está implementado. Whereby fica como alternativa se a prioridade virar o visual; JaaS se um dia for preciso E2EE nativo.
+
+### 2.1 Travas de segurança implementadas (Daily)
+
+Onde: `functions/index.js`, seção ATENDIMENTOS — `travasSalaDaily` (sala) e `PROVEDORES_VIDEO.daily.urlParticipante` (token). Os comentários no código listam cada parâmetro.
+
+**Na sala (vale para todas):** `privacy: 'private'`; `nbf`/`exp` (abre 30 min antes, fecha 30 min após o fim) + `eject_at_room_exp`; **sem** `enable_recording`; `enable_knocking` (sala de espera, conforme Configurações); `enable_chat` (conforme Configurações); `enable_people_ui` e `enable_hand_raising` só em grupo; `enable_advanced_chat`, `enable_emoji_reactions`, `enable_live_captions_ui`, `enable_breakout_rooms`, `enable_pip_ui` desligados; `enable_video_processing_ui` ligado (desfoque de fundo protege o ambiente da pessoa); `lang: 'pt-BR'`. As travas são reaplicadas sempre que a Carla entra, então mudanças em Configurações valem também para sessões já criadas.
+
+**No token da paciente:** `user_name` e `user_id` vindos do convite/conta (ela não digita nome); `is_owner: false`; `permissions.canAdmin: false`; `enable_screenshare` e `permissions.canSend` sem tela (a menos que a Carla libere); `enable_recording_ui: false`; `enable_prejoin_ui: false` (sem tela intermediária e sem campo de nome; o teste de câmera fica na página do convite, opcional); `knocking: true` quando a sala de espera está ligada (mesmo com token, espera a Carla admitir); `nbf` = 10 min antes; `exp` + `eject_at_token_exp`; `redirect_on_meeting_exit` → página "Sessão encerrada".
+
+**No token da Carla:** `is_owner: true` (admite quem bate, silencia, remove, **encerra para todos**), pode compartilhar tela, com tela de pré-entrada para conferir câmera e microfone.
+
+**Quem recebe token:** só a conta vinculada ao convite (uso único), só se não foi removida, só na janela do horário (`entrarNaSala` confere tudo no servidor). Link encaminhado não funciona em outra conta.
+
+**No app (WebView):** só abre o domínio do provedor (`onShouldStartLoadWithRequest`), sem barra de endereço, sem novas janelas, sem download, sem localização; botão vermelho **"Sair da sessão"** sempre visível (e o "voltar" do Android pergunta antes); tela fica ligada durante a sessão (`expo-keep-awake`, que já vem dentro do pacote `expo` — recomendado declarar com `npx expo install expo-keep-awake` no próximo build); explicação antes do pedido de câmera e microfone.
+
+> **Limite conhecido:** o "Configurações" que aparece dentro do Daily só troca câmera, microfone e fone **do próprio aparelho** — não mexe na sala. A documentação do Daily não traz uma trava explícita para "editar o próprio nome" durante a chamada; por isso a paciente entra **sem** tela de pré-entrada e, no individual, sem a lista de pessoas. Mesmo que alguém mudasse o nome exibido, o registro do Daily guarda o `user_id` do token e a Carla vê quem entrou.
+
+**Modo de teste (Jitsi público): as travas acima NÃO valem.** Não há token nem expiração; o link leva opções (`readOnlyName`, `toolbarButtons` reduzido para a paciente, `disableInviteFunctions`, `disableProfile`, gravação e transmissão desligadas), mas a pessoa pode editá-las. **Só para experimentar, nunca com pacientes.**
 
 ---
 
@@ -90,10 +126,12 @@ Com o dobro desse volume, o excedente custaria cerca de US$ 18/mês.
    - o convite é **vinculado à conta** (uso único: depois disso, só abre nessa conta).
 3. **Benefício imediato:** *Cortesia de acompanhamento* — acesso ao app até **60 dias depois da sessão**, renovado a cada sessão (`cortesia.origem = 'atendimento'`). Se ela já assina, nada muda. Usa o mesmo mecanismo de cortesia que o painel já tem (o app libera o acesso enquanto a cortesia estiver no prazo).
    - Observação: a cortesia do projeto libera **todo** o app (não só o Acolher). Se as donas preferirem limitar ao Acolher, a Fase 2 inclui `cortesia.plano` e um ajuste em `temAcesso` no app.
-4. **Teste de câmera e microfone** na própria página (escolha de câmera, microfone e saída de som, com indicador de nível).
-5. **Entrar na sala:** o botão libera **10 minutos antes**. Na web, a sala abre dentro da página (Daily) ou em nova aba (modo de teste).
+   - Tudo numa tela só: nome e e-mail já vêm do convite; ela só cria a senha e marca o termo. Se o e-mail já tem conta, a página tenta entrar com a mesma senha (sem trocar de aba); se não der, pede só a senha.
+   - **Aceite lembrado:** quem já aceitou a mesma versão do termo em outro convite não marca de novo (o registro em `consentimentosAtendimento` guarda `origem: 'aceite-anterior-mesma-versao'`).
+4. **Teste de câmera e microfone** opcional e **recolhido** ("Testar câmera e microfone (opcional)"), abaixo do botão de entrar.
+5. **Entrar na sala:** o botão acende sozinho **10 minutos antes**. Na web, a sala abre dentro da página (Daily) ou em nova aba (modo de teste). Ao sair (ou quando a Carla encerra para todos), a página mostra o "depois da sessão".
 6. **Depois da sessão:** tela "Continue cuidando de você no app Atravessia" com Google Play e versão web (`/app/`), lembrando que é o mesmo e-mail e senha.
-7. **No app:** a conta já tem o perfil completo (com a apresentação inicial) e o atendimento aparece em **Perfil › Meus atendimentos**, com o botão *Entrar na sala*. Lembretes por push **1 hora** e **10 minutos** antes.
+7. **No app:** a conta já tem o perfil completo (com a apresentação inicial) e o atendimento aparece em **Perfil › Meus atendimentos**. Nas 6 horas antes da sessão, a **Home** e o **Perfil** mostram o cartão **"Sua sessão começa em X min — Entrar"**: um toque abre a sala (se ainda faltar mais de 10 min, a tela conta o tempo e entra sozinha). Lembretes por push **1 hora** antes (abre Meus atendimentos) e **10 minutos** antes (o toque **abre a sala direto**: `data.screen = 'SalaAtendimento'` + `atendimentoId`).
 
 Fase 2: **link mágico** (entrar só pelo e-mail, sem senha — Firebase "Email link sign-in", precisa ser ligado no console) e convite por e-mail automático.
 
@@ -125,7 +163,9 @@ Fase 2: **link mágico** (entrar só pelo e-mail, sem senha — Firebase "Email 
 ### Telas
 - **Painel web** › Pessoas › **Atendimentos** (`admin-web/src/Atendimentos.jsx`) e **app** › painel › Atendimentos (`AdminAtendimentosScreen.js`): próximos e passados, novo atendimento (individual/grupo), links por pessoa (copiar, WhatsApp, novo link, remover), entrar na sala como anfitriã, editar, cancelar, concluir, **anotações privadas** com aviso de sigilo, configurações. Formulários em recolhíveis.
 - **Página do convite** `admin-web/atendimento.html` (`AtendimentoConvite.jsx`).
-- **App da usuária:** `MeusAtendimentosScreen` (atalho no Perfil) e `SalaAtendimentoScreen` (WebView com câmera e microfone; na versão web do app abre em nova aba).
+- **App da usuária:** `MeusAtendimentosScreen` (atalho no Perfil), `CartaoProximaSessao` (Home e Perfil, nas 6 h antes) e `SalaAtendimentoScreen` (WebView travada no domínio do provedor, explicação das permissões, contagem até abrir, tela ligada, "Sair da sessão"; na versão web do app abre em nova aba).
+- **Painel web › Dashboard:** cartão **"Próxima sessão"** com *Entrar na sala* (`ProximaSessao` em `Atendimentos.jsx`).
+- **Configurações novas** (`configuracoes/atendimentos`): `permitirChat` (padrão ligado) e `telaPacientes` (padrão desligado), no painel web e no app.
 - `app.json`: permissões Android `CAMERA`, `MODIFY_AUDIO_SETTINGS` (RECORD_AUDIO já existia) e textos iOS de câmera e microfone. O plugin `expo-audio` estava com `microphonePermission: false`, o que **apagaria** a permissão de microfone no iOS — agora tem o texto.
 
 ---
@@ -142,11 +182,18 @@ Fase 2: **link mágico** (entrar só pelo e-mail, sem senha — Firebase "Email 
 
 ## 8. O que depende das donas
 
-1. **Daily.co:** criar a conta (e-mail da empresa), aceitar o DPA, gerar a **API key** e cadastrar no Firebase:
-   ```
-   firebase functions:secrets:set DAILY_API_KEY
-   ```
-   Depois, em `functions/index.js` (seção ATENDIMENTOS), trocar `chaveDaily` para `defineSecret('DAILY_API_KEY')` e acrescentar `secrets: [DAILY_API_KEY]` em `OPCOES_ATEND` (o passo a passo está no comentário do código).
+1. **Daily.co — passo a passo:**
+   1. Acesse **dashboard.daily.co** e clique em **Sign up**. Use o e-mail da empresa (não o pessoal). Escolha um nome de subdomínio (ex.: `atravessia` → as salas ficam em `atravessia.daily.co`).
+   2. No painel do Daily, menu **Developers** → copie a **API key** (guarde em lugar seguro; não mande por WhatsApp).
+   3. Em **Settings › Privacy/DPA** (ou pelo site do Daily, "Data Processing Addendum"), aceite o **DPA** — necessário pela LGPD.
+   4. Não é preciso criar salas no painel: o Atravessia cria uma sala por sessão sozinho.
+   5. Quem cuida do deploy cadastra a chave no Firebase (só uma vez):
+      ```
+      firebase functions:secrets:set DAILY_API_KEY
+      ```
+      e, em `functions/index.js` (seção ATENDIMENTOS), troca `chaveDaily` para `defineSecret('DAILY_API_KEY')` e acrescenta `secrets: [DAILY_API_KEY]` em `OPCOES_ATEND` (o passo a passo está no comentário do código). Depois, `firebase deploy --only functions`.
+   6. No painel do Atravessia: **Pessoas › Atendimentos › Configurações** → *Serviço de vídeo*: **Daily.co**; confira *Sala de espera*, *Chat de texto* e *Pacientes podem compartilhar a tela*; preencha **CRP** e **nome profissional**; **Salvar**. O aviso verde "Daily conectado" confirma.
+   7. Faça um atendimento de teste com uma das donas como "paciente" (celular pelo app + computador pela página).
 2. **CFP:** confirmar o cadastro da Carla no e-Psi e preencher CRP e nome profissional em Atendimentos › Configurações.
 3. **Termo:** revisar `docs/atendimentos/tcle-modelo.md` (de preferência com advogada) e, se mudar, subir a versão nos três lugares indicados no arquivo.
 4. **Política de privacidade:** incluir atendimentos online, provedores (Daily, Google/Firebase) e encarregado(a) de dados.
@@ -168,3 +215,29 @@ Fase 2: **link mágico** (entrar só pelo e-mail, sem senha — Firebase "Email 
 | Custos acima da cota | Volume estimado bem abaixo; acompanhar o painel do Daily. |
 | Mudança das normas do CFP | Revisar o termo e este plano a cada atualização do CFP. |
 | Instabilidade de internet | Sala continua aberta 30 min após o fim; termo prevê remarcação. |
+
+---
+
+## 10. Roteiro da sessão (linguagem simples)
+
+### Carla (psicóloga)
+1. **Agendar:** Painel › Pessoas › Atendimentos › *Novo atendimento* → data, hora, nome (e e-mail, se tiver) → *Criar atendimento*.
+2. **Enviar o convite:** no cartão do atendimento, botão **WhatsApp** (mensagem pronta) ou **Copiar link**. Cada pessoa tem o seu link.
+3. **No dia:** 1 hora antes e 10 minutos antes chega um aviso no celular. O de 10 minutos abre a sala com um toque.
+4. **Entrar:** a partir de 30 minutos antes, clique em **Entrar na sala** no cartão **"Próxima sessão"** (início do painel) ou na agenda. No app: painel › Atendimentos › *Entrar na sala*.
+5. **Na sala:** quando a paciente "bater na porta", aparece um aviso → **Admitir**. Você pode silenciar, remover alguém e, no fim, **encerrar para todos** (menu de sair › "Encerrar para todos").
+6. **Depois:** *Anotações privadas* no cartão (só você lê) e, se quiser, **Marcar como concluído**.
+
+### Paciente — primeira vez (pelo link)
+1. Abre o link do WhatsApp.
+2. Vê com quem e quando; nome e e-mail já estão preenchidos. **Cria uma senha**, marca **"Li e aceito"** e toca no botão. (Se já tem conta, a mesma tela só pede a senha.)
+3. Se quiser, abre **"Testar câmera e microfone (opcional)"**.
+4. No horário, toca **Entrar na sala** (o botão acende sozinho 10 minutos antes) e aguarda a Carla admitir.
+5. Ao sair, a página convida para continuar no app com o mesmo e-mail e senha.
+
+### Paciente — próximas sessões (pelo app)
+1. Recebe o aviso "começa em 10 minutos" e toca nele **ou** toca em **Entrar** no cartão "Sua sessão começa em X min" na tela inicial.
+2. Na primeira vez, o app explica e pede câmera e microfone (um toque em *Permitir*).
+3. Aguarda a Carla admitir. Para sair, botão vermelho **Sair da sessão**.
+
+Sem formulários, sem escolher nome, sem configurar nada.

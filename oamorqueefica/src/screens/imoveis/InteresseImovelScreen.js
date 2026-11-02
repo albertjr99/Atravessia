@@ -20,7 +20,7 @@ import { TopoImoveis, ChipsQuebra } from './comum';
 // Formulário curto de interesse. Só com o consentimento marcado a indicação
 // é enviada (o nome e o telefone vão para a imobiliária).
 export default function InteresseImovelScreen({ route, navigation }) {
-  const { imobiliariaId, imobiliariaNome, imovelId, imovelTitulo, finalidade } = route.params || {};
+  const { imobiliariaId, imobiliariaNome, imovelId, imovelTitulo, finalidade, parceriaId } = route.params || {};
   const insets = useSafeAreaInsets();
   const { perfil } = useAuth();
   const [interesse, setInteresse] = useState(finalidade === 'aluguel' ? 'alugar' : 'comprar');
@@ -42,7 +42,7 @@ export default function InteresseImovelScreen({ route, navigation }) {
     setEnviando(true);
     try {
       const { data } = await httpsCallable(functions, 'criarIndicacaoImovel', { timeout: 30000 })({
-        imobiliariaId, imovelId: imovelId || null, interesse, faixaPreco: faixa, bairros: bairros.trim(),
+        imobiliariaId, parceriaId: parceriaId || null, imovelId: imovelId || null, interesse, faixaPreco: faixa, bairros: bairros.trim(),
         prazo, observacoes: observacoes.trim(), nome: nome.trim(), telefone: telDigitos,
         consentimento: true, versaoConsentimento: VERSAO_CONSENTIMENTO_IMOVEIS,
       });

@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { db } from './firebase';
+import { db, functions } from './firebase';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
-import { IconAlert, IconChart, IconClose, IconStar, IconUsers, IconSpark } from './Icons';
+import { httpsCallable } from 'firebase/functions';
+import { IconAlert, IconChart, IconStar, IconUsers, IconSpark } from './Icons';
 import { EMOCOES, emocaoPorId, nDiasAtras, formatDataBR } from './emocoes';
+import { UFS, formatarCidade } from './parceriaUtils';
+import { iconeVitoria } from './iconesVitoria';
 import { calcularMetricasFunil, planoNumero } from './metricasFunil';
 import Recolhivel from './Recolhivel';
 import SeletorOpcoes from './SeletorOpcoes';
@@ -32,7 +35,7 @@ function MiniBar({ value, max, color, height = 8 }) {
 }
 
 // ─── Aba: Visão geral ─────────────────────────────────────────────
-function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
+function VisaoGeral({ usuarios, todosCheckins, totalVitorias }) {
   const hoje = nDiasAtras(0);
   const semanaAtras = nDiasAtras(7);
   const mesAtras = nDiasAtras(30);
@@ -61,7 +64,7 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
         {[
           { Icon: IconUsers, value: usuarios.length, label: 'Usuárias', color: COR.lav5 },
           { Icon: IconChart, value: todosCheckins.length, label: 'Check-ins', color: COR.sageFg },
-          { Icon: IconStar, value: todasVitorias.length, label: 'Vitórias', color: COR.gold },
+          { Icon: IconStar, value: totalVitorias ?? '—', label: 'Vitórias', color: COR.gold },
           { Icon: IconSpark, value: ativasHoje, label: 'Ativas hoje', color: COR.peach2 },
         ].map(({ Icon, value, label, color }) => (
           <div key={label} className="stat-card">
@@ -332,182 +335,249 @@ function AbaEmocoes({ todosCheckins }) {
           </div>
         )}
       </div>
+
+      <ResumoVitorias />
     </>
   );
 }
 
 // ─── Aba: Usuárias ────────────────────────────────────────────────
-function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
-  const [busca, setBusca] = useState('');
-  const [sel, setSel] = useState(null);
-  const [ordemPor, setOrdemPor] = useState('nome'); // 'nome' | 'plano' | 'atividade'
+// Só totais por estado e cidade, para orientar a prospecção de parcerias.
+// A consulta de emoções, check-ins e vitórias por pessoa foi retirada do
+// painel de propósito: esses dados ficam só no banco.
+function AbaUsuarios({ usuarios }) {
+  const [uf, setUf] = useState('');
+  const [buscaCidade, setBuscaCidade] = useState('');
 
-  function getUltimoCheckin(uid) {
-    const lista = todosCheckins.filter(c => c.uid === uid);
-    if (!lista.length) return null;
-    return lista.reduce((a, b) => (a.data >= b.data ? a : b)).data;
-  }
+  const comUf = usuarios.filter(u => /^[A-Z]{2}$/.test(String(u.estado || '')));
+  const semLocal = usuarios.length - comUf.length;
 
-  function diasInativos(uid) {
-    const ult = getUltimoCheckin(uid);
-    if (!ult) return 9999;
-    return Math.floor((new Date() - new Date(ult + 'T12:00:00')) / 86400000);
-  }
+  const porEstado = useMemo(() => {
+    const m = {};
+    comUf.forEach(u => { m[u.estado] = (m[u.estado] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [comUf]);
+  const maxEstado = porEstado[0]?.[1] || 1;
 
-  const usuariosOrdenados = [...usuarios].sort((a, b) => {
-    if (ordemPor === 'plano') return (b.plano || 0) - (a.plano || 0);
-    if (ordemPor === 'atividade') return diasInativos(a.id) - diasInativos(b.id);
-    return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
-  });
-
-  const usuariosFiltrados = usuariosOrdenados.filter(u => {
-    if (!busca) return true;
-    const b = busca.toLowerCase();
-    return (u.nome || '').toLowerCase().includes(b) || (u.email || '').toLowerCase().includes(b);
-  });
-
-  const userCheckins = sel
-    ? todosCheckins.filter(c => c.uid === sel.id).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))
-    : [];
-  const userVitorias = sel
-    ? todasVitorias.filter(v => v.uid === sel.id).sort((a, b) => (b.data || '').localeCompare(a.data || ''))
-    : [];
-
-  const membroDesde = (u) => {
-    const d = u.criadoEm?.toDate?.();
-    return d ? formatDataBR(d.toISOString().slice(0, 10)) : '';
-  };
+  const porCidade = useMemo(() => {
+    const m = {};
+    comUf.filter(u => !uf || u.estado === uf).forEach(u => {
+      const nome = formatarCidade(u.cidade) || '(cidade não informada)';
+      const chave = `${nome} / ${u.estado}`;
+      m[chave] = (m[chave] || 0) + 1;
+    });
+    const b = buscaCidade.trim().toLowerCase();
+    return Object.entries(m)
+      .filter(([c]) => !b || c.toLowerCase().includes(b))
+      .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'pt-BR'));
+  }, [comUf, uf, buscaCidade]);
+  const maxCidade = porCidade[0]?.[1] || 1;
+  const totalFiltro = uf ? comUf.filter(u => u.estado === uf).length : comUf.length;
 
   return (
     <>
       <div className="aln-usu-topo">
+        <select value={uf} onChange={e => setUf(e.target.value)} aria-label="Estado" style={{ width: 'auto', minWidth: 190 }}>
+          <option value="">Todos os estados</option>
+          {UFS.map(e => <option key={e.uf} value={e.uf}>{e.nome} ({e.uf})</option>)}
+        </select>
         <input
           className="aln-busca"
           type="search"
-          placeholder="Buscar por nome ou e-mail..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
+          placeholder="Filtrar cidade..."
+          value={buscaCidade}
+          onChange={e => setBuscaCidade(e.target.value)}
         />
-        <div className="filter-row" style={{ marginBottom: 0, alignItems: 'center' }}>
-          <span className="aln-ordem-lbl">Ordenar:</span>
-          {[{ v: 'nome', l: 'Nome' }, { v: 'plano', l: 'Plano' }, { v: 'atividade', l: 'Mais ativas' }].map(o => (
-            <button key={o.v} className={`chip ${ordemPor === o.v ? 'chip-active' : ''}`} onClick={() => setOrdemPor(o.v)}>{o.l}</button>
-          ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="aln-eng-row">
+          <div className="aln-eng-item"><div className="aln-eng-val">{totalFiltro}</div><div className="aln-eng-lbl">{uf ? `em ${uf}` : 'com estado informado'}</div></div>
+          <div className="aln-eng-item"><div className="aln-eng-val">{porEstado.length}</div><div className="aln-eng-lbl">estados</div></div>
+          <div className="aln-eng-item"><div className="aln-eng-val">{semLocal}</div><div className="aln-eng-lbl">sem localização</div></div>
         </div>
       </div>
 
-      <div className={`aln-usu-layout ${sel ? 'com-detalhe' : ''}`}>
-        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-          {usuariosFiltrados.length === 0 ? (
-            <p className="aln-vazio">Nenhuma usuária encontrada.</p>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Usuária</th>
-                  <th>Plano</th>
-                  <th style={{ textAlign: 'right' }}>Check-ins</th>
-                  <th style={{ textAlign: 'right' }}>Inativa há</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuariosFiltrados.map(u => {
-                  const plano = u.plano || 0;
-                  const nCheck = todosCheckins.filter(c => c.uid === u.id).length;
-                  const dias = diasInativos(u.id);
-                  const isSelected = sel?.id === u.id;
-                  return (
-                    <tr
-                      key={u.id}
-                      className={`aln-linha-clicavel ${isSelected ? 'aln-linha-sel' : ''}`}
-                      onClick={() => setSel(isSelected ? null : u)}
-                    >
-                      <td>
-                        <div className="aln-usu-cel">
-                          <span className="aln-plano-barra" style={{ background: PLANO_CORES[plano] }} />
-                          <div style={{ minWidth: 0 }}>
-                            <div className="aln-usu-nome">{u.nome || u.email}</div>
-                            <div className="aln-usu-email">{u.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge" style={{ background: PLANO_FUNDO[plano], color: PLANO_TEXTO[plano] }}>{PLANO_LABELS[plano]}</span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>{nCheck}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--text-mid)' }}>{dias < 9999 ? `${dias}d` : '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+      <div className="aln-rel-grid">
+        <div className="card">
+          <h3 className="card-title">Usuárias por estado</h3>
+          {porEstado.length === 0 ? <p className="aln-vazio">Nenhuma usuária com estado informado ainda.</p> : porEstado.map(([sigla, qtd]) => (
+            <div
+              key={sigla}
+              className="aln-bar-row"
+              style={{ cursor: 'pointer', fontWeight: uf === sigla ? 700 : undefined }}
+              onClick={() => setUf(uf === sigla ? '' : sigla)}
+              title={UFS.find(e => e.uf === sigla)?.nome || sigla}
+            >
+              <span className="aln-bar-nome" style={{ width: 130 }}>{UFS.find(e => e.uf === sigla)?.nome || sigla}</span>
+              <MiniBar value={qtd} max={maxEstado} color={uf === sigla ? COR.lav5 : COR.lav4} />
+              <span className="aln-bar-count">{qtd}</span>
+            </div>
+          ))}
         </div>
 
-        {sel && (
-          <div className="card aln-detalhe">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-              <div style={{ minWidth: 0 }}>
-                <div className="aln-detalhe-nome">{sel.nome || '—'}</div>
-                <div className="aln-usu-email">{sel.email}</div>
-                {!!sel.cidade && <div className="aln-detalhe-meta">{sel.cidade}</div>}
-              </div>
-              <button className="icon-btn" onClick={() => setSel(null)} title="Fechar"><IconClose size={16} /></button>
+        <div className="card">
+          <h3 className="card-title">Usuárias por cidade{uf ? ` · ${uf}` : ''}</h3>
+          {porCidade.length === 0 ? <p className="aln-vazio">Nenhuma cidade encontrada.</p> : porCidade.slice(0, 60).map(([cidade, qtd]) => (
+            <div key={cidade} className="aln-bar-row">
+              <span className="aln-bar-nome" style={{ width: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cidade}>{cidade}</span>
+              <MiniBar value={qtd} max={maxCidade} color={COR.sage} />
+              <span className="aln-bar-count">{qtd}</span>
             </div>
+          ))}
+          {porCidade.length > 60 && <p className="aln-vazio">Mostrando as 60 cidades com mais usuárias.</p>}
+        </div>
+      </div>
+    </>
+  );
+}
 
-            <div className="aln-detalhe-stats">
-              {[
-                { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: PLANO_TEXTO[sel.plano || 0] },
-                { val: userCheckins.length, lbl: 'Check-ins', color: COR.lav5 },
-                { val: userVitorias.length, lbl: 'Vitórias', color: COR.gold },
-                { val: diasInativos(sel.id) < 9999 ? `${diasInativos(sel.id)}d` : '—', lbl: 'Inativo', color: COR.peach2 },
-              ].map(it => (
-                <div key={it.lbl} className="aln-detalhe-box">
-                  <div className="aln-detalhe-val" style={{ color: it.color }}>{it.val}</div>
-                  <div className="aln-eng-lbl">{it.lbl}</div>
+// ─── Pequenas vitórias (agregado e anônimo, calculado no servidor) ─────
+function IconeVitoriaMini({ id, size = 16 }) {
+  if (id === 'create') return <IconStar size={size} style={{ color: COR.gold }} />;
+  const { url, nome } = iconeVitoria(id);
+  return (
+    <span role="img" aria-label={nome} style={{
+      display: 'inline-block', width: size, height: size, flexShrink: 0, backgroundColor: COR.gold,
+      WebkitMask: `url(${url}) center / contain no-repeat`, mask: `url(${url}) center / contain no-repeat`,
+    }} />
+  );
+}
+
+const nomeIcone = (id) => (id === 'create' ? 'Escritas pelas usuárias' : iconeVitoria(id).nome);
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const rotuloMes = (m) => `${MESES[Number(m.slice(5, 7)) - 1] || m.slice(5, 7)}/${m.slice(2, 4)}`;
+
+function ResumoVitorias() {
+  const [periodo, setPeriodo] = useState('30');
+  const [uf, setUf] = useState('');
+  const [dados, setDados] = useState(null);
+  const [erro, setErro] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    setCarregando(true);
+    httpsCallable(functions, 'relatorioVitoriasAdmin', { timeout: 120000 })({ periodo, estado: uf })
+      .then(r => { if (vivo) { setDados(r.data); setErro(''); } })
+      .catch(e => { if (vivo) setErro(e?.message || 'Não foi possível carregar as vitórias.'); })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
+  }, [periodo, uf]);
+
+  const maxRank = dados?.ranking?.[0]?.qtd || 1;
+  const maxIcone = dados?.porIcone?.[0]?.qtd || 1;
+  const maxMes = Math.max(...(dados?.porMes || []).map(m => m.qtd), 1);
+  const maxPalavra = dados?.palavras?.[0]?.qtd || 1;
+
+  return (
+    <>
+      <h2 className="card-title" style={{ fontSize: 20, margin: '28px 0 6px' }}>Pequenas vitórias</h2>
+      <p className="aln-funil-intro">
+        Resumo anônimo do que as usuárias celebraram — para inspirar conteúdos e escolher parcerias e achados.
+        Frases e palavras escritas pelas próprias usuárias só aparecem quando vieram de 2 ou mais pessoas.
+      </p>
+      <div className="filter-row" style={{ alignItems: 'center' }}>
+        {[{ v: '30', l: '30 dias' }, { v: '90', l: '90 dias' }, { v: '365', l: '12 meses' }, { v: 'all', l: 'Tudo' }].map(p => (
+          <button key={p.v} className={`chip ${periodo === p.v ? 'chip-active' : ''}`} onClick={() => setPeriodo(p.v)}>{p.l}</button>
+        ))}
+        <select value={uf} onChange={e => setUf(e.target.value)} aria-label="Estado" style={{ width: 'auto', minWidth: 170 }}>
+          <option value="">Todos os estados</option>
+          {UFS.map(e => <option key={e.uf} value={e.uf}>{e.nome} ({e.uf})</option>)}
+        </select>
+        {carregando && <span className="aln-ordem-lbl">Carregando...</span>}
+      </div>
+
+      {erro && <div className="aln-erro"><IconAlert size={16} /><span>{erro}</span></div>}
+
+      {dados && (
+        <>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="aln-eng-row">
+              <div className="aln-eng-item"><div className="aln-eng-val">{dados.total}</div><div className="aln-eng-lbl">vitórias no período</div></div>
+              <div className="aln-eng-item"><div className="aln-eng-val">{dados.pessoas}</div><div className="aln-eng-lbl">pessoas registraram</div></div>
+              <div className="aln-eng-item"><div className="aln-eng-val">{dados.outrasPersonalizadas}</div><div className="aln-eng-lbl">escritas únicas (ocultas)</div></div>
+            </div>
+          </div>
+
+          <div className="aln-rel-grid">
+            <div className="card">
+              <h3 className="card-title">Vitórias mais registradas</h3>
+              {dados.ranking.length === 0 ? <p className="aln-vazio">Nenhuma vitória nesse período.</p> : dados.ranking.map((r, i) => (
+                <div key={r.label} style={{ marginBottom: 10 }}>
+                  <div className="aln-emo-header">
+                    <span className="aln-medalha">{i + 1}º</span>
+                    <IconeVitoriaMini id={r.icone} />
+                    <span className="aln-emo-label">{r.label}{r.tipo === 'personalizada' ? ' · escrita' : ''}</span>
+                    <span className="aln-emo-qtd">{r.qtd}× · {r.pessoas} pessoa{r.pessoas !== 1 ? 's' : ''}</span>
+                  </div>
+                  <MiniBar value={r.qtd} max={maxRank} color={COR.gold} />
                 </div>
               ))}
             </div>
 
-            {sel.criadoEm && membroDesde(sel) && (
-              <div className="aln-detalhe-meta">Membro desde: {membroDesde(sel)}</div>
-            )}
+            <div style={{ display: 'grid', gap: 16, alignContent: 'start' }}>
+              <div className="card">
+                <h3 className="card-title">Por categoria (ícone)</h3>
+                {dados.porIcone.length === 0 ? <p className="aln-vazio">Sem dados.</p> : dados.porIcone.map(c => (
+                  <div key={c.icone} className="aln-bar-row">
+                    <IconeVitoriaMini id={c.icone} />
+                    <span className="aln-bar-nome" style={{ width: 150 }}>{nomeIcone(c.icone)}</span>
+                    <MiniBar value={c.qtd} max={maxIcone} color={COR.peach2} />
+                    <span className="aln-bar-count">{c.qtd}</span>
+                  </div>
+                ))}
+              </div>
 
-            {userCheckins.length > 0 && (
-              <>
-                <div className="section-label" style={{ marginTop: 14 }}>Últimos check-ins</div>
-                {userCheckins.slice(0, 5).map(c => {
-                  const emo = emocaoPorId(c.emocao);
+              <div className="card">
+                <h3 className="card-title">Temas mais frequentes nos textos</h3>
+                {dados.palavras.length === 0 ? <p className="aln-vazio">Ainda não há palavras repetidas por 2 ou mais pessoas.</p> : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'baseline' }}>
+                    {dados.palavras.map(p => (
+                      <span key={p.palavra} title={`${p.qtd}×`} style={{
+                        fontSize: 12 + Math.round((p.qtd / maxPalavra) * 14),
+                        fontWeight: p.qtd / maxPalavra > 0.5 ? 700 : 500,
+                        color: p.qtd / maxPalavra > 0.5 ? COR.lav5 : 'var(--text-mid)',
+                      }}>{p.palavra}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 16 }}>
+            <h3 className="card-title">Evolução por mês</h3>
+            {dados.porMes.length === 0 ? <p className="aln-vazio">Sem dados.</p> : (
+              <div className="aln-colunas" style={{ height: 110 + 34 }}>
+                {dados.porMes.map(m => {
+                  const h = m.qtd > 0 ? Math.max(Math.round((m.qtd / maxMes) * 110), 4) : 2;
                   return (
-                    <div key={c.id} className="aln-hist-row">
-                      <span className="aln-dot" style={{ background: emo?.color || COR.lav3 }} />
-                      <span className="aln-hist-label">{emo?.label || c.emocao}</span>
-                      <span className="aln-hist-data">{formatDataBR(c.data)}</span>
+                    <div key={m.mes} className="aln-coluna" title={`${rotuloMes(m.mes)}: ${m.qtd} vitória(s)`}>
+                      {m.qtd > 0 && <span className="aln-coluna-val">{m.qtd}</span>}
+                      <div className="aln-coluna-barra" style={{ height: h, background: COR.gold }} />
+                      <span className="aln-coluna-lbl">{rotuloMes(m.mes)}</span>
                     </div>
                   );
                 })}
-              </>
-            )}
-
-            {userVitorias.length > 0 && (
-              <>
-                <div className="section-label" style={{ marginTop: 14 }}>Últimas vitórias</div>
-                {userVitorias.slice(0, 3).map(v => (
-                  <div key={v.id} className="aln-hist-row">
-                    <IconStar size={12} style={{ color: COR.gold }} />
-                    <span className="aln-hist-label">{v.label}</span>
-                    <span className="aln-hist-data">{formatDataBR(v.data)}</span>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {userCheckins.length === 0 && userVitorias.length === 0 && (
-              <p className="aln-vazio">Nenhuma atividade registrada ainda.</p>
+              </div>
             )}
           </div>
-        )}
-      </div>
+
+          {!uf && dados.porEstado.length > 0 && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <h3 className="card-title">Vitórias por estado</h3>
+              {dados.porEstado.map(e => (
+                <div key={e.uf} className="aln-bar-row" style={{ cursor: e.uf !== '—' ? 'pointer' : undefined }} onClick={() => e.uf !== '—' && setUf(e.uf)}>
+                  <span className="aln-bar-nome" style={{ width: 150 }}>{e.uf === '—' ? 'Sem estado' : (UFS.find(x => x.uf === e.uf)?.nome || e.uf)}</span>
+                  <MiniBar value={e.qtd} max={dados.porEstado[0].qtd} color={COR.lav4} />
+                  <span className="aln-bar-count">{e.qtd}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }
@@ -586,7 +656,7 @@ export default function Relatorios() {
   const [atualizando, setAtualizando] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [todosCheckins, setTodosCheckins] = useState([]);
-  const [todasVitorias, setTodasVitorias] = useState([]);
+  const [totalVitorias, setTotalVitorias] = useState(null);
   const [erro, setErro] = useState('');
 
   const carregar = useCallback(async () => {
@@ -594,26 +664,30 @@ export default function Relatorios() {
     try {
       const usersSnap = await getDocs(collection(db, 'usuarios'));
       // O plano pode estar como número (app) ou texto (painel web).
+      // Administradoras e contas inativas não entram nos números.
       const users = usersSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(u => u.role !== 'admin')
+        .filter(u => u.role !== 'admin' && u.status !== 'inativa')
         .map(u => ({ ...u, plano: planoNumero(u.plano) }));
+      const ativas = new Set(users.map(u => u.id));
 
       // Sem orderBy: collectionGroup com orderBy exige índice próprio e falha
-      // inteira quando ele não existe. Ordena em memória.
+      // inteira quando ele não existe. Ordena em memória. Os check-ins só
+      // alimentam números agregados (nada é mostrado por pessoa).
       const checkinsSnap = await getDocs(collectionGroup(db, 'checkins'));
       const checkins = checkinsSnap.docs
         .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }))
+        .filter(c => ativas.has(c.uid))
         .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
-
-      const vitoriasSnap = await getDocs(collectionGroup(db, 'vitorias'));
-      const vitorias = vitoriasSnap.docs
-        .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }));
 
       setUsuarios(users);
       setTodosCheckins(checkins);
-      setTodasVitorias(vitorias);
       setErro('');
+
+      // Vitórias: só o total, calculado no servidor (os textos não saem do banco).
+      httpsCallable(functions, 'relatorioVitoriasAdmin', { timeout: 120000 })({ periodo: 'all' })
+        .then(r => setTotalVitorias(r.data?.total ?? null))
+        .catch(() => setTotalVitorias(null));
     } catch (e) {
       setErro(e?.message || 'Não foi possível carregar os dados.');
     }
@@ -635,7 +709,7 @@ export default function Relatorios() {
         <div className="screen-header-row">
           <div>
             <h1 className="screen-title">{aba === 'geral' ? 'Visão Geral' : aba === 'usuarios' ? `Usuárias (${usuarios.length})` : ABAS.find(a => a.id === aba).label}</h1>
-            <p className="screen-sub">Dados de check-ins e vitórias de todas as usuárias (administradoras não entram na conta).</p>
+            <p className="screen-sub">Números agregados e anônimos das usuárias ativas (administradoras e contas inativas não entram na conta).</p>
           </div>
           <button className="btn-ghost" onClick={carregar} disabled={atualizando}>
             {atualizando ? 'Atualizando...' : 'Atualizar dados'}
@@ -649,10 +723,10 @@ export default function Relatorios() {
           </div>
         )}
 
-        {aba === 'geral' && <VisaoGeral usuarios={usuarios} todosCheckins={todosCheckins} todasVitorias={todasVitorias} />}
+        {aba === 'geral' && <VisaoGeral usuarios={usuarios} todosCheckins={todosCheckins} totalVitorias={totalVitorias} />}
         {aba === 'funil' && <AbaFunil usuarios={usuarios} todosCheckins={todosCheckins} />}
         {aba === 'emocoes' && <AbaEmocoes todosCheckins={todosCheckins} />}
-        {aba === 'usuarios' && <AbaUsuarios usuarios={usuarios} todosCheckins={todosCheckins} todasVitorias={todasVitorias} />}
+        {aba === 'usuarios' && <AbaUsuarios usuarios={usuarios} />}
         {aba === 'empresas' && <AbaEmpresas usuarios={usuarios} />}
       </div>
     </>

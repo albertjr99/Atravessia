@@ -34,7 +34,36 @@ function mensagemErro(e) {
   return e?.message?.replace(/^Firebase:\s*/, '') || 'Algo não deu certo. Tente de novo.';
 }
 
+// O provedor de vídeo manda para "?saiu=1" quando a pessoa sai ou a Carla
+// encerra para todos (redirect_on_meeting_exit do token do Daily).
+const saiuDaSala = () => new URLSearchParams(window.location.search).get('saiu') === '1';
+const MSG_SAIU = 'atravessia:sessao-encerrada';
+
 export default function AtendimentoConvite() {
+  if (saiuDaSala()) return <SessaoEncerrada />;
+  return <AtendimentoConvitePagina />;
+}
+
+function SessaoEncerrada() {
+  const emQuadro = window.parent && window.parent !== window;
+  useEffect(() => {
+    // Dentro do quadro da página do convite: avisa a página para mostrar o "depois da sessão".
+    if (emQuadro) { try { window.parent.postMessage(MSG_SAIU, window.location.origin); } catch { /* ignora */ } }
+  }, [emQuadro]);
+  return (
+    <div className="cz-app at-app">
+      {!emQuadro && <Topo subtitulo="Atendimento online" />}
+      <div className="at-pagina">
+        <section className="cz-cartao at-fim">
+          <h2>Sessão encerrada</h2>
+          <p className="at-texto">Obrigada por estar aqui. Se esta sala abriu em uma aba separada, você já pode fechá-la.</p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function AtendimentoConvitePagina() {
   const token = useMemo(tokenDaUrl, []);
   const [user, setUser] = useState(undefined);
   const [info, setInfo] = useState(null);
@@ -59,11 +88,12 @@ export default function AtendimentoConvite() {
 
   useEffect(() => { if (user !== undefined) carregar(); }, [user, carregar]);
 
-  const aceitar = useCallback(async (nome) => {
+  // marcouAgora=false: aceite lembrado (mesma versão do termo já aceita antes).
+  const aceitar = useCallback(async (nome, marcouAgora = true) => {
     if (aceitandoRef.current) return;
     aceitandoRef.current = true;
     try {
-      const r = await chamar('aceitarConviteAtendimento', { token, aceiteTcle: true, tcleVersao: TCLE_VERSAO, nome });
+      const r = await chamar('aceitarConviteAtendimento', { token, aceiteTcle: marcouAgora, tcleVersao: TCLE_VERSAO, nome });
       setBeneficio(r.beneficio || null);
       await carregar();
     } catch (e) {
@@ -73,7 +103,9 @@ export default function AtendimentoConvite() {
 
   // Conta recém-criada (ou entrada) com o termo já marcado: aceita direto.
   useEffect(() => {
-    if (user && info && !info.aceito && !info.usadoPorOutraConta && termoMarcado) aceitar(user.displayName || '');
+    if (user && info && !info.aceito && !info.usadoPorOutraConta && !info.expirado && (termoMarcado || info.tcleJaAceito)) {
+      aceitar(user.displayName || '', termoMarcado);
+    }
   }, [user, info, termoMarcado, aceitar]);
 
   let conteudo;
@@ -111,6 +143,8 @@ export default function AtendimentoConvite() {
         ) : !info.vinculadoAVoce ? (
           info.expirado ? (
             <div className="cz-cartao"><p className="at-texto">Este convite expirou. Peça um novo link à sua psicóloga.</p></div>
+          ) : info.tcleJaAceito && !erro ? (
+            <div className="cz-centro"><div className="cz-spinner" /></div>
           ) : (
             <AceiteTermo email={user.email} onAceitar={() => aceitar(user.displayName || '')} onSair={() => signOut(auth)} />
           )
@@ -181,8 +215,17 @@ function FormConta({ info, termoMarcado, setTermoMarcado }) {
     try {
       if (modo === 'criar') {
         if (!nome.trim()) throw { message: 'Conte como você gostaria de ser chamada(o).' };
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
-        await updateProfile(cred.user, { displayName: nome.trim() }).catch(() => {});
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
+          await updateProfile(cred.user, { displayName: nome.trim() }).catch(() => {});
+        } catch (e) {
+          if (e?.code !== 'auth/email-already-in-use') throw e;
+          // Já tem conta: tenta entrar com a mesma senha (sem passo a mais).
+          try { await signInWithEmailAndPassword(auth, email.trim(), senha); } catch {
+            setModo('entrar'); setSenha('');
+            throw { message: 'Você já tem conta no Atravessia com este e-mail. Digite a sua senha para entrar (ou use "Esqueci minha senha").' };
+          }
+        }
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), senha);
       }
@@ -302,12 +345,11 @@ function SalaPronta({ info, onEntrar, beneficio }) {
             : 'Você também encontra este atendimento no app Atravessia, em Perfil › Meus atendimentos.'}
         </p>
       </section>
-      <TesteDispositivos registrarParar={(fn) => { pararTesteRef.current = fn; }} />
       <section className="cz-cartao at-entrar">
         {liberado ? (
-          <p className="at-texto">A sala está aberta. Se houver sala de espera, aguarde: a psicóloga vai admitir sua entrada.</p>
+          <p className="at-texto">A sala está aberta. Se houver sala de espera, aguarde um instante: a psicóloga vai admitir sua entrada.</p>
         ) : (
-          <p className="at-texto">A sala abre {info.liberaAntesMin} minutos antes do horário. Faltam <strong>{falta(liberaEm - agora)}</strong>.</p>
+          <p className="at-texto">A sala abre {info.liberaAntesMin} minutos antes do horário. Faltam <strong>{falta(liberaEm - agora)}</strong>. Pode deixar esta página aberta: o botão acende sozinho.</p>
         )}
         {erro && <p className="cz-erro">{erro}</p>}
         <button type="button" className="cz-btn at-largo" disabled={!liberado || entrando} onClick={entrar}>
@@ -315,11 +357,23 @@ function SalaPronta({ info, onEntrar, beneficio }) {
         </button>
         <p className="at-sutil at-dica">Dica: use fones de ouvido e fique em um lugar reservado. A sessão não é gravada.</p>
       </section>
+      {/* Teste opcional, recolhido: quem tem pressa entra direto. */}
+      <details className="cz-cartao at-teste-recolhido">
+        <summary>Testar câmera e microfone (opcional)</summary>
+        <TesteDispositivos registrarParar={(fn) => { pararTesteRef.current = fn; }} />
+      </details>
     </>
   );
 }
 
 function Chamada({ chamada, onSair }) {
+  // Saída pela própria sala (ou "encerrar para todos" da Carla): a página
+  // "?saiu=1" carregada no quadro avisa por postMessage (mesma origem).
+  useEffect(() => {
+    const ouvir = (ev) => { if (ev.origin === window.location.origin && ev.data === MSG_SAIU) onSair(); };
+    window.addEventListener('message', ouvir);
+    return () => window.removeEventListener('message', ouvir);
+  }, [onSair]);
   if (!chamada.embutir) {
     return (
       <section className="cz-cartao at-entrar">
@@ -341,8 +395,8 @@ function Chamada({ chamada, onSair }) {
         referrerPolicy="no-referrer"
       />
       <div className="at-chamada-rodape">
-        <span className="at-sutil">Para trocar câmera, microfone ou fone, use o menu de configurações dentro da sala.</span>
-        <button type="button" className="cz-btn-sec" onClick={onSair}>Sair da sala</button>
+        <span className="at-sutil">Para trocar câmera, microfone ou fone, use o menu dentro da sala (só muda o seu aparelho).</span>
+        <button type="button" className="cz-btn-sec" onClick={() => window.confirm('Sair da sessão? Você pode voltar enquanto o atendimento estiver acontecendo.') && onSair()}>Sair da sessão</button>
       </div>
     </section>
   );

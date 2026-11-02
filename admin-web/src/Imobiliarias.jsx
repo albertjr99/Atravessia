@@ -13,16 +13,18 @@ import {
 } from './imoveisUtils';
 import './imobiliarias.css';
 
-// "Imobiliárias" (Parcerias · Lar e recomeço): leads em funil, cadastro de
-// imobiliárias (com dados privados do acordo), imóveis, arquitetos e resumo
-// financeiro. As mudanças de etapa dos leads passam pelas Cloud Functions da
-// seção IMOBILIÁRIAS (functions/index.js). Espelha AdminImobiliariasScreen.js (app).
+// "Imobiliárias" (Parcerias · controle de imobiliárias): leads em funil,
+// cadastro de imobiliárias (com dados privados do acordo e a parceria de
+// "Experimente a vida" ligada — parceriaId), imóveis, prestadores do benefício
+// (coleção arquitetos, nome mantido por compatibilidade) e resumo financeiro.
+// As mudanças de etapa dos leads passam pelas Cloud Functions da seção
+// IMOBILIÁRIAS (functions/index.js). Espelha AdminImobiliariasScreen.js (app).
 
 const SECOES = [
   { id: 'leads', rotulo: 'Leads' },
   { id: 'imobiliarias', rotulo: 'Imobiliárias' },
   { id: 'imoveis', rotulo: 'Imóveis' },
-  { id: 'arquitetos', rotulo: 'Arquitetos' },
+  { id: 'arquitetos', rotulo: 'Prestadores do benefício' },
   { id: 'financeiro', rotulo: 'Financeiro' },
 ];
 const chama = (nome, dados) => httpsCallable(functions, nome)(dados).then(r => r.data);
@@ -121,7 +123,7 @@ function Leads({ leads, privLeads, imobiliarias, arquitetos, arqPriv, showToast 
     try {
       if (tipo === 'repasse') await chama('confirmarRepasseImobiliaria', { leadId: lead.id, valorRecebido: f.valor });
       if (tipo === 'agendar') {
-        if (!f.arquitetoId) throw new Error('Escolha o arquiteto.');
+        if (!f.arquitetoId) throw new Error('Escolha o prestador do benefício.');
         if (!f.dataHora) throw new Error('Informe data e hora.');
         await chama('agendarConsultoria', { leadId: lead.id, arquitetoId: f.arquitetoId, dataHora: f.dataHora, link: f.link.trim(), duracaoHoras: numero(f.duracao) || 2, observacao: f.observacao });
       }
@@ -185,21 +187,21 @@ function Leads({ leads, privLeads, imobiliarias, arquitetos, arqPriv, showToast 
                     {p.repassePrevistoCentavos != null && <span>Repasse previsto: <b>{brlCentavos(p.repassePrevistoCentavos)}</b></span>}
                     {p.repasseEnviado?.em && <span style={{ color: 'var(--acento-dourado-texto)' }}>Imobiliária informou o envio em {dataTexto(p.repasseEnviado.em)}{p.repasseEnviado.comprovanteUrl && <> · <a href={p.repasseEnviado.comprovanteUrl} target="_blank" rel="noreferrer">comprovante</a></>}{p.repasseEnviado.observacao ? ` · ${p.repasseEnviado.observacao}` : ''}</span>}
                     {p.repasseCentavos != null && <span style={{ color: 'var(--acento-salvia-texto)' }}>Recebido: <b>{brlCentavos(p.repasseCentavos)}</b> em {dataTexto(p.pagoEm)}</span>}
-                    {p.custoArquitetoCentavos != null && <span>Arquiteto: {brlCentavos(p.custoArquitetoCentavos)} · {arqPago ? `pago em ${dataTexto(p.arquitetoPagoEm)}` : 'a pagar'}</span>}
+                    {p.custoArquitetoCentavos != null && <span>Prestador: {brlCentavos(p.custoArquitetoCentavos)} · {arqPago ? `pago em ${dataTexto(p.arquitetoPagoEm)}` : 'a pagar'}</span>}
                   </div>
                 )}
                 {l.consultoria?.status === 'agendada' && (
                   <div className="imv-leg" style={{ color: 'var(--acento-salvia-texto)' }}>
-                    Consultoria com {l.arquitetoNome}: {dataHoraTexto(l.consultoria.data)}{l.consultoria.link && <> · <a href={l.consultoria.link} target="_blank" rel="noreferrer">link</a></>}
+                    Benefício com {l.arquitetoNome}: {dataHoraTexto(l.consultoria.data)}{l.consultoria.link && <> · <a href={l.consultoria.link} target="_blank" rel="noreferrer">link</a></>}
                   </div>
                 )}
                 <div className="imv-acoes">
                   {l.telefone && <a className="btn-secondary" href={linkWhatsapp(l.telefone, `Olá, ${l.nome}! Aqui é da Atravessia, sobre sua indicação ${l.codigo}.`)} target="_blank" rel="noreferrer"><IconWhatsapp size={14} /> WhatsApp</a>}
                   {l.status === 'fechado' && <button type="button" className="btn-primary" onClick={() => abrir('repasse', l)}>Confirmar recebimento do repasse</button>}
-                  {['pago', 'consultoria_agendada'].includes(l.status) && <button type="button" className="btn-primary" onClick={() => abrir('agendar', l)}>{l.status === 'pago' ? 'Agendar consultoria' : 'Reagendar'}</button>}
-                  {l.status === 'consultoria_agendada' && <button type="button" className="btn-secondary" onClick={() => simples(l, 'concluirConsultoria', {}, 'Marcar a consultoria como concluída?')}>Consultoria concluída</button>}
-                  {l.status === 'consultoria_agendada' && <button type="button" className="btn-ghost" onClick={() => simples(l, 'cancelarConsultoria', {}, 'Cancelar a consultoria agendada? A indicação volta para "Repasse recebido".')}>Cancelar consultoria</button>}
-                  {['consultoria_agendada', 'concluido'].includes(l.status) && !arqPago && <button type="button" className="btn-secondary" onClick={() => abrir('pagarArq', l)}>Registrar pagamento ao arquiteto</button>}
+                  {['pago', 'consultoria_agendada'].includes(l.status) && <button type="button" className="btn-primary" onClick={() => abrir('agendar', l)}>{l.status === 'pago' ? 'Agendar benefício' : 'Reagendar'}</button>}
+                  {l.status === 'consultoria_agendada' && <button type="button" className="btn-secondary" onClick={() => simples(l, 'concluirConsultoria', {}, 'Marcar o benefício como entregue?')}>Benefício entregue</button>}
+                  {l.status === 'consultoria_agendada' && <button type="button" className="btn-ghost" onClick={() => simples(l, 'cancelarConsultoria', {}, 'Cancelar o agendamento do benefício? A indicação volta para "Repasse recebido".')}>Cancelar agendamento</button>}
+                  {['consultoria_agendada', 'concluido'].includes(l.status) && !arqPago && <button type="button" className="btn-secondary" onClick={() => abrir('pagarArq', l)}>Registrar pagamento ao prestador</button>}
                   {['novo', 'em_contato', 'visita', 'proposta', 'perdido'].includes(l.status) && (
                     <select value="" aria-label="Mudar etapa" onChange={e => e.target.value && simples(l, 'status', { status: e.target.value }, `Mudar para "${STATUS_LEAD[e.target.value].curto}"? A usuária é avisada.`)}>
                       <option value="">Mudar etapa…</option>
@@ -217,29 +219,29 @@ function Leads({ leads, privLeads, imobiliarias, arquitetos, arqPriv, showToast 
         <div className="modal-overlay" onClick={() => !enviando && setAcao(null)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{acao.tipo === 'repasse' ? 'Confirmar recebimento' : acao.tipo === 'agendar' ? 'Agendar consultoria' : 'Pagamento ao arquiteto'}</h2>
+              <h2>{acao.tipo === 'repasse' ? 'Confirmar recebimento' : acao.tipo === 'agendar' ? 'Agendar o serviço do benefício' : 'Pagamento ao prestador'}</h2>
               <button className="modal-close" onClick={() => setAcao(null)}><IconClose size={17} /></button>
             </div>
             <div className="modal-body">
               <p className="imv-leg" style={{ marginTop: 0 }}>{acao.lead.codigo} · {acao.lead.nome} · {acao.lead.imobiliariaNome}</p>
               {acao.tipo === 'repasse' && (
-                <Campo rotulo="Valor recebido da imobiliária (R$)" dica="Vem com o valor previsto pelo acordo. Ao confirmar, o valor fica congelado e a usuária é avisada de que a consultoria foi liberada.">
+                <Campo rotulo="Valor recebido da imobiliária (R$)" dica="Vem com o valor previsto pelo acordo. Ao confirmar, o valor fica congelado e a usuária é avisada de que o benefício foi liberado.">
                   <input type="number" step="0.01" min="0" value={f.valor} onChange={e => set('valor', e.target.value)} />
                 </Campo>
               )}
               {acao.tipo === 'agendar' && (
                 <>
-                  <Campo rotulo="Arquiteto">
+                  <Campo rotulo="Prestador do benefício">
                     <select value={f.arquitetoId} onChange={e => set('arquitetoId', e.target.value)}>
                       <option value="">Escolher…</option>
-                      {arquitetos.filter(a => a.ativo !== false).map(a => <option key={a.id} value={a.id}>{a.nome}{arqPriv[a.id]?.valorConsultoria ? ` · R$ ${arqPriv[a.id].valorConsultoria}` : ''}</option>)}
+                      {arquitetos.filter(a => a.ativo !== false).map(a => <option key={a.id} value={a.id}>{a.nome}{a.especialidade ? ` (${a.especialidade})` : ''}{arqPriv[a.id]?.valorConsultoria ? ` · R$ ${arqPriv[a.id].valorConsultoria}` : ''}</option>)}
                     </select>
                   </Campo>
                   <div className="field-row">
                     <Campo rotulo="Data e hora (Brasília)"><input type="datetime-local" value={f.dataHora} onChange={e => set('dataHora', e.target.value)} /></Campo>
                     <Campo rotulo="Duração (horas)"><input type="number" step="0.5" min="0.5" value={f.duracao} onChange={e => set('duracao', e.target.value)} /></Campo>
                   </div>
-                  <Campo rotulo="Link da chamada"><input value={f.link} onChange={e => set('link', e.target.value)} placeholder="https://meet.google.com/…" /></Campo>
+                  <Campo rotulo="Link da chamada" opcional><input value={f.link} onChange={e => set('link', e.target.value)} placeholder="https://meet.google.com/…" /></Campo>
                   <Campo rotulo="Recado para a usuária" opcional><textarea rows={2} value={f.observacao} onChange={e => set('observacao', e.target.value)} /></Campo>
                 </>
               )}
@@ -264,13 +266,37 @@ function Leads({ leads, privLeads, imobiliarias, arquitetos, arqPriv, showToast 
 // ============================ IMOBILIÁRIAS ==================================
 const IMOB_VAZIA = {
   nome: '', logoUrl: '', capaUrl: '', descricao: '', creci: '', cidades: '', bairros: '', tipos: ['venda', 'aluguel'],
-  site: '', whatsapp: '', instagram: '', destaques: '', ativo: true, ordem: '', regrasBeneficio: '',
+  site: '', whatsapp: '', instagram: '', destaques: '', ativo: true, ordem: '', regrasBeneficio: '', parceriaId: '',
   responsavel: '', telefoneInterno: '', emailInterno: '', repasseVendaTipo: 'fixo', repasseVendaValor: '',
   repasseAluguelTipo: 'fixo', repasseAluguelValor: '', prazoRepasseDias: '30', contratoUrl: '',
   vigenciaInicio: '', vigenciaFim: '', dadosPagamentoAtravessia: '', observacoes: '',
 };
 
-function Imobs({ imobiliarias, imobPriv, showToast }) {
+// Liga a imobiliária a uma parceria de "Experimente a vida" (nos dois sentidos:
+// imobiliarias.parceriaId e parcerias.imobiliariaId). '__nova__' cria a
+// parceria (categoria "Do ambiente em que você vive"), com benefício e regras
+// a completar em Parcerias. Devolve o id final ('' = sem parceria).
+async function vincularParceria(imobId, escolhido, anterior, dados) {
+  let parceriaId = escolhido || '';
+  if (parceriaId === '__nova__') {
+    const nova = doc(collection(db, 'parcerias'));
+    await setDoc(nova, {
+      titulo: dados.nome, descricao: dados.descricao || '', link: '', imagemUrl: dados.logoUrl || '',
+      categorias: ['ambiente'], categoriasRevisadas: true, estado: '', cidade: '', atendimentoOnline: false,
+      tipoBeneficio: 'link', beneficioTexto: '', regras: '', imobiliariaId: imobId,
+      ativo: true, cliques: 0, criadoEm: serverTimestamp(),
+    });
+    parceriaId = nova.id;
+  } else if (parceriaId) {
+    await setDoc(doc(db, 'parcerias', parceriaId), { imobiliariaId: imobId }, { merge: true });
+  }
+  if (anterior && anterior !== parceriaId) {
+    await setDoc(doc(db, 'parcerias', anterior), { imobiliariaId: null }, { merge: true }).catch(() => {});
+  }
+  return parceriaId;
+}
+
+function Imobs({ imobiliarias, imobPriv, parcerias = [], showToast }) {
   const [aberto, setAberto] = useState(false);
   const [editId, setEditId] = useState(null);
   const [f, setF] = useState(IMOB_VAZIA);
@@ -296,7 +322,10 @@ function Imobs({ imobiliarias, imobPriv, showToast }) {
     try {
       const id = editId || doc(collection(db, 'imobiliarias')).id;
       const t = (k) => String(f[k] ?? '').trim();
+      const anterior = editId ? (imobiliarias.find(i => i.id === editId)?.parceriaId || '') : '';
+      const parceriaId = await vincularParceria(id, f.parceriaId, anterior, { nome: t('nome'), descricao: t('descricao'), logoUrl: t('logoUrl') });
       await setDoc(doc(db, 'imobiliarias', id), {
+        parceriaId: parceriaId || null,
         nome: t('nome'), logoUrl: t('logoUrl'), capaUrl: t('capaUrl'), descricao: t('descricao'), creci: t('creci'),
         cidades: listaDeTexto(f.cidades), bairros: listaDeTexto(f.bairros), tipos: f.tipos || [],
         site: t('site'), whatsapp: t('whatsapp').replace(/\D/g, ''), instagram: t('instagram'),
@@ -359,8 +388,14 @@ function Imobs({ imobiliarias, imobPriv, showToast }) {
           <Campo rotulo="WhatsApp público (com DDD)" dica="Usado no botão “Falar no WhatsApp com o código”.">{inp('whatsapp', { inputMode: 'tel' })}</Campo>
           <Campo rotulo="Ordem na vitrine">{inp('ordem', { type: 'number' })}</Campo>
         </div>
-        <Campo rotulo="Regras do benefício (resumo para a usuária)" opcional dica="Vazio: aparece o texto padrão da consultoria com arquiteto parceiro.">
-          <textarea rows={2} value={f.regrasBeneficio} onChange={e => set('regrasBeneficio', e.target.value)} />
+        <Campo rotulo="Parceria em Experimente a vida" dica="É por ela que a usuária vê a imobiliária no app (botão “Quero indicação”, com código e QR Code). O benefício e as regras se editam no cadastro da parceria, em Parcerias.">
+          <select value={f.parceriaId || ''} onChange={e => set('parceriaId', e.target.value)}>
+            <option value="">Sem parceria (não aparece para a usuária)</option>
+            <option value="__nova__">+ Criar parceria com o nome desta imobiliária</option>
+            {parcerias.filter(p => !p.imobiliariaId || p.imobiliariaId === editId).map(p => (
+              <option key={p.id} value={p.id}>{p.titulo}{p.ativo === false ? ' (oculta)' : ''}</option>
+            ))}
+          </select>
         </Campo>
         <label className="imv-check"><input type="checkbox" checked={f.ativo !== false} onChange={e => set('ativo', e.target.checked)} /> Ativa no app</label>
 
@@ -418,6 +453,11 @@ function Imobs({ imobiliarias, imobPriv, showToast }) {
                 <div className="imv-leg">Repasse: venda {regra(p.repasseVendaTipo, p.repasseVendaValor)} · aluguel {regra(p.repasseAluguelTipo, p.repasseAluguelValor)}{p.prazoRepasseDias ? ` · até ${p.prazoRepasseDias} dias` : ''}</div>
                 {p.responsavel && <div className="imv-leg">Responsável: {p.responsavel}{p.telefoneInterno ? ` · ${p.telefoneInterno}` : ''}</div>}
                 {p.vigenciaFim && <div className="imv-leg">Vigência até {String(p.vigenciaFim).split('-').reverse().join('/')}</div>}
+                <div className="imv-leg" style={i.parceriaId ? undefined : { color: 'var(--acento-dourado-texto)' }}>
+                  {i.parceriaId
+                    ? `Em Experimente a vida: ${parcerias.find(x => x.id === i.parceriaId)?.titulo || 'parceria ligada'}`
+                    : 'Sem parceria ligada: não aparece para a usuária. Edite e escolha a parceria.'}
+                </div>
                 <div className="imv-acoes">
                   {p.tokenPortal ? (
                     <>
@@ -432,6 +472,7 @@ function Imobs({ imobiliarias, imobPriv, showToast }) {
                   onApagar={async () => {
                     if (!window.confirm(`Apagar "${i.nome}"? As indicações já feitas continuam guardadas.`)) return;
                     await deleteDoc(doc(db, 'imobiliarias', i.id)); await deleteDoc(doc(db, 'imobiliariasPrivado', i.id)).catch(() => {});
+                    if (i.parceriaId) await setDoc(doc(db, 'parcerias', i.parceriaId), { imobiliariaId: null }, { merge: true }).catch(() => {});
                     showToast('Imobiliária apagada.');
                   }}>
                   <button type="button" className="btn-ghost" onClick={() => setDoc(doc(db, 'imobiliarias', i.id), { ativo: i.ativo === false }, { merge: true })}>
@@ -573,7 +614,7 @@ function Imoveis({ imoveis, imobiliarias, showToast }) {
 }
 
 // ============================ ARQUITETOS ====================================
-const ARQ_VAZIO = { nome: '', fotoUrl: '', bio: '', cau: '', especialidades: '', ativo: true, valorConsultoria: '', telefone: '', email: '', dadosPagamento: '' };
+const ARQ_VAZIO = { nome: '', especialidade: '', fotoUrl: '', bio: '', cau: '', especialidades: '', ativo: true, valorConsultoria: '', telefone: '', email: '', dadosPagamento: '' };
 
 function Arquitetos({ arquitetos, arqPriv, showToast }) {
   const [aberto, setAberto] = useState(false);
@@ -596,13 +637,13 @@ function Arquitetos({ arquitetos, arqPriv, showToast }) {
       const id = editId || doc(collection(db, 'arquitetos')).id;
       const t = (k) => String(f[k] ?? '').trim();
       await setDoc(doc(db, 'arquitetos', id), {
-        nome: t('nome'), fotoUrl: t('fotoUrl'), bio: t('bio'), cau: t('cau'), especialidades: listaDeTexto(f.especialidades),
+        nome: t('nome'), especialidade: t('especialidade'), fotoUrl: t('fotoUrl'), bio: t('bio'), cau: t('cau'), especialidades: listaDeTexto(f.especialidades),
         ativo: f.ativo !== false, atualizadoEm: serverTimestamp(),
       }, { merge: true });
       await setDoc(doc(db, 'arquitetosPrivado', id), {
         valorConsultoria: numero(f.valorConsultoria), telefone: t('telefone'), email: t('email'), dadosPagamento: t('dadosPagamento'), atualizadoEm: serverTimestamp(),
       }, { merge: true });
-      showToast('Arquiteto salvo.');
+      showToast('Prestador salvo.');
       limpar();
     } catch (e) { showToast(e?.message || 'Não foi possível salvar.', 'error'); } finally { setSalvando(false); }
   };
@@ -610,20 +651,21 @@ function Arquitetos({ arquitetos, arqPriv, showToast }) {
 
   return (
     <>
-      <Recolhivel titulo={editId ? `Editar: ${f.nome}` : 'Novo arquiteto parceiro'} subtitulo="Quem faz a consultoria online" icone={<IconPerson size={18} />} aberto={aberto} onAlternar={setAberto}>
+      <Recolhivel titulo={editId ? `Editar: ${f.nome}` : 'Novo prestador do benefício'} subtitulo="Quem faz o serviço parceiro depois do negócio fechado (ex.: arquiteta, decoradora, personal organizer)" icone={<IconPerson size={18} />} aberto={aberto} onAlternar={setAberto}>
         <div className="field-row">
           <Campo rotulo="Nome *">{inp('nome')}</Campo>
-          <Campo rotulo="Registro CAU">{inp('cau')}</Campo>
+          <Campo rotulo="Especialidade" dica="Ex.: Arquiteta, Designer de interiores, Personal organizer.">{inp('especialidade')}</Campo>
         </div>
+        <Campo rotulo="Registro profissional (CAU, CRECI…)" opcional>{inp('cau')}</Campo>
         <Campo rotulo="Foto">
           {f.fotoUrl && <img className="imv-mini" src={urlDeImagem(f.fotoUrl)} alt="" />}
           <EnviarImagem pasta="arquitetos" onEnviado={([u]) => u && set('fotoUrl', u)} rotulo="Enviar foto" showToast={showToast} />
         </Campo>
         <Campo rotulo="Bio"><textarea rows={3} value={f.bio} onChange={e => set('bio', e.target.value)} /></Campo>
-        <Campo rotulo="Especialidades" dica="Separe por vírgula.">{inp('especialidades', { placeholder: 'Organização, decoração afetiva, pequenos espaços' })}</Campo>
+        <Campo rotulo="Temas de atuação" opcional dica="Separe por vírgula.">{inp('especialidades', { placeholder: 'Organização, decoração afetiva, pequenos espaços' })}</Campo>
         <div className="imv-grupo">Privado</div>
         <div className="field-row">
-          <Campo rotulo="Valor por consultoria (R$)" dica="Congelado em cada lead quando a consultoria é agendada.">{inp('valorConsultoria', { type: 'number', min: 0, step: '0.01' })}</Campo>
+          <Campo rotulo="Valor por atendimento (R$)" dica="Congelado em cada lead quando o serviço é agendado.">{inp('valorConsultoria', { type: 'number', min: 0, step: '0.01' })}</Campo>
           <Campo rotulo="Telefone">{inp('telefone', { inputMode: 'tel' })}</Campo>
         </div>
         <Campo rotulo="E-mail">{inp('email', { type: 'email' })}</Campo>
@@ -631,10 +673,10 @@ function Arquitetos({ arquitetos, arqPriv, showToast }) {
         <label className="imv-check"><input type="checkbox" checked={f.ativo !== false} onChange={e => set('ativo', e.target.checked)} /> Ativo</label>
         <div className="imv-acoes">
           {editId && <button className="btn-ghost" onClick={limpar}>Cancelar edição</button>}
-          <button className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : editId ? 'Salvar alterações' : 'Cadastrar arquiteto'}</button>
+          <button className="btn-primary" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando…' : editId ? 'Salvar alterações' : 'Cadastrar prestador'}</button>
         </div>
       </Recolhivel>
-      {arquitetos.length === 0 ? <div className="empty-state"><p>Nenhum arquiteto cadastrado.</p></div> : (
+      {arquitetos.length === 0 ? <div className="empty-state"><p>Nenhum prestador do benefício cadastrado.</p></div> : (
         <div className="imv-grade">
           {arquitetos.map(a => (
             <article key={a.id} className="card imv-card" style={a.ativo === false ? { opacity: 0.7 } : undefined}>
@@ -642,14 +684,14 @@ function Arquitetos({ arquitetos, arqPriv, showToast }) {
                 {a.fotoUrl ? <img className="imv-logo" style={{ objectFit: 'cover' }} src={urlDeImagem(a.fotoUrl)} alt="" /> : <span className="imv-logo" style={{ display: 'grid', placeItems: 'center' }}><IconPerson size={20} /></span>}
                 <div style={{ minWidth: 0 }}>
                   <div className="imv-nome" style={{ marginTop: 0 }}>{a.nome}{a.ativo === false ? ' (inativo)' : ''}</div>
-                  <div className="imv-leg">{a.cau ? `CAU ${a.cau} · ` : ''}{arqPriv[a.id]?.valorConsultoria ? `R$ ${arqPriv[a.id].valorConsultoria} por consultoria` : 'Sem valor definido'}</div>
+                  <div className="imv-leg">{a.especialidade ? `${a.especialidade} · ` : ''}{a.cau ? `Registro ${a.cau} · ` : ''}{arqPriv[a.id]?.valorConsultoria ? `R$ ${arqPriv[a.id].valorConsultoria} por atendimento` : 'Sem valor definido'}</div>
                 </div>
               </div>
               {(a.especialidades || []).length > 0 && <div className="imv-leg">{a.especialidades.join(' · ')}</div>}
               <AcoesItem onEditar={() => editar(a)} onApagar={async () => {
                 if (!window.confirm(`Apagar "${a.nome}"?`)) return;
                 await deleteDoc(doc(db, 'arquitetos', a.id)); await deleteDoc(doc(db, 'arquitetosPrivado', a.id)).catch(() => {});
-                showToast('Arquiteto apagado.');
+                showToast('Prestador apagado.');
               }} />
             </article>
           ))}
@@ -679,11 +721,11 @@ function Financeiro({ leads, privLeads }) {
       <div className="imv-stats">
         <div className="card imv-stat"><b style={{ color: 'var(--acento-salvia-texto)' }}>{brlCentavos(r.recebido)}</b><span>Recebido das imobiliárias</span></div>
         <div className="card imv-stat"><b style={{ color: 'var(--acento-dourado-texto)' }}>{brlCentavos(r.aReceber)}</b><span>A receber (negócios fechados)</span></div>
-        <div className="card imv-stat"><b>{brlCentavos(r.arqPago)}</b><span>Pago a arquitetos</span></div>
-        <div className="card imv-stat"><b style={{ color: 'var(--acento-pessego-texto)' }}>{brlCentavos(r.arqAPagar)}</b><span>A pagar a arquitetos</span></div>
-        <div className="card imv-stat"><b style={{ color: 'var(--lilas-700)' }}>{brlCentavos(margem)}</b><span>Margem (recebido − arquitetos)</span></div>
+        <div className="card imv-stat"><b>{brlCentavos(r.arqPago)}</b><span>Pago a prestadores</span></div>
+        <div className="card imv-stat"><b style={{ color: 'var(--acento-pessego-texto)' }}>{brlCentavos(r.arqAPagar)}</b><span>A pagar a prestadores</span></div>
+        <div className="card imv-stat"><b style={{ color: 'var(--lilas-700)' }}>{brlCentavos(margem)}</b><span>Margem (recebido − prestadores)</span></div>
       </div>
-      {semData > 0 && <div className="imv-aviso"><IconAlert size={16} /> {semData === 1 ? '1 consultoria liberada' : `${semData} consultorias liberadas`} ainda sem data. O custo do arquiteto entra no cálculo quando a consultoria é agendada.</div>}
+      {semData > 0 && <div className="imv-aviso"><IconAlert size={16} /> {semData === 1 ? '1 benefício liberado' : `${semData} benefícios liberados`} ainda sem data. O custo do prestador entra no cálculo quando o serviço é agendado.</div>}
       <div className="imv-grupo">Por imobiliária</div>
       {Object.keys(r.porImob).length === 0 ? <div className="empty-state"><p>Sem indicações ainda.</p></div> : (
         <div className="imv-grade">
@@ -700,6 +742,43 @@ function Financeiro({ leads, privLeads }) {
   );
 }
 
+// ============================ DEMONSTRAÇÃO ==================================
+// Como em Cursos: cria/atualiza (ou remove) a imobiliária fictícia "Casa Serena
+// Imóveis (demonstração)" com imóveis, prestadora, parceria e 4 leads fictícios.
+function DemoImobiliarias({ showToast }) {
+  const [rodando, setRodando] = useState(false);
+  const [link, setLink] = useState('');
+  const executar = async (remover) => {
+    if (remover && !window.confirm('Remover a imobiliária, os imóveis, a prestadora, a parceria e os leads de demonstração?')) return;
+    setRodando(true);
+    try {
+      const r = await chama('criarDemonstracaoImobiliarias', { remover });
+      setLink(remover ? '' : r?.linkPortal || '');
+      showToast(remover ? 'Demonstração removida.' : 'Demonstração pronta! A parceria já aparece em Experimente a vida.');
+    } catch (e) { showToast(e?.message || 'Não foi possível criar a demonstração.', 'error'); }
+    setRodando(false);
+  };
+  return (
+    <Recolhivel titulo="Demonstração das Imobiliárias" subtitulo="Imobiliária fictícia com imóveis, prestadora do benefício, parceria e leads em etapas diferentes">
+      <p className="screen-sub" style={{ marginTop: 0 }}>
+        Cria a “Casa Serena Imóveis (demonstração)” com 5 imóveis ilustrativos, a prestadora “Helena Luz (demonstração)”,
+        a parceria em Experimente a vida (“Do ambiente em que você vive”) e 4 leads fictícios. Nenhum aviso é enviado às usuárias.
+        Pode clicar de novo para atualizar; nada é duplicado.
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn-primary" disabled={rodando} onClick={() => executar(false)}>{rodando ? 'Preparando…' : 'Criar ou atualizar demonstração'}</button>
+        <button className="btn-ghost" disabled={rodando} onClick={() => executar(true)}>Remover demonstração</button>
+      </div>
+      {link && (
+        <div className="field-hint" style={{ marginTop: 12, lineHeight: 1.7 }}>
+          Portal da imobiliária demo: <a href={link} target="_blank" rel="noreferrer">abrir</a>{' · '}
+          <button type="button" className="btn-ghost" style={{ padding: '2px 10px' }} onClick={() => { navigator.clipboard?.writeText(link); showToast('Link do portal copiado!'); }}>copiar link</button>
+        </div>
+      )}
+    </Recolhivel>
+  );
+}
+
 // ============================ TELA ==========================================
 export default function Imobiliarias({ showToast }) {
   const [secao, setSecao] = useState('leads');
@@ -710,6 +789,7 @@ export default function Imobiliarias({ showToast }) {
   const [arqPriv, setArqPriv] = useState({});
   const [leads, setLeads] = useState([]);
   const [privLeads, setPrivLeads] = useState({});
+  const [parcerias, setParcerias] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -723,6 +803,7 @@ export default function Imobiliarias({ showToast }) {
       onSnapshot(collection(db, 'arquitetosPrivado'), s => setArqPriv(mapa(s)), () => {}),
       onSnapshot(collection(db, 'indicacoesImoveis'), s => { setLeads(lista(s).sort((a, b) => tsMs(b.criadoEm) - tsMs(a.criadoEm))); setCarregando(false); }, () => setCarregando(false)),
       onSnapshot(collection(db, 'indicacoesImoveisPrivado'), s => setPrivLeads(mapa(s)), () => {}),
+      onSnapshot(collection(db, 'parcerias'), s => setParcerias(lista(s).sort((a, b) => String(a.titulo).localeCompare(String(b.titulo)))), () => {}),
     ];
     return () => subs.forEach(u => u());
   }, []);
@@ -733,11 +814,12 @@ export default function Imobiliarias({ showToast }) {
     <div className="screen-content">
       <div className="screen-header-row">
         <div>
-          <h1 className="screen-title">Imobiliárias · Lar e recomeço</h1>
-          <p className="screen-sub">A usuária indica interesse, a imobiliária negocia e, quando o negócio fecha e o repasse chega, a Atravessia agenda a consultoria com arquiteto parceiro.</p>
+          <h1 className="screen-title">Imobiliárias · controle</h1>
+          <p className="screen-sub">Para a usuária, cada imobiliária é uma parceria em Experimente a vida (“Do ambiente em que você vive”). Ela pede a indicação, a imobiliária negocia e, quando o negócio fecha e o repasse chega, a Atravessia agenda o serviço parceiro do benefício (por exemplo, uma consultoria com arquiteta).</p>
         </div>
       </div>
-      {pendentes > 0 && <div className="imv-aviso"><IconAlert size={16} /> {pendentes} {pendentes === 1 ? 'indicação precisa' : 'indicações precisam'} da sua ação (confirmar repasse ou agendar consultoria).</div>}
+      <DemoImobiliarias showToast={showToast} />
+      {pendentes > 0 && <div className="imv-aviso"><IconAlert size={16} /> {pendentes} {pendentes === 1 ? 'indicação precisa' : 'indicações precisam'} da sua ação (confirmar repasse ou agendar o benefício).</div>}
       <div className="filter-row">
         {SECOES.map(s => (
           <button key={s.id} type="button" className={`chip ${secao === s.id ? 'chip-active' : ''}`} onClick={() => setSecao(s.id)}>{s.rotulo}</button>
@@ -746,7 +828,7 @@ export default function Imobiliarias({ showToast }) {
       {carregando ? <div className="loading-state"><div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando…</div> : (
         <>
           {secao === 'leads' && <Leads leads={leads} privLeads={privLeads} imobiliarias={imobiliarias} arquitetos={arquitetos} arqPriv={arqPriv} showToast={showToast} />}
-          {secao === 'imobiliarias' && <Imobs imobiliarias={imobiliarias} imobPriv={imobPriv} showToast={showToast} />}
+          {secao === 'imobiliarias' && <Imobs imobiliarias={imobiliarias} imobPriv={imobPriv} parcerias={parcerias} showToast={showToast} />}
           {secao === 'imoveis' && <Imoveis imoveis={imoveis} imobiliarias={imobiliarias} showToast={showToast} />}
           {secao === 'arquitetos' && <Arquitetos arquitetos={arquitetos} arqPriv={arqPriv} showToast={showToast} />}
           {secao === 'financeiro' && <Financeiro leads={leads} privLeads={privLeads} />}

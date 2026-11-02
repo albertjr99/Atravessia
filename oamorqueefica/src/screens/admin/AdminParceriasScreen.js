@@ -28,12 +28,17 @@ import AdminSubTabs from './AdminSubTabs';
 // Mesmas categorias exibidas ao usuário na tela de Parcerias.
 const CATEGORIAS = [
   { id: 'saude',           label: 'Da saúde física' },
-  { id: 'voce',            label: 'De você e do ambiente em que vive' },
+  // 'voce' era "De você e do ambiente em que vive": virou "De você" (as
+  // antigas continuam aparecendo) e entrou 'ambiente' (imobiliárias etc.).
+  { id: 'voce',            label: 'De você' },
+  { id: 'ambiente',        label: 'Do ambiente em que você vive' },
   { id: 'trabalho',        label: 'Do trabalho e estudos' },
   { id: 'relacionamentos', label: 'Dos relacionamentos' },
   { id: 'outros',          label: 'Outros' },
 ];
 const rotuloCategoria = (id) => CATEGORIAS.find(c => c.id === id)?.label || id;
+// Parceria cadastrada antes da divisão (só 'voce', nunca revisada): aviso no painel.
+const precisaRevisarCategoria = (p) => (p.categorias || []).includes('voce') && !(p.categorias || []).includes('ambiente') && p.categoriasRevisadas !== true;
 
 // Gera um token de leitura simples para o extrato do parceiro — não precisa
 // ser criptograficamente forte (não protege dinheiro, só um resumo de
@@ -72,6 +77,9 @@ export default function AdminParceriasScreen({ navigation, route }) {
 
   // Nem toda parceria gera comissão — a maioria é só um link/desconto direto.
   const [tipoBeneficio, setTipoBeneficio] = useState('link');
+  // Benefício e regras editáveis (aparecem para a usuária no cartão).
+  const [beneficioTexto, setBeneficioTexto] = useState('');
+  const [regras, setRegras] = useState('');
   const [percentualBeneficio, setPercentualBeneficio] = useState('10');
   const [percentualComissao, setPercentualComissao] = useState('3');
   // A comissão é sempre calculada sobre o valor original do serviço (antes do
@@ -190,6 +198,7 @@ export default function AdminParceriasScreen({ navigation, route }) {
     setTitulo(''); setDescricao(''); setLink(''); setImagemUrl(''); setCategoriaSel([]);
     setEstado(''); setCidade(''); setAtendimentoOnline(false);
     setTipoBeneficio('link'); setPercentualBeneficio('10'); setPercentualComissao('3');
+    setBeneficioTexto(''); setRegras('');
     setValidadeDiasVoucher('30');
     setCashbackAtivo(true); setCashbackPercentual(''); setCashbackCondicoes('');
     setInicioParceria(''); setFimParceria(''); setContatoNome(''); setContatoTelefone(''); setContratoUrl('');
@@ -206,6 +215,8 @@ export default function AdminParceriasScreen({ navigation, route }) {
     setCidade(p.cidade || '');
     setAtendimentoOnline(p.atendimentoOnline === true);
     setTipoBeneficio(p.tipoBeneficio === 'cupom' ? 'cupom' : 'link');
+    setBeneficioTexto(p.beneficioTexto || '');
+    setRegras(p.regras || '');
     setPercentualBeneficio(p.percentualBeneficio != null ? String(p.percentualBeneficio) : '10');
     setPercentualComissao(p.percentualComissao != null ? String(p.percentualComissao) : '3');
     setValidadeDiasVoucher(p.validadeDiasVoucher != null ? String(p.validadeDiasVoucher) : '30');
@@ -277,6 +288,10 @@ export default function AdminParceriasScreen({ navigation, route }) {
         cidade: formatarCidade(cidade),
         atendimentoOnline,
         tipoBeneficio,
+        beneficioTexto: beneficioTexto.trim(),
+        regras: regras.trim(),
+        // Salvar no formulário novo conta como revisão das categorias.
+        categoriasRevisadas: true,
       };
       if (tipoBeneficio === 'cupom') {
         dados.percentualBeneficio = parseFloat(percentualBeneficio) || 0;
@@ -493,6 +508,26 @@ export default function AdminParceriasScreen({ navigation, route }) {
             ))}
           </View>
 
+          <Text style={s.formLabel}>Benefício para a usuária <Text style={s.optional}>(opcional)</Text></Text>
+          <TextInput
+            style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]}
+            multiline
+            placeholder="Ex.: 10% no primeiro atendimento · ou: fechou negócio? ganhe uma consultoria de decoração"
+            placeholderTextColor={colors.tl}
+            value={beneficioTexto}
+            onChangeText={setBeneficioTexto}
+          />
+          <Text style={s.hint}>Aparece em destaque no cartão. Nas parcerias ligadas a uma imobiliária, é o benefício mostrado em “Minhas indicações”.</Text>
+          <Text style={s.formLabel}>Regras <Text style={s.optional}>(opcional)</Text></Text>
+          <TextInput
+            style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]}
+            multiline
+            placeholder="Como usar, condições, validade…"
+            placeholderTextColor={colors.tl}
+            value={regras}
+            onChangeText={setRegras}
+          />
+
           <Text style={s.formLabel}>Tipo de benefício</Text>
           <View style={s.tipoRow}>
             <TouchableOpacity
@@ -641,6 +676,15 @@ export default function AdminParceriasScreen({ navigation, route }) {
           Publicadas ({parcerias.length}) · {ativas} ativas
         </Text>
 
+        {parcerias.some(precisaRevisarCategoria) && (
+          <View style={[s.erroBox, { backgroundColor: acento('dourado').fundo }]}>
+            <Ionicons name="alert-circle-outline" size={18} color={acento('dourado').texto} />
+            <Text style={[s.erroTxt, { color: acento('dourado').texto }]}>
+              {parcerias.filter(precisaRevisarCategoria).length} parceria(s) antiga(s) estavam em “De você e do ambiente em que vive” e agora aparecem em “De você”. Revise: se for do ambiente (casa, moradia, imobiliária…), edite e marque “Do ambiente em que você vive”. Ao salvar, o aviso some.
+            </Text>
+          </View>
+        )}
+
         {!!erroLista && (
           <View style={s.erroBox}>
             <Ionicons name="alert-circle-outline" size={18} color={acento('rosa').texto} />
@@ -675,6 +719,10 @@ export default function AdminParceriasScreen({ navigation, route }) {
                   </View>
                 );
               })()}
+              {precisaRevisarCategoria(p) && (
+                <Text style={[s.itemLocal, { color: acento('dourado').texto, fontWeight: '700' }]}>Revisar categoria: “De você” ou “Do ambiente”?</Text>
+              )}
+              {!!p.imobiliariaId && <Text style={s.itemLocal}>Ligada ao controle de Imobiliárias (indicação com QR Code)</Text>}
               <ContatoContrato priv={privados[p.id]} />
               <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {(p.categorias || []).slice(0, 2).map(cat => (

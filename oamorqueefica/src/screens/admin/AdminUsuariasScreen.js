@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, doc, onSnapshot, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, acento, corPlano, Degrade } from './adminEstilo';
 import AdminLayout from './AdminLayout';
@@ -22,12 +23,17 @@ function planoDe(u) {
   return PLANO_TEXTO[String(p || '').toLowerCase()] ?? 0;
 }
 
+const estaInativa = (u) => u?.status === 'inativa';
+
 export default function AdminUsuariasScreen({ navigation }) {
   const [usuarias, setUsuarias] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtroPlano, setFiltroPlano] = useState('todos');
   const [planoModal, setPlanoModal] = useState({ vis: false, usuaria: null });
   const [cortesiaModal, setCortesiaModal] = useState({ vis: false, usuaria: null, dias: '30' });
+  const [filtroStatus, setFiltroStatus] = useState('ativas'); // 'ativas' | 'inativas' | 'todas'
+  // Inativar/reativar: confirmação + motivo opcional, gravado pelo servidor.
+  const [statusModal, setStatusModal] = useState({ vis: false, usuaria: null, motivo: '', salvando: false });
   // Nome e descrição de cada plano vêm de planos/{0..3} — os mesmos documentos
   // editados em "Preços e planos". Nesta aba NÃO se mostra preço nenhum
   // (precoLabel/subtitulo são ignorados de propósito).
@@ -100,6 +106,27 @@ export default function AdminUsuariasScreen({ navigation }) {
     setCortesiaModal({ vis: false, usuaria: null, dias: '30' });
   };
 
+  const abrirStatus = () => {
+    const u = planoModal.usuaria;
+    fecharPlanoModal();
+    setStatusModal({ vis: true, usuaria: u, motivo: '', salvando: false });
+  };
+  const fecharStatus = () => setStatusModal({ vis: false, usuaria: null, motivo: '', salvando: false });
+
+  const confirmarStatus = async () => {
+    const { usuaria, motivo } = statusModal;
+    const inativa = estaInativa(usuaria);
+    setStatusModal(p => ({ ...p, salvando: true }));
+    try {
+      await httpsCallable(functions, 'definirStatusUsuariaAdmin')({ uid: usuaria.id, inativa: !inativa, motivo: motivo.trim() });
+    } catch (e) {
+      setStatusModal(p => ({ ...p, salvando: false }));
+      Alert.alert('Erro', `Não foi possível alterar o status.${e?.message ? `\n${e.message}` : ''}`);
+      return;
+    }
+    fecharStatus();
+  };
+
   const cortesiaDiasRestantes = (u) => {
     if (!u.cortesia?.ativo) return null;
     if (!u.cortesia.expiracao) return '∞';
@@ -111,7 +138,9 @@ export default function AdminUsuariasScreen({ navigation }) {
   };
 
   const lista = usuarias.filter(u => {
-    const matchBusca = !busca || [u.nome, u.apelido, u.email, u.cidade].some(
+    if (filtroStatus === 'ativas' && estaInativa(u)) return false;
+    if (filtroStatus === 'inativas' && !estaInativa(u)) return false;
+    const matchBusca = !busca || [u.nome, u.apelido, u.email, u.cidade, u.estado].some(
       v => v?.toLowerCase().includes(busca.toLowerCase())
     );
     if (filtroPlano === 'empresa') return matchBusca && u.linkEmpresa === true;
@@ -119,9 +148,12 @@ export default function AdminUsuariasScreen({ navigation }) {
     return matchBusca && matchPlano;
   });
 
-  const totalGratis = usuarias.filter(u => planoDe(u) === 0).length;
-  const totalPago = usuarias.filter(u => planoDe(u) > 0).length;
-  const totalEmpresa = usuarias.filter(u => u.linkEmpresa === true).length;
+  // Os números contam só contas ativas.
+  const ativas = usuarias.filter(u => !estaInativa(u));
+  const totalInativas = usuarias.length - ativas.length;
+  const totalGratis = ativas.filter(u => planoDe(u) === 0).length;
+  const totalPago = ativas.filter(u => planoDe(u) > 0).length;
+  const totalEmpresa = ativas.filter(u => u.linkEmpresa === true).length;
 
   return (
     <AdminLayout navigation={navigation} currentScreen="AdminUsuarias">
@@ -140,8 +172,8 @@ export default function AdminUsuariasScreen({ navigation }) {
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statN}>{usuarias.length}</Text>
-            <Text style={styles.statL}>Total</Text>
+            <Text style={styles.statN}>{ativas.length}</Text>
+            <Text style={styles.statL}>Ativas</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={[styles.statN, { color: corPlano(0).texto }]}>{totalGratis}</Text>
@@ -171,6 +203,19 @@ export default function AdminUsuariasScreen({ navigation }) {
           ) : null}
         </View>
 
+        {/* Filtro por status da conta */}
+        <View style={[styles.chipRow, { marginBottom: spacing.sm, flexWrap: 'wrap' }]}>
+          {[
+            { id: 'ativas', label: `Ativas (${ativas.length})` },
+            { id: 'inativas', label: `Inativas (${totalInativas})` },
+            { id: 'todas', label: `Todas (${usuarias.length})` },
+          ].map(f => (
+            <TouchableOpacity key={f.id} style={[styles.chip, filtroStatus === f.id && styles.chipSel]} onPress={() => setFiltroStatus(f.id)}>
+              <Text style={[styles.chipText, filtroStatus === f.id && styles.chipTextSel]}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Filtro por plano */}
         <View style={[styles.chipRow, { marginBottom: spacing.md, flexWrap: 'wrap' }]}>
           {[{ id: 'todos', label: 'Todos' }, ...[0, 1, 2, 3].map(n => ({ id: String(n), label: planosDocs[n]?.nome || PLANO_NOME[n] })), { id: 'empresa', label: 'Empresa' }].map(f => (
@@ -197,9 +242,15 @@ export default function AdminUsuariasScreen({ navigation }) {
                   <Text style={styles.nomeCompleto}>{u.nome}</Text>
                 )}
                 <Text style={styles.email}>{u.email}</Text>
-                {(u.cidade || u.telefone) ? (
-                  <Text style={styles.detalhe}>{[u.cidade, u.telefone].filter(Boolean).join(' · ')}</Text>
+                {(u.cidade || u.estado || u.telefone) ? (
+                  <Text style={styles.detalhe}>{[[u.cidade, u.estado].filter(Boolean).join(' / '), u.telefone].filter(Boolean).join(' · ')}</Text>
                 ) : null}
+                {estaInativa(u) && (
+                  <View style={[styles.empresaTag, { marginTop: 2 }]}>
+                    <Ionicons name="pause-circle-outline" size={13} color={colors.texto2} />
+                    <Text style={[styles.empresaText, { color: colors.texto2 }]}>Conta inativa</Text>
+                  </View>
+                )}
                 {u.linkEmpresa && (
                   <View style={styles.empresaTag}>
                     <Ionicons name="business-outline" size={13} color={acento('dourado').tinta} />
@@ -269,6 +320,12 @@ export default function AdminUsuariasScreen({ navigation }) {
                 <Ionicons name="gift-outline" size={20} color={acento('pessego').tinta} />
                 <Text style={[styles.planoOpcaoText, { color: acento('pessego').texto }]}>Cortesia temporária...</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.planoOpcao} onPress={abrirStatus}>
+                <Ionicons name={estaInativa(planoModal.usuaria) ? 'play-circle-outline' : 'pause-circle-outline'} size={20} color={colors.roseTexto} />
+                <Text style={[styles.planoOpcaoText, { color: colors.roseTexto }]}>
+                  {estaInativa(planoModal.usuaria) ? 'Reativar conta...' : 'Marcar como inativa...'}
+                </Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity style={{ marginTop: 12, paddingVertical: 8, alignItems: 'center' }} onPress={fecharPlanoModal}>
               <Text style={[styles.statL, { textAlign: 'center', fontSize: 13 }]}>Cancelar</Text>
@@ -301,6 +358,43 @@ export default function AdminUsuariasScreen({ navigation }) {
               <Text style={styles.revogarBtnText}>Revogar cortesia</Text>
             </TouchableOpacity>
             <TouchableOpacity style={{ marginTop: 8 }} onPress={() => setCortesiaModal({ vis: false, usuaria: null, dias: '30' })}>
+              <Text style={[styles.statL, { textAlign: 'center' }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={statusModal.vis} transparent animationType="fade" onRequestClose={fecharStatus}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.cortesiaBox}>
+            <Text style={styles.cortesiaTitulo}>
+              {estaInativa(statusModal.usuaria) ? 'Reativar conta' : 'Marcar como inativa'}
+            </Text>
+            <Text style={styles.cortesiaSub}>
+              {estaInativa(statusModal.usuaria)
+                ? `${statusModal.usuaria?.apelido || statusModal.usuaria?.nome || ''} volta a usar o app e a contar nos números.`
+                : `Nada é apagado. ${statusModal.usuaria?.apelido || statusModal.usuaria?.nome || 'A pessoa'} deixa de contar nos números e de receber avisos, e o app mostra que a conta está inativa.`}
+            </Text>
+            {!estaInativa(statusModal.usuaria) && (
+              <>
+                <Text style={[styles.statL, { marginTop: 16, marginBottom: 4 }]}>Motivo (opcional):</Text>
+                <TextInput
+                  style={styles.diasInput}
+                  value={statusModal.motivo}
+                  onChangeText={v => setStatusModal(p => ({ ...p, motivo: v }))}
+                  maxLength={300}
+                  placeholder="Ex.: pedido da própria pessoa"
+                  placeholderTextColor={colors.tl}
+                />
+              </>
+            )}
+            <TouchableOpacity style={[styles.concederBtn, { marginTop: 14 }]} onPress={confirmarStatus} disabled={statusModal.salvando}>
+              <Degrade />
+              <Text style={styles.concederBtnText}>
+                {statusModal.salvando ? 'Salvando...' : estaInativa(statusModal.usuaria) ? 'Confirmar reativação' : 'Confirmar inativação'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={{ marginTop: 8 }} onPress={fecharStatus} disabled={statusModal.salvando}>
               <Text style={[styles.statL, { textAlign: 'center' }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>

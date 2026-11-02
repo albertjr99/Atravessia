@@ -6,6 +6,7 @@ import {
   IconMusic, IconGift, IconStar, IconCompass, IconPie, IconAlert, IconTime,
 } from './Icons';
 import { hojeISO, seloVigencia, diasEntreISO, situacaoAchado, isoParaBR, DIAS_ALERTA_ACHADO } from './vigenciaUtils';
+import { ProximaSessao } from './Atendimentos';
 
 // Alertas do painel: contratos de parceria que vencem em até 60 dias (ou já
 // venceram) e achados que saem do ar nos próximos 7 dias. Só itens ativos.
@@ -187,7 +188,8 @@ export default function Dashboard({ perfil, irPara }) {
   }, []);
 
   // Contas administrativas não são "usuárias do app" — separá-las evita o número inflado.
-  const usuariasReais = usuarios.filter(u => u.role !== 'admin');
+  // Contas inativas também ficam fora de todos os números.
+  const usuariasReais = usuarios.filter(u => u.role !== 'admin' && u.status !== 'inativa');
 
   const planDist = {};
   usuariasReais.forEach(u => {
@@ -237,6 +239,9 @@ export default function Dashboard({ perfil, irPara }) {
         <h1 className="screen-title">{saudacaoAdmin(perfil?.apelido || perfil?.nome)}</h1>
         <p className="screen-sub">Bem-vinda ao painel. Visão geral do Atravessia, atualizada em tempo real.</p>
       </div>
+
+      {/* Atendimento online nos próximos dias: "Entrar na sala" direto daqui */}
+      <ProximaSessao irPara={irPara} />
 
       {error && (
         <div className="dash-aviso">

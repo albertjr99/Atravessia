@@ -24,8 +24,10 @@ import {
   brlCentavos, dataHoraTexto, dataTexto, listaDeTexto, linkWhatsapp,
 } from '../../utils/imoveis';
 
-// Painel "Imobiliárias" (grupo Parcerias): leads (funil), cadastro de
-// imobiliárias com dados privados, imóveis, arquitetos e resumo financeiro.
+// Painel "Imobiliárias" (grupo Parcerias): controle específico com leads
+// (funil), cadastro de imobiliárias com dados privados e a parceria de
+// "Experimente a vida" ligada (parceriaId), imóveis, prestadores do benefício
+// (coleção arquitetos, nome mantido por compatibilidade) e resumo financeiro.
 // Mudanças de etapa dos leads passam pelas Cloud Functions (seção
 // IMOBILIÁRIAS de functions/index.js); os cadastros são gravados direto.
 
@@ -33,7 +35,7 @@ const SECOES = [
   { id: 'leads', rotulo: 'Leads' },
   { id: 'imobiliarias', rotulo: 'Imobiliárias' },
   { id: 'imoveis', rotulo: 'Imóveis' },
-  { id: 'arquitetos', rotulo: 'Arquitetos' },
+  { id: 'arquitetos', rotulo: 'Prestadores do benefício' },
   { id: 'financeiro', rotulo: 'Financeiro' },
 ];
 const chama = (nome, dados) => httpsCallable(functions, nome)(dados).then(r => r.data);
@@ -181,7 +183,7 @@ function SecaoLeads({ leads, privLeads, imobiliarias, arquitetos, arqPriv }) {
         const m = String(f.data).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
         const h = String(f.hora).match(/^(\d{1,2}):(\d{2})$/);
         if (!m || !h) throw new Error('Use a data no formato DD/MM/AAAA e a hora como 14:30.');
-        if (!f.arquitetoId) throw new Error('Escolha o arquiteto.');
+        if (!f.arquitetoId) throw new Error('Escolha o prestador do benefício.');
         await chama('agendarConsultoria', {
           leadId: lead.id, arquitetoId: f.arquitetoId, dataHora: `${m[3]}-${m[2]}-${m[1]}T${h[1].padStart(2, '0')}:${h[2]}`,
           link: f.link.trim(), duracaoHoras: num(f.duracao) || 2, observacao: f.observacao,
@@ -241,18 +243,18 @@ function SecaoLeads({ leads, privLeads, imobiliarias, arquitetos, arqPriv }) {
                 {p.repassePrevistoCentavos != null && <Text style={st.finTxt}>Repasse previsto: {brlCentavos(p.repassePrevistoCentavos)}</Text>}
                 {!!p.repasseEnviado?.em && <Text style={[st.finTxt, { color: acento('dourado').texto }]}>Imobiliária informou o envio em {dataTexto(p.repasseEnviado.em)}{p.repasseEnviado.comprovanteUrl ? ' (com comprovante)' : ''}</Text>}
                 {p.repasseCentavos != null && <Text style={[st.finTxt, { color: acento('salvia').texto }]}>Recebido: {brlCentavos(p.repasseCentavos)} em {dataTexto(p.pagoEm)}</Text>}
-                {p.custoArquitetoCentavos != null && <Text style={st.finTxt}>Arquiteto: {brlCentavos(p.custoArquitetoCentavos)} {arqPago ? '· pago' : '· a pagar'}</Text>}
+                {p.custoArquitetoCentavos != null && <Text style={st.finTxt}>Prestador: {brlCentavos(p.custoArquitetoCentavos)} {arqPago ? '· pago' : '· a pagar'}</Text>}
               </View>
             )}
             {l.consultoria?.status === 'agendada' && (
-              <Text style={[st.legenda, { color: acento('salvia').texto }]}>Consultoria com {l.arquitetoNome}: {dataHoraTexto(l.consultoria.data)}</Text>
+              <Text style={[st.legenda, { color: acento('salvia').texto }]}>Benefício com {l.arquitetoNome}: {dataHoraTexto(l.consultoria.data)}</Text>
             )}
             <View style={st.acoes}>
               {!!l.telefone && <BotaoAdmin variant="secondary" icone="logo-whatsapp" title="WhatsApp" onPress={() => abrirLink(linkWhatsapp(l.telefone, `Olá, ${l.nome}! Aqui é da Atravessia, sobre sua indicação ${l.codigo}.`))} />}
               {l.status === 'fechado' && <BotaoAdmin icone="cash-outline" title="Confirmar recebimento" onPress={() => abrir('repasse', l)} />}
-              {['pago', 'consultoria_agendada'].includes(l.status) && <BotaoAdmin icone="calendar-outline" title={l.status === 'pago' ? 'Agendar consultoria' : 'Reagendar'} onPress={() => abrir('agendar', l)} />}
-              {l.status === 'consultoria_agendada' && <BotaoAdmin variant="secondary" icone="checkmark-done-outline" title="Consultoria concluída" onPress={() => simples(l, 'concluirConsultoria', {}, 'Marcar consultoria como concluída')} />}
-              {['consultoria_agendada', 'concluido'].includes(l.status) && !arqPago && <BotaoAdmin variant="secondary" icone="wallet-outline" title="Pagar arquiteto" onPress={() => abrir('pagarArq', l)} />}
+              {['pago', 'consultoria_agendada'].includes(l.status) && <BotaoAdmin icone="calendar-outline" title={l.status === 'pago' ? 'Agendar benefício' : 'Reagendar'} onPress={() => abrir('agendar', l)} />}
+              {l.status === 'consultoria_agendada' && <BotaoAdmin variant="secondary" icone="checkmark-done-outline" title="Benefício entregue" onPress={() => simples(l, 'concluirConsultoria', {}, 'Marcar o benefício como entregue')} />}
+              {['consultoria_agendada', 'concluido'].includes(l.status) && !arqPago && <BotaoAdmin variant="secondary" icone="wallet-outline" title="Pagar prestador" onPress={() => abrir('pagarArq', l)} />}
               {['novo', 'em_contato', 'visita', 'proposta', 'perdido'].includes(l.status) && (
                 <View style={{ minWidth: 180, flexGrow: 1 }}>
                   <Suspensa valor={l.status} placeholder="Mudar etapa"
@@ -270,20 +272,20 @@ function SecaoLeads({ leads, privLeads, imobiliarias, arquitetos, arqPriv }) {
           {acao && (
             <ScrollView contentContainerStyle={st.modal} keyboardShouldPersistTaps="handled">
               <Text style={st.modalTit}>
-                {acao.tipo === 'repasse' ? 'Confirmar recebimento do repasse' : acao.tipo === 'agendar' ? 'Agendar consultoria' : 'Pagamento ao arquiteto'}
+                {acao.tipo === 'repasse' ? 'Confirmar recebimento do repasse' : acao.tipo === 'agendar' ? 'Agendar o serviço do benefício' : 'Pagamento ao prestador'}
               </Text>
               <Text style={st.legenda}>{acao.lead.codigo} · {acao.lead.nome}</Text>
               {acao.tipo === 'repasse' && (
                 <Campo rotulo="Valor recebido da imobiliária (R$)" valor={f.valor} onMudar={(v) => set('valor', v)} keyboardType="decimal-pad"
-                  dica="Já vem com o valor previsto pelo acordo. Ao confirmar, o valor fica congelado e a usuária é avisada de que a consultoria foi liberada." />
+                  dica="Já vem com o valor previsto pelo acordo. Ao confirmar, o valor fica congelado e a usuária é avisada de que o benefício foi liberado." />
               )}
               {acao.tipo === 'agendar' && (
                 <>
-                  <Text style={st.rotulo}>Arquiteto</Text>
+                  <Text style={st.rotulo}>Prestador do benefício</Text>
                   {arquitetos.filter(a => a.ativo !== false).length === 0
-                    ? <Text style={st.dica}>Cadastre um arquiteto na aba Arquitetos.</Text>
+                    ? <Text style={st.dica}>Cadastre um prestador na aba Prestadores do benefício.</Text>
                     : <Chips valor={f.arquitetoId} onMudar={(v) => set('arquitetoId', v)}
-                        opcoes={arquitetos.filter(a => a.ativo !== false).map(a => ({ id: a.id, rotulo: `${a.nome}${arqPriv[a.id]?.valorConsultoria ? ` · R$ ${arqPriv[a.id].valorConsultoria}` : ''}` }))} />}
+                        opcoes={arquitetos.filter(a => a.ativo !== false).map(a => ({ id: a.id, rotulo: `${a.nome}${a.especialidade ? ` (${a.especialidade})` : ''}${arqPriv[a.id]?.valorConsultoria ? ` · R$ ${arqPriv[a.id].valorConsultoria}` : ''}` }))} />}
                   <Campo rotulo="Data (DD/MM/AAAA)" valor={f.data} onMudar={(v) => set('data', v)} placeholder="15/12/2026" />
                   <Campo rotulo="Hora (horário de Brasília)" valor={f.hora} onMudar={(v) => set('hora', v)} placeholder="14:30" />
                   <Campo rotulo="Duração (horas)" valor={f.duracao} onMudar={(v) => set('duracao', v)} keyboardType="decimal-pad" />
@@ -293,7 +295,7 @@ function SecaoLeads({ leads, privLeads, imobiliarias, arquitetos, arqPriv }) {
               )}
               {acao.tipo === 'pagarArq' && (
                 <>
-                  <Campo rotulo="Valor pago ao arquiteto (R$)" valor={f.valor} onMudar={(v) => set('valor', v)} keyboardType="decimal-pad" />
+                  <Campo rotulo="Valor pago ao prestador (R$)" valor={f.valor} onMudar={(v) => set('valor', v)} keyboardType="decimal-pad" />
                   <Campo rotulo="Link do comprovante (opcional)" valor={f.comprovante} onMudar={(v) => set('comprovante', v)} autoCapitalize="none" />
                 </>
               )}
@@ -312,13 +314,37 @@ function SecaoLeads({ leads, privLeads, imobiliarias, arquitetos, arqPriv }) {
 // ============================ IMOBILIÁRIAS ==================================
 const IMOB_VAZIA = {
   nome: '', logoUrl: '', capaUrl: '', descricao: '', creci: '', cidades: '', bairros: '', tipos: ['venda', 'aluguel'],
-  site: '', whatsapp: '', instagram: '', destaques: '', ativo: true, ordem: '', regrasBeneficio: '',
+  site: '', whatsapp: '', instagram: '', destaques: '', ativo: true, ordem: '', regrasBeneficio: '', parceriaId: '',
   responsavel: '', telefoneInterno: '', emailInterno: '',
   repasseVendaTipo: 'fixo', repasseVendaValor: '', repasseAluguelTipo: 'fixo', repasseAluguelValor: '',
   prazoRepasseDias: '30', contratoUrl: '', vigenciaInicio: '', vigenciaFim: '', dadosPagamentoAtravessia: '', observacoes: '',
 };
 
-function SecaoImobiliarias({ imobiliarias, imobPriv, rolagem }) {
+// Liga a imobiliária a uma parceria de "Experimente a vida" (nos dois sentidos:
+// imobiliarias.parceriaId e parcerias.imobiliariaId). '__nova__' cria a
+// parceria (categoria "Do ambiente em que você vive"); benefício e regras se
+// completam em Parcerias. Mesmo comportamento do painel web (Imobiliarias.jsx).
+async function vincularParceria(imobId, escolhido, anterior, dados) {
+  let parceriaId = escolhido || '';
+  if (parceriaId === '__nova__') {
+    const nova = doc(collection(db, 'parcerias'));
+    await setDoc(nova, {
+      titulo: dados.nome, descricao: dados.descricao || '', link: '', imagemUrl: dados.logoUrl || '',
+      categorias: ['ambiente'], categoriasRevisadas: true, estado: '', cidade: '', atendimentoOnline: false,
+      tipoBeneficio: 'link', beneficioTexto: '', regras: '', imobiliariaId: imobId,
+      ativo: true, cliques: 0, criadoEm: serverTimestamp(),
+    });
+    parceriaId = nova.id;
+  } else if (parceriaId) {
+    await setDoc(doc(db, 'parcerias', parceriaId), { imobiliariaId: imobId }, { merge: true });
+  }
+  if (anterior && anterior !== parceriaId) {
+    await setDoc(doc(db, 'parcerias', anterior), { imobiliariaId: null }, { merge: true }).catch(() => {});
+  }
+  return parceriaId;
+}
+
+function SecaoImobiliarias({ imobiliarias, imobPriv, parcerias = [], rolagem }) {
   const form = useFormRecolhivel(rolagem);
   const [editId, setEditId] = useState(null);
   const [f, setF] = useState(IMOB_VAZIA);
@@ -350,12 +376,15 @@ function SecaoImobiliarias({ imobiliarias, imobPriv, rolagem }) {
     setSalvando(true);
     try {
       const id = editId || doc(collection(db, 'imobiliarias')).id;
+      const anterior = editId ? (imobiliarias.find(i => i.id === editId)?.parceriaId || '') : '';
+      const parceriaId = await vincularParceria(id, f.parceriaId, anterior, { nome: f.nome.trim(), descricao: f.descricao.trim(), logoUrl: f.logoUrl.trim() });
       await setDoc(doc(db, 'imobiliarias', id), {
+        parceriaId: parceriaId || null,
         nome: f.nome.trim(), logoUrl: f.logoUrl.trim(), capaUrl: f.capaUrl.trim(), descricao: f.descricao.trim(), creci: f.creci.trim(),
         cidades: listaDeTexto(f.cidades), bairros: listaDeTexto(f.bairros), tipos: f.tipos || [],
         site: f.site.trim(), whatsapp: f.whatsapp.replace(/\D/g, ''), instagram: f.instagram.trim(),
         destaques: listaDeTexto(f.destaques.replace(/\n/g, ',')).slice(0, 6), ativo: f.ativo !== false,
-        ordem: f.ordem === '' ? null : num(f.ordem), regrasBeneficio: f.regrasBeneficio.trim(),
+        ordem: f.ordem === '' ? null : num(f.ordem), regrasBeneficio: String(f.regrasBeneficio || '').trim(),
         atualizadoEm: serverTimestamp(), ...(editId ? {} : { criadoEm: serverTimestamp() }),
       }, { merge: true });
       await setDoc(doc(db, 'imobiliariasPrivado', id), {
@@ -417,8 +446,15 @@ function SecaoImobiliarias({ imobiliarias, imobPriv, rolagem }) {
           <Campo rotulo="Site" valor={f.site} onMudar={(v) => set('site', v)} autoCapitalize="none" />
           <Campo rotulo="WhatsApp público (com DDD)" valor={f.whatsapp} onMudar={(v) => set('whatsapp', v)} keyboardType="phone-pad" dica="Usado no botão “Falar no WhatsApp com o código”." />
           <Campo rotulo="Instagram" valor={f.instagram} onMudar={(v) => set('instagram', v)} autoCapitalize="none" placeholder="@imobiliaria" />
-          <Campo rotulo="Regras do benefício (resumo para a usuária)" valor={f.regrasBeneficio} onMudar={(v) => set('regrasBeneficio', v)} multiline
-            dica="Vazio: aparece o texto padrão da consultoria com arquiteto parceiro." />
+          <Text style={st.rotulo}>Parceria em Experimente a vida</Text>
+          <Suspensa valor={f.parceriaId || ''} onMudar={(v) => set('parceriaId', v)} placeholder="Escolher parceria"
+            opcoes={[
+              { id: '', rotulo: 'Sem parceria (não aparece para a usuária)' },
+              { id: '__nova__', rotulo: '+ Criar parceria com o nome desta imobiliária' },
+              ...parcerias.filter(p => !p.imobiliariaId || p.imobiliariaId === editId)
+                .map(p => ({ id: p.id, rotulo: `${p.titulo}${p.ativo === false ? ' (oculta)' : ''}` })),
+            ]} />
+          <Text style={st.dica}>É por ela que a usuária vê a imobiliária no app (botão “Quero indicação”, com código e QR Code). O benefício e as regras se editam no cadastro da parceria, em Parcerias.</Text>
           <Campo rotulo="Ordem na vitrine" valor={f.ordem} onMudar={(v) => set('ordem', v)} keyboardType="number-pad" />
           <View style={[st.linha, { marginTop: 12 }]}>
             <Text style={st.rotulo}>Ativa no app</Text>
@@ -463,6 +499,11 @@ function SecaoImobiliarias({ imobiliarias, imobPriv, rolagem }) {
             <Text style={st.legenda}>Repasse: venda {regra(p.repasseVendaTipo, p.repasseVendaValor)} · aluguel {regra(p.repasseAluguelTipo, p.repasseAluguelValor)}{p.prazoRepasseDias ? ` · em até ${p.prazoRepasseDias} dias` : ''}</Text>
             {!!p.responsavel && <Text style={st.legenda}>Responsável: {p.responsavel}{p.telefoneInterno ? ` · ${p.telefoneInterno}` : ''}</Text>}
             {!!p.vigenciaFim && <Text style={st.legenda}>Vigência até {String(p.vigenciaFim).split('-').reverse().join('/')}</Text>}
+            <Text style={[st.legenda, !i.parceriaId && { color: acento('dourado').texto }]}>
+              {i.parceriaId
+                ? `Em Experimente a vida: ${parcerias.find(x => x.id === i.parceriaId)?.titulo || 'parceria ligada'}`
+                : 'Sem parceria ligada: não aparece para a usuária. Edite e escolha a parceria.'}
+            </Text>
             <View style={[st.acoes, { marginTop: 10 }]}>
               {linkAtual(i)
                 ? <BotaoAdmin variant="secondary" icone="link-outline" title="Copiar link do portal" onPress={() => copiarOuCompartilhar(linkAtual(i))} />
@@ -476,6 +517,7 @@ function SecaoImobiliarias({ imobiliarias, imobPriv, rolagem }) {
               onApagar={() => confirmar('Apagar imobiliária', `Apagar "${i.nome}"? As indicações já feitas continuam guardadas.`, async () => {
                 await deleteDoc(doc(db, 'imobiliarias', i.id));
                 await deleteDoc(doc(db, 'imobiliariasPrivado', i.id)).catch(() => {});
+                if (i.parceriaId) await setDoc(doc(db, 'parcerias', i.parceriaId), { imobiliariaId: null }, { merge: true }).catch(() => {});
               }, 'Apagar')} />
           </View>
         );
@@ -605,7 +647,7 @@ function SecaoImoveis({ imoveis, imobiliarias, rolagem }) {
 }
 
 // ============================ ARQUITETOS ====================================
-const ARQ_VAZIO = { nome: '', fotoUrl: '', bio: '', cau: '', especialidades: '', ativo: true, valorConsultoria: '', telefone: '', email: '', dadosPagamento: '' };
+const ARQ_VAZIO = { nome: '', especialidade: '', fotoUrl: '', bio: '', cau: '', especialidades: '', ativo: true, valorConsultoria: '', telefone: '', email: '', dadosPagamento: '' };
 
 function SecaoArquitetos({ arquitetos, arqPriv, rolagem }) {
   const form = useFormRecolhivel(rolagem);
@@ -627,14 +669,14 @@ function SecaoArquitetos({ arquitetos, arqPriv, rolagem }) {
     try {
       const id = editId || doc(collection(db, 'arquitetos')).id;
       await setDoc(doc(db, 'arquitetos', id), {
-        nome: f.nome.trim(), fotoUrl: f.fotoUrl.trim(), bio: f.bio.trim(), cau: f.cau.trim(),
+        nome: f.nome.trim(), especialidade: String(f.especialidade || '').trim(), fotoUrl: f.fotoUrl.trim(), bio: f.bio.trim(), cau: f.cau.trim(),
         especialidades: listaDeTexto(f.especialidades), ativo: f.ativo !== false, atualizadoEm: serverTimestamp(),
       }, { merge: true });
       await setDoc(doc(db, 'arquitetosPrivado', id), {
         valorConsultoria: num(f.valorConsultoria), telefone: f.telefone.trim(), email: f.email.trim(),
         dadosPagamento: f.dadosPagamento.trim(), atualizadoEm: serverTimestamp(),
       }, { merge: true });
-      Alert.alert('', 'Arquiteto salvo.');
+      Alert.alert('', 'Prestador salvo.');
       limpar();
     } catch (e) { Alert.alert('Não foi possível salvar', e?.message || 'Tente novamente.'); } finally { setSalvando(false); }
   };
@@ -642,16 +684,17 @@ function SecaoArquitetos({ arquitetos, arqPriv, rolagem }) {
   return (
     <View>
       <View onLayout={form.onLayout}>
-        <Recolhivel titulo={editId ? `Editar: ${f.nome}` : 'Novo arquiteto parceiro'} subtitulo="Quem faz a consultoria online" icone="color-palette-outline" aberto={form.aberto} onAlternar={form.setAberto}>
+        <Recolhivel titulo={editId ? `Editar: ${f.nome}` : 'Novo prestador do benefício'} subtitulo="Quem faz o serviço parceiro depois do negócio fechado (ex.: arquiteta, decoradora)" icone="color-palette-outline" aberto={form.aberto} onAlternar={form.setAberto}>
           <Campo rotulo="Nome *" valor={f.nome} onMudar={(v) => set('nome', v)} />
-          <Campo rotulo="Registro CAU" valor={f.cau} onMudar={(v) => set('cau', v)} />
+          <Campo rotulo="Especialidade" valor={f.especialidade} onMudar={(v) => set('especialidade', v)} placeholder="Ex.: Arquiteta, Designer de interiores, Personal organizer" />
+          <Campo rotulo="Registro profissional (opcional)" valor={f.cau} onMudar={(v) => set('cau', v)} placeholder="CAU, CRECI…" />
           <Text style={st.rotulo}>Foto</Text>
           {!!f.fotoUrl && <Image source={{ uri: urlDeImagem(f.fotoUrl) }} style={st.miniLogo} />}
           <BotaoAdmin variant="secondary" icone="cloud-upload-outline" title="Enviar foto" onPress={async () => { try { const [u] = await enviarImagens('arquitetos', false); if (u) set('fotoUrl', u); } catch (e) { Alert.alert('Erro', e?.message); } }} />
           <Campo rotulo="Bio" valor={f.bio} onMudar={(v) => set('bio', v)} multiline />
-          <Campo rotulo="Especialidades (separe por vírgula)" valor={f.especialidades} onMudar={(v) => set('especialidades', v)} placeholder="Organização, decoração afetiva, pequenos espaços" />
+          <Campo rotulo="Temas de atuação (separe por vírgula)" valor={f.especialidades} onMudar={(v) => set('especialidades', v)} placeholder="Organização, decoração afetiva, pequenos espaços" />
           <Text style={st.grupo}>Privado</Text>
-          <Campo rotulo="Valor por consultoria (R$)" valor={f.valorConsultoria} onMudar={(v) => set('valorConsultoria', v)} keyboardType="decimal-pad" dica="Fica congelado em cada lead quando a consultoria é agendada." />
+          <Campo rotulo="Valor por atendimento (R$)" valor={f.valorConsultoria} onMudar={(v) => set('valorConsultoria', v)} keyboardType="decimal-pad" dica="Fica congelado em cada lead quando o serviço é agendado." />
           <Campo rotulo="Telefone" valor={f.telefone} onMudar={(v) => set('telefone', v)} keyboardType="phone-pad" />
           <Campo rotulo="E-mail" valor={f.email} onMudar={(v) => set('email', v)} autoCapitalize="none" />
           <Campo rotulo="Dados de pagamento (PIX/conta)" valor={f.dadosPagamento} onMudar={(v) => set('dadosPagamento', v)} multiline />
@@ -661,22 +704,22 @@ function SecaoArquitetos({ arquitetos, arqPriv, rolagem }) {
           </View>
           <View style={[st.acoes, { marginTop: 16 }]}>
             {editId && <BotaoAdmin variant="secondary" title="Cancelar edição" onPress={limpar} />}
-            <BotaoAdmin title={editId ? 'Salvar alterações' : 'Cadastrar arquiteto'} onPress={salvar} carregando={salvando} disabled={salvando} />
+            <BotaoAdmin title={editId ? 'Salvar alterações' : 'Cadastrar prestador'} onPress={salvar} carregando={salvando} disabled={salvando} />
           </View>
         </Recolhivel>
       </View>
-      {arquitetos.length === 0 && <Text style={st.dica}>Nenhum arquiteto cadastrado.</Text>}
+      {arquitetos.length === 0 && <Text style={st.dica}>Nenhum prestador do benefício cadastrado.</Text>}
       {arquitetos.map(a => (
         <View key={a.id} style={[st.card, a.ativo === false && { opacity: 0.7 }]}>
           <View style={st.linha}>
             {a.fotoUrl ? <Image source={{ uri: urlDeImagem(a.fotoUrl) }} style={st.logoLista} /> : <Pilula icone="person-outline" />}
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={st.titulo}>{a.nome}{a.ativo === false ? ' (inativo)' : ''}</Text>
-              <Text style={st.legenda}>{a.cau ? `CAU ${a.cau} · ` : ''}{arqPriv[a.id]?.valorConsultoria ? `R$ ${arqPriv[a.id].valorConsultoria} por consultoria` : 'Sem valor definido'}</Text>
+              <Text style={st.legenda}>{a.especialidade ? `${a.especialidade} · ` : ''}{a.cau ? `Registro ${a.cau} · ` : ''}{arqPriv[a.id]?.valorConsultoria ? `R$ ${arqPriv[a.id].valorConsultoria} por atendimento` : 'Sem valor definido'}</Text>
               {(a.especialidades || []).length > 0 && <Text style={st.dica}>{a.especialidades.join(' · ')}</Text>}
             </View>
           </View>
-          <AcoesItem onEditar={() => editar(a)} onApagar={() => confirmar('Apagar arquiteto', `Apagar "${a.nome}"?`, async () => {
+          <AcoesItem onEditar={() => editar(a)} onApagar={() => confirmar('Apagar prestador', `Apagar "${a.nome}"?`, async () => {
             await deleteDoc(doc(db, 'arquitetos', a.id)); await deleteDoc(doc(db, 'arquitetosPrivado', a.id)).catch(() => {});
           }, 'Apagar')} />
         </View>
@@ -713,14 +756,14 @@ function SecaoFinanceiro({ leads, privLeads }) {
       <View style={st.stats}>
         {caixa('Recebido das imobiliárias', r.recebido, 'salvia')}
         {caixa('A receber (negócios fechados)', r.aReceber, 'dourado')}
-        {caixa('Pago a arquitetos', r.arqPago)}
-        {caixa('A pagar a arquitetos', r.arqAPagar, 'pessego')}
-        {caixa('Margem (recebido − arquitetos)', r.margem, 'lilas')}
+        {caixa('Pago a prestadores', r.arqPago)}
+        {caixa('A pagar a prestadores', r.arqAPagar, 'pessego')}
+        {caixa('Margem (recebido − prestadores)', r.margem, 'lilas')}
       </View>
       {pagosSemArq > 0 && (
         <View style={[st.aviso, { marginTop: 12 }]}>
           <Ionicons name="calendar-outline" size={18} color={acento('dourado').texto} />
-          <Text style={st.avisoTxt}>{pagosSemArq === 1 ? '1 consultoria liberada' : `${pagosSemArq} consultorias liberadas`} ainda sem data. O custo do arquiteto entra no cálculo quando a consultoria é agendada.</Text>
+          <Text style={st.avisoTxt}>{pagosSemArq === 1 ? '1 benefício liberado' : `${pagosSemArq} benefícios liberados`} ainda sem data. O custo do prestador entra no cálculo quando o serviço é agendado.</Text>
         </View>
       )}
       <Text style={[st.grupo, { marginTop: 18 }]}>Por imobiliária</Text>
@@ -735,6 +778,34 @@ function SecaoFinanceiro({ leads, privLeads }) {
   );
 }
 
+// ============================ DEMONSTRAÇÃO ==================================
+// Como em Cursos: cria/atualiza (ou remove) a imobiliária fictícia com imóveis,
+// prestadora, parceria em Experimente a vida e 4 leads fictícios.
+function DemoImobiliarias() {
+  const [rodando, setRodando] = useState(false);
+  const [link, setLink] = useState('');
+  const executar = async (remover) => {
+    setRodando(true);
+    try {
+      const r = await chama('criarDemonstracaoImobiliarias', { remover });
+      setLink(remover ? '' : r?.linkPortal || '');
+      Alert.alert('', remover ? 'Demonstração removida.' : 'Demonstração pronta! A parceria já aparece em Experimente a vida.');
+    } catch (e) { Alert.alert('Não foi possível', e?.message || 'Tente novamente.'); }
+    setRodando(false);
+  };
+  return (
+    <Recolhivel titulo="Demonstração das Imobiliárias" subtitulo="Imobiliária fictícia, imóveis, prestadora, parceria e leads" icone="sparkles-outline">
+      <Text style={st.dica}>Cria a “Casa Serena Imóveis (demonstração)” com 5 imóveis ilustrativos, a prestadora “Helena Luz (demonstração)”, a parceria em Experimente a vida e 4 leads fictícios. Nenhum aviso é enviado às usuárias. Pode tocar de novo para atualizar; nada é duplicado.</Text>
+      <View style={[st.acoes, { marginTop: 10 }]}>
+        <BotaoAdmin title={rodando ? 'Preparando…' : 'Criar ou atualizar demonstração'} onPress={() => executar(false)} disabled={rodando} />
+        <BotaoAdmin variant="secondary" title="Remover demonstração" disabled={rodando}
+          onPress={() => confirmar('Remover demonstração', 'Remover a imobiliária, os imóveis, a prestadora, a parceria e os leads de demonstração?', () => executar(true), 'Remover')} />
+      </View>
+      {!!link && <BotaoAdmin variant="secondary" icone="link-outline" title="Copiar link do portal da imobiliária demo" onPress={() => copiarOuCompartilhar(link)} style={{ marginTop: 10 }} />}
+    </Recolhivel>
+  );
+}
+
 // ============================ TELA ==========================================
 export default function AdminImobiliariasScreen({ navigation }) {
   const rolagem = useRef(null);
@@ -746,6 +817,7 @@ export default function AdminImobiliariasScreen({ navigation }) {
   const [arqPriv, setArqPriv] = useState({});
   const [leads, setLeads] = useState([]);
   const [privLeads, setPrivLeads] = useState({});
+  const [parcerias, setParcerias] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -759,6 +831,7 @@ export default function AdminImobiliariasScreen({ navigation }) {
       onSnapshot(collection(db, 'arquitetosPrivado'), s => setArqPriv(mapa(s)), () => {}),
       onSnapshot(collection(db, 'indicacoesImoveis'), s => { setLeads(lista(s).sort((a, b) => tsMs(b.criadoEm) - tsMs(a.criadoEm))); setCarregando(false); }, () => setCarregando(false)),
       onSnapshot(collection(db, 'indicacoesImoveisPrivado'), s => setPrivLeads(mapa(s)), () => {}),
+      onSnapshot(collection(db, 'parcerias'), s => setParcerias(lista(s).sort((a, b) => String(a.titulo).localeCompare(String(b.titulo)))), () => {}),
     ];
     return () => subs.forEach(u => u());
   }, []);
@@ -769,15 +842,16 @@ export default function AdminImobiliariasScreen({ navigation }) {
     <AdminLayout navigation={navigation} currentScreen="AdminImobiliarias">
       <AdminSubTabs grupo="parcerias" atual="AdminImobiliarias" />
       <ScrollView ref={rolagem} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={st.scroll}>
-        <Text style={st.sobre}>Parcerias · Lar e recomeço</Text>
+        <Text style={st.sobre}>Parcerias · controle de imobiliárias</Text>
         <Text style={st.pageTitle}>Imobiliárias</Text>
         <Text style={st.pageSub}>
-          A usuária indica interesse, a imobiliária negocia e, quando o negócio fecha e o repasse chega, a Atravessia agenda a consultoria com arquiteto parceiro.
+          Para a usuária, cada imobiliária é uma parceria em Experimente a vida (“Do ambiente em que você vive”). Ela pede a indicação, a imobiliária negocia e, quando o negócio fecha e o repasse chega, a Atravessia agenda o serviço parceiro do benefício (por exemplo, uma consultoria com arquiteta).
         </Text>
+        <DemoImobiliarias />
         {pendentes > 0 && (
           <View style={[st.aviso, { marginTop: 12 }]}>
             <Ionicons name="alert-circle-outline" size={18} color={acento('dourado').texto} />
-            <Text style={st.avisoTxt}>{pendentes} {pendentes === 1 ? 'indicação precisa' : 'indicações precisam'} da sua ação (confirmar repasse ou agendar consultoria).</Text>
+            <Text style={st.avisoTxt}>{pendentes} {pendentes === 1 ? 'indicação precisa' : 'indicações precisam'} da sua ação (confirmar repasse ou agendar o benefício).</Text>
           </View>
         )}
         <View style={{ marginTop: 14 }}><Chips valor={secao} onMudar={setSecao} opcoes={SECOES} /></View>
@@ -785,7 +859,7 @@ export default function AdminImobiliariasScreen({ navigation }) {
           {carregando ? <ActivityIndicator color={colors.lav4} /> : (
             <>
               {secao === 'leads' && <SecaoLeads leads={leads} privLeads={privLeads} imobiliarias={imobiliarias} arquitetos={arquitetos} arqPriv={arqPriv} />}
-              {secao === 'imobiliarias' && <SecaoImobiliarias imobiliarias={imobiliarias} imobPriv={imobPriv} rolagem={rolagem} />}
+              {secao === 'imobiliarias' && <SecaoImobiliarias imobiliarias={imobiliarias} imobPriv={imobPriv} parcerias={parcerias} rolagem={rolagem} />}
               {secao === 'imoveis' && <SecaoImoveis imoveis={imoveis} imobiliarias={imobiliarias} rolagem={rolagem} />}
               {secao === 'arquitetos' && <SecaoArquitetos arquitetos={arquitetos} arqPriv={arqPriv} rolagem={rolagem} />}
               {secao === 'financeiro' && <SecaoFinanceiro leads={leads} privLeads={privLeads} />}

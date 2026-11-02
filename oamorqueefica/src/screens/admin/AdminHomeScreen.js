@@ -75,7 +75,8 @@ export default function AdminHomeScreen({ navigation }) {
     // Cada assinatura é independente: antes, uma única consulta que falhava
     // (a de check-ins) impedia o setStats e zerava TODOS os indicadores.
     unsubs.push(onSnapshot(collection(db, 'usuarios'), snap => {
-      const reais = snap.docs.map(d => d.data()).filter(u => u.role !== 'admin');
+      // Contas administrativas e inativas não entram nos números.
+      const reais = snap.docs.map(d => d.data()).filter(u => u.role !== 'admin' && u.status !== 'inativa');
       const porPlano = {};
       reais.forEach(u => {
         const p = u.acessoTotal ? 3 : normalizarPlano(u.plano);

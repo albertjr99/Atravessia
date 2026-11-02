@@ -1,4 +1,5 @@
-// Lar e recomeço — parceria Atravessia + imobiliárias + arquitetos.
+// Indicações de imóveis — parcerias ligadas ao controle de imobiliárias
+// (imobiliárias + prestadores do benefício).
 // Constantes e funções usadas pelas telas da usuária e pelo painel no app.
 // Mesmo conteúdo em admin-web/src/imoveisUtils.js (painel web e portal da
 // imobiliária). Os status são gravados só pelo servidor (functions/index.js,
@@ -10,9 +11,10 @@ export const STATUS_LEAD = {
   visita: { rotulo: 'Visita marcada ou feita', curto: 'Visita', tom: 'nevoa', icone: 'walk-outline' },
   proposta: { rotulo: 'Proposta em andamento', curto: 'Proposta', tom: 'pessego', icone: 'document-text-outline' },
   fechado: { rotulo: 'Negócio fechado', curto: 'Fechado', tom: 'dourado', icone: 'key-outline' },
-  pago: { rotulo: 'Consultoria liberada', curto: 'Repasse recebido', tom: 'salvia', icone: 'checkmark-done-outline' },
-  consultoria_agendada: { rotulo: 'Consultoria agendada', curto: 'Consultoria agendada', tom: 'salvia', icone: 'calendar-outline' },
-  concluido: { rotulo: 'Consultoria concluída', curto: 'Concluído', tom: 'salvia', icone: 'home-outline' },
+  // Ids "consultoria_*" mantidos por compatibilidade: hoje são o serviço parceiro do benefício.
+  pago: { rotulo: 'Benefício liberado', curto: 'Repasse recebido', tom: 'salvia', icone: 'checkmark-done-outline' },
+  consultoria_agendada: { rotulo: 'Benefício agendado', curto: 'Benefício agendado', tom: 'salvia', icone: 'calendar-outline' },
+  concluido: { rotulo: 'Benefício entregue', curto: 'Concluído', tom: 'salvia', icone: 'home-outline' },
   perdido: { rotulo: 'Negociação encerrada', curto: 'Encerrado', tom: 'neutro', icone: 'close-circle-outline' },
 };
 
@@ -68,10 +70,11 @@ export const TEXTO_CONSENTIMENTO_IMOVEIS =
   + 'só para que ela entre em contato sobre este interesse. A imobiliária não recebe nenhum outro dado meu '
   + '(nem check-ins, nem diário, nem plano). Posso pedir a exclusão a qualquer momento.';
 
+// Texto geral. O benefício de cada indicação vem do cadastro da parceria
+// (lead.beneficioTexto, copiado de parcerias.beneficioTexto/regras).
 export const TEXTO_BENEFICIO =
-  'Quando o negócio for fechado e a imobiliária confirmar o pagamento, você ganha uma consultoria online '
-  + 'com arquiteto parceiro (cerca de 2 horas) para pensar organização, decoração e aproveitamento do novo lar. '
-  + 'Sem custo para você.';
+  'O benefício de cada parceria aparece no cartão dela, em Experimente a vida, e é liberado quando o negócio '
+  + 'é fechado e a imobiliária confirma. Sem custo para você.';
 
 export function precoTexto(valor, finalidade) {
   const n = Number(valor);
@@ -105,7 +108,7 @@ export function linkWhatsapp(numero, texto) {
 
 export function mensagemWhatsapp({ codigo, imovelTitulo, interesse }) {
   const acao = interesse === 'alugar' ? 'alugar' : 'comprar';
-  return `Olá! Vim pela Atravessia (parceria Lar e recomeço) e tenho interesse em ${acao}`
+  return `Olá! Vim pela Atravessia (Experimente a vida) e tenho interesse em ${acao}`
     + `${imovelTitulo ? ` o imóvel "${imovelTitulo}"` : ' um imóvel'}. Meu código de indicação é ${codigo}.`;
 }
 

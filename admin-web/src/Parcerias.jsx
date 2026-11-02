@@ -28,11 +28,18 @@ function TextoAutoAjustavel({ value, onChange, ...props }) {
 
 const CATEGORIAS = [
   { id: 'saude',           label: 'Da saúde física' },
-  { id: 'voce',            label: 'De você e do ambiente em que vive' },
+  // 'voce' era "De você e do ambiente em que vive": o id antigo virou "De você"
+  // (parcerias antigas continuam aparecendo) e entrou 'ambiente'. Parcerias
+  // antigas com 'voce' sem `categoriasRevisadas` ganham um aviso para revisar.
+  { id: 'voce',            label: 'De você' },
+  { id: 'ambiente',        label: 'Do ambiente em que você vive' },
   { id: 'trabalho',        label: 'Do trabalho e estudos' },
   { id: 'relacionamentos', label: 'Dos relacionamentos' },
   { id: 'outros',          label: 'Outros' },
 ];
+
+// Parceria cadastrada antes da divisão da categoria (só tinha 'voce').
+const precisaRevisarCategoria = (p) => (p.categorias || []).includes('voce') && !(p.categorias || []).includes('ambiente') && p.categoriasRevisadas !== true;
 
 // Token de leitura do extrato do parceiro — não protege dinheiro (isso é a
 // Cloud Function que faz), só identifica de forma difícil de adivinhar qual
@@ -97,6 +104,8 @@ function novoForm() {
     titulo: '', descricao: '', link: '', imagemUrl: '', categorias: [], ativo: true,
     estado: '', cidade: '', atendimentoOnline: false,
     tipoBeneficio: 'link',
+    // Benefício e regras editáveis (aparecem para a usuária no cartão).
+    beneficioTexto: '', regras: '',
     percentualBeneficio: '10',
     percentualComissao: '3',
     validadeDiasVoucher: '30',
@@ -175,6 +184,8 @@ export default function Parcerias({ showToast, irPara, parametros }) {
       cidade: item.cidade || '',
       atendimentoOnline: item.atendimentoOnline === true,
       tipoBeneficio: item.tipoBeneficio === 'cupom' ? 'cupom' : 'link',
+      beneficioTexto: item.beneficioTexto || '',
+      regras: item.regras || '',
       percentualBeneficio: item.percentualBeneficio != null ? String(item.percentualBeneficio) : '10',
       percentualComissao: item.percentualComissao != null ? String(item.percentualComissao) : '3',
       validadeDiasVoucher: item.validadeDiasVoucher != null ? String(item.validadeDiasVoucher) : '30',
@@ -246,6 +257,10 @@ export default function Parcerias({ showToast, irPara, parametros }) {
         estado: form.estado || '',
         cidade: formatarCidade(form.cidade),
         atendimentoOnline: form.atendimentoOnline === true,
+        beneficioTexto: String(form.beneficioTexto || '').trim(),
+        regras: String(form.regras || '').trim(),
+        // Salvar no formulário novo conta como revisão das categorias.
+        categoriasRevisadas: true,
       };
       if (form.tipoBeneficio === 'cupom') {
         // Sempre sobre o valor original — a opção "valor final" foi retirada.
@@ -336,6 +351,13 @@ export default function Parcerias({ showToast, irPara, parametros }) {
         <div className="stat-mini"><div className="stat-mini-value" style={{ fontSize: 20, color: 'var(--text-dark)' }}>{totalCliques}</div><div className="stat-mini-label">Cliques totais</div></div>
       </div>
 
+      {parcerias.filter(precisaRevisarCategoria).length > 0 && (
+        <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 14, fontSize: 13, lineHeight: 1.5, background: 'var(--acento-dourado-fundo)', color: 'var(--acento-dourado-texto)' }}>
+          {parcerias.filter(precisaRevisarCategoria).length} parceria(s) antiga(s) estavam em “De você e do ambiente em que vive” e agora aparecem em “De você”.
+          Revise: se for do ambiente (casa, moradia, imobiliária…), edite e marque “Do ambiente em que você vive”. Ao salvar, o aviso some.
+        </div>
+      )}
+
       {erroLista && (
         <div className="empty-state"><p>Não foi possível carregar as parcerias: {erroLista}</p></div>
       )}
@@ -383,6 +405,12 @@ export default function Parcerias({ showToast, irPara, parametros }) {
                     </span>
                   )}
                 </div>
+                {precisaRevisarCategoria(item) && (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cor-aviso)', marginBottom: 4 }}>Revisar categoria: “De você” ou “Do ambiente em que você vive”?</div>
+                )}
+                {item.imobiliariaId && (
+                  <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 4 }}>Ligada ao controle de Imobiliárias (botão “Quero indicação” com QR Code).</div>
+                )}
                 <ContatoContrato priv={privados[item.id]} />
                 {item.descricao && (
                   <div style={{ fontSize: 12, color: 'var(--text-mid)', marginBottom: 6, lineHeight: 1.5 }}>
@@ -567,6 +595,20 @@ export default function Parcerias({ showToast, irPara, parametros }) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="field-group">
+                <label>Benefício para a usuária <span className="aln-opcional">(opcional)</span></label>
+                <TextoAutoAjustavel value={form.beneficioTexto}
+                  onChange={e => set('beneficioTexto', e.target.value)}
+                  placeholder="Ex.: 10% de desconto no primeiro atendimento · ou: fechou negócio? ganhe uma consultoria de decoração" />
+                <span className="field-hint">Aparece em destaque no cartão. Nas parcerias ligadas a uma imobiliária, é o benefício mostrado em “Minhas indicações”.</span>
+              </div>
+              <div className="field-group">
+                <label>Regras <span className="aln-opcional">(opcional)</span></label>
+                <TextoAutoAjustavel value={form.regras}
+                  onChange={e => set('regras', e.target.value)}
+                  placeholder="Como usar, condições, validade…" />
               </div>
 
               <div className="field-group">

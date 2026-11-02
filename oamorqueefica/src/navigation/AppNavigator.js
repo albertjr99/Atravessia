@@ -52,8 +52,6 @@ import ParceriasScreen from '../screens/parcerias/ParceriasScreen';
 import VoucherScreen from '../screens/parcerias/VoucherScreen';
 import MeusCuponsScreen from '../screens/parcerias/MeusCuponsScreen';
 import ConfirmarResgateScreen from '../screens/parcerias/ConfirmarResgateScreen';
-import LarRecomecoScreen from '../screens/imoveis/LarRecomecoScreen';
-import ImobiliariaScreen from '../screens/imoveis/ImobiliariaScreen';
 import InteresseImovelScreen from '../screens/imoveis/InteresseImovelScreen';
 import IndicacaoImovelScreen from '../screens/imoveis/IndicacaoImovelScreen';
 import MinhasIndicacoesImoveisScreen from '../screens/imoveis/MinhasIndicacoesImoveisScreen';
@@ -83,10 +81,14 @@ import AdminAtendimentosScreen from '../screens/admin/AdminAtendimentosScreen';
 import MeusAtendimentosScreen from '../screens/atendimentos/MeusAtendimentosScreen';
 import SalaAtendimentoScreen from '../screens/atendimentos/SalaAtendimentoScreen';
 import { SobreScreen, SejaParceiroScreen } from '../screens/institucional/TextoInstitucionalScreen';
+import FaqScreen from '../screens/institucional/FaqScreen';
 import TravessinhosScreen from '../screens/travessinhos/TravessinhosScreen';
+import AdminTravessinhosScreen from '../screens/admin/AdminTravessinhosScreen';
 
 import { useAuth } from '../hooks/AuthContext';
 import { useTema } from '../hooks/TemaContext';
+import ContaInativa from '../components/ContaInativa';
+import LocalizacaoObrigatoria from '../components/LocalizacaoObrigatoria';
 import { colors, fonts, criarEstilos } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -119,8 +121,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="Voucher" component={VoucherScreen} />
       <Stack.Screen name="MeusCupons" component={MeusCuponsScreen} />
       <Stack.Screen name="ConfirmarResgate" component={ConfirmarResgateScreen} />
-      <Stack.Screen name="LarRecomeco" component={LarRecomecoScreen} />
-      <Stack.Screen name="Imobiliaria" component={ImobiliariaScreen} />
+      {/* Imobiliárias: parcerias comuns em Experimente a vida; o botão "Quero indicação" abre estas telas. */}
       <Stack.Screen name="InteresseImovel" component={InteresseImovelScreen} />
       <Stack.Screen name="IndicacaoImovel" component={IndicacaoImovelScreen} />
       <Stack.Screen name="MinhasIndicacoesImoveis" component={MinhasIndicacoesImoveisScreen} />
@@ -149,6 +150,7 @@ function MainStack({ rotaInicial = 'MainTabs' }) {
       <Stack.Screen name="SalaAtendimento" component={SalaAtendimentoScreen} options={{ gestureEnabled: false }} />
       <Stack.Screen name="Sobre" component={SobreScreen} />
       <Stack.Screen name="SejaParceiro" component={SejaParceiroScreen} />
+      <Stack.Screen name="PerguntasFrequentes" component={FaqScreen} />
       <Stack.Screen name="Travessinhos" component={TravessinhosScreen} />
     </Stack.Navigator>
   );
@@ -163,6 +165,8 @@ function AdminStack() {
       <Stack.Screen name="AdminRelatorios" component={AdminRelatoriosScreen} />
       <Stack.Screen name="AdminPerfil" component={AdminPerfilScreen} />
       <Stack.Screen name="AdminInstitucional" component={AdminInstitucionalScreen} />
+      <Stack.Screen name="Sobre" component={SobreScreen} />
+      <Stack.Screen name="PerguntasFrequentes" component={FaqScreen} />
       <Stack.Screen name="AdminRecursosIA" component={AdminRecursosIAScreen} />
       <Stack.Screen name="AdminParcerias" component={AdminParceriasScreen} />
       <Stack.Screen name="AdminBeneficios" component={AdminBeneficiosScreen} />
@@ -176,6 +180,7 @@ function AdminStack() {
       <Stack.Screen name="AdminOutrosConteudos" component={AdminOutrosConteudosScreen} />
       <Stack.Screen name="AdminVideos" component={AdminVideosScreen} />
       <Stack.Screen name="AdminProdutos" component={AdminProdutosScreen} />
+      <Stack.Screen name="AdminTravessinhos" component={AdminTravessinhosScreen} />
       {IA_PAINEL && <Stack.Screen name="AdminAtravessIA" component={AdminAtravessIAScreen} />}
       <Stack.Screen name="AdminIndicacoes" component={AdminIndicacoesScreen} />
       <Stack.Screen name="AdminPedidosCashback" component={AdminPedidosCashbackScreen} />
@@ -232,6 +237,9 @@ export default function AppNavigator() {
     );
   } else if (!firebaseUser) {
     content = <AuthStack />;
+  } else if (!isAdmin && perfil?.status === 'inativa') {
+    // Conta inativada pela equipe: nada é apagado, só o uso fica bloqueado.
+    content = <ContaInativa />;
   } else if (isAdmin && !verComoUsuaria) {
     content = <><AdminStack /><PermissaoNotificacoes uid={uid} /></>;
   } else {
@@ -243,6 +251,10 @@ export default function AppNavigator() {
         />
         {/* Convite das notificações logo no primeiro acesso. */}
         <PermissaoNotificacoes uid={uid} />
+        {/* Estado e cidade obrigatórios (contas antigas), depois da apresentação. */}
+        {!isAdmin && perfil && !precisaOnboarding && (!/^[A-Z]{2}$/.test(String(perfil.estado || '')) || !String(perfil.cidade || '').trim()) && (
+          <LocalizacaoObrigatoria key={uid} />
+        )}
       </>
     );
   }

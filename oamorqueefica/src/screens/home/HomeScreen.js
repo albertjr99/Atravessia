@@ -24,6 +24,8 @@ import { brl } from '../cashback/CashbackScreen';
 import { collection, doc, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { RECURSOS_IA, NOME_PLANO } from '../../config/recursosIA';
+import { CartaoTravessinhosHome } from '../../components/Travessinho';
+import { CartaoProximaSessao } from '../atendimentos/MeusAtendimentosScreen';
 
 const headerLavender = require('../../../assets/images/header-lavender.jpg');
 const logo = require('../../../assets/images/travessia_logo.png');
@@ -320,6 +322,9 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
 
+          {/* Atendimento online nas próximas horas: um toque entra na sala */}
+          <CartaoProximaSessao navigation={navigation} />
+
           {/* ===== CHECK-IN (primeiro convite do dia) ===== */}
           <View style={s.checkinCard}>
             <Text style={s.checkinTit}>Como estou me sentindo hoje?</Text>
@@ -433,6 +438,9 @@ export default function HomeScreen({ navigation }) {
               </Profundo>
             </View>
 
+            {/* Os Travessinhos (conteúdo infantil): só com material publicado */}
+            <CartaoTravessinhosHome navigation={navigation} />
+
             {(indicacoes?.length > 0 || temProdutos) && (
               <View style={s.dupla}>
                 {indicacoes?.length > 0 && (
@@ -473,16 +481,6 @@ export default function HomeScreen({ navigation }) {
               <Ionicons name="play-circle-outline" size={16} color={colors.lilasIcone} />
               <Text style={s.parceriasLinhaTxt}>Cursos Atravessia</Text>
               <Text style={s.sectLink}>Ver cursos</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.lilasTexto} />
-            </TouchableOpacity>
-          )}
-
-          {/* ===== PARCERIAS: discreto, sem banners (o destaque é Experimente a vida) ===== */}
-          {parcerias.length > 0 && (
-            <TouchableOpacity style={s.parceriasLinha} onPress={() => navigation.navigate('Parcerias')} activeOpacity={0.8}>
-              <Ionicons name="gift-outline" size={16} color={colors.lilasIcone} />
-              <Text style={s.parceriasLinhaTxt}>Espaço para Parcerias</Text>
-              <Text style={s.sectLink}>Ver todas</Text>
               <Ionicons name="chevron-forward" size={14} color={colors.lilasTexto} />
             </TouchableOpacity>
           )}

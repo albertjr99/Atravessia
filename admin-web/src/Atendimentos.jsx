@@ -81,7 +81,8 @@ export default function Atendimentos({ showToast }) {
           </div>
         ) : (
           <div className="at-adm-aviso at-adm-aviso-ok">
-            <strong>Daily conectado.</strong> Salas privadas, com horário de abertura e expiração, token por pessoa, sala de espera e sem gravação.
+            <strong>Daily conectado.</strong> Salas privadas, com horário de abertura e expiração, token por pessoa (nome fixo), sala de espera e sem gravação.
+            Você entra como anfitriã: admite, remove pessoas e encerra para todos.
           </div>
         )
       )}
@@ -402,6 +403,8 @@ function Configuracoes({ inicial, status, onSalvo, showToast }) {
     provedor: inicial.provedor === 'jitsi' ? 'jitsi' : 'daily',
     ativo: inicial.ativo !== false,
     salaDeEspera: inicial.salaDeEspera !== false,
+    permitirChat: inicial.permitirChat !== false,
+    telaPacientes: inicial.telaPacientes === true,
     beneficioDias: String(inicial.beneficioDias ?? 60),
     crp: inicial.crp || '',
     nomeProfissional: inicial.nomeProfissional || '',
@@ -413,6 +416,7 @@ function Configuracoes({ inicial, status, onSalvo, showToast }) {
     try {
       await setDoc(doc(db, 'configuracoes', 'atendimentos'), {
         provedor: f.provedor, ativo: f.ativo, salaDeEspera: f.salaDeEspera, beneficioDias: Math.round(dias),
+        permitirChat: f.permitirChat, telaPacientes: f.telaPacientes,
         crp: f.crp.trim(), nomeProfissional: f.nomeProfissional.trim(), atualizadoEm: serverTimestamp(),
       }, { merge: true });
       showToast('Configurações salvas.');
@@ -432,7 +436,10 @@ function Configuracoes({ inicial, status, onSalvo, showToast }) {
         )}
       </div>
       <label className="at-adm-check"><input type="checkbox" checked={f.ativo} onChange={e => set('ativo', e.target.checked)} /> Atendimentos ligados (permite criar novos)</label>
-      <label className="at-adm-check"><input type="checkbox" checked={f.salaDeEspera} onChange={e => set('salaDeEspera', e.target.checked)} /> Sala de espera: no Daily, a pessoa “bate na porta” e você admite a entrada</label>
+      <label className="at-adm-check"><input type="checkbox" checked={f.salaDeEspera} onChange={e => set('salaDeEspera', e.target.checked)} /> Sala de espera: a pessoa “bate na porta” e você admite a entrada</label>
+      <label className="at-adm-check"><input type="checkbox" checked={f.permitirChat} onChange={e => set('permitirChat', e.target.checked)} /> Chat de texto dentro da sala</label>
+      <label className="at-adm-check"><input type="checkbox" checked={f.telaPacientes} onChange={e => set('telaPacientes', e.target.checked)} /> Pacientes podem compartilhar a tela (você sempre pode)</label>
+      <span className="field-hint">Valem no Daily e passam a valer na próxima vez que você entrar na sala. Pacientes nunca gravam, não trocam o nome nem mudam configurações da sala.</span>
       <div className="at-adm-linha">
         <div className="field-group" style={{ flex: '1 1 200px' }}>
           <label>Cortesia no app (dias após cada sessão)</label>
@@ -450,5 +457,58 @@ function Configuracoes({ inicial, status, onSalvo, showToast }) {
       </div>
       <button type="button" className="btn-primary" onClick={salvar}><IconCheck size={15} /> Salvar configurações</button>
     </div>
+  );
+}
+
+// ---- Cartão "Próxima sessão" (Dashboard) -------------------------------------
+// Aparece no início do painel quando a profissional tem sessão nos próximos 7
+// dias. "Entrar na sala" abre direto como anfitriã (30 min antes até 30 min
+// depois do fim); fora da janela, leva à agenda.
+export function ProximaSessao({ irPara }) {
+  const uid = auth.currentUser?.uid;
+  const [lista, setLista] = useState([]);
+  const [agora, setAgora] = useState(Date.now());
+  const [abrindo, setAbrindo] = useState(false);
+  const [erro, setErro] = useState('');
+  useEffect(() => {
+    if (!uid) return undefined;
+    const u = onSnapshot(query(collection(db, 'atendimentos'), where('profissionalUid', '==', uid)),
+      s => setLista(s.docs.map(d => ({ id: d.id, ...d.data() }))), () => setLista([]));
+    const t = setInterval(() => setAgora(Date.now()), 30000);
+    return () => { u(); clearInterval(t); };
+  }, [uid]);
+  const a = lista
+    .filter(x => x.status === 'agendado' && ms(x.fim) + TOLERANCIA_MIN * 60000 >= agora && ms(x.inicio) - agora <= 7 * 86400000)
+    .sort((x, y) => ms(x.inicio) - ms(y.inicio))[0];
+  if (!a) return null;
+  const aberta = agora >= ms(a.inicio) - LIBERA_PROF_MIN * 60000;
+  const faltaMin = Math.ceil((ms(a.inicio) - agora) / 60000);
+  const quando = faltaMin <= 0 ? 'Acontecendo agora' : faltaMin < 120 ? `Começa em ${faltaMin} min` : dataHora(ms(a.inicio));
+  const entrar = async () => {
+    setErro(''); setAbrindo(true);
+    try {
+      const r = await chamar('entrarNaSala', { atendimentoId: a.id });
+      if (r?.url) window.open(r.url, '_blank', 'noopener');
+    } catch (e) { setErro(e?.message || 'Não foi possível abrir a sala.'); }
+    setAbrindo(false);
+  };
+  return (
+    <section className="card at-adm-proxima">
+      <h2 className="card-title"><IconVideo size={20} />Próxima sessão</h2>
+      <div className="at-adm-topo">
+        <div style={{ minWidth: 0 }}>
+          <div className="at-adm-quando">{quando} · {a.duracaoMin} min</div>
+          <h3 className="at-adm-titulo">{a.titulo}</h3>
+          <span className="field-hint">{a.tipo === 'grupo' ? `Grupo · ${a.totalParticipantes || 0} pessoas` : 'Individual'}{a.provedor !== 'daily' ? ' · modo de teste' : ''}</span>
+        </div>
+        <div className="at-adm-acoes">
+          {aberta
+            ? <button type="button" className="btn-primary" onClick={entrar} disabled={abrindo}><IconVideo size={16} /> {abrindo ? 'Abrindo…' : 'Entrar na sala'}</button>
+            : <span className="field-hint">A sala abre {LIBERA_PROF_MIN} min antes</span>}
+          <button type="button" className="btn-secondary" onClick={() => irPara?.('atendimentos')}>Ver agenda</button>
+        </div>
+      </div>
+      {erro && <p className="field-hint" style={{ color: 'var(--erro, #B4415A)' }}>{erro}</p>}
+    </section>
   );
 }
