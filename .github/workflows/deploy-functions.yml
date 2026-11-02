@@ -67,8 +67,9 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
         run: |
-          for nome in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+          for nome in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET DAILY_API_KEY; do
             valor="${!nome}"
             if [ -n "$valor" ]; then
               printf '%s' "$valor" | npx firebase-tools functions:secrets:set "$nome" --data-file=- --force --token "$FIREBASE_TOKEN" --non-interactive
