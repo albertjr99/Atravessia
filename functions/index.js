@@ -3091,8 +3091,11 @@ exports.comunicarNovaParceria = onDocumentWritten('parcerias/{parceriaId}', asyn
 // (meet.jit.si) com nome aleatório longo: MODO DE TESTE, sem token por pessoa.
 // ============================================================================
 
-const chaveDaily = () => process.env.DAILY_API_KEY || '';
-const OPCOES_ATEND = { memory: '256MiB', timeoutSeconds: 60 };
+// A chave do Daily vem do Secret Manager (sincronizada pelo deploy a partir do
+// secret DAILY_API_KEY do GitHub).
+const DAILY_API_KEY = defineSecret('DAILY_API_KEY');
+const chaveDaily = () => { try { return DAILY_API_KEY.value() || ''; } catch { return process.env.DAILY_API_KEY || ''; } };
+const OPCOES_ATEND = { memory: '256MiB', timeoutSeconds: 60, secrets: [DAILY_API_KEY] };
 const TCLE_ATENDIMENTO_VERSAO = '1.0';
 const ATEND_LIBERA_ANTES_MIN = 10;          // participante entra 10 min antes
 const ATEND_LIBERA_ANTES_PROF_MIN = 30;     // profissional entra 30 min antes
