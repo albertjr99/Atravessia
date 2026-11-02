@@ -321,7 +321,7 @@ function planoNumero(p) {
 }
 
 function UsuariasPreview() {
-  const [usuarios, erro] = useCollection('usuarios', { ordem: 'criadoEm', direcao: 'desc', max: 5, filtro: u => u.role !== 'admin' });
+  const [usuarios, erro] = useCollection('usuarios', { ordem: 'criadoEm', direcao: 'desc', max: 5, filtro: u => u.role !== 'admin' && u.status !== 'inativa' });
 
   return (
     <div className="pw-section">

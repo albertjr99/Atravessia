@@ -49,8 +49,8 @@ const NAV_GRUPOS = [
     itens: [
       {
         icon: 'library', iconOff: 'library-outline',
-        label: 'Biblioteca', sub: 'Áudios de check-in · Frases · Outros conteúdos',
-        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos', 'AdminVideos', 'AdminProdutos'],
+        label: 'Biblioteca', sub: 'Áudios de check-in · Frases · Outros conteúdos · Os Travessinhos',
+        screen: 'AdminAudios', irmas: ['AdminFrases', 'AdminOutrosConteudos', 'AdminVideos', 'AdminProdutos', 'AdminTravessinhos'],
       },
       {
         icon: 'compass', iconOff: 'compass-outline',

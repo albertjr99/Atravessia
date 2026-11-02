@@ -10,6 +10,7 @@ import Frases from './Frases';
 import OutrosConteudos from './OutrosConteudos';
 import Videos from './Videos';
 import ProdutosAtravessia from './ProdutosAtravessia';
+import Travessinhos from './Travessinhos';
 import AtravessIA from './AtravessIA';
 import { IA_PAINEL } from './recursos';
 import Travessia from './Travessia';
@@ -67,6 +68,7 @@ const NAV_GRUPOS = [
           { id: 'outrosConteudos', label: 'Outros conteúdos' },
           { id: 'videos', label: 'Apresentações' },
           { id: 'produtosAtravessia', label: 'Produtos Atravessia' },
+          { id: 'travessinhos', label: 'Os Travessinhos' },
         ],
       },
       {
@@ -140,6 +142,7 @@ const SCREENS = {
   outrosConteudos: OutrosConteudos,
   videos:          Videos,
   produtosAtravessia: ProdutosAtravessia,
+  travessinhos:    Travessinhos,
   travessia:       Travessia,
   jornadas:        Jornadas,
   vitorias:        Vitorias,

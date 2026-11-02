@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg } from '../../components';
-import { AvatarTravessinho, DicaTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 import { Profundo } from '../../components/Efeitos';
 import SeletorOpcoes from '../../components/SeletorOpcoes';
 import { useApp } from '../../hooks/AppContext';
@@ -26,7 +25,11 @@ import {
 const FILTROS = [
   { id: 'todos',           label: 'Todos',                              match: null },
   { id: 'saude',           label: 'Da saúde física',                    match: ['saúde', 'saude', 'fisio', 'nutri', 'farmácia', 'farmacia', 'clínica', 'clinica'] },
-  { id: 'voce',            label: 'De você e do ambiente em que vive',  match: ['você', 'voce', 'bem-estar', 'bem estar', 'ambiente', 'casa', 'moradia', 'espiritualidade', 'meditação', 'terapia'] },
+  // 'voce' era "De você e do ambiente em que vive". As parcerias antigas com
+  // esse id continuam em "De você"; o painel avisa para revisar as que são
+  // do ambiente (casa, moradia, imobiliárias), que agora usam 'ambiente'.
+  { id: 'voce',            label: 'De você',                            match: ['você', 'voce', 'bem-estar', 'bem estar', 'espiritualidade', 'meditação', 'terapia'] },
+  { id: 'ambiente',        label: 'Do ambiente em que você vive',       match: ['ambiente', 'casa', 'moradia', 'imobili', 'imóve', 'imove'] },
   { id: 'trabalho',        label: 'Do trabalho e estudos',              match: ['trabalho', 'estudos', 'educação', 'educacao', 'carreira', 'curso'] },
   { id: 'relacionamentos', label: 'Dos relacionamentos',                match: ['relacionamento', 'família', 'familia', 'social'] },
   { id: 'outros',          label: 'Outros',                             match: ['outros', 'produto'] },
@@ -69,9 +72,16 @@ const DESCRICAO_LONGA = 90;
 function CartaoParceria({ p, carregando, onAcao, compacto }) {
   const [aberto, setAberto] = useState(false);
   const [erroImg, setErroImg] = useState(false);
-  const ehCupom = p.tipoBeneficio === 'cupom';
+  // Parceria ligada a uma imobiliária do controle do painel: o botão gera a
+  // indicação (código + QR Code) em vez de cupom ou link.
+  const ehIndicacao = !!p.imobiliariaId;
+  const ehCupom = !ehIndicacao && p.tipoBeneficio === 'cupom';
   const destino = p.link || p.url;
-  const temAcao = ehCupom || !!destino;
+  const temAcao = ehIndicacao || ehCupom || !!destino;
+  const beneficioTexto = String(p.beneficioTexto || '').trim();
+  const regras = String(p.regras || '').trim();
+  const [verRegras, setVerRegras] = useState(false);
+  const rotuloBotao = ehIndicacao ? 'Quero indicação' : ehCupom ? 'Gerar cupom' : 'Acessar';
   const desconto = ehCupom ? descontoDaUsuaria(p) : 0;
   const descricao = String(p.descricao || '').trim();
   const longa = descricao.length > DESCRICAO_LONGA || descricao.includes('\n');
@@ -120,6 +130,22 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
         </View>
       )}
 
+      {/* Benefício e regras: textos editáveis no cadastro da parceria. */}
+      {!!beneficioTexto && (
+        <View style={s.beneficioLinha}>
+          <Ionicons name="gift-outline" size={15} color={colors.lilasTexto} />
+          <Text style={s.beneficioTxt}>{beneficioTexto}</Text>
+        </View>
+      )}
+      {!!regras && (
+        <View>
+          <TouchableOpacity onPress={() => setVerRegras(v => !v)} hitSlop={8} style={s.verMais} accessibilityRole="button">
+            <Text style={s.verMaisTxt}>{verRegras ? 'esconder regras' : 'ver regras'}</Text>
+          </TouchableOpacity>
+          {verRegras && <Text style={[s.cardDesc, { marginTop: 4 }]}>{regras}</Text>}
+        </View>
+      )}
+
       {/* Só informa que há cashback (e as condições); nenhum percentual aparece para a usuária. */}
       {temCashback && pctCashback > 0 && (
         <View style={s.cashbackLinha}>
@@ -143,13 +169,13 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
             sombra={s.botaoHalo}
             altura={4}
             onPress={carregando ? undefined : onAcao}
-            accessibilityLabel={ehCupom ? 'Gerar cupom' : 'Acessar'}
+            accessibilityLabel={rotuloBotao}
           >
             <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.botaoGrad} />
             {carregando
               ? <ActivityIndicator size="small" color="white" />
-              : <Ionicons name={ehCupom ? 'ticket-outline' : 'open-outline'} size={16} color="white" />}
-            <Text style={s.botaoTxt}>{carregando ? 'Gerando...' : ehCupom ? 'Gerar cupom' : 'Acessar'}</Text>
+              : <Ionicons name={ehIndicacao ? 'qr-code-outline' : ehCupom ? 'ticket-outline' : 'open-outline'} size={16} color="white" />}
+            <Text style={s.botaoTxt}>{carregando ? 'Gerando...' : rotuloBotao}</Text>
           </Profundo>
         ) : null}
       </View>
@@ -159,7 +185,6 @@ function CartaoParceria({ p, carregando, onAcao, compacto }) {
 
 export default function ParceriasScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const travessinhosAtivos = useTravessinhosAtivos();
   const { width } = useWindowDimensions();
   const { parcerias, registrarCliqueParceria, gerarVoucherBeneficio, meusVouchers } = useApp();
   const cuponsEmAberto = (meusVouchers || []).filter(v => ['ativo', 'aguardando'].includes(situacaoCupom(v))).length;
@@ -182,6 +207,11 @@ export default function ParceriasScreen({ navigation }) {
   // rastreamento financeiro. Só as marcadas como "cupom" pelo painel administrativo
   // (as que geram comissão para o Travessia) passam pelo fluxo de voucher.
   const handleAcao = async (p) => {
+    // Imobiliária do controle: formulário curto + consentimento → código e QR.
+    if (p.imobiliariaId) {
+      navigation.navigate('InteresseImovel', { imobiliariaId: p.imobiliariaId, imobiliariaNome: p.titulo, parceriaId: p.id });
+      return;
+    }
     if (p.tipoBeneficio === 'cupom') {
       if (gerando) return;
       setGerando(p.id);
@@ -293,34 +323,18 @@ export default function ParceriasScreen({ navigation }) {
           </Text>
           {!!video && <BotaoApresentacao onPress={() => setVerVideo(true)} style={{ alignSelf: 'center', marginTop: 4 }} />}
         </View>
-        <DicaTravessinho
-          chave="parcerias"
-          quem="maju"
-          fala="Escolha uma parceria, gere seu cupom e mostre na hora de usar. Os cupons ficam guardados em “Meus cupons”, e algumas compras ainda devolvem cashback!"
-          style={{ marginHorizontal: spacing.lg }}
-        />
 
-        {/* Lar e recomeço: imobiliárias parceiras + consultoria com arquiteto (screens/imoveis) */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('LarRecomeco')}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: spacing.lg, marginTop: spacing.md,
-            padding: 14, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.bordaLuz,
-          }}
-        >
-          <View style={{ width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.lav1 }}>
-            <Ionicons name="home-outline" size={20} color={colors.lilasIcone} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: fonts.bodyBold, fontSize: 16, color: colors.titulo }}>Lar e recomeço</Text>
-            <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.texto2, marginTop: 2 }}>
-              Imobiliárias parceiras e uma consultoria com arquiteto quando o negócio fechar
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.lilasTexto} />
-        </TouchableOpacity>
+        {/* Indicações feitas pelas parcerias ligadas a imobiliárias (código + QR) */}
+        {parcerias.some(p => p.imobiliariaId) && (
+          <TouchableOpacity style={s.meusCupons} onPress={() => navigation.navigate('MinhasIndicacoesImoveis')} activeOpacity={0.85}>
+            <View style={[s.meusCuponsIcone, { backgroundColor: colors.lav1 }]}>
+              <Ionicons name="key-outline" size={19} color={colors.lilasIcone} />
+            </View>
+            <Text style={s.meusCuponsTxt}>Minhas indicações</Text>
+            <Text style={s.meusCuponsLink}>Ver</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.lilasTexto} />
+          </TouchableOpacity>
+        )}
 
         {/* Filtro: área da vida */}
         <Text style={s.filtroRotulo}>Área da vida</Text>
@@ -385,9 +399,7 @@ export default function ParceriasScreen({ navigation }) {
         {/* Lista de parcerias */}
         {parcerias.length === 0 ? (
           <View style={s.emptyBox}>
-            {travessinhosAtivos
-              ? <AvatarTravessinho quem="maju" tamanho={84} comNome style={{ marginBottom: 6 }} />
-              : <View style={s.emptyIcone}><Ionicons name="hourglass-outline" size={30} color={colors.lilasIcone} /></View>}
+            <View style={s.emptyIcone}><Ionicons name="hourglass-outline" size={30} color={colors.lilasIcone} /></View>
             <Text style={s.emptyTit}>Em breve</Text>
             <Text style={s.emptySub}>
               Novas parcerias e benefícios exclusivos serão anunciados em breve. Fique de olho!
@@ -395,9 +407,7 @@ export default function ParceriasScreen({ navigation }) {
           </View>
         ) : parceriasExibidas.length === 0 ? (
           <View style={s.emptyBox}>
-            {travessinhosAtivos
-              ? <AvatarTravessinho quem="maju" tamanho={84} comNome style={{ marginBottom: 6 }} />
-              : <View style={s.emptyIcone}><Ionicons name="search-outline" size={28} color={colors.lilasIcone} /></View>}
+            <View style={s.emptyIcone}><Ionicons name="search-outline" size={28} color={colors.lilasIcone} /></View>
             <Text style={s.emptyTit}>Sem parcerias aqui</Text>
             <Text style={s.emptySub}>Nenhuma parceria com esses filtros ainda. Tente outra área ou outro lugar.</Text>
           </View>
@@ -601,6 +611,11 @@ const s = criarEstilos(() => ({
   memoriaIcone: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)' },
   memoriaTit: { fontFamily: 'Figtree_700Bold', fontSize: 16, color: colors.joiaPessegoTexto },
   memoriaSub: { fontFamily: 'Figtree_400Regular', fontSize: 13, color: colors.texto2, marginTop: 2 },
+  beneficioLinha: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.lav1,
+  },
+  beneficioTxt: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 19, color: colors.lilasTexto },
   cashbackLinha: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10,
     paddingVertical: 7, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.sageFundo,

@@ -5,6 +5,7 @@ import { db } from '../../services/firebase';
 import { colors, fonts, spacing, criarEstilos } from '../../theme';
 import { est, BotaoAdmin } from './adminEstilo';
 import AdminLayout from './AdminLayout';
+import { EquipeEditor, FaqEditor, VerNoApp } from './AdminEquipeFaq';
 
 // Textos das telas "Sobre o app" e "Seja nosso parceiro" (com o link do
 // formulário de parceria). Documento: configuracoes/institucional.
@@ -67,6 +68,19 @@ export default function AdminInstitucionalScreen({ navigation }) {
         </View>
 
         <BotaoAdmin title={salvando ? 'Salvando…' : 'Salvar e publicar'} icone="checkmark" onPress={salvar} disabled={salvando || !carregado} />
+
+        <View style={[s.card, { marginTop: spacing.lg }]}>
+          <Text style={s.secao}>Quem faz a Atravessia</Text>
+          <Text style={s.dica}>Fotos e integrantes que aparecem no fim do "Sobre o app". As mudanças só valem no app depois de "Publicar no app".</Text>
+          <EquipeEditor />
+        </View>
+
+        <View style={s.card}>
+          <Text style={s.secao}>Perguntas frequentes</Text>
+          <Text style={s.dica}>Aparecem em Perfil e no Sobre o app. Só as publicadas ficam visíveis para as usuárias.</Text>
+          <VerNoApp navigation={navigation} />
+          <FaqEditor />
+        </View>
       </ScrollView>
     </AdminLayout>
   );

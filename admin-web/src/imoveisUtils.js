@@ -1,4 +1,4 @@
-// Lar e recomeço (imobiliárias + arquitetos). Mesmo conteúdo de
+// Controle de imobiliárias (imobiliárias + prestadores do benefício). Mesmo conteúdo de
 // oamorqueefica/src/utils/imoveis.js — usado pelo painel web e pelo portal da
 // imobiliária (imobiliaria.html).
 
@@ -8,8 +8,10 @@ export const STATUS_LEAD = {
   visita: { rotulo: 'Visita', curto: 'Visita', tom: 'nevoa' },
   proposta: { rotulo: 'Proposta', curto: 'Proposta', tom: 'pessego' },
   fechado: { rotulo: 'Negócio fechado', curto: 'Fechado', tom: 'dourado' },
-  pago: { rotulo: 'Repasse recebido · consultoria liberada', curto: 'Repasse recebido', tom: 'salvia' },
-  consultoria_agendada: { rotulo: 'Consultoria agendada', curto: 'Consultoria agendada', tom: 'salvia' },
+  // Ids "consultoria_*" mantidos por compatibilidade: hoje significam o serviço
+  // parceiro do benefício (configurável; arquiteto é só um exemplo).
+  pago: { rotulo: 'Repasse recebido · benefício liberado', curto: 'Repasse recebido', tom: 'salvia' },
+  consultoria_agendada: { rotulo: 'Benefício agendado', curto: 'Benefício agendado', tom: 'salvia' },
   concluido: { rotulo: 'Concluído', curto: 'Concluído', tom: 'salvia' },
   perdido: { rotulo: 'Negociação encerrada', curto: 'Encerrado', tom: 'neutro' },
 };

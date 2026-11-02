@@ -32,3 +32,7 @@
 .at-adm-sigilo { font-size: 13px; line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: var(--lilas-50, #F6F3FD); color: var(--lilas-800, #45358A); margin: 0 0 10px; }
 .at-adm-rodape { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--cor-borda, #eee); }
 .at-adm-lista { margin: 0; padding-left: 20px; line-height: 1.6; color: var(--cor-texto-2); }
+
+/* Cartão "Próxima sessão" no Dashboard */
+.at-adm-proxima { margin-bottom: 18px; }
+.at-adm-proxima .at-adm-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

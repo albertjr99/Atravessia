@@ -14,6 +14,7 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { Disclaimer, LavandaBg } from '../../components';
 import { LogoRespira, Profundo } from '../../components/Efeitos';
 import { useAuth } from '../../hooks/AuthContext';
+import CamposLocalizacao, { validarLocalizacao } from '../../components/CamposLocalizacao';
 
 const logo = require('../../../assets/images/travessia_logo.png');
 const headerImg = require('../../../assets/images/header-lavender.jpg');
@@ -84,7 +85,7 @@ export default function CadastroScreen({ navigation }) {
   const tablet = width >= 700;
   const { cadastrar } = useAuth();
   const [form, setForm] = useState({
-    nome: '', apelido: '', email: '', telefone: '', cidade: '', senha: '',
+    nome: '', apelido: '', email: '', telefone: '', cidade: '', estado: '', senha: '',
     linkEmpresa: null, empresa: '',
   });
   const [showSenha, setShowSenha] = useState(false);
@@ -103,6 +104,11 @@ export default function CadastroScreen({ navigation }) {
     }
     if (!form.email.trim()) {
       Alert.alert('Atenção', 'Informe seu e-mail.');
+      return;
+    }
+    const local = validarLocalizacao({ estado: form.estado, cidade: form.cidade });
+    if (!local.ok) {
+      Alert.alert('Atenção', local.erro);
       return;
     }
     if (form.senha.length < 6) {
@@ -125,7 +131,8 @@ export default function CadastroScreen({ navigation }) {
         nome: form.nome.trim(),
         apelido: form.apelido.trim(),
         telefone: form.telefone.trim(),
-        cidade: form.cidade.trim(),
+        cidade: local.cidade,
+        estado: local.estado,
         linkEmpresa: form.linkEmpresa,
         empresa: form.linkEmpresa === true ? form.empresa.trim() : '',
       });
@@ -189,11 +196,14 @@ export default function CadastroScreen({ navigation }) {
             value={form.telefone} onChangeText={v => set('telefone', v)}
           />
 
-          <Text style={styles.fieldLabel}>Cidade / Estado <Text style={styles.optional}>(opcional)</Text></Text>
-          <TextInput
-            style={styles.input} placeholder="Ex: São Paulo — SP"
-            placeholderTextColor={colors.tl} value={form.cidade}
-            onChangeText={v => set('cidade', v)}
+          <CamposLocalizacao
+            estado={form.estado}
+            cidade={form.cidade}
+            onChangeEstado={v => set('estado', v)}
+            onChangeCidade={v => set('cidade', v)}
+            estiloRotulo={styles.fieldLabel}
+            estiloInput={styles.input}
+            marcaObrigatorio={<Text style={styles.required}> *</Text>}
           />
 
           <Text style={styles.fieldLabel}>Senha <Text style={styles.required}>*</Text></Text>

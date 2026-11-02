@@ -52,11 +52,12 @@ export function AuthProvider({ children }) {
     return () => { unsubAuth(); if (unsubPerfil) unsubPerfil(); };
   }, []);
 
-  const cadastrar = async ({ email, senha, nome, apelido, telefone, cidade, linkEmpresa, empresa }) => {
+  const cadastrar = async ({ email, senha, nome, apelido, telefone, cidade, estado, linkEmpresa, empresa }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, senha);
     const role = isAdminEmail(email) ? 'admin' : 'user';
     const perfilNovo = {
       nome, apelido: apelido || '', telefone: telefone || '', cidade: cidade || '',
+      estado: estado || '', // UF (sigla) — usado nos totais por estado dos relatórios
       email, linkEmpresa: linkEmpresa ?? null,
       empresa: empresa || '',
       plano: 0,

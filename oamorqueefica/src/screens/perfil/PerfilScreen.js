@@ -18,7 +18,8 @@ import { brl } from '../cashback/CashbackScreen';
 import { useMeusPedidosAfiliado } from '../../utils/afiliados';
 import { pedirPermissao } from '../../utils/lembreteCheckin';
 import { normalizarPrefFrase } from '../../utils/fraseNotificacao';
-import { CartaoMeusAtendimentos } from '../atendimentos/MeusAtendimentosScreen';
+import { CartaoMeusAtendimentos, CartaoProximaSessao } from '../atendimentos/MeusAtendimentosScreen';
+import CamposLocalizacao, { validarLocalizacao } from '../../components/CamposLocalizacao';
 
 // Cor de cada plano (a mesma das outras telas).
 const COR_PLANO = {
@@ -43,6 +44,7 @@ export default function PerfilScreen({ navigation }) {
     apelido: perfil?.apelido || '',
     telefone: perfil?.telefone || '',
     cidade: perfil?.cidade || '',
+    estado: perfil?.estado || '',
   });
   const [salvando, setSalvando] = useState(false);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
@@ -54,7 +56,7 @@ export default function PerfilScreen({ navigation }) {
     }
     atualizarPerfil({ fraseNotificacao: { ...prefFrase, ativo } }).catch(() => {});
   };
-  const alterado = ['nome', 'apelido', 'telefone', 'cidade'].some(k => (perfil?.[k] || '') !== dados[k]);
+  const alterado = ['nome', 'apelido', 'telefone', 'cidade', 'estado'].some(k => (perfil?.[k] || '') !== dados[k]);
 
   const plano = planos.find(p => p.id === usuario.plano) || planos[0];
   const nomePlano = usuario.acessoTotal ? 'Acesso Total' : `Plano ${plano.nome}`;
@@ -64,12 +66,15 @@ export default function PerfilScreen({ navigation }) {
   const salvar = async () => {
     if (!dados.nome.trim()) { Alert.alert('Seu nome', 'Conte como você se chama para salvar.'); return; }
     if (dados.apelido.trim() && !pareceNome(dados.apelido)) { Alert.alert('Como prefere ser chamado(a)', 'Escreva um nome ou apelido (só letras), ou deixe em branco.'); return; }
+    const local = validarLocalizacao({ estado: dados.estado, cidade: dados.cidade });
+    if (!local.ok) { Alert.alert('Onde você mora', local.erro); return; }
     setSalvando(true);
     try {
       await atualizarPerfil({
         nome: dados.nome.trim(), apelido: dados.apelido.trim(),
-        telefone: dados.telefone.trim(), cidade: dados.cidade.trim(),
+        telefone: dados.telefone.trim(), cidade: local.cidade, estado: local.estado,
       });
+      setDados(d => ({ ...d, cidade: local.cidade, estado: local.estado }));
       Alert.alert('Pronto', 'Seus dados foram atualizados.');
     } catch (e) {
       Alert.alert('Não foi possível salvar', e?.message || 'Tente novamente em instantes.');
@@ -118,7 +123,7 @@ export default function PerfilScreen({ navigation }) {
         { icone: 'contrast-outline', rotulo: 'Aparência', sub: 'Tema claro, noturno ou automático e vibração', tela: 'Aparencia', cor: ['lav1', 'lav5'] },
         { icone: 'map-outline', rotulo: 'Tour do app', sub: 'Rever a apresentação do Atravessia', tela: 'Onboarding', params: { revisita: true }, cor: ['lav1', 'lav5'] },
         { icone: 'information-circle-outline', rotulo: 'Sobre o app', sub: 'O que é o Atravessia', tela: 'Sobre', cor: ['lav1', 'lav5'] },
-        { icone: 'happy-outline', rotulo: 'Conheça os Travessinhos', sub: 'Nanda, Brian e Maju, a turma que ajuda você', tela: 'Travessinhos', cor: ['douradoFundo', 'douradoTitulo'] },
+        { icone: 'help-circle-outline', rotulo: 'Perguntas frequentes', sub: 'Respostas rápidas sobre o app', tela: 'PerguntasFrequentes', cor: ['lav1', 'lav5'] },
         { icone: 'hand-left-outline', rotulo: 'Seja nosso parceiro', sub: 'Saiba como', tela: 'SejaParceiro', cor: ['douradoFundo', 'douradoTitulo'] },
       ],
     },
@@ -183,6 +188,7 @@ export default function PerfilScreen({ navigation }) {
         </View>
 
         {/* Atendimentos online (só aparece para quem aceitou algum convite) */}
+        <CartaoProximaSessao navigation={navigation} />
         <CartaoMeusAtendimentos navigation={navigation} />
 
         {/* Meu cashback: saldo + extrato e pedidos dos Achados (afiliados) */}
@@ -256,7 +262,16 @@ export default function PerfilScreen({ navigation }) {
           {campo('nome', 'Nome', { autoCapitalize: 'words', placeholder: 'Seu nome', autoComplete: 'name', textContentType: 'name' })}
           {campo('apelido', 'Como prefere ser chamado(a)', { autoCapitalize: 'words', placeholder: 'Apelido (opcional)', autoComplete: 'off', importantForAutofill: 'no', textContentType: 'nickname' })}
           {campo('telefone', 'Telefone', { keyboardType: 'phone-pad', placeholder: '(00) 00000-0000' })}
-          {campo('cidade', 'Cidade', { autoCapitalize: 'words', placeholder: 'Sua cidade' })}
+          <View style={s.campo}>
+            <CamposLocalizacao
+              estado={dados.estado}
+              cidade={dados.cidade}
+              onChangeEstado={(v) => setDados(d => ({ ...d, estado: v }))}
+              onChangeCidade={(v) => setDados(d => ({ ...d, cidade: v }))}
+              estiloRotulo={[s.campoRotulo, { marginTop: 10 }]}
+              estiloInput={s.input}
+            />
+          </View>
           {alterado && (
             <Profundo estilo={s.botao} base={colors.botaoBase} sombra={s.botaoSombra} onPress={salvando ? undefined : salvar} accessibilityLabel="Salvar dados">
               <LinearGradient colors={[colors.botao, colors.botaoForte]} style={s.botaoGradiente} />

@@ -10,7 +10,6 @@ import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import { LavandaBg, ScriptTitle } from '../../components';
 import { Profundo } from '../../components/Efeitos';
 import { useAuth } from '../../hooks/AuthContext';
-import { AvatarTravessinho, IMAGEM_GRUPO, useTravessinhosAtivos } from '../../components/Travessinho';
 
 const PASSOS = [
   {
@@ -61,16 +60,6 @@ const PASSOS = [
 ];
 
 const NOTA_PLANOS = 'Alguns recursos fazem parte dos planos. Você escolhe o seu ritmo.';
-
-// Primeiro passo: os Travessinhos se apresentam (some se o painel desligar).
-const PASSO_TRAVESSINHOS = {
-  imagem: IMAGEM_GRUPO,
-  icone: 'happy-outline',
-  titulo: 'Oi! Somos os Travessinhos',
-  texto: 'A Nanda cuida do acolhimento, o Brian explica como o app funciona e a Maju mostra os benefícios. '
-    + 'A gente aparece de vez em quando para ajudar, e você pode dispensar quando quiser.',
-  travessinhos: true,
-};
 
 // As ilustrações são aquarelas num cartão de papel arredondado sobre fundo
 // branco (sem transparência). Ampliamos um pouco e recortamos nas bordas do
@@ -126,8 +115,7 @@ export default function OnboardingScreen({ navigation, route }) {
   const { perfil, atualizarPerfil } = useAuth();
   const [passo, setPasso] = useState(0);
   const rolagem = useRef(null);
-  const travessinhosAtivos = useTravessinhosAtivos();
-  const passos = travessinhosAtivos ? [PASSO_TRAVESSINHOS, ...PASSOS] : PASSOS;
+  const passos = PASSOS;
 
   const nome = perfil?.apelido || perfil?.nome?.split(' ')[0] || '';
   const ultimo = passo === passos.length - 1;
@@ -204,11 +192,6 @@ export default function OnboardingScreen({ navigation, route }) {
             </View>
             <ScriptTitle size={32} style={s.titulo}>{p.titulo}</ScriptTitle>
             <Text style={s.texto}>{p.texto}</Text>
-            {p.travessinhos && (
-              <View style={s.trio}>
-                {['nanda', 'brian', 'maju'].map(q => <AvatarTravessinho key={q} quem={q} tamanho={64} comNome />)}
-              </View>
-            )}
             {(p.notaPlanos || i === passos.length - 1) && (
               <View style={s.notaPlanos}>
                 <Ionicons name="diamond-outline" size={14} color={colors.lilasIcone} />
@@ -314,7 +297,6 @@ const s = criarEstilos(() => ({
 
   rodape: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, alignItems: 'center' },
   pontos: { flexDirection: 'row', gap: 7, marginBottom: spacing.lg },
-  trio: { flexDirection: 'row', gap: 18, marginTop: spacing.lg },
   ponto: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.lav2 },
   pontoAtivo: { width: 24, backgroundColor: colors.botao },
   btnExterno: { width: '100%', maxWidth: 420 },

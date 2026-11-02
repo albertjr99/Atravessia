@@ -1,8 +1,71 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db } from './firebase';
+import { db, functions } from './firebase';
 import {
   collection, onSnapshot, doc, updateDoc, Timestamp,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { UFS } from './parceriaUtils';
+
+const estaInativa = (u) => u?.status === 'inativa';
+const localDe = (u) => [u?.cidade, u?.estado].filter(Boolean).join(' / ');
+
+// Inativar/reativar passa pelo servidor (definirStatusUsuariaAdmin): a conta e
+// os dados continuam guardados; a pessoa só sai dos números e dos envios.
+function StatusConta({ usuaria, showToast, onClose }) {
+  const inativa = estaInativa(usuaria);
+  const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  const confirmar = async () => {
+    setSalvando(true);
+    try {
+      await httpsCallable(functions, 'definirStatusUsuariaAdmin')({ uid: usuaria.id, inativa: !inativa, motivo: motivo.trim() });
+      showToast(inativa ? 'Conta reativada.' : 'Conta marcada como inativa.');
+      onClose();
+    } catch (e) {
+      showToast(`Não foi possível alterar o status: ${e?.message || 'tente novamente.'}`, 'error');
+      setSalvando(false);
+    }
+  };
+
+  const quando = usuaria.inativadaEm?.toDate?.()?.toLocaleDateString('pt-BR');
+  return (
+    <div style={{ marginTop: 4 }}>
+      <p className="section-label">Status da conta</p>
+      {inativa && (
+        <p style={{ fontSize: 13, color: 'var(--text-mid)', margin: '0 0 10px' }}>
+          Inativa{quando ? ` desde ${quando}` : ''}{usuaria.motivoInativacao ? ` · Motivo: ${usuaria.motivoInativacao}` : ''}.
+        </p>
+      )}
+      {!aberto ? (
+        <button className={inativa ? 'btn-secondary' : 'btn-danger'} onClick={() => setAberto(true)}>
+          {inativa ? 'Reativar conta' : 'Marcar como inativa'}
+        </button>
+      ) : (
+        <div className="cortesia-box">
+          <p className="cortesia-texto">
+            {inativa
+              ? <>Reativar a conta de <strong>{usuaria.nome || usuaria.email}</strong>? Ela volta a usar o app e a contar nos números.</>
+              : <>Marcar <strong>{usuaria.nome || usuaria.email}</strong> como inativa? Nada é apagado: a pessoa deixa de contar nos números e de receber avisos, e o app mostra que a conta está inativa.</>}
+          </p>
+          {!inativa && (
+            <div className="field-group">
+              <label>Motivo (opcional)</label>
+              <input value={motivo} maxLength={300} onChange={e => setMotivo(e.target.value)} placeholder="Ex.: pedido da própria pessoa" />
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className={inativa ? 'btn-primary' : 'btn-danger'} onClick={confirmar} disabled={salvando}>
+              {salvando ? 'Salvando...' : inativa ? 'Confirmar reativação' : 'Confirmar inativação'}
+            </button>
+            <button className="btn-ghost" onClick={() => setAberto(false)} disabled={salvando}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 import { IconClose, IconSpark, IconSearch, IconChevron } from './Icons';
 
 const PLANO_LABEL = { perceber: 'Perceber', acolher: 'Acolher', compreender: 'Compreender', evoluir: 'Evoluir' };
@@ -185,6 +248,9 @@ function PlanoModal({ usuaria, onClose, showToast, planosDocs }) {
               onCancelar={() => setShowCortesia(false)}
             />
           )}
+
+          <div className="divider" />
+          <StatusConta usuaria={usuaria} showToast={showToast} onClose={onClose} />
         </div>
       </div>
     </div>
@@ -195,6 +261,8 @@ export default function Usuarias({ showToast }) {
   const [usuarios, setUsuarios] = useState([]);
   const [busca, setBusca] = useState('');
   const [filtroPlano, setFiltroPlano] = useState('todos');
+  const [filtroStatus, setFiltroStatus] = useState('ativas'); // 'ativas' | 'inativas' | 'todas'
+  const [filtroUf, setFiltroUf] = useState('');
   const [modalUsuaria, setModalUsuaria] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -225,12 +293,17 @@ export default function Usuarias({ showToast }) {
     return usuarios.filter(u => {
       const matchBusca = !busca || [u.nome, u.email].some(v => v?.toLowerCase().includes(busca.toLowerCase()));
       if (!matchBusca) return false;
+      if (filtroStatus === 'ativas' && estaInativa(u)) return false;
+      if (filtroStatus === 'inativas' && !estaInativa(u)) return false;
+      if (filtroUf === '—' ? !!u.estado : (filtroUf && u.estado !== filtroUf)) return false;
       if (filtroPlano === 'todos') return true;
       if (filtroPlano === 'total') return u.acessoTotal === true;
       if (filtroPlano === 'cortesia') return u.cortesia?.ativo === true;
       return planoDe(u) === filtroPlano;
     });
-  }, [usuarios, busca, filtroPlano]);
+  }, [usuarios, busca, filtroPlano, filtroStatus, filtroUf]);
+
+  const nInativas = usuarios.filter(estaInativa).length;
 
   function getBadge(u) {
     if (u.acessoTotal) return <span className="badge badge-total">Acesso Total</span>;
@@ -258,7 +331,7 @@ export default function Usuarias({ showToast }) {
       <div className="screen-header-row">
         <div>
           <h1 className="screen-title">Usuárias</h1>
-          <p className="screen-sub">Gerencie planos e acessos das {usuarios.length} usuária(s) cadastradas.</p>
+          <p className="screen-sub">Gerencie planos, acessos e status das {usuarios.length - nInativas} usuária(s) ativas{nInativas ? ` (${nInativas} inativa(s))` : ''}.</p>
         </div>
       </div>
 
@@ -274,9 +347,24 @@ export default function Usuarias({ showToast }) {
         {busca && <button className="search-limpar" onClick={() => setBusca('')} aria-label="Limpar"><IconClose size={16} /></button>}
       </div>
 
+      <div className="filter-row" style={{ alignItems: 'center' }}>
+        {[
+          { id: 'ativas', label: `Ativas (${usuarios.length - nInativas})` },
+          { id: 'inativas', label: `Inativas (${nInativas})` },
+          { id: 'todas', label: `Todas (${usuarios.length})` },
+        ].map(f => (
+          <button key={f.id} className={`chip ${filtroStatus === f.id ? 'chip-active' : ''}`} onClick={() => setFiltroStatus(f.id)}>{f.label}</button>
+        ))}
+        <select value={filtroUf} onChange={e => setFiltroUf(e.target.value)} aria-label="Filtrar por estado" style={{ width: 'auto', minWidth: 150 }}>
+          <option value="">Todos os estados</option>
+          <option value="—">Sem estado informado</option>
+          {UFS.map(e => <option key={e.uf} value={e.uf}>{e.nome} ({e.uf})</option>)}
+        </select>
+      </div>
+
       <div className="filter-row">
         {[
-          { id: 'todos', label: `Todas (${usuarios.length})` },
+          { id: 'todos', label: 'Todos os planos' },
           { id: 'perceber', label: 'Perceber' },
           { id: 'acolher', label: 'Acolher' },
           { id: 'compreender', label: 'Compreender' },
@@ -308,6 +396,8 @@ export default function Usuarias({ showToast }) {
                 <div className="user-email">{u.email}</div>
                 <div className="user-meta">
                   {getBadge(u)}
+                  {estaInativa(u) && <span className="badge" style={{ background: 'var(--border)', color: 'var(--text-mid)' }}>Inativa</span>}
+                  {!!localDe(u) && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{localDe(u)}</span>}
                   {u.criadoEm && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{timeAgo(u.criadoEm)}</span>}
                 </div>
               </div>

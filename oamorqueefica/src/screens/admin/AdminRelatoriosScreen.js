@@ -5,8 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../services/firebase';
 import { emocoes } from '../../data';
+import { ICONES_VITORIA, iconeDaVitoria } from '../../data/iconesVitoria';
+import { nomeDoEstado, formatarCidade } from '../../utils/localizacao';
 import { colors, fonts, spacing, radius, criarEstilos } from '../../theme';
 import AdminLayout from './AdminLayout';
 import { formatDataBR } from '../../utils/date';
@@ -33,7 +36,7 @@ function MiniBar({ value, max, color, height = 8 }) {
 }
 
 // ─── Tab: Visão Geral ─────────────────────────────────────────────
-function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
+function VisaoGeral({ usuarios, todosCheckins, totalVitorias }) {
   const hoje = nDiasAtras(0);
   const semanaAtras = nDiasAtras(7);
   const mesAtras = nDiasAtras(30);
@@ -64,7 +67,7 @@ function VisaoGeral({ usuarios, todosCheckins, todasVitorias }) {
         {[
           { icon: 'people-outline', value: usuarios.length, label: 'Usuárias', acento: 'lilas' },
           { icon: 'calendar-outline', value: todosCheckins.length, label: 'Check-ins', acento: 'salvia' },
-          { icon: 'star-outline', value: todasVitorias.length, label: 'Vitórias', acento: 'dourado' },
+          { icon: 'star-outline', value: totalVitorias ?? '—', label: 'Vitórias', acento: 'dourado' },
           { icon: 'flash-outline', value: ativasHoje, label: 'Ativas hoje', acento: 'pessego' },
         ].map(stat => (
           <View key={stat.label} style={s.statCard}>
@@ -361,184 +364,222 @@ function AbaEmocoes({ todosCheckins }) {
           })}
         </View>
       )}
+
+      <ResumoVitorias />
     </View>
   );
 }
 
 // ─── Tab: Usuárias ────────────────────────────────────────────────
-function AbaUsuarios({ usuarios, todosCheckins, todasVitorias }) {
-  const [busca, setBusca] = useState('');
-  const [sel, setSel] = useState(null);
-  const [ordemPor, setOrdemPor] = useState('nome'); // 'nome' | 'plano' | 'atividade'
+// Só totais por estado e cidade, para orientar a prospecção de parcerias.
+// A consulta de emoções, check-ins e vitórias por pessoa foi retirada do
+// painel de propósito: esses dados ficam só no banco.
+function AbaUsuarios({ usuarios }) {
+  const [uf, setUf] = useState('');
+  const [buscaCidade, setBuscaCidade] = useState('');
 
-  function getUltimoCheckin(uid) {
-    const lista = todosCheckins.filter(c => c.uid === uid);
-    if (!lista.length) return null;
-    return lista.reduce((a, b) => (a.data >= b.data ? a : b)).data;
-  }
+  const comUf = usuarios.filter(u => /^[A-Z]{2}$/.test(String(u.estado || '')));
+  const semLocal = usuarios.length - comUf.length;
 
-  function diasInativos(uid) {
-    const ult = getUltimoCheckin(uid);
-    if (!ult) return 9999;
-    return Math.floor((new Date() - new Date(ult + 'T12:00:00')) / 86400000);
-  }
+  const porEstadoMap = {};
+  comUf.forEach(u => { porEstadoMap[u.estado] = (porEstadoMap[u.estado] || 0) + 1; });
+  const porEstado = Object.entries(porEstadoMap).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const maxEstado = porEstado[0]?.[1] || 1;
 
-  const usuariosOrdenados = [...usuarios].sort((a, b) => {
-    if (ordemPor === 'plano') return (b.plano || 0) - (a.plano || 0);
-    if (ordemPor === 'atividade') return diasInativos(a.id) - diasInativos(b.id);
-    return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+  const porCidadeMap = {};
+  comUf.filter(u => !uf || u.estado === uf).forEach(u => {
+    const chave = `${formatarCidade(u.cidade) || '(cidade não informada)'} / ${u.estado}`;
+    porCidadeMap[chave] = (porCidadeMap[chave] || 0) + 1;
   });
-
-  const usuariosFiltrados = usuariosOrdenados.filter(u => {
-    if (!busca) return true;
-    const b = busca.toLowerCase();
-    return (u.nome || '').toLowerCase().includes(b) || (u.email || '').toLowerCase().includes(b);
-  });
-
-  const userCheckins = sel
-    ? todosCheckins.filter(c => c.uid === sel.id).sort((a, b) => b.data.localeCompare(a.data))
-    : [];
-  const userVitorias = sel
-    ? todasVitorias.filter(v => v.uid === sel.id).sort((a, b) => (b.data || '').localeCompare(a.data || ''))
-    : [];
+  const b = buscaCidade.trim().toLowerCase();
+  const porCidade = Object.entries(porCidadeMap)
+    .filter(([c]) => !b || c.toLowerCase().includes(b))
+    .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'pt-BR'));
+  const maxCidade = porCidade[0]?.[1] || 1;
 
   return (
     <View>
       <Text style={s.sobre}>Relatórios</Text>
-      <Text style={s.pageTitle}>Usuárias ({usuarios.length})</Text>
+      <Text style={s.pageTitle}>Onde estão as usuárias</Text>
+      <Text style={s.funilIntro}>Totais por estado e cidade para orientar a busca de parcerias. Toque em um estado para ver as cidades.</Text>
 
-      <View style={s.searchBox}>
-        <Ionicons name="search" size={15} color={colors.tl} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Nome ou e-mail..."
-          placeholderTextColor={colors.tl}
-          value={busca}
-          onChangeText={setBusca}
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
-        {!!busca && (
-          <TouchableOpacity onPress={() => setBusca('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle" size={16} color={colors.tl} />
-          </TouchableOpacity>
-        )}
+      <View style={s.card}>
+        <View style={s.engRow}>
+          <View style={s.engItem}><Text style={s.engVal}>{uf ? (porEstadoMap[uf] || 0) : comUf.length}</Text><Text style={s.engLbl}>{uf ? `em ${uf}` : 'com estado\ninformado'}</Text></View>
+          <View style={s.engDiv} />
+          <View style={s.engItem}><Text style={s.engVal}>{porEstado.length}</Text><Text style={s.engLbl}>estados</Text></View>
+          <View style={s.engDiv} />
+          <View style={s.engItem}><Text style={s.engVal}>{semLocal}</Text><Text style={s.engLbl}>sem{'\n'}localização</Text></View>
+        </View>
       </View>
 
-      <View style={s.ordemRow}>
-        <Text style={s.ordemLbl}>Ordenar:</Text>
-        {[{ v: 'nome', l: 'Nome' }, { v: 'plano', l: 'Plano' }, { v: 'atividade', l: 'Mais ativas' }].map(o => (
-          <TouchableOpacity key={o.v} style={[s.ordemBtn, ordemPor === o.v && s.ordemBtnSel]} onPress={() => setOrdemPor(o.v)}>
-            <Text style={[s.ordemTxt, ordemPor === o.v && s.ordemTxtSel]}>{o.l}</Text>
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Usuárias por estado</Text>
+        {porEstado.length === 0 ? <Text style={s.emptyTxt}>Nenhuma usuária com estado informado ainda.</Text> : porEstado.map(([sigla, qtd]) => (
+          <TouchableOpacity key={sigla} style={s.planRow} onPress={() => setUf(uf === sigla ? '' : sigla)} activeOpacity={0.7}>
+            <Text style={[s.planNome, { width: 120 }, uf === sigla && { fontFamily: fonts.bodyBold, color: colors.lilasTexto }]} numberOfLines={1}>{nomeDoEstado(sigla)}</Text>
+            <MiniBar value={qtd} max={maxEstado} color={uf === sigla ? dadoPlano(3) : dadoPlano(1)} height={10} />
+            <Text style={s.planCount}>{qtd}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Detail panel */}
-      {sel && (
-        <View style={[s.card, s.cardDetalhe]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.detailNome}>{sel.nome || '—'}</Text>
-              <Text style={s.detailEmail}>{sel.email}</Text>
-              {!!sel.cidade && <Text style={s.detailMeta}>📍 {sel.cidade}</Text>}
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Usuárias por cidade{uf ? ` · ${uf}` : ''}</Text>
+        <View style={s.searchBox}>
+          <Ionicons name="search" size={15} color={colors.tl} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Filtrar cidade..."
+            placeholderTextColor={colors.tl}
+            value={buscaCidade}
+            onChangeText={setBuscaCidade}
+            autoCorrect={false}
+          />
+        </View>
+        {porCidade.length === 0 ? <Text style={s.emptyTxt}>Nenhuma cidade encontrada.</Text> : porCidade.slice(0, 60).map(([cidade, qtd]) => (
+          <View key={cidade} style={s.planRow}>
+            <Text style={[s.planNome, { width: 140 }]} numberOfLines={1}>{cidade}</Text>
+            <MiniBar value={qtd} max={maxCidade} color={acento('salvia').tinta} height={10} />
+            <Text style={s.planCount}>{qtd}</Text>
+          </View>
+        ))}
+        {porCidade.length > 60 && <Text style={s.emptyTxt}>Mostrando as 60 cidades com mais usuárias.</Text>}
+      </View>
+    </View>
+  );
+}
+
+// ─── Pequenas vitórias (agregado e anônimo, calculado no servidor) ─────
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const rotuloMes = (m) => `${MESES[Number(m.slice(5, 7)) - 1] || m.slice(5, 7)}/${m.slice(2, 4)}`;
+const iconeVit = (id) => (id === 'create' ? 'create-outline' : iconeDaVitoria({ icone: id }));
+const nomeIconeVit = (id) => (id === 'create' ? 'Escritas pelas usuárias' : (ICONES_VITORIA.find(i => i.id === id)?.nome || 'Estrela'));
+
+function ResumoVitorias() {
+  const [periodo, setPeriodo] = useState('30');
+  const [uf, setUf] = useState('');
+  const [dados, setDados] = useState(null);
+  const [erro, setErro] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    setCarregando(true);
+    httpsCallable(functions, 'relatorioVitoriasAdmin', { timeout: 120000 })({ periodo, estado: uf })
+      .then(r => { if (vivo) { setDados(r.data); setErro(''); } })
+      .catch(e => { if (vivo) setErro(e?.message || 'Não foi possível carregar as vitórias.'); })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
+  }, [periodo, uf]);
+
+  const maxRank = dados?.ranking?.[0]?.qtd || 1;
+  const maxIcone = dados?.porIcone?.[0]?.qtd || 1;
+  const maxMes = Math.max(...(dados?.porMes || []).map(m => m.qtd), 1);
+  const ufsComDados = (dados?.porEstado || []).filter(e => e.uf !== '—').map(e => e.uf);
+
+  return (
+    <View style={{ marginTop: spacing.md }}>
+      <Text style={s.pageTitle}>Pequenas vitórias</Text>
+      <Text style={s.funilIntro}>
+        Resumo anônimo do que as usuárias celebraram — para inspirar conteúdos e escolher parcerias e achados.
+        Frases e palavras escritas pelas próprias usuárias só aparecem quando vieram de 2 ou mais pessoas.
+      </Text>
+
+      <View style={s.periodRow}>
+        {[{ v: '30', l: '30 dias' }, { v: '90', l: '90 dias' }, { v: '365', l: '12 meses' }, { v: 'all', l: 'Tudo' }].map(p => (
+          <TouchableOpacity key={p.v} style={[s.periodBtn, periodo === p.v && s.periodBtnSel]} onPress={() => setPeriodo(p.v)}>
+            <Text style={[s.periodTxt, periodo === p.v && s.periodTxtSel]}>{p.l}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.ordemRow, { flexWrap: 'nowrap' }]}>
+        {['', ...new Set([...(uf ? [uf] : []), ...ufsComDados])].map(sigla => (
+          <TouchableOpacity key={sigla || 'todos'} style={[s.ordemBtn, uf === sigla && s.ordemBtnSel]} onPress={() => setUf(sigla)}>
+            <Text style={[s.ordemTxt, uf === sigla && s.ordemTxtSel]}>{sigla || 'Todos os estados'}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {carregando && <ActivityIndicator color={colors.lav4} style={{ marginVertical: 12 }} />}
+      {!!erro && (
+        <View style={s.erroBox}>
+          <Ionicons name="alert-circle-outline" size={17} color={acento('rosa').texto} />
+          <Text style={s.erroTxt}>{erro}</Text>
+        </View>
+      )}
+
+      {dados && (
+        <>
+          <View style={s.card}>
+            <View style={s.engRow}>
+              <View style={s.engItem}><Text style={s.engVal}>{dados.total}</Text><Text style={s.engLbl}>vitórias no{'\n'}período</Text></View>
+              <View style={s.engDiv} />
+              <View style={s.engItem}><Text style={s.engVal}>{dados.pessoas}</Text><Text style={s.engLbl}>pessoas{'\n'}registraram</Text></View>
+              <View style={s.engDiv} />
+              <View style={s.engItem}><Text style={s.engVal}>{dados.outrasPersonalizadas}</Text><Text style={s.engLbl}>escritas únicas{'\n'}(ocultas)</Text></View>
             </View>
-            <TouchableOpacity onPress={() => setSel(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={20} color={colors.td} />
-            </TouchableOpacity>
           </View>
 
-          <View style={s.detailStatsRow}>
-            {[
-              { val: PLANO_LABELS[sel.plano || 0], lbl: 'Plano', color: corPlano(sel.plano || 0).texto },
-              { val: userCheckins.length, lbl: 'Check-ins', color: acento('lilas').texto },
-              { val: userVitorias.length, lbl: 'Vitórias', color: acento('dourado').texto },
-              { val: diasInativos(sel.id) < 9999 ? `${diasInativos(sel.id)}d` : '—', lbl: 'Inativo', color: acento('pessego').texto },
-            ].map((it, i) => (
-              <View key={i} style={s.detailStatBox}>
-                <Text style={[s.detailStatVal, { color: it.color }]}>{it.val}</Text>
-                <Text style={s.detailStatLbl}>{it.lbl}</Text>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Vitórias mais registradas</Text>
+            {dados.ranking.length === 0 ? <Text style={s.emptyTxt}>Nenhuma vitória nesse período.</Text> : dados.ranking.map((r, i) => (
+              <View key={r.label} style={{ marginBottom: 10 }}>
+                <View style={s.emoHeader}>
+                  <Text style={s.topQtd}>{i + 1}º</Text>
+                  <Ionicons name={iconeVit(r.icone)} size={15} color={acento('dourado').tinta} />
+                  <Text style={s.emoLabel} numberOfLines={2}>{r.label}{r.tipo === 'personalizada' ? ' · escrita' : ''}</Text>
+                  <Text style={s.emoQtd}>{r.qtd}× · {r.pessoas}</Text>
+                </View>
+                <MiniBar value={r.qtd} max={maxRank} color={acento('dourado').tinta} height={8} />
               </View>
             ))}
           </View>
 
-          {sel.criadoEm && (
-            <Text style={s.detailMeta}>
-              Membro desde: {formatDataBR(sel.criadoEm?.toDate?.()?.toISOString().slice(0, 10) || '')}
-            </Text>
-          )}
-
-          {userCheckins.length > 0 && (
-            <>
-              <Text style={[s.cardTitle, { marginTop: 12 }]}>Últimos check-ins</Text>
-              {userCheckins.slice(0, 5).map((c, i) => {
-                const emo = emocoes.find(e => e.id === c.emocao);
-                return (
-                  <View key={i} style={s.histRow}>
-                    <View style={[s.emoDot, { backgroundColor: emo?.dado || emo?.color || colors.lav3 }]} />
-                    <Text style={s.histLabel}>{emo?.label || c.emocao}</Text>
-                    <Text style={s.histData}>{formatDataBR(c.data)}</Text>
-                  </View>
-                );
-              })}
-            </>
-          )}
-
-          {userVitorias.length > 0 && (
-            <>
-              <Text style={[s.cardTitle, { marginTop: 12 }]}>Últimas vitórias</Text>
-              {userVitorias.slice(0, 3).map((v, i) => (
-                <View key={i} style={s.histRow}>
-                  <Ionicons name="star" size={13} color={acento('dourado').tinta} />
-                  <Text style={s.histLabel}>{v.label}</Text>
-                  <Text style={s.histData}>{formatDataBR(v.data)}</Text>
-                </View>
-              ))}
-            </>
-          )}
-
-          {userCheckins.length === 0 && userVitorias.length === 0 && (
-            <Text style={s.emptyTxt}>Nenhuma atividade registrada ainda.</Text>
-          )}
-        </View>
-      )}
-
-      {usuariosFiltrados.length === 0 && (
-        <Text style={s.emptyTxt}>Nenhuma usuária encontrada.</Text>
-      )}
-
-      {usuariosFiltrados.length > 0 && <View style={s.lista}>
-      {usuariosFiltrados.map((u, i) => {
-        const plano = u.plano || 0;
-        const nCheck = todosCheckins.filter(c => c.uid === u.id).length;
-        const dias = diasInativos(u.id);
-        const isSelected = sel?.id === u.id;
-        const ultCheck = getUltimoCheckin(u.id);
-        return (
-          <TouchableOpacity
-            key={u.id}
-            style={[s.userRow, i > 0 && s.userRowDiv, isSelected && s.userRowSel]}
-            onPress={() => setSel(isSelected ? null : u)}
-            activeOpacity={0.75}
-          >
-            <View style={[s.userPlanoBar, { backgroundColor: dadoPlano(plano) }]} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text style={s.userName} numberOfLines={1}>{u.nome || u.email}</Text>
-              <Text style={s.userEmail} numberOfLines={1}>{u.email}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end', gap: 3 }}>
-              <View style={[s.planoBadge, { backgroundColor: corPlano(plano).fundo }]}>
-                <Text style={[s.planoBadgeTxt, { color: corPlano(plano).texto }]}>{PLANO_LABELS[plano]}</Text>
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Por categoria (ícone)</Text>
+            {dados.porIcone.length === 0 ? <Text style={s.emptyTxt}>Sem dados.</Text> : dados.porIcone.map(c => (
+              <View key={c.icone} style={s.planRow}>
+                <Ionicons name={iconeVit(c.icone)} size={15} color={acento('pessego').tinta} />
+                <Text style={[s.planNome, { width: 120 }]} numberOfLines={1}>{nomeIconeVit(c.icone)}</Text>
+                <MiniBar value={c.qtd} max={maxIcone} color={acento('pessego').tinta} height={10} />
+                <Text style={s.planCount}>{c.qtd}</Text>
               </View>
-              <Text style={s.userMeta}>
-                {nCheck} check-in{nCheck !== 1 ? 's' : ''}
-                {dias < 9999 ? ` · ${dias}d` : ''}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-      </View>}
+            ))}
+          </View>
+
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Evolução por mês</Text>
+            {dados.porMes.length === 0 ? <Text style={s.emptyTxt}>Sem dados.</Text> : (
+              <View style={{ flexDirection: 'row', height: CHART_H + 34, alignItems: 'flex-end', gap: 4, paddingTop: 8 }}>
+                {dados.porMes.slice(-12).map(m => {
+                  const h = m.qtd > 0 ? Math.max(Math.round((m.qtd / maxMes) * CHART_H), 4) : 2;
+                  return (
+                    <View key={m.mes} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {m.qtd > 0 && <Text style={s.barraValor}>{m.qtd}</Text>}
+                      <View style={{ width: '100%', height: h, backgroundColor: acento('dourado').tinta, borderRadius: 5 }} />
+                      <Text style={s.barraDia} numberOfLines={1}>{rotuloMes(m.mes)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Temas mais frequentes nos textos</Text>
+            {dados.palavras.length === 0 ? <Text style={s.emptyTxt}>Ainda não há palavras repetidas por 2 ou mais pessoas.</Text> : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {dados.palavras.map(p => (
+                  <View key={p.palavra} style={[s.ordemBtn, { minHeight: 0, paddingVertical: 4 }]}>
+                    <Text style={[s.ordemTxt, { fontSize: 12 + Math.round((p.qtd / dados.palavras[0].qtd) * 5) }]}>{p.palavra} · {p.qtd}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -616,7 +657,7 @@ export default function AdminRelatoriosScreen({ navigation }) {
   const [atualizando, setAtualizando] = useState(false);
   const [usuarios, setUsuarios] = useState([]);
   const [todosCheckins, setTodosCheckins] = useState([]);
-  const [todasVitorias, setTodasVitorias] = useState([]);
+  const [totalVitorias, setTotalVitorias] = useState(null);
   const [erro, setErro] = useState('');
 
   const carregar = useCallback(async () => {
@@ -624,10 +665,12 @@ export default function AdminRelatoriosScreen({ navigation }) {
     try {
       const usersSnap = await getDocs(collection(db, 'usuarios'));
       // O plano pode estar como número (app) ou texto (painel web).
+      // Administradoras e contas inativas não entram nos números.
       const users = usersSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(u => u.role !== 'admin')
+        .filter(u => u.role !== 'admin' && u.status !== 'inativa')
         .map(u => ({ ...u, plano: planoNumero(u.plano) }));
+      const ativas = new Set(users.map(u => u.id));
 
       // Sem orderBy: uma consulta de collectionGroup com orderBy exige um índice
       // de escopo COLLECTION_GROUP e falha inteira quando ele não existe — era o
@@ -635,16 +678,17 @@ export default function AdminRelatoriosScreen({ navigation }) {
       const checkinsSnap = await getDocs(collectionGroup(db, 'checkins'));
       const checkins = checkinsSnap.docs
         .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }))
+        .filter(c => ativas.has(c.uid))
         .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
-
-      const vitoriasSnap = await getDocs(collectionGroup(db, 'vitorias'));
-      const vitorias = vitoriasSnap.docs
-        .map(d => ({ id: d.id, uid: d.ref.path.split('/')[1], ...d.data() }));
 
       setUsuarios(users);
       setTodosCheckins(checkins);
-      setTodasVitorias(vitorias);
       setErro('');
+
+      // Vitórias: só o total, calculado no servidor (os textos não saem do banco).
+      httpsCallable(functions, 'relatorioVitoriasAdmin', { timeout: 120000 })({ periodo: 'all' })
+        .then(r => setTotalVitorias(r.data?.total ?? null))
+        .catch(() => setTotalVitorias(null));
     } catch (e) {
       setErro(e?.message || 'Não foi possível carregar os dados.');
     }
@@ -704,18 +748,12 @@ export default function AdminRelatoriosScreen({ navigation }) {
           <VisaoGeral
             usuarios={usuarios}
             todosCheckins={todosCheckins}
-            todasVitorias={todasVitorias}
+            totalVitorias={totalVitorias}
           />
         )}
         {aba === 'funil' && <AbaFunil usuarios={usuarios} todosCheckins={todosCheckins} />}
         {aba === 'emocoes' && <AbaEmocoes todosCheckins={todosCheckins} />}
-        {aba === 'usuarios' && (
-          <AbaUsuarios
-            usuarios={usuarios}
-            todosCheckins={todosCheckins}
-            todasVitorias={todasVitorias}
-          />
-        )}
+        {aba === 'usuarios' && <AbaUsuarios usuarios={usuarios} />}
         {aba === 'empresas' && <AbaEmpresas usuarios={usuarios} />}
         <View style={{ height: 40 }} />
       </ScrollView>

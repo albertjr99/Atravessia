@@ -32,6 +32,23 @@ export function separar(lista, agora = Date.now()) {
   return { proximos: todos.filter(a => !ehPassado(a, agora)), passados: todos.filter(a => ehPassado(a, agora)).reverse() };
 }
 
+// Sessão agendada que começa nas próximas `horas` (ou já está acontecendo).
+// Usada no cartão "Sua sessão começa em X min — Entrar" (Home e Perfil).
+export function sessaoProxima(lista, agora = Date.now(), horas = 6) {
+  return [...(lista || [])]
+    .filter(a => a.status === 'agendado'
+      && ms(a.fim) + TOLERANCIA_MIN * 60000 >= agora
+      && ms(a.inicio) - agora <= horas * 3600000)
+    .sort((x, y) => ms(x.inicio) - ms(y.inicio))[0] || null;
+}
+export function textoFalta(inicioMs, agora = Date.now()) {
+  const min = Math.ceil((inicioMs - agora) / 60000);
+  if (min <= 0) return 'Sua sessão já começou';
+  if (min < 60) return `Sua sessão começa em ${min} min`;
+  const h = Math.floor(min / 60); const m = min % 60;
+  return `Sua sessão começa em ${h} h${m ? ` ${m} min` : ''}`;
+}
+
 // Atendimentos em que a usuária está (convite aceito).
 export function useMeusAtendimentos(uid) {
   const [lista, setLista] = useState(null);

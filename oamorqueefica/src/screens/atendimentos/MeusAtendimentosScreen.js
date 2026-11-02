@@ -7,7 +7,7 @@ import { LavandaBg } from '../../components';
 import Recolhivel from '../../components/Recolhivel';
 import { useAuth } from '../../hooks/AuthContext';
 import {
-  useMeusAtendimentos, separar, salaAberta, dataHora, ms, LIBERA_MIN,
+  useMeusAtendimentos, separar, salaAberta, dataHora, ms, LIBERA_MIN, sessaoProxima, textoFalta,
 } from '../../utils/atendimentos';
 
 // Atendimentos online da usuária (convites aceitos pelo link). Entrar na sala
@@ -89,6 +89,39 @@ export default function MeusAtendimentosScreen({ navigation }) {
   );
 }
 
+// "Sua sessão começa em X min — Entrar": aparece na Home e no Perfil quando há
+// sessão nas próximas horas. Um toque abre a sala (a tela da sala espera
+// sozinha se ainda faltar mais de 10 min). Some quando não há sessão próxima.
+export function CartaoProximaSessao({ navigation, estilo }) {
+  const { firebaseUser } = useAuth();
+  const lista = useMeusAtendimentos(firebaseUser?.uid);
+  const [agora, setAgora] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 30000); return () => clearInterval(t); }, []);
+  const a = sessaoProxima(lista, agora);
+  if (!a) return null;
+  const aberta = salaAberta(a, agora);
+  return (
+    <View style={[s.proxima, estilo]}>
+      <View style={s.cardTopo}>
+        <View style={s.icone}><Ionicons name="videocam" size={21} color={colors.lilasTexto} /></View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.quando}>{textoFalta(ms(a.inicio), agora)}</Text>
+          <Text style={s.titulo} numberOfLines={1}>{a.titulo}</Text>
+          <Text style={s.com} numberOfLines={1}>Com {a.profissionalNome} · {dataHora(ms(a.inicio))}</Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        style={s.botao} activeOpacity={0.85}
+        onPress={() => navigation.navigate('SalaAtendimento', { atendimentoId: a.id })}
+        accessibilityRole="button" accessibilityLabel="Entrar na sessão"
+      >
+        <Ionicons name="videocam" size={18} color="#FFFFFF" />
+        <Text style={s.botaoTxt}>{aberta ? 'Entrar' : 'Entrar (a sala abre 10 min antes)'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // Atalho no Perfil: só aparece para quem tem algum atendimento.
 export function CartaoMeusAtendimentos({ navigation, estilo }) {
   const { firebaseUser } = useAuth();
@@ -142,6 +175,10 @@ const s = criarEstilos(() => ({
   vazio: { alignItems: 'center', paddingTop: 70, gap: 10, paddingHorizontal: spacing.md },
   vazioTit: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.titulo, textAlign: 'center' },
   vazioSub: { fontFamily: fonts.body, fontSize: 14, color: colors.texto2, textAlign: 'center', lineHeight: 21, maxWidth: 320 },
+  proxima: {
+    backgroundColor: colors.card, borderRadius: 22, borderWidth: 1.5, borderColor: colors.lav3, padding: 16, marginBottom: 12,
+    shadowColor: colors.sombra, shadowOffset: { width: 0, height: 10 }, shadowOpacity: colors.escuro ? 0.3 : 0.12, shadowRadius: 20, elevation: 3,
+  },
   atalho: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: 22,
     borderWidth: 1, borderColor: colors.bordaLuz, padding: 14, marginBottom: 12,

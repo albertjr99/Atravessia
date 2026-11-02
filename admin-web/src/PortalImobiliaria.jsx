@@ -106,7 +106,7 @@ function CartaoLead({ lead, regra, token, onAtualizado, destacado }) {
           {lead.repassePrevisto != null && <span>Repasse à Atravessia: <b>{brl(lead.repassePrevisto)}</b></span>}
           {lead.repasseEnviadoEm && <span>Você informou o envio em {dataTexto(lead.repasseEnviadoEm)}. Aguardando confirmação da Atravessia.</span>}
           {lead.repasseConfirmado != null && <span>Repasse confirmado pela Atravessia em {dataTexto(lead.pagoEm)}. Obrigada!</span>}
-          {lead.beneficioEntregue && <span>Consultoria da cliente concluída.</span>}
+          {lead.beneficioEntregue && <span>Benefício da cliente entregue.</span>}
         </div>
       )}
 
@@ -257,8 +257,8 @@ export default function PortalImobiliaria() {
           {dados.regra?.dadosPagamento && <p className="imv-leg">Para repassar: {dados.regra.dadosPagamento}</p>}
           <p className="imv-leg">
             Marque “Negócio fechado” com o valor quando o pagamento da cliente estiver confirmado. Depois do repasse, toque em
-            “Informar repasse enviado”. A confirmação final é feita pela Atravessia, que então presenteia a cliente com uma
-            consultoria online com arquiteto parceiro.
+            “Informar repasse enviado”. A confirmação final é feita pela Atravessia, que então libera para a cliente o
+            benefício da parceria (um serviço parceiro, como uma consultoria de decoração).
           </p>
         </section>
 

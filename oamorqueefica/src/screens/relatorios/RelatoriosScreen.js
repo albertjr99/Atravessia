@@ -18,7 +18,6 @@ import { emocoes } from '../../data';
 import { useApp } from '../../hooks/AppContext';
 import { useAuth } from '../../hooks/AuthContext';
 import { LavandaBg } from '../../components';
-import { AvatarTravessinho, DicaTravessinho, useTravessinhosAtivos } from '../../components/Travessinho';
 import { Profundo } from '../../components/Efeitos';
 import { functions, db } from '../../services/firebase';
 import { gerarRelatorioMensalHTML, gerarRelatorioAnualHTML, gerarRelatorioPersonalizadoHTML, resumoAreasTexto } from '../../utils/relatorioHtml';
@@ -442,7 +441,6 @@ const EMO_CHART_COLORS = [
 // ─────────────────────────────────────────────────────────────────────────────
 export default function RelatoriosScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
-  const travessinhosAtivos = useTravessinhosAtivos();
   // Tablet: rosca maior e áreas da vida lado a lado.
   const { width: larguraTela } = useWindowDimensions();
   const largo = larguraTela >= 700;
@@ -724,12 +722,6 @@ export default function RelatoriosScreen({ navigation, route }) {
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingBottom: 40 + insets.bottom, paddingHorizontal: spacing.lg }}
       >
-        <DicaTravessinho
-          chave="relatorios"
-          quem="brian"
-          fala="Cada check-in vira um pontinho aqui. Troque entre Mensal, Anual e Período, e toque em PDF para guardar ou levar para a sua sessão."
-          style={{ marginTop: spacing.sm }}
-        />
 
         {/* ═══════════════════════════════════ RELATÓRIO MENSAL ══════════════════ */}
         {tab === 'mensal' && (
@@ -748,7 +740,7 @@ export default function RelatoriosScreen({ navigation, route }) {
 
             {mesal.total === 0 ? (
               <View style={[s.card, s.emptyBox]}>
-                {travessinhosAtivos ? <AvatarTravessinho quem="brian" tamanho={88} comNome /> : <Moldura source={ilVazio} tamanho={96} />}
+                <Moldura source={ilVazio} tamanho={96} />
                 <Text style={s.emptyTxt}>Ainda não há check-ins este mês.</Text>
                 <Text style={s.emptyHint}>Faça seu primeiro check-in para ver seu relatório.</Text>
                 <BotaoLuz titulo="Fazer check-in agora" onPress={() => navigation.navigate('CheckIn')} style={s.btnCentro} />

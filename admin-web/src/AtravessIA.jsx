@@ -27,8 +27,10 @@ function Leitura() {
         getDocs(collection(db, 'conteudos')),
         getDocs(collection(db, 'audiosAcolhimento')),
       ]);
-      const usuarios = us.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => u.role !== 'admin').map(u => ({ ...u, plano: planoNumero(u.plano) }));
-      const checkins = ck.docs.map(d => ({ uid: d.ref.path.split('/')[1], ...d.data() }));
+      // Contas inativas não entram na leitura (nem as usuárias nem os check-ins delas).
+      const inativas = new Set(us.docs.filter(d => d.data().status === 'inativa').map(d => d.id));
+      const usuarios = us.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => u.role !== 'admin' && !inativas.has(u.id)).map(u => ({ ...u, plano: planoNumero(u.plano) }));
+      const checkins = ck.docs.map(d => ({ uid: d.ref.path.split('/')[1], ...d.data() })).filter(c => !inativas.has(c.uid));
       const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
       const metricas = calcularMetricasFunil({ usuarios, checkins, periodo: '30', hoje });
       setInsights(lerDados({ checkins, metricas, hoje, conteudos: ct.docs.map(d => d.data()), audios: au.docs.map(d => d.data()) }));

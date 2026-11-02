@@ -346,6 +346,8 @@ function Configuracoes({ inicial, status, onSalvo }) {
   const [provedor, setProvedor] = useState(inicial.provedor === 'jitsi' ? 'jitsi' : 'daily');
   const [ativo, setAtivo] = useState(inicial.ativo !== false);
   const [salaDeEspera, setSalaDeEspera] = useState(inicial.salaDeEspera !== false);
+  const [permitirChat, setPermitirChat] = useState(inicial.permitirChat !== false);
+  const [telaPacientes, setTelaPacientes] = useState(inicial.telaPacientes === true);
   const [dias, setDias] = useState(String(inicial.beneficioDias ?? 60));
   const [crp, setCrp] = useState(inicial.crp || '');
   const [nomeProfissional, setNomeProfissional] = useState(inicial.nomeProfissional || '');
@@ -354,7 +356,7 @@ function Configuracoes({ inicial, status, onSalvo }) {
     if (!Number.isFinite(n) || n < 0 || n > 365) { avisar('O benefício vai de 0 a 365 dias.'); return; }
     try {
       await setDoc(doc(db, 'configuracoes', 'atendimentos'), {
-        provedor, ativo, salaDeEspera, beneficioDias: Math.round(n), crp: crp.trim(), nomeProfissional: nomeProfissional.trim(), atualizadoEm: serverTimestamp(),
+        provedor, ativo, salaDeEspera, permitirChat, telaPacientes, beneficioDias: Math.round(n), crp: crp.trim(), nomeProfissional: nomeProfissional.trim(), atualizadoEm: serverTimestamp(),
       }, { merge: true });
       avisar('Configurações salvas.');
       onSalvo?.();
@@ -375,6 +377,8 @@ function Configuracoes({ inicial, status, onSalvo }) {
       )}
       <View style={s.linhaSwitch}><Text style={[s.corpo, { flex: 1 }]}>Atendimentos ligados</Text><Switch value={ativo} onValueChange={setAtivo} /></View>
       <View style={s.linhaSwitch}><Text style={[s.corpo, { flex: 1 }]}>Sala de espera (você admite a entrada)</Text><Switch value={salaDeEspera} onValueChange={setSalaDeEspera} /></View>
+      <View style={s.linhaSwitch}><Text style={[s.corpo, { flex: 1 }]}>Chat de texto dentro da sala</Text><Switch value={permitirChat} onValueChange={setPermitirChat} /></View>
+      <View style={s.linhaSwitch}><Text style={[s.corpo, { flex: 1 }]}>Pacientes podem compartilhar a tela</Text><Switch value={telaPacientes} onValueChange={setTelaPacientes} /></View>
       <Campo rotulo="Cortesia no app (dias após cada sessão; 0 desliga)" value={dias} onChangeText={setDias} keyboardType="number-pad" />
       <Campo rotulo="CRP" value={crp} onChangeText={setCrp} placeholder="06/000000" />
       <Campo rotulo="Nome profissional (aparece no convite)" value={nomeProfissional} onChangeText={setNomeProfissional} />

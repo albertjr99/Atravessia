@@ -79,6 +79,10 @@ export function resolverDestino(data) {
   } else if (rota === 'ConfirmarResgate') {
     if (!data.resgateId) rota = 'Notificacoes';
     else params = { resgateId: data.resgateId };
+  } else if (rota === 'SalaAtendimento') {
+    // Lembrete "começa em 10 min": abre a sala direto (sem id, vai para a lista).
+    if (!data.atendimentoId) rota = 'MeusAtendimentos';
+    else params = { atendimentoId: String(data.atendimentoId) };
   } else if (rota === 'MainTabs' && data.origem === 'fraseDoDia') {
     params = { destaque: 'frase' };
   }
