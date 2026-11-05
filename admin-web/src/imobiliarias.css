@@ -72,3 +72,6 @@
   .imv-portal { padding: 16px 12px 48px; }
   .imv-bloco { padding: 14px; border-radius: 18px; }
 }
+
+.imv-cadastrar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 14px; }
+.imv-cadastrar > span { font-weight: 700; color: var(--texto2, #6b6480); margin-right: 4px; }

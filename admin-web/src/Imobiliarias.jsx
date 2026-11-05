@@ -296,8 +296,8 @@ async function vincularParceria(imobId, escolhido, anterior, dados) {
   return parceriaId;
 }
 
-function Imobs({ imobiliarias, imobPriv, parcerias = [], showToast }) {
-  const [aberto, setAberto] = useState(false);
+function Imobs({ imobiliarias, imobPriv, parcerias = [], showToast, abrirNovo }) {
+  const [aberto, setAberto] = useState(!!abrirNovo);
   const [editId, setEditId] = useState(null);
   const [f, setF] = useState(IMOB_VAZIA);
   const [salvando, setSalvando] = useState(false);
@@ -494,8 +494,8 @@ const IMOVEL_VAZIO = {
   quartos: '', banheiros: '', vagas: '', areaM2: '', fotos: [], descricao: '', linkAnuncio: '', ativo: true, ordem: '',
 };
 
-function Imoveis({ imoveis, imobiliarias, showToast }) {
-  const [aberto, setAberto] = useState(false);
+function Imoveis({ imoveis, imobiliarias, showToast, abrirNovo }) {
+  const [aberto, setAberto] = useState(!!abrirNovo);
   const [filtro, setFiltro] = useState('todas');
   const [editId, setEditId] = useState(null);
   const [f, setF] = useState(IMOVEL_VAZIO);
@@ -616,8 +616,8 @@ function Imoveis({ imoveis, imobiliarias, showToast }) {
 // ============================ ARQUITETOS ====================================
 const ARQ_VAZIO = { nome: '', especialidade: '', fotoUrl: '', bio: '', cau: '', especialidades: '', ativo: true, valorConsultoria: '', telefone: '', email: '', dadosPagamento: '' };
 
-function Arquitetos({ arquitetos, arqPriv, showToast }) {
-  const [aberto, setAberto] = useState(false);
+function Arquitetos({ arquitetos, arqPriv, showToast, abrirNovo }) {
+  const [aberto, setAberto] = useState(!!abrirNovo);
   const [editId, setEditId] = useState(null);
   const [f, setF] = useState(ARQ_VAZIO);
   const [salvando, setSalvando] = useState(false);
@@ -782,6 +782,8 @@ function DemoImobiliarias({ showToast }) {
 // ============================ TELA ==========================================
 export default function Imobiliarias({ showToast }) {
   const [secao, setSecao] = useState('leads');
+  const [abrirNovo, setAbrirNovo] = useState(false);
+  const irPara = (id, novo = false) => { setSecao(id); setAbrirNovo(novo); };
   const [imobiliarias, setImobiliarias] = useState([]);
   const [imobPriv, setImobPriv] = useState({});
   const [imoveis, setImoveis] = useState([]);
@@ -818,19 +820,25 @@ export default function Imobiliarias({ showToast }) {
           <p className="screen-sub">Para a usuária, cada imobiliária é uma parceria em Experimente a vida (“Do ambiente em que você vive”). Ela pede a indicação, a imobiliária negocia e, quando o negócio fecha e o repasse chega, a Atravessia agenda o serviço parceiro do benefício (por exemplo, uma consultoria com arquiteta).</p>
         </div>
       </div>
+      <div className="imv-cadastrar">
+        <span>Cadastrar:</span>
+        <button type="button" className="btn btn-primary" onClick={() => irPara('imobiliarias', true)}>+ Nova imobiliária</button>
+        <button type="button" className="btn btn-primary" onClick={() => irPara('imoveis', true)}>+ Novo imóvel</button>
+        <button type="button" className="btn btn-primary" onClick={() => irPara('arquitetos', true)}>+ Novo prestador</button>
+      </div>
       <DemoImobiliarias showToast={showToast} />
       {pendentes > 0 && <div className="imv-aviso"><IconAlert size={16} /> {pendentes} {pendentes === 1 ? 'indicação precisa' : 'indicações precisam'} da sua ação (confirmar repasse ou agendar o benefício).</div>}
       <div className="filter-row">
         {SECOES.map(s => (
-          <button key={s.id} type="button" className={`chip ${secao === s.id ? 'chip-active' : ''}`} onClick={() => setSecao(s.id)}>{s.rotulo}</button>
+          <button key={s.id} type="button" className={`chip ${secao === s.id ? 'chip-active' : ''}`} onClick={() => irPara(s.id)}>{s.rotulo}</button>
         ))}
       </div>
       {carregando ? <div className="loading-state"><div className="spinner" style={{ margin: '0 auto 10px' }} />Carregando…</div> : (
         <>
           {secao === 'leads' && <Leads leads={leads} privLeads={privLeads} imobiliarias={imobiliarias} arquitetos={arquitetos} arqPriv={arqPriv} showToast={showToast} />}
-          {secao === 'imobiliarias' && <Imobs imobiliarias={imobiliarias} imobPriv={imobPriv} parcerias={parcerias} showToast={showToast} />}
-          {secao === 'imoveis' && <Imoveis imoveis={imoveis} imobiliarias={imobiliarias} showToast={showToast} />}
-          {secao === 'arquitetos' && <Arquitetos arquitetos={arquitetos} arqPriv={arqPriv} showToast={showToast} />}
+          {secao === 'imobiliarias' && <Imobs key={'Imobs'+abrirNovo} abrirNovo={abrirNovo} imobiliarias={imobiliarias} imobPriv={imobPriv} parcerias={parcerias} showToast={showToast} />}
+          {secao === 'imoveis' && <Imoveis key={'Imoveis'+abrirNovo} abrirNovo={abrirNovo} imoveis={imoveis} imobiliarias={imobiliarias} showToast={showToast} />}
+          {secao === 'arquitetos' && <Arquitetos key={'Arquitetos'+abrirNovo} abrirNovo={abrirNovo} arquitetos={arquitetos} arqPriv={arqPriv} showToast={showToast} />}
           {secao === 'financeiro' && <Financeiro leads={leads} privLeads={privLeads} />}
         </>
       )}
